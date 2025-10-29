@@ -1,0 +1,40 @@
+import fp from "fastify-plugin";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import { env } from "../config/env.js";
+import { StorageService } from "../services/storage/storage.js";
+
+export default fp(async (app) => {
+  const driver = env.STORAGE_DRIVER;
+  const common = {
+    assetBucket: env.STORAGE_BUCKET_ASSETS,
+    romBucket: env.STORAGE_BUCKET_ROMS,
+    biosBucket: env.STORAGE_BUCKET_BIOS,
+    forcePathStyle: env.STORAGE_FORCE_PATH_STYLE
+  } as const;
+
+  if (driver === "filesystem") {
+    const localRoot = env.STORAGE_LOCAL_ROOT ?? join(process.cwd(), "var", "storage");
+    await mkdir(localRoot, { recursive: true });
+
+    const storage = new StorageService({
+      ...common,
+      driver: "filesystem",
+      localRoot
+    });
+
+    app.decorate("storage", storage);
+    return;
+  }
+
+  const storage = new StorageService({
+    ...common,
+    driver: "s3",
+    endpoint: env.STORAGE_ENDPOINT!,
+    region: env.STORAGE_REGION!,
+    accessKey: env.STORAGE_ACCESS_KEY!,
+    secretKey: env.STORAGE_SECRET_KEY!
+  });
+
+  app.decorate("storage", storage);
+});

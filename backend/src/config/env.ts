@@ -20,6 +20,44 @@ const envSchema = z.object({
     .regex(/^\d+$/)
     .transform(Number)
     .default("168"),
+  STORAGE_DRIVER: z.enum(["filesystem", "s3"]).default("filesystem"),
+  STORAGE_LOCAL_ROOT: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value.trim() : undefined)),
+  STORAGE_ENDPOINT: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value.trim() : undefined)),
+  STORAGE_REGION: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value.trim() : undefined)),
+  STORAGE_ACCESS_KEY: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value.trim() : undefined)),
+  STORAGE_SECRET_KEY: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value : undefined)),
+  STORAGE_FORCE_PATH_STYLE: z
+    .string()
+    .optional()
+    .transform((value) =>
+      value === undefined ? true : value.toLowerCase() === "true" || value === "1"
+    ),
+  STORAGE_BUCKET_ASSETS: z.string().min(1),
+  STORAGE_BUCKET_ROMS: z.string().min(1),
+  STORAGE_BUCKET_BIOS: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value.trim() : undefined)),
+  ROM_UPLOAD_MAX_BYTES: z
+    .string()
+    .regex(/^\d+$/)
+    .transform(Number)
+    .default(String(1024 * 1024 * 1024)),
   SCREENSCRAPER_USERNAME: z
     .string()
     .optional()
@@ -86,6 +124,23 @@ if (
   throw new Error("USER_INVITE_EXPIRY_HOURS must be between 1 and 720 hours");
 }
 
+if (parsed.data.STORAGE_DRIVER === "s3") {
+  const missing = [
+    ["STORAGE_ENDPOINT", parsed.data.STORAGE_ENDPOINT],
+    ["STORAGE_REGION", parsed.data.STORAGE_REGION],
+    ["STORAGE_ACCESS_KEY", parsed.data.STORAGE_ACCESS_KEY],
+    ["STORAGE_SECRET_KEY", parsed.data.STORAGE_SECRET_KEY]
+  ].filter(([, value]) => !value);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `S3 storage driver requires configuration for: ${missing
+        .map(([key]) => key)
+        .join(", ")}`
+    );
+  }
+}
+
 const splitCsv = (value: string): string[] =>
   value
     .split(",")
@@ -98,6 +153,7 @@ export const env = {
   JWT_REFRESH_TTL_MS: refreshMs,
   USER_INVITE_EXPIRY_HOURS: parsed.data.USER_INVITE_EXPIRY_HOURS,
   USER_INVITE_EXPIRY_MS: parsed.data.USER_INVITE_EXPIRY_HOURS * 60 * 60 * 1000,
+  STORAGE_FORCE_PATH_STYLE: parsed.data.STORAGE_FORCE_PATH_STYLE ?? true,
   SCREENSCRAPER_DEFAULT_LANGUAGE_PRIORITY: splitCsv(
     parsed.data.SCREENSCRAPER_DEFAULT_LANGUAGE_PRIORITY
   ),

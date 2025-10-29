@@ -25,6 +25,23 @@ enum EnrichmentStatus {
   FAILED
 }
 
+enum RomBinaryStatus {
+  PENDING
+  READY
+  FAILED
+}
+
+enum RomUploadStatus {
+  PROCESSING
+  SUCCEEDED
+  FAILED
+}
+
+enum RomUploadKind {
+  ROM
+  BIOS
+}
+
 enum RomAssetType {
   COVER
   LOGO
@@ -59,6 +76,7 @@ model User {
   createdInvites UserInvitation[]     @relation("AdminInvitations")
   enrichmentJobs RomEnrichmentJob[]
   screenScraperSettings ScreenScraperSettings[]
+  romUploadAudits RomUploadAudit[]
 }
 
 model UserInvitation {
@@ -122,6 +140,7 @@ model Platform {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   roms            Rom[]
+  romUploadAudits RomUploadAudit[]
 }
 
 model Rom {
@@ -139,6 +158,8 @@ model Rom {
   metadata        RomMetadata[]
   assets          RomAsset[]
   enrichmentJobs  RomEnrichmentJob[]
+  binary          RomBinary?
+  uploadAudits    RomUploadAudit[]
 
   @@index([platformId])
   @@index([screenscraperId])
@@ -187,6 +208,79 @@ model RomAsset {
   @@index([type])
   @@index([providerId])
   @@unique([romId, providerId])
+}
+
+model RomBinary {
+  id               String          @id @default(cuid())
+  romId            String          @unique
+  rom              Rom             @relation(fields: [romId], references: [id], onDelete: Cascade)
+  storageKey       String
+  originalFilename String
+  archiveMimeType  String?
+  archiveSize      Int
+  checksumSha256   String
+  checksumSha1     String?
+  checksumMd5      String?
+  checksumCrc32    String?
+  status           RomBinaryStatus @default(READY)
+  uploadedAt       DateTime        @default(now())
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  uploadAudits     RomUploadAudit[]
+}
+
+model EmulatorBios {
+  id               String            @id @default(cuid())
+  coreSlug         String
+  region           String?
+  description      String?
+  originalFilename String
+  storageKey       String
+  archiveMimeType  String?
+  archiveSize      Int
+  checksumSha256   String
+  checksumSha1     String?
+  checksumMd5      String?
+  checksumCrc32    String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  uploadAudits     RomUploadAudit[]
+
+  @@unique([coreSlug, originalFilename])
+  @@index([coreSlug])
+}
+
+model RomUploadAudit {
+  id               String          @id @default(cuid())
+  kind             RomUploadKind
+  status           RomUploadStatus
+  romId            String?
+  rom              Rom?            @relation(fields: [romId], references: [id], onDelete: SetNull)
+  romBinaryId      String?
+  romBinary        RomBinary?      @relation(fields: [romBinaryId], references: [id], onDelete: SetNull)
+  biosId           String?
+  bios             EmulatorBios?   @relation(fields: [biosId], references: [id], onDelete: SetNull)
+  platformId       String?
+  platform         Platform?       @relation(fields: [platformId], references: [id], onDelete: SetNull)
+  uploadedById     String?
+  uploadedBy       User?           @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  storageKey       String
+  originalFilename String
+  archiveMimeType  String?
+  archiveSize      Int?
+  checksumSha256   String?
+  checksumSha1     String?
+  checksumMd5      String?
+  checksumCrc32    String?
+  errorMessage     String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([romId])
+  @@index([romBinaryId])
+  @@index([biosId])
+  @@index([platformId])
+  @@index([uploadedById])
 }
 
 model RomEnrichmentJob {

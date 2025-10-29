@@ -8,6 +8,11 @@ process.env.JWT_SECRET = "this-is-a-test-secret-at-least-32";
 process.env.JWT_ACCESS_TTL = "15m";
 process.env.JWT_REFRESH_TTL = "30d";
 process.env.USER_INVITE_EXPIRY_HOURS = "24";
+process.env.STORAGE_DRIVER = "filesystem";
+process.env.STORAGE_BUCKET_ASSETS = "assets";
+process.env.STORAGE_BUCKET_ROMS = "roms";
+process.env.STORAGE_BUCKET_BIOS = "bios";
+process.env.ROM_UPLOAD_MAX_BYTES = `${1024 * 1024}`;
 
 let buildServer: typeof import("../server.js").buildServer;
 
