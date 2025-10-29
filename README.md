@@ -9,7 +9,6 @@ application code for local development.
 - [Product Requirements Document](./TREAZRISLAND_PRD.md)
 - [Security & Threat Model](./docs/security/threat-model.md)
 - [Integration Guides](./docs/integrations)
-  - [Netplay](./docs/integrations/netplay.md)
   - [ScreenScraper](./docs/integrations/screenscraper.md)
 
 ## Local Development
@@ -18,11 +17,8 @@ application code for local development.
 2. Start dependencies:
 
    ```bash
-   docker compose -f infra/docker-compose.yml up postgres minio pixellab-mock netplay-mock
+   docker compose -f infra/docker-compose.yml up postgres minio pixellab-mock
    ```
 
 3. Follow backend/frontend README files (to be authored) for dev server commands.
 
-The optional `netplay-mock` container allows the frontend Netplay UI to exercise signaling flows without
-access to the production Netplay service. Update `NETPLAY_SERVICE_BASE_URL` and the `NEXT_PUBLIC_*` Netplay
-variables to target the mock (see [Netplay integration guide](./docs/integrations/netplay.md)).
