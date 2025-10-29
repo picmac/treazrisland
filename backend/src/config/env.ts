@@ -20,6 +20,12 @@ const envSchema = z.object({
     .regex(/^\d+$/)
     .transform(Number)
     .default("168"),
+  NETPLAY_BASE_URL: z.string().url(),
+  NETPLAY_API_KEY: z.string().min(1, "NETPLAY_API_KEY cannot be empty"),
+  NETPLAY_SESSION_TTL_MIN_MINUTES: z.string().regex(/^\d+$/).transform(Number).default("5"),
+  NETPLAY_SESSION_TTL_MAX_MINUTES: z.string().regex(/^\d+$/).transform(Number).default("360"),
+  NETPLAY_SESSION_DEFAULT_TTL_MINUTES: z.string().regex(/^\d+$/).transform(Number).default("60"),
+  NETPLAY_SESSION_CLEANUP_INTERVAL: z.string().default("5m"),
   STORAGE_DRIVER: z.enum(["filesystem", "s3"]).default("filesystem"),
   STORAGE_LOCAL_ROOT: z
     .string()
@@ -109,12 +115,33 @@ if (!parsed.success) {
 
 const accessMs = ms(parsed.data.JWT_ACCESS_TTL as StringValue);
 const refreshMs = ms(parsed.data.JWT_REFRESH_TTL as StringValue);
+const netplayCleanupMs = ms(parsed.data.NETPLAY_SESSION_CLEANUP_INTERVAL as StringValue);
 
 if (typeof accessMs !== "number" || accessMs <= 0) {
   throw new Error("JWT_ACCESS_TTL must be a positive duration string");
 }
 if (typeof refreshMs !== "number" || refreshMs <= 0) {
   throw new Error("JWT_REFRESH_TTL must be a positive duration string");
+}
+if (typeof netplayCleanupMs !== "number" || netplayCleanupMs <= 0) {
+  throw new Error("NETPLAY_SESSION_CLEANUP_INTERVAL must be a positive duration string");
+}
+
+if (parsed.data.NETPLAY_SESSION_TTL_MIN_MINUTES <= 0) {
+  throw new Error("NETPLAY_SESSION_TTL_MIN_MINUTES must be at least 1 minute");
+}
+
+if (parsed.data.NETPLAY_SESSION_TTL_MAX_MINUTES < parsed.data.NETPLAY_SESSION_TTL_MIN_MINUTES) {
+  throw new Error("NETPLAY_SESSION_TTL_MAX_MINUTES must be greater than or equal to NETPLAY_SESSION_TTL_MIN_MINUTES");
+}
+
+if (
+  parsed.data.NETPLAY_SESSION_DEFAULT_TTL_MINUTES < parsed.data.NETPLAY_SESSION_TTL_MIN_MINUTES ||
+  parsed.data.NETPLAY_SESSION_DEFAULT_TTL_MINUTES > parsed.data.NETPLAY_SESSION_TTL_MAX_MINUTES
+) {
+  throw new Error(
+    "NETPLAY_SESSION_DEFAULT_TTL_MINUTES must be within the configured TTL bounds"
+  );
 }
 
 if (
@@ -153,6 +180,12 @@ export const env = {
   JWT_REFRESH_TTL_MS: refreshMs,
   USER_INVITE_EXPIRY_HOURS: parsed.data.USER_INVITE_EXPIRY_HOURS,
   USER_INVITE_EXPIRY_MS: parsed.data.USER_INVITE_EXPIRY_HOURS * 60 * 60 * 1000,
+  NETPLAY_BASE_URL: parsed.data.NETPLAY_BASE_URL,
+  NETPLAY_API_KEY: parsed.data.NETPLAY_API_KEY,
+  NETPLAY_SESSION_TTL_MIN_MINUTES: parsed.data.NETPLAY_SESSION_TTL_MIN_MINUTES,
+  NETPLAY_SESSION_TTL_MAX_MINUTES: parsed.data.NETPLAY_SESSION_TTL_MAX_MINUTES,
+  NETPLAY_SESSION_DEFAULT_TTL_MINUTES: parsed.data.NETPLAY_SESSION_DEFAULT_TTL_MINUTES,
+  NETPLAY_SESSION_CLEANUP_INTERVAL_MS: netplayCleanupMs,
   STORAGE_FORCE_PATH_STYLE: parsed.data.STORAGE_FORCE_PATH_STYLE ?? true,
   SCREENSCRAPER_DEFAULT_LANGUAGE_PRIORITY: splitCsv(
     parsed.data.SCREENSCRAPER_DEFAULT_LANGUAGE_PRIORITY
