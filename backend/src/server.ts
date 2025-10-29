@@ -13,6 +13,7 @@ import { registerScreenScraperRoutes } from "./routes/screenscraper.js";
 import { registerInvitationRoutes } from "./routes/invitations.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
+import { registerLibraryRoutes } from "./routes/library.js";
 import supportServices from "./plugins/support-services.js";
 
 type BuildServerOptions = {
@@ -59,6 +60,7 @@ export const buildServer = (options: BuildServerOptions = {}): FastifyInstance =
     if (registerPrisma) {
       await registerScreenScraperRoutes(instance);
       await registerAdminRoutes(instance);
+      await registerLibraryRoutes(instance);
     }
   });
 
