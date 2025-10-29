@@ -12,6 +12,18 @@ enum Role {
   USER
 }
 
+enum NetplaySessionStatus {
+  PENDING
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+enum NetplayParticipantRole {
+  HOST
+  GUEST
+}
+
 enum EnrichmentProvider {
   SCREEN_SCRAPER
   PIXELLAB
@@ -77,6 +89,8 @@ model User {
   enrichmentJobs RomEnrichmentJob[]
   screenScraperSettings ScreenScraperSettings[]
   romUploadAudits RomUploadAudit[]
+  hostedNetplaySessions NetplaySession[] @relation("NetplayHostSessions")
+  netplayParticipants NetplayParticipant[] @relation("UserNetplayParticipants")
 }
 
 model UserInvitation {
@@ -160,6 +174,8 @@ model Rom {
   enrichmentJobs  RomEnrichmentJob[]
   binary          RomBinary?
   uploadAudits    RomUploadAudit[]
+  netplaySessions NetplaySession[]     @relation("SessionRom")
+  netplayParticipants NetplayParticipant[] @relation("ParticipantRom")
 
   @@index([platformId])
   @@index([screenscraperId])
@@ -317,6 +333,46 @@ model ScreenScraperSettings {
   updatedAt          DateTime @updatedAt
 
   @@index([userId])
+}
+
+model NetplaySession {
+  id                String                @id @default(cuid())
+  hostId            String
+  host              User                  @relation("NetplayHostSessions", fields: [hostId], references: [id], onDelete: Cascade)
+  romId             String?
+  rom               Rom?                  @relation("SessionRom", fields: [romId], references: [id], onDelete: SetNull)
+  status            NetplaySessionStatus  @default(PENDING)
+  joinCode          String                @unique
+  externalSessionId String?
+  expiresAt         DateTime
+  startedAt         DateTime?
+  endedAt           DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  participants      NetplayParticipant[]
+
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model NetplayParticipant {
+  id                    String                   @id @default(cuid())
+  sessionId             String
+  session               NetplaySession           @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId                String
+  user                  User                     @relation("UserNetplayParticipants", fields: [userId], references: [id], onDelete: Cascade)
+  romId                 String?
+  rom                   Rom?                     @relation("ParticipantRom", fields: [romId], references: [id], onDelete: SetNull)
+  role                  NetplayParticipantRole   @default(GUEST)
+  externalParticipantId String?
+  joinedAt              DateTime                 @default(now())
+  leftAt                DateTime?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  @@index([sessionId])
+  @@index([userId])
+  @@unique([sessionId, userId])
 }
 
 model ScreenScraperCacheEntry {
