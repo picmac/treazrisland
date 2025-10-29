@@ -78,8 +78,8 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 - **Stats overview:** `/stats/overview` aggregates per-user metrics (favorites, save states, uploads, top platforms) and server KPIs (user count, ROM total, storage bytes, active netplay sessions).
 
 ### 6. Admin Upload & Enrichment
-- **Upload workflow:** `/admin/upload` SPA handles queueing, pause/resume, and error states. Supports token injection for remote login (`?token=`). Each upload calculates SHA256, MD5, SHA1, CRC32; rejects duplicates by checksum, md5, sha1, crc32 unique constraints.
-- **Storage integration:** Storage service selects Disk or S3/MinIO based on `STORAGE_*` variables. Files upload via streaming to avoid memory pressure. Temporary files cleaned after persistence.
+- **Upload workflow:** `/admin/uploads` dropzone batches hundreds of ROM archives or BIOS packages. Client streams each archive with metadata headers, enforces a 1 GiB cap (`ROM_UPLOAD_MAX_BYTES`), preserves the original filename, and surfaces duplicate or failure states inline. ROM uploads require a platform slug; BIOS uploads target `bios/<core>/` in storage.
+- **Storage integration:** Storage service selects Disk or S3/MinIO based on `STORAGE_DRIVER`. Uploads stream to object storage, compute SHA256/SHA1/MD5/CRC32, and persist a `RomBinary` (for ROMs) or `EmulatorBios` (for BIOS) record keyed by the ES-DE-style path. Temporary files are cleaned after persistence.
 - **ScreenScraper enrichment:** `/roms/:id/enrich` fetches metadata/assets when ScreenScraper credentials are configured. Respects per-request rate limits (`RATE_LIMIT_ENRICH_*`), caches results, and syncs `Rom.coverUrl` with stored asset ID. Audit records success/failure messages.
 - **Admin guardrails:** All upload/enrich routes require `ADMIN` role via `requireRole` pre-handler.
 
@@ -108,9 +108,11 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 
 ## Data Model Highlights (from `backend/prisma/schema.prisma`)
 - **User:** Email, nickname, role, MFA fields, avatar references, relations to uploads, tokens, netplay.
-- **Rom:** Title, platform enum, filePath/storageKey, checksum suite, metadata fields, status, relations to assets/favorites/play states.
+- **Rom:** Title, platform relation, checksum metadata, relations to `RomBinary`, assets, favorites, play states.
+- **RomBinary:** One-to-one with `Rom`, tracks storage key, archive metadata, checksum suite, and status flags.
+- **EmulatorBios:** Stores BIOS archives per emulator core/region, including storage keys and checksum suite for EmulatorJS cores that require BIOS.
+- **RomUploadAudit:** Records action, performer, storage key, checksum info, status (PROCESSING/SUCCEEDED/FAILED), and links back to ROM or BIOS entities.
 - **RomAsset:** Type enum (COVER/LOGO/SCREENSHOT/VIDEO/MANUAL/OTHER), format, source URL, storage key.
-- **UploadAudit:** Records action, message, performer, timestamp.
 - **UserRomFavorite & RomPlayState:** Composite primary keys, track personalized relationships.
 - **RefreshToken, PasswordResetToken, UserInvitation:** Manage auth token lifecycles securely.
 - **NetplaySession & NetplayParticipant:** Manage codes, statuses, roles, external session IDs.

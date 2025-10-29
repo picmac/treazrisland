@@ -6,11 +6,13 @@ import jwt from "@fastify/jwt";
 import { env } from "./config/env.js";
 import prismaPlugin from "./plugins/prisma.js";
 import authPlugin from "./plugins/auth.js";
+import storagePlugin from "./plugins/storage.js";
 import screenScraperPlugin from "./plugins/screenscraper.js";
 import { registerOnboardingRoutes } from "./routes/onboarding.js";
 import { registerScreenScraperRoutes } from "./routes/screenscraper.js";
 import { registerInvitationRoutes } from "./routes/invitations.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerAdminRoutes } from "./routes/admin/index.js";
 
 type BuildServerOptions = {
   registerPrisma?: boolean;
@@ -41,6 +43,7 @@ export const buildServer = (options: BuildServerOptions = {}): FastifyInstance =
   });
 
   app.register(authPlugin);
+  app.register(storagePlugin);
 
   if (registerPrisma) {
     app.register(prismaPlugin);
@@ -53,6 +56,7 @@ export const buildServer = (options: BuildServerOptions = {}): FastifyInstance =
     await registerAuthRoutes(instance);
     if (registerPrisma) {
       await registerScreenScraperRoutes(instance);
+      await registerAdminRoutes(instance);
     }
   });
 
