@@ -19,6 +19,15 @@ type SignupResponse = {
   refreshExpiresAt: string;
 };
 
+type InvitationRecord = {
+  id: string;
+  role: string;
+  email: string | null;
+  expiresAt: string;
+  redeemedAt: string | null;
+  createdAt: string;
+};
+
 export async function previewInvitation(token: string): Promise<PreviewResponse> {
   return apiFetch<PreviewResponse>("/auth/invitations/preview", {
     method: "POST",
@@ -36,5 +45,22 @@ export async function signupWithInvitation(payload: {
   return apiFetch<SignupResponse>("/auth/signup", {
     method: "POST",
     body: JSON.stringify(payload)
+  });
+}
+
+export async function createInvitation(payload: {
+  email?: string;
+  role: string;
+  expiresInHours?: number;
+}): Promise<{ invitation: InvitationRecord; token: string }> {
+  return apiFetch<{ invitation: InvitationRecord; token: string }>("/users/invitations", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function listInvitations(): Promise<{ invitations: InvitationRecord[] }> {
+  return apiFetch<{ invitations: InvitationRecord[] }>("/users/invitations", {
+    method: "GET"
   });
 }

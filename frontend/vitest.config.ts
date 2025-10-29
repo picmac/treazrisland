@@ -9,7 +9,8 @@ export default defineConfig({
       "@lib": path.resolve(__dirname, "./src/lib"),
       "@components": path.resolve(__dirname, "./src/components"),
       "@auth": path.resolve(__dirname, "./src/auth"),
-      "@onboarding": path.resolve(__dirname, "./src/onboarding")
+      "@onboarding": path.resolve(__dirname, "./src/onboarding"),
+      "@admin": path.resolve(__dirname, "./src/admin")
     }
   },
   test: {

@@ -7,7 +7,7 @@ vi.mock("@lib/api/client", () => {
 });
 
 import { apiFetch } from "@lib/api/client";
-import { previewInvitation, signupWithInvitation } from "./invitations";
+import { previewInvitation, signupWithInvitation, createInvitation, listInvitations } from "./invitations";
 
 describe("invitation api helpers", () => {
   beforeEach(() => {
@@ -50,6 +50,43 @@ describe("invitation api helpers", () => {
           password: "Password1",
           displayName: "Player"
         })
+      })
+    );
+  });
+
+  it("creates an invitation", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      invitation: {
+        id: "invite_1",
+        role: "USER",
+        email: "guest@example.com",
+        expiresAt: "2025-01-02T00:00:00.000Z",
+        redeemedAt: null,
+        createdAt: "2025-01-01T00:00:00.000Z"
+      },
+      token: "token"
+    });
+
+    await createInvitation({ email: "guest@example.com", role: "USER", expiresInHours: 12 });
+
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/users/invitations",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ email: "guest@example.com", role: "USER", expiresInHours: 12 })
+      })
+    );
+  });
+
+  it("fetches invitation list", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({ invitations: [] });
+
+    await listInvitations();
+
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/users/invitations",
+      expect.objectContaining({
+        method: "GET"
       })
     );
   });

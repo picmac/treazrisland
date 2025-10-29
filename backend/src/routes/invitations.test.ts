@@ -25,6 +25,7 @@ describe("invitation routes", () => {
   let prisma: PrismaMock & {
     userInvitation: {
       create: ReturnType<typeof vi.fn>;
+      findMany: ReturnType<typeof vi.fn>;
     };
   };
 
@@ -33,11 +34,13 @@ describe("invitation routes", () => {
 
     prisma = {
       userInvitation: {
-        create: vi.fn()
+        create: vi.fn(),
+        findMany: vi.fn()
       }
     } as unknown as PrismaMock & {
       userInvitation: {
         create: ReturnType<typeof vi.fn>;
+        findMany: ReturnType<typeof vi.fn>;
       };
     };
 
@@ -125,5 +128,59 @@ describe("invitation routes", () => {
         })
       })
     );
+  });
+
+  it("lists invitations for admins", async () => {
+    const token = app.jwt.sign({ sub: "admin-1", role: "ADMIN" });
+
+    prisma.userInvitation.findMany.mockResolvedValueOnce([
+      {
+        id: "invite_1",
+        tokenHash: "hash",
+        role: "USER",
+        email: "guest@example.com",
+        expiresAt: new Date("2025-01-02T00:00:00Z"),
+        redeemedAt: null,
+        createdAt: new Date("2025-01-01T00:00:00Z"),
+        updatedAt: new Date("2025-01-01T00:00:00Z"),
+        createdById: "admin-1"
+      } as UserInvitation
+    ]);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/users/invitations",
+      headers: {
+        authorization: `Bearer ${token}`
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(await response.json()).toEqual({
+      invitations: [
+        {
+          id: "invite_1",
+          role: "USER",
+          email: "guest@example.com",
+          expiresAt: "2025-01-02T00:00:00.000Z",
+          redeemedAt: null,
+          createdAt: "2025-01-01T00:00:00.000Z"
+        }
+      ]
+    });
+  });
+
+  it("rejects listing invitations for non-admin", async () => {
+    const token = app.jwt.sign({ sub: "user-1", role: "USER" });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/users/invitations",
+      headers: {
+        authorization: `Bearer ${token}`
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
   });
 });

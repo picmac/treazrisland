@@ -16,6 +16,32 @@ const createInvitationSchema = z.object({
 });
 
 export async function registerInvitationRoutes(app: FastifyInstance) {
+  app.get(
+    "/users/invitations",
+    {
+      preHandler: [app.authenticate, app.requireRole(Role.ADMIN)]
+    },
+    async () => {
+      const invitations = await app.prisma.userInvitation.findMany({
+        orderBy: {
+          createdAt: "desc"
+        },
+        take: 50
+      });
+
+      return {
+        invitations: invitations.map((invitation) => ({
+          id: invitation.id,
+          role: invitation.role,
+          email: invitation.email,
+          expiresAt: invitation.expiresAt.toISOString(),
+          redeemedAt: invitation.redeemedAt ? invitation.redeemedAt.toISOString() : null,
+          createdAt: invitation.createdAt.toISOString()
+        }))
+      };
+    }
+  );
+
   app.post(
     "/users/invitations",
     {

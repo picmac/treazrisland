@@ -15,7 +15,8 @@
       "@lib/*": ["./src/lib/*"],
       "@components/*": ["./src/components/*"],
       "@auth/*": ["./src/auth/*"],
-      "@onboarding/*": ["./src/onboarding/*"]
+      "@onboarding/*": ["./src/onboarding/*"],
+      "@admin/*": ["./src/admin/*"]
     },
     "resolveJsonModule": true,
     "isolatedModules": true,
