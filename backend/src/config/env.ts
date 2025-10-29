@@ -101,6 +101,32 @@ const envSchema = z.object({
     .regex(/^\d+$/)
     .transform(Number)
     .default("3"),
+  PIXELLAB_API_KEY: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value.trim() : undefined)),
+  PIXELLAB_STYLE_ID: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value.trim() : undefined)),
+  PIXELLAB_BASE_URL: z
+    .string()
+    .optional()
+    .transform((value) =>
+      value && value.trim().length > 0 ? value.trim() : "https://api.pixellab.ai"
+    ),
+  PIXELLAB_CACHE_TTL: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value.trim() : "12h")),
+  PIXELLAB_TIMEOUT_MS: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value.trim() : "20000")),
+  PIXELLAB_ASSET_PREFIX: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value.trim() : "pixellab")),
   PLAY_STATE_MAX_BYTES: z
     .string()
     .regex(/^\d+$/)
@@ -128,6 +154,14 @@ const passwordResetMs = ms(parsed.data.PASSWORD_RESET_TTL as StringValue);
 const signedUrlTtlMs = parsed.data.STORAGE_SIGNED_URL_TTL
   ? ms(parsed.data.STORAGE_SIGNED_URL_TTL as StringValue)
   : undefined;
+const pixelLabCacheTtlMs = parsed.data.PIXELLAB_CACHE_TTL
+  ? ms(parsed.data.PIXELLAB_CACHE_TTL as StringValue)
+  : ms("12h");
+const pixelLabTimeoutMs = Number(parsed.data.PIXELLAB_TIMEOUT_MS);
+
+if (!Number.isFinite(pixelLabTimeoutMs) || pixelLabTimeoutMs <= 0) {
+  throw new Error("PIXELLAB_TIMEOUT_MS must be a positive integer");
+}
 
 if (typeof accessMs !== "number" || accessMs <= 0) {
   throw new Error("JWT_ACCESS_TTL must be a positive duration string");
@@ -141,6 +175,10 @@ if (typeof passwordResetMs !== "number" || passwordResetMs <= 0) {
 
 if (signedUrlTtlMs !== undefined && (typeof signedUrlTtlMs !== "number" || signedUrlTtlMs <= 0)) {
   throw new Error("STORAGE_SIGNED_URL_TTL must be a positive duration string when set");
+}
+
+if (typeof pixelLabCacheTtlMs !== "number" || pixelLabCacheTtlMs <= 0) {
+  throw new Error("PIXELLAB_CACHE_TTL must be a positive duration string");
 }
 
 if (
@@ -195,6 +233,13 @@ export const env = {
   SCREENSCRAPER_ONLY_BETTER_MEDIA:
     parsed.data.SCREENSCRAPER_ONLY_BETTER_MEDIA.toLowerCase() === "true" ||
     parsed.data.SCREENSCRAPER_ONLY_BETTER_MEDIA === "1",
+  PIXELLAB_API_KEY: parsed.data.PIXELLAB_API_KEY,
+  PIXELLAB_STYLE_ID: parsed.data.PIXELLAB_STYLE_ID,
+  PIXELLAB_BASE_URL: parsed.data.PIXELLAB_BASE_URL!,
+  PIXELLAB_CACHE_TTL_MS: pixelLabCacheTtlMs,
+  PIXELLAB_CACHE_TTL_SECONDS: Math.floor(pixelLabCacheTtlMs / 1000),
+  PIXELLAB_TIMEOUT_MS: pixelLabTimeoutMs,
+  PIXELLAB_ASSET_PREFIX: parsed.data.PIXELLAB_ASSET_PREFIX!,
   PLAY_STATE_MAX_BYTES: parsed.data.PLAY_STATE_MAX_BYTES,
   PLAY_STATE_MAX_PER_ROM: parsed.data.PLAY_STATE_MAX_PER_ROM
 };
