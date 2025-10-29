@@ -1,0 +1,44 @@
+version: "3.9"
+
+# Base services supporting local TREAZRISLAND development.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: treazrisland-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: treazrisland
+      POSTGRES_USER: treazrisland
+      POSTGRES_PASSWORD: treazrisland
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio:RELEASE.2024-05-28T17-19-04Z
+    container_name: treazrisland-minio
+    command: server /data
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: treaz-admin
+      MINIO_ROOT_PASSWORD: treaz-secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
+  pixellab-mock:
+    image: stoplight/prism:4
+    container_name: treazrisland-pixellab-mock
+    command: mock -h 0.0.0.0 /tmp/pixellab-openapi.yaml
+    volumes:
+      - ./mock/pixellab-openapi.yaml:/tmp/pixellab-openapi.yaml:ro
+    ports:
+      - "4010:4010"
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  minio-data:

@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model User {
+  id             String               @id @default(cuid())
+  email          String               @unique
+  nickname       String               @unique
+  displayName    String?
+  passwordHash   String
+  role           Role                 @default(USER)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  refreshTokens  RefreshToken[]
+  mfaSecrets     MfaSecret[]
+  passwordResets PasswordResetToken[]
+  createdInvites UserInvitation[]     @relation("AdminInvitations")
+}
+
+model UserInvitation {
+  id          String   @id @default(cuid())
+  tokenHash   String   @unique
+  role        Role     @default(USER)
+  email       String?
+  expiresAt   DateTime
+  redeemedAt  DateTime?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User? @relation("AdminInvitations", fields: [createdById], references: [id])
+}
+
+model RefreshToken {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  redeemedAt DateTime?
+
+  @@index([userId])
+}
+
+model MfaSecret {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secret     String
+  recoveryCodes String
+  createdAt  DateTime @default(now())
+  rotatedAt  DateTime?
+  disabledAt DateTime?
+
+  @@index([userId])
+}

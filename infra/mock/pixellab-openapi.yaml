@@ -1,0 +1,35 @@
+openapi: 3.0.0
+info:
+  title: PixelLab Mock
+  version: 0.0.1
+  description: Placeholder mock for local PixelLab.ai integration. Replace with official contract when available.
+paths:
+  /generate:
+    post:
+      summary: Generate SNES-style art
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prompt:
+                  type: string
+      responses:
+        '200':
+          description: Mocked PixelLab response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assetUrl:
+                    type: string
+                  jobId:
+                    type: string
+              examples:
+                success:
+                  value:
+                    assetUrl: https://example.com/pixel-art.png
+                    jobId: mock-job-123
