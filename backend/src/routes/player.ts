@@ -4,14 +4,34 @@ import { createHash, randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import * as PrismaClientPackage from "@prisma/client";
 import {
   RomBinaryStatus,
-  RomPlaybackAction,
   type PlayState,
   type Prisma,
 } from "@prisma/client";
 import { env } from "../config/env.js";
 import { safeUnlink } from "../services/storage/storage.js";
+
+const FALLBACK_PLAYBACK_ACTIONS = {
+  ROM_DOWNLOAD: "ROM_DOWNLOAD",
+  ASSET_DOWNLOAD: "ASSET_DOWNLOAD",
+  PLAY_STATE_DOWNLOAD: "PLAY_STATE_DOWNLOAD",
+  PLAY_STATE_UPLOAD: "PLAY_STATE_UPLOAD",
+} as const;
+
+type PlaybackActionValue =
+  (typeof FALLBACK_PLAYBACK_ACTIONS)[keyof typeof FALLBACK_PLAYBACK_ACTIONS];
+
+const RUNTIME_PLAYBACK_ACTIONS = {
+  ...FALLBACK_PLAYBACK_ACTIONS,
+  ...((PrismaClientPackage as {
+    RomPlaybackAction?: Record<string, string>;
+  }).RomPlaybackAction ?? {}),
+  ...((PrismaClientPackage as {
+    $Enums?: { RomPlaybackAction?: Record<string, string> };
+  }).$Enums?.RomPlaybackAction ?? {}),
+} as Record<keyof typeof FALLBACK_PLAYBACK_ACTIONS, PlaybackActionValue>;
 
 const BASE64_REGEX =
   /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$/;
@@ -167,7 +187,7 @@ export async function registerPlayerRoutes(
         app,
         request,
         {
-          action: RomPlaybackAction.ROM_DOWNLOAD,
+          action: RUNTIME_PLAYBACK_ACTIONS.ROM_DOWNLOAD,
           rom: { connect: { id: rom.id } },
           romBinary: { connect: { id: rom.binary.id } },
           user: request.user
@@ -242,7 +262,7 @@ export async function registerPlayerRoutes(
           app,
           request,
           {
-            action: RomPlaybackAction.ASSET_DOWNLOAD,
+            action: RUNTIME_PLAYBACK_ACTIONS.ASSET_DOWNLOAD,
             rom: asset.romId ? { connect: { id: asset.romId } } : undefined,
             romAsset: { connect: { id: asset.id } },
             user: request.user
@@ -264,7 +284,7 @@ export async function registerPlayerRoutes(
         app,
         request,
         {
-          action: RomPlaybackAction.ASSET_DOWNLOAD,
+          action: RUNTIME_PLAYBACK_ACTIONS.ASSET_DOWNLOAD,
           rom: asset.romId ? { connect: { id: asset.romId } } : undefined,
           romAsset: { connect: { id: asset.id } },
           user: request.user
@@ -372,7 +392,7 @@ export async function registerPlayerRoutes(
         app,
         request,
         {
-          action: RomPlaybackAction.PLAY_STATE_DOWNLOAD,
+          action: RUNTIME_PLAYBACK_ACTIONS.PLAY_STATE_DOWNLOAD,
           rom: { connect: { id: playState.romId } },
           playState: { connect: { id: playState.id } },
           user: { connect: { id: request.user.sub } },
@@ -498,7 +518,7 @@ export async function registerPlayerRoutes(
         app,
         request,
         {
-          action: RomPlaybackAction.PLAY_STATE_UPLOAD,
+          action: RUNTIME_PLAYBACK_ACTIONS.PLAY_STATE_UPLOAD,
           rom: { connect: { id: playState.romId } },
           playState: { connect: { id: playState.id } },
           user: { connect: { id: request.user.sub } },
@@ -596,7 +616,7 @@ export async function registerPlayerRoutes(
           app,
           request,
           {
-            action: RomPlaybackAction.PLAY_STATE_UPLOAD,
+            action: RUNTIME_PLAYBACK_ACTIONS.PLAY_STATE_UPLOAD,
             rom: { connect: { id: updated.romId } },
             playState: { connect: { id: updated.id } },
             user: { connect: { id: request.user.sub } },
