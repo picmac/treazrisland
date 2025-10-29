@@ -5,11 +5,7 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import * as PrismaClientPackage from "@prisma/client";
-import {
-  RomBinaryStatus,
-  type PlayState,
-  type Prisma,
-} from "@prisma/client";
+import { RomBinaryStatus, type PlayState, type Prisma } from "@prisma/client";
 import { env } from "../config/env.js";
 import { safeUnlink } from "../services/storage/storage.js";
 
@@ -25,12 +21,16 @@ type PlaybackActionValue =
 
 const RUNTIME_PLAYBACK_ACTIONS = {
   ...FALLBACK_PLAYBACK_ACTIONS,
-  ...((PrismaClientPackage as {
-    RomPlaybackAction?: Record<string, string>;
-  }).RomPlaybackAction ?? {}),
-  ...((PrismaClientPackage as {
-    $Enums?: { RomPlaybackAction?: Record<string, string> };
-  }).$Enums?.RomPlaybackAction ?? {}),
+  ...((
+    PrismaClientPackage as {
+      RomPlaybackAction?: Record<string, string>;
+    }
+  ).RomPlaybackAction ?? {}),
+  ...((
+    PrismaClientPackage as {
+      $Enums?: { RomPlaybackAction?: Record<string, string> };
+    }
+  ).$Enums?.RomPlaybackAction ?? {}),
 } as Record<keyof typeof FALLBACK_PLAYBACK_ACTIONS, PlaybackActionValue>;
 
 const BASE64_REGEX =
