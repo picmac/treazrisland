@@ -25,7 +25,7 @@ process.env.ROM_UPLOAD_MAX_BYTES = process.env.ROM_UPLOAD_MAX_BYTES ?? `${1024 *
 
 let buildServer: typeof import("../server.js").buildServer;
 
-type PrismaMock = Pick<PrismaClient, "user" | "refreshToken">;
+type PrismaMock = Pick<PrismaClient, "user" | "refreshToken" | "refreshTokenFamily">;
 
 describe("onboarding routes", () => {
   let app: FastifyInstance;
@@ -49,12 +49,18 @@ describe("onboarding routes", () => {
         count: vi.fn(),
         create: vi.fn()
       },
+      refreshTokenFamily: {
+        create: vi.fn()
+      },
       refreshToken: {
         create: vi.fn()
       }
     } as unknown as PrismaMock & {
       user: {
         count: ReturnType<typeof vi.fn>;
+        create: ReturnType<typeof vi.fn>;
+      };
+      refreshTokenFamily: {
         create: ReturnType<typeof vi.fn>;
       };
       refreshToken: {
@@ -97,13 +103,22 @@ describe("onboarding routes", () => {
       createdAt: now,
       updatedAt: now
     });
+    prisma.refreshTokenFamily.create.mockResolvedValueOnce({
+      id: "family_1",
+      userId: "user_1",
+      createdAt: now,
+      revokedAt: null,
+      revokedReason: null
+    });
     prisma.refreshToken.create.mockResolvedValueOnce({
       id: "token_1",
       tokenHash: "hash",
       userId: "user_1",
+      familyId: "family_1",
       createdAt: now,
       expiresAt: new Date(now.getTime() + 1000),
-      revokedAt: null
+      revokedAt: null,
+      revokedReason: null
     });
 
     const response = await app.inject({
@@ -126,7 +141,7 @@ describe("onboarding routes", () => {
       role: "ADMIN"
     });
     expect(typeof body.accessToken).toBe("string");
-    expect(typeof body.refreshToken).toBe("string");
+    expect(body.refreshToken).toBeUndefined();
 
     expect(prisma.refreshToken.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -136,5 +151,11 @@ describe("onboarding routes", () => {
         })
       })
     );
+    expect(prisma.refreshTokenFamily.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { userId: "user_1" }
+      })
+    );
+    expect(response.headers["set-cookie"]).toContain("HttpOnly");
   });
 });

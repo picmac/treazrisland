@@ -15,7 +15,6 @@ type SignupResponse = {
     role: string;
   };
   accessToken: string;
-  refreshToken: string;
   refreshExpiresAt: string;
 };
 

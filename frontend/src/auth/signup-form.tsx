@@ -1,8 +1,10 @@
 'use client';
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent, type ChangeEvent } from "react";
 import { signupWithInvitation } from "@/src/lib/api/invitations";
 import { ApiError } from "@/src/lib/api/client";
+import { useSession } from "@/src/auth/session-provider";
 
 interface SignupFormProps {
   token: string;
@@ -27,8 +29,9 @@ const factoryFormState = (prefilledEmail: string | null): FormState => ({
 export default function SignupForm({ token, invitationEmail, role }: SignupFormProps) {
   const [form, setForm] = useState<FormState>(factoryFormState(invitationEmail));
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const { setSession } = useSession();
 
   const handleChange = (field: keyof FormState) => (event: ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -37,7 +40,6 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
-    setSuccess(null);
 
     startTransition(async () => {
       try {
@@ -49,8 +51,9 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
           displayName: form.displayName || form.nickname
         });
 
-        setSuccess(`All set, ${payload.user.nickname}! You now have ${payload.user.role.toLowerCase()} access.`);
-        setForm(factoryFormState(invitationEmail));
+        setSession(payload);
+        router.push("/play");
+        router.refresh();
       } catch (err) {
         if (err instanceof ApiError) {
           setError(`${err.status}: ${err.message}`);
@@ -145,7 +148,6 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
         {isPending ? "Hoisting sails…" : `Join as ${role.toLowerCase()}`}
       </button>
 
-      {success && <p className="text-xs text-emerald-300">{success}</p>}
       {error && <p className="text-xs text-red-300">{error}</p>}
     </form>
   );

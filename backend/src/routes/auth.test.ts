@@ -1,7 +1,8 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
-import type { PrismaClient, Role, UserInvitation, User } from "@prisma/client";
 import { createHash } from "node:crypto";
+import type { User, UserInvitation } from "@prisma/client";
+import argon2 from "argon2";
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
@@ -17,72 +18,59 @@ process.env.ROM_UPLOAD_MAX_BYTES = `${1024 * 1024}`;
 
 vi.mock("argon2", () => {
   const hashMock = vi.fn().mockResolvedValue("hashed-password");
+  const verifyMock = vi.fn().mockResolvedValue(true);
   return {
+    __esModule: true,
     default: {
-      hash: hashMock
+      hash: hashMock,
+      verify: verifyMock
     }
   };
 });
 
+const argon2Mock = vi.mocked(argon2, true);
+
 let buildServer: typeof import("../server.js").buildServer;
 
-beforeAll(async () => {
-  ({ buildServer } = await import("../server.js"));
-});
+type MockFn = ReturnType<typeof vi.fn>;
 
-type PrismaMock = Pick<
-  PrismaClient,
-  "userInvitation" | "user" | "refreshToken" | "$transaction"
->;
+type PrismaMock = {
+  userInvitation: { findUnique: MockFn; update: MockFn; create: MockFn };
+  user: { create: MockFn; findFirst: MockFn; findUnique: MockFn; update: MockFn };
+  refreshTokenFamily: { create: MockFn; findMany: MockFn; updateMany: MockFn };
+  refreshToken: { create: MockFn; findUnique: MockFn; update: MockFn; updateMany: MockFn };
+  passwordResetToken: { create: MockFn; updateMany: MockFn; findUnique: MockFn; update: MockFn };
+  loginAudit: { create: MockFn };
+  mfaSecret: { update: MockFn };
+  $transaction: MockFn;
+};
+
+const createPrismaMock = (): PrismaMock => {
+  const prisma = {
+    userInvitation: { findUnique: vi.fn(), update: vi.fn(), create: vi.fn() },
+    user: { create: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    refreshTokenFamily: { create: vi.fn(), findMany: vi.fn(), updateMany: vi.fn() },
+    refreshToken: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
+    passwordResetToken: { create: vi.fn(), updateMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    loginAudit: { create: vi.fn() },
+    mfaSecret: { update: vi.fn() },
+    $transaction: vi.fn(async (callback: (client: PrismaMock) => Promise<any>) => callback(prisma as PrismaMock))
+  } satisfies PrismaMock;
+
+  return prisma as PrismaMock;
+};
 
 describe("auth routes", () => {
   let app: FastifyInstance;
-  let prisma: PrismaMock & {
-    userInvitation: {
-      findUnique: ReturnType<typeof vi.fn>;
-      update: ReturnType<typeof vi.fn>;
-      create: ReturnType<typeof vi.fn>;
-    };
-    user: {
-      create: ReturnType<typeof vi.fn>;
-    };
-    refreshToken: {
-      create: ReturnType<typeof vi.fn>;
-    };
-    $transaction: ReturnType<typeof vi.fn>;
-  };
+  let prisma: PrismaMock;
+
+  beforeAll(async () => {
+    ({ buildServer } = await import("../server.js"));
+  });
 
   beforeEach(async () => {
+    prisma = createPrismaMock();
     app = buildServer({ registerPrisma: false });
-
-    prisma = {
-      userInvitation: {
-        findUnique: vi.fn(),
-        update: vi.fn(),
-        create: vi.fn()
-      },
-      user: {
-        create: vi.fn()
-      },
-      refreshToken: {
-        create: vi.fn()
-      },
-      $transaction: vi.fn(async (callback: (tx: any) => Promise<any>) => callback(prisma))
-    } as unknown as PrismaMock & {
-      userInvitation: {
-        findUnique: ReturnType<typeof vi.fn>;
-        update: ReturnType<typeof vi.fn>;
-        create: ReturnType<typeof vi.fn>;
-      };
-      user: {
-        create: ReturnType<typeof vi.fn>;
-      };
-      refreshToken: {
-        create: ReturnType<typeof vi.fn>;
-      };
-      $transaction: ReturnType<typeof vi.fn>;
-    };
-
     app.decorate("prisma", prisma);
     await app.ready();
   });
@@ -163,7 +151,17 @@ describe("auth routes", () => {
     } as User);
 
     prisma.userInvitation.update.mockResolvedValueOnce({} as UserInvitation);
-    prisma.refreshToken.create.mockResolvedValueOnce({} as any);
+    prisma.refreshTokenFamily.create.mockResolvedValueOnce({ id: "family-1" });
+    prisma.refreshToken.create.mockResolvedValueOnce({
+      id: "token-1",
+      tokenHash: "hash",
+      userId: "user-1",
+      familyId: "family-1",
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + 1000),
+      revokedAt: null,
+      revokedReason: null
+    });
 
     const response = await app.inject({
       method: "POST",
@@ -185,13 +183,12 @@ describe("auth routes", () => {
       role: "USER"
     });
     expect(typeof body.accessToken).toBe("string");
-    expect(typeof body.refreshToken).toBe("string");
+    expect(body.refreshToken).toBeUndefined();
+    expect(response.headers["set-cookie"]).toContain("HttpOnly");
 
-    expect(prisma.userInvitation.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: "invite2" },
-        data: expect.objectContaining({ redeemedAt: expect.any(Date) })
-      })
+    expect(prisma.userInvitation.update).toHaveBeenCalled();
+    expect(prisma.refreshTokenFamily.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { userId: "user-1" } })
     );
   });
 
@@ -222,5 +219,132 @@ describe("auth routes", () => {
 
     expect(response.statusCode).toBe(400);
     expect(await response.json()).toEqual({ message: "Email does not match invitation" });
+  });
+
+  it("logs in and sets refresh cookie", async () => {
+    const now = new Date();
+    prisma.user.findFirst.mockResolvedValueOnce({
+      id: "user-2",
+      email: "player@example.com",
+      nickname: "player",
+      passwordHash: "hashed-password",
+      role: "USER",
+      createdAt: now,
+      updatedAt: now,
+      mfaSecrets: []
+    });
+
+    prisma.refreshTokenFamily.create.mockResolvedValueOnce({ id: "family-login" });
+    prisma.refreshToken.create.mockResolvedValueOnce({
+      id: "token-login",
+      tokenHash: "hash",
+      userId: "user-2",
+      familyId: "family-login",
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + 1000),
+      revokedAt: null,
+      revokedReason: null
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: {
+        identifier: "player@example.com",
+        password: "Secret123"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = await response.json();
+    expect(body.user).toMatchObject({ id: "user-2", email: "player@example.com" });
+    expect(typeof body.accessToken).toBe("string");
+    expect(response.headers["set-cookie"]).toContain("HttpOnly");
+    expect(prisma.loginAudit.create).toHaveBeenCalled();
+  });
+
+  it("rejects login with invalid password", async () => {
+    prisma.user.findFirst.mockResolvedValueOnce({
+      id: "user-3",
+      email: "player@example.com",
+      nickname: "player",
+      passwordHash: "hashed-password",
+      role: "USER",
+      mfaSecrets: []
+    });
+    argon2Mock.verify.mockResolvedValueOnce(false);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: {
+        identifier: "player@example.com",
+        password: "BadSecret"
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(prisma.loginAudit.create).toHaveBeenCalled();
+  });
+
+  it("refreshes tokens when provided a valid cookie", async () => {
+    const now = new Date();
+    prisma.refreshToken.findUnique.mockResolvedValueOnce({
+      id: "token-old",
+      userId: "user-4",
+      familyId: "family-4",
+      tokenHash: hashToken("refresh-token"),
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + 60_000),
+      revokedAt: null,
+      revokedReason: null,
+      family: { id: "family-4", revokedAt: null, revokedReason: null },
+      user: { id: "user-4", email: "u4@example.com", nickname: "u4", role: "USER" }
+    });
+    prisma.refreshToken.update.mockResolvedValueOnce({});
+    prisma.refreshToken.create.mockResolvedValueOnce({
+      id: "token-new",
+      tokenHash: "hash-new",
+      userId: "user-4",
+      familyId: "family-4",
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + 120_000),
+      revokedAt: null,
+      revokedReason: null
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/refresh",
+      headers: {
+        cookie: "treaz_refresh=refresh-token"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = await response.json();
+    expect(body.user).toMatchObject({ id: "user-4" });
+    expect(response.headers["set-cookie"]).toContain("treaz_refresh=");
+  });
+
+  it("clears cookie on logout and revokes family", async () => {
+    prisma.refreshToken.findUnique.mockResolvedValueOnce({
+      id: "token-old",
+      userId: "user-5",
+      familyId: "family-5"
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/logout",
+      headers: {
+        cookie: "treaz_refresh=logout-token"
+      }
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.headers["set-cookie"]).toContain("Max-Age=0");
+    expect(prisma.refreshTokenFamily.updateMany).toHaveBeenCalled();
+    expect(prisma.refreshToken.updateMany).toHaveBeenCalled();
   });
 });

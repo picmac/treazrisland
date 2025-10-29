@@ -1,25 +1,88 @@
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import argon2 from "argon2";
-import { issueSessionTokens } from "../utils/tokens.js";
-import { Prisma } from "@prisma/client";
+import { Prisma, LoginAuditEvent } from "@prisma/client";
+import {
+  issueSessionTokens,
+  rotateRefreshToken,
+  revokeRefreshFamily,
+  revokeUserRefreshFamilies,
+  RefreshTokenError,
+  hashToken
+} from "../utils/tokens.js";
+import { env } from "../config/env.js";
+import {
+  clearRefreshCookie,
+  readRefreshTokenFromRequest,
+  setRefreshCookie
+} from "../utils/cookies.js";
 
 const invitationTokenSchema = z.object({
   token: z.string().min(1)
 });
 
+const passwordSchema = z
+  .string()
+  .min(8)
+  .regex(/[A-Z]/, "Password must include an uppercase letter")
+  .regex(/[0-9]/, "Password must include a digit");
+
 const signupSchema = z.object({
   token: z.string().min(1),
   email: z.string().email().optional(),
   nickname: z.string().min(3).max(32),
-  password: z
-    .string()
-    .min(8)
-    .regex(/[A-Z]/, "Password must include an uppercase letter")
-    .regex(/[0-9]/, "Password must include a digit"),
+  password: passwordSchema,
   displayName: z.string().min(1).max(64).optional()
 });
+
+const loginSchema = z
+  .object({
+    identifier: z.string().min(1).max(128),
+    password: z.string().min(8),
+    mfaCode: z.string().trim().min(6).max(10).optional(),
+    recoveryCode: z.string().trim().min(6).max(128).optional()
+  })
+  .refine((value) => !(value.mfaCode && value.recoveryCode), {
+    message: "Provide either mfaCode or recoveryCode, not both",
+    path: ["mfaCode"]
+  });
+
+const passwordResetRequestSchema = z.object({
+  email: z.string().email()
+});
+
+const passwordResetConfirmSchema = z.object({
+  token: z.string().min(1),
+  password: passwordSchema
+});
+
+const recordLoginAudit = async (
+  app: FastifyInstance,
+  request: FastifyRequest,
+  data: { userId?: string; emailAttempted?: string; event: LoginAuditEvent; reason?: string }
+) => {
+  try {
+    await app.prisma.loginAudit.create({
+      data: {
+        userId: data.userId,
+        emailAttempted: data.emailAttempted,
+        event: data.event,
+        reason: data.reason ?? null,
+        ipAddress: request.ip,
+        userAgent: request.headers["user-agent"] ?? null
+      }
+    });
+  } catch (error) {
+    request.log.warn({ err: error }, "Failed to record login audit event");
+  }
+};
+
+const extractHashedRecoveryCodes = (raw: string): string[] =>
+  raw
+    .split("\n")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
 
 export async function registerAuthRoutes(app: FastifyInstance) {
   app.post("/auth/invitations/preview", async (request, reply) => {
@@ -107,14 +170,18 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           }
         });
 
-        return { user };
+        const tokens = await issueSessionTokens(app, user.id, user.role, { tx });
+
+        return { user, tokens };
       });
 
-      const { accessToken, refreshToken, refreshExpiresAt } = await issueSessionTokens(
-        app,
-        result.user.id,
-        result.user.role
-      );
+      setRefreshCookie(reply, result.tokens.refreshToken, result.tokens.refreshExpiresAt);
+
+      void recordLoginAudit(app, request, {
+        userId: result.user.id,
+        event: LoginAuditEvent.SUCCESS,
+        reason: "signup"
+      });
 
       return reply.status(201).send({
         user: {
@@ -123,9 +190,8 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           nickname: result.user.nickname,
           role: result.user.role
         },
-        accessToken,
-        refreshToken,
-        refreshExpiresAt: refreshExpiresAt.toISOString()
+        accessToken: result.tokens.accessToken,
+        refreshExpiresAt: result.tokens.refreshExpiresAt.toISOString()
       });
     } catch (error) {
       if (error instanceof Error) {
@@ -148,5 +214,322 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       request.log.error({ err: error }, "Failed to complete signup");
       return reply.status(500).send({ message: "Unexpected error during signup" });
     }
+  });
+
+  app.post(
+    "/auth/login",
+    {
+      config: {
+        rateLimit: {
+          max: env.RATE_LIMIT_AUTH_POINTS,
+          timeWindow: env.RATE_LIMIT_AUTH_DURATION * 1000
+        }
+      }
+    },
+    async (request, reply) => {
+      const parsed = loginSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          message: "Invalid payload",
+          errors: parsed.error.flatten().fieldErrors
+        });
+      }
+
+      const { identifier, password, mfaCode, recoveryCode } = parsed.data;
+      const normalizedEmail = identifier.toLowerCase();
+
+      const user = await app.prisma.user.findFirst({
+        where: {
+          OR: [{ email: normalizedEmail }, { nickname: identifier }]
+        },
+        include: {
+          mfaSecrets: {
+            where: { disabledAt: null },
+            orderBy: { createdAt: "desc" }
+          }
+        }
+      });
+
+      if (!user) {
+        await recordLoginAudit(app, request, {
+          emailAttempted: identifier,
+          event: LoginAuditEvent.FAILURE,
+          reason: "user_not_found"
+        });
+        return reply.status(401).send({ message: "Invalid credentials" });
+      }
+
+      const passwordValid = await argon2.verify(user.passwordHash, password);
+      if (!passwordValid) {
+        await recordLoginAudit(app, request, {
+          userId: user.id,
+          emailAttempted: identifier,
+          event: LoginAuditEvent.FAILURE,
+          reason: "invalid_password"
+        });
+        return reply.status(401).send({ message: "Invalid credentials" });
+      }
+
+      const activeSecret = user.mfaSecrets.find((secret) => !secret.disabledAt);
+      if (activeSecret) {
+        if (!mfaCode && !recoveryCode) {
+          await recordLoginAudit(app, request, {
+            userId: user.id,
+            event: LoginAuditEvent.MFA_REQUIRED,
+            reason: "challenge"
+          });
+          return reply.status(401).send({
+            message: "MFA challenge required",
+            mfaRequired: true
+          });
+        }
+
+        let mfaSatisfied = false;
+
+        if (mfaCode) {
+          try {
+            mfaSatisfied = await app.mfaService.verifyTotp(activeSecret.secret, mfaCode);
+          } catch (error) {
+            request.log.error({ err: error, userId: user.id }, "Failed to verify MFA code");
+            return reply.status(500).send({ message: "Unable to verify MFA challenge" });
+          }
+        }
+
+        if (!mfaSatisfied && recoveryCode) {
+          try {
+            const hashedCodes = extractHashedRecoveryCodes(activeSecret.recoveryCodes);
+            const matchIndex = await app.mfaService.findMatchingRecoveryCode(
+              hashedCodes,
+              recoveryCode
+            );
+
+            if (matchIndex !== null) {
+              mfaSatisfied = true;
+              hashedCodes.splice(matchIndex, 1);
+              await app.prisma.mfaSecret.update({
+                where: { id: activeSecret.id },
+                data: {
+                  recoveryCodes: hashedCodes.join("\n"),
+                  rotatedAt: new Date()
+                }
+              });
+            }
+          } catch (error) {
+            request.log.error({ err: error, userId: user.id }, "Failed to verify recovery code");
+            return reply.status(500).send({ message: "Unable to verify MFA challenge" });
+          }
+        }
+
+        if (!mfaSatisfied) {
+          await recordLoginAudit(app, request, {
+            userId: user.id,
+            event: LoginAuditEvent.FAILURE,
+            reason: "mfa_failed"
+          });
+          return reply.status(401).send({ message: "Invalid multi-factor credentials" });
+        }
+      }
+
+      const tokens = await issueSessionTokens(app, user.id, user.role);
+      setRefreshCookie(reply, tokens.refreshToken, tokens.refreshExpiresAt);
+
+      await recordLoginAudit(app, request, {
+        userId: user.id,
+        event: LoginAuditEvent.SUCCESS
+      });
+
+      return reply.send({
+        user: {
+          id: user.id,
+          email: user.email,
+          nickname: user.nickname,
+          role: user.role
+        },
+        accessToken: tokens.accessToken,
+        refreshExpiresAt: tokens.refreshExpiresAt.toISOString()
+      });
+    }
+  );
+
+  app.post("/auth/refresh", async (request, reply) => {
+    const refreshToken = readRefreshTokenFromRequest(request);
+    if (!refreshToken) {
+      return reply.status(401).send({ message: "Refresh token missing" });
+    }
+
+    try {
+      const result = await rotateRefreshToken(app, refreshToken);
+      setRefreshCookie(reply, result.refreshToken, result.refreshExpiresAt);
+
+      return reply.send({
+        user: result.user,
+        accessToken: result.accessToken,
+        refreshExpiresAt: result.refreshExpiresAt.toISOString()
+      });
+    } catch (error) {
+      if (error instanceof RefreshTokenError) {
+        clearRefreshCookie(reply);
+        return reply.status(401).send({ message: "Refresh token invalid" });
+      }
+
+      request.log.error({ err: error }, "Unexpected error while rotating refresh token");
+      return reply.status(500).send({ message: "Unable to refresh session" });
+    }
+  });
+
+  app.post("/auth/logout", async (request, reply) => {
+    const refreshToken = readRefreshTokenFromRequest(request);
+    clearRefreshCookie(reply);
+
+    if (!refreshToken) {
+      return reply.status(204).send();
+    }
+
+    try {
+      const hashed = hashToken(refreshToken);
+      const tokenRecord = await app.prisma.refreshToken.findUnique({
+        where: { tokenHash: hashed },
+        select: {
+          id: true,
+          familyId: true,
+          userId: true
+        }
+      });
+
+      if (!tokenRecord) {
+        return reply.status(204).send();
+      }
+
+      await revokeRefreshFamily(app, tokenRecord.familyId, "logout");
+      await recordLoginAudit(app, request, {
+        userId: tokenRecord.userId,
+        event: LoginAuditEvent.LOGOUT
+      });
+    } catch (error) {
+      request.log.error({ err: error }, "Failed to revoke refresh family on logout");
+    }
+
+    return reply.status(204).send();
+  });
+
+  app.post("/auth/password/reset/request", async (request, reply) => {
+    const parsed = passwordResetRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({
+        message: "Invalid payload",
+        errors: parsed.error.flatten().fieldErrors
+      });
+    }
+
+    const email = parsed.data.email.toLowerCase();
+    const user = await app.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, nickname: true }
+    });
+
+    if (user) {
+      const token = randomBytes(48).toString("hex");
+      const tokenHash = createHash("sha256").update(token).digest("hex");
+      const expiresAt = new Date(Date.now() + env.PASSWORD_RESET_TTL_MS);
+
+      try {
+        await app.prisma.$transaction(async (tx) => {
+          await tx.passwordResetToken.updateMany({
+            where: { userId: user.id, redeemedAt: null },
+            data: { redeemedAt: new Date() }
+          });
+
+          await tx.passwordResetToken.create({
+            data: {
+              userId: user.id,
+              tokenHash,
+              expiresAt
+            }
+          });
+        });
+
+        await app.emailService.sendPasswordReset({
+          to: user.email,
+          nickname: user.nickname,
+          token,
+          expiresAt
+        });
+      } catch (error) {
+        request.log.error({ err: error, userId: user.id }, "Failed to create password reset token");
+      }
+    }
+
+    return reply.send({ message: "If the account exists we sent reset instructions." });
+  });
+
+  app.post("/auth/password/reset/confirm", async (request, reply) => {
+    const parsed = passwordResetConfirmSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({
+        message: "Invalid payload",
+        errors: parsed.error.flatten().fieldErrors
+      });
+    }
+
+    const { token, password } = parsed.data;
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+
+    const resetRecord = await app.prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            nickname: true,
+            role: true,
+            passwordHash: true
+          }
+        }
+      }
+    });
+
+    if (!resetRecord || resetRecord.redeemedAt || resetRecord.expiresAt <= new Date()) {
+      return reply.status(400).send({ message: "Reset token is invalid or expired" });
+    }
+
+    const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
+
+    const { updatedUser, tokens } = await app.prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id: resetRecord.userId },
+        data: { passwordHash },
+        select: {
+          id: true,
+          email: true,
+          nickname: true,
+          role: true
+        }
+      });
+
+      await tx.passwordResetToken.update({
+        where: { id: resetRecord.id },
+        data: { redeemedAt: new Date() }
+      });
+
+      await revokeUserRefreshFamilies(app, resetRecord.userId, "password_reset", tx);
+
+      const tokens = await issueSessionTokens(app, updatedUser.id, updatedUser.role, { tx });
+
+      return { updatedUser, tokens };
+    });
+
+    setRefreshCookie(reply, tokens.refreshToken, tokens.refreshExpiresAt);
+
+    await recordLoginAudit(app, request, {
+      userId: updatedUser.id,
+      event: LoginAuditEvent.PASSWORD_RESET
+    });
+
+    return reply.send({
+      user: updatedUser,
+      accessToken: tokens.accessToken,
+      refreshExpiresAt: tokens.refreshExpiresAt.toISOString()
+    });
   });
 }
