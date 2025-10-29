@@ -99,6 +99,9 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 - **Session creation (`POST /netplay/sessions`):** Accepts optional `romId`, TTL (5–360 min), returns join code using a human-friendly alphabet. Persists session and host participant. External integration uses `NetplayService` (currently dummy).
 - **Join/Manage:** `/netplay/sessions/join` adds participant and activates session; `/netplay/sessions` lists user’s sessions; `/netplay/sessions/:id` fetches details; DELETE `/netplay/sessions/:id` cancels if requester is host.
 - **Frontend:** Netplay page offers host/join forms, session list, status badges, and ability to end sessions. UI also surfaces participant display names/nicknames.
+- **Configuration:** Backend pulls `NETPLAY_SERVICE_BASE_URL`, `NETPLAY_SERVICE_API_KEY`, timeout/TTL guardrails, and cleanup cadence from env. Frontend consumes `NEXT_PUBLIC_NETPLAY_SIGNALING_HINT` + TURN relay hints for WebRTC fallback.
+- **Security:** Join codes must provide ≥20 bits entropy, expire on first use, and revoke session if the host cancels. Transport security enforced via TLS and API key rotation.
+- **Observability:** Emit `netplay.session_created_total`, `netplay.sessions_active`, and structured lifecycle logs to monitor adoption and anomalies.
 
 ### 9. API & Documentation
 - REST endpoints documented in `docs/API_AUTH.md`, `docs/API_LIBRARY.md`, `docs/API_PLAYER.md`.
@@ -125,7 +128,9 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
   - `backend` Fastify service (Node 22), internal-only via `expose`, environment-driven config for JWT, storage, ScreenScraper, PixelLab (planned).
   - `frontend` Next.js app published on host port 3000 with API rewrites.
   - Optional `cloudflared` profile for Cloudflare Tunnel exposure.
+  - Optional `netplay-mock` Prism instance exposing the signaling REST contract at `http://localhost:4011`.
 - **Environment variables:** `.env.example` covers JWT secrets, rate limits, storage credentials, ScreenScraper config, Cloudflare token, and will be extended for PixelLab.ai (`PIXELLAB_API_KEY`, `PIXELLAB_STYLE_ID`, optional `PIXELLAB_BASE_URL`).
+  - Netplay configuration adds `NETPLAY_SERVICE_BASE_URL`, `NETPLAY_SERVICE_API_KEY`, timeout defaults, session TTL guardrails, cleanup sweep interval, and public frontend hints for WebRTC relays.
 - **Build/test scripts:** Backend `npm run dev/build/test`, Frontend `npm run dev/build/test/test:e2e`. Utility scripts generate pixel assets and icon sets.
 
 ## Non-Functional Requirements
@@ -136,6 +141,7 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 - **Accessibility & Responsiveness:** Layout adapts based on orientation hooks; bottom navigation for mobile; follow-up accessibility audit planned.
 - **Localization:** Currently English-only; ScreenScraper preferences allow localized metadata. Future i18n expansion noted.
 - **Observability:** Structured logging via Fastify logger, upload checkpoints, netplay error logs, CSP report ingestion. Planned integration with centralized logging (e.g., OpenSearch).
+  - Netplay service calls emit latency histograms, active session gauges, and join/cancel counters with sanitized join-code hashes.
 
 ## Testing & Quality Assurance
 - **Backend:** Vitest + Supertest with Testcontainers (PostgreSQL). Requires Docker runtime.
