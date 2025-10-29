@@ -1,8 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import argon2 from "argon2";
-import { randomBytes, createHash } from "node:crypto";
-import { env } from "../config/env.js";
+import { issueSessionTokens } from "../utils/tokens.js";
 
 const adminPayloadSchema = z.object({
   email: z.string().email(),
@@ -54,21 +53,11 @@ export async function registerOnboardingRoutes(app: FastifyInstance) {
       }
     });
 
-    const accessToken = app.jwt.sign({
-      sub: adminUser.id,
-      role: adminUser.role
-    });
-
-    const refreshToken = randomBytes(48).toString("hex");
-    const refreshExpiresAt = new Date(Date.now() + env.JWT_REFRESH_TTL_MS);
-
-    await app.prisma.refreshToken.create({
-      data: {
-        tokenHash: createHash("sha256").update(refreshToken).digest("hex"),
-        userId: adminUser.id,
-        expiresAt: refreshExpiresAt
-      }
-    });
+    const { accessToken, refreshToken, refreshExpiresAt } = await issueSessionTokens(
+      app,
+      adminUser.id,
+      adminUser.role
+    );
 
     request.log.info(
       { userId: adminUser.id },

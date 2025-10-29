@@ -9,6 +9,8 @@ import authPlugin from "./plugins/auth.js";
 import screenScraperPlugin from "./plugins/screenscraper.js";
 import { registerOnboardingRoutes } from "./routes/onboarding.js";
 import { registerScreenScraperRoutes } from "./routes/screenscraper.js";
+import { registerInvitationRoutes } from "./routes/invitations.js";
+import { registerAuthRoutes } from "./routes/auth.js";
 
 type BuildServerOptions = {
   registerPrisma?: boolean;
@@ -47,6 +49,8 @@ export const buildServer = (options: BuildServerOptions = {}): FastifyInstance =
 
   app.register(async (instance) => {
     await registerOnboardingRoutes(instance);
+    await registerInvitationRoutes(instance);
+    await registerAuthRoutes(instance);
     if (registerPrisma) {
       await registerScreenScraperRoutes(instance);
     }

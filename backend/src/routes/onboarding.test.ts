@@ -1,24 +1,29 @@
-process.env.JWT_SECRET = process.env.JWT_SECRET ?? "test-secret-test-secret-test-secret-12345";
-process.env.JWT_ACCESS_TTL = process.env.JWT_ACCESS_TTL ?? "15m";
-process.env.JWT_REFRESH_TTL = process.env.JWT_REFRESH_TTL ?? "30d";
-process.env.CORS_ALLOWED_ORIGINS = process.env.CORS_ALLOWED_ORIGINS ?? "http://localhost";
-process.env.RATE_LIMIT_DEFAULT_POINTS = process.env.RATE_LIMIT_DEFAULT_POINTS ?? "60";
-process.env.RATE_LIMIT_DEFAULT_DURATION = process.env.RATE_LIMIT_DEFAULT_DURATION ?? "60";
-process.env.RATE_LIMIT_AUTH_POINTS = process.env.RATE_LIMIT_AUTH_POINTS ?? "5";
-process.env.RATE_LIMIT_AUTH_DURATION = process.env.RATE_LIMIT_AUTH_DURATION ?? "60";
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 
-type PrismaMock = Pick<
-  PrismaClient,
-  "user" | "refreshToken"
->;
+vi.mock("argon2", () => {
+  const hashMock = vi.fn().mockResolvedValue("hashed-password");
+  return {
+    default: {
+      hash: hashMock
+    }
+  };
+});
+
+process.env.NODE_ENV = "test";
+process.env.PORT = process.env.PORT ?? "0";
+process.env.JWT_SECRET = process.env.JWT_SECRET ?? "this-is-a-test-secret-at-least-32";
+process.env.JWT_ACCESS_TTL = process.env.JWT_ACCESS_TTL ?? "15m";
+process.env.JWT_REFRESH_TTL = process.env.JWT_REFRESH_TTL ?? "30d";
+process.env.USER_INVITE_EXPIRY_HOURS = process.env.USER_INVITE_EXPIRY_HOURS ?? "24";
+
+let buildServer: typeof import("../server.js").buildServer;
+
+type PrismaMock = Pick<PrismaClient, "user" | "refreshToken">;
 
 describe("onboarding routes", () => {
   let app: FastifyInstance;
-  let buildServer: (typeof import("../server.js"))['buildServer'];
   let prisma: PrismaMock & {
     user: {
       count: ReturnType<typeof vi.fn>;
@@ -58,6 +63,7 @@ describe("onboarding routes", () => {
 
   afterEach(async () => {
     await app.close();
+    vi.clearAllMocks();
   });
 
   it("reports needsSetup=true when there are no users", async () => {

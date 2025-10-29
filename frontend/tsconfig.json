@@ -11,7 +11,11 @@
     "moduleResolution": "NodeNext",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@lib/*": ["./src/lib/*"],
+      "@components/*": ["./src/components/*"],
+      "@auth/*": ["./src/auth/*"],
+      "@onboarding/*": ["./src/onboarding/*"]
     },
     "resolveJsonModule": true,
     "isolatedModules": true,
