@@ -14,12 +14,15 @@ export default function HomePage() {
         <p className="mt-3 max-w-2xl text-base leading-relaxed text-parchment/80">
           Use the library explorer to select a ROM, or paste a ROM ID in the URL to jump right into the player.
         </p>
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap gap-3">
           <Link
             href="/play/demo"
             className="inline-block rounded-pixel bg-kelp px-4 py-2 font-semibold text-night shadow-pixel transition hover:bg-lagoon"
           >
             Try the demo player
+          </Link>
+          <Link href="/netplay" className="pixel-button-secondary inline-block">
+            Visit the netplay docks
           </Link>
         </div>
       </section>
