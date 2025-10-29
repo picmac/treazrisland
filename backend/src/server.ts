@@ -5,7 +5,10 @@ import underPressure from "@fastify/under-pressure";
 import jwt from "@fastify/jwt";
 import { env } from "./config/env.js";
 import prismaPlugin from "./plugins/prisma.js";
+import authPlugin from "./plugins/auth.js";
+import screenScraperPlugin from "./plugins/screenscraper.js";
 import { registerOnboardingRoutes } from "./routes/onboarding.js";
+import { registerScreenScraperRoutes } from "./routes/screenscraper.js";
 
 type BuildServerOptions = {
   registerPrisma?: boolean;
@@ -35,12 +38,18 @@ export const buildServer = (options: BuildServerOptions = {}): FastifyInstance =
     }
   });
 
+  app.register(authPlugin);
+
   if (registerPrisma) {
     app.register(prismaPlugin);
+    app.register(screenScraperPlugin);
   }
 
   app.register(async (instance) => {
     await registerOnboardingRoutes(instance);
+    if (registerPrisma) {
+      await registerScreenScraperRoutes(instance);
+    }
   });
 
   app.get("/health", async () => ({ status: "ok" }));

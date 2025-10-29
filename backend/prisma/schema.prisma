@@ -12,6 +12,38 @@ enum Role {
   USER
 }
 
+enum EnrichmentProvider {
+  SCREEN_SCRAPER
+  PIXELLAB
+  MANUAL
+}
+
+enum EnrichmentStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum RomAssetType {
+  COVER
+  LOGO
+  SCREENSHOT
+  VIDEO
+  MANUAL
+  WHEEL
+  MARQUEE
+  MAP
+  OTHER
+}
+
+enum RomAssetSource {
+  SCREEN_SCRAPER
+  PIXELLAB
+  USER_UPLOAD
+  MANUAL_ENTRY
+}
+
 model User {
   id             String               @id @default(cuid())
   email          String               @unique
@@ -25,6 +57,8 @@ model User {
   mfaSecrets     MfaSecret[]
   passwordResets PasswordResetToken[]
   createdInvites UserInvitation[]     @relation("AdminInvitations")
+  enrichmentJobs RomEnrichmentJob[]
+  screenScraperSettings ScreenScraperSettings[]
 }
 
 model UserInvitation {
@@ -77,4 +111,124 @@ model MfaSecret {
   disabledAt DateTime?
 
   @@index([userId])
+}
+
+model Platform {
+  id              String  @id @default(cuid())
+  name            String
+  slug            String  @unique
+  shortName       String?
+  screenscraperId Int?    @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  roms            Rom[]
+}
+
+model Rom {
+  id              String   @id @default(cuid())
+  platformId      String
+  platform        Platform @relation(fields: [platformId], references: [id])
+  title           String
+  romHash         String?
+  romSize         Int?
+  releaseYear     Int?
+  players         Int?
+  screenscraperId Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  metadata        RomMetadata[]
+  assets          RomAsset[]
+  enrichmentJobs  RomEnrichmentJob[]
+
+  @@index([platformId])
+  @@index([screenscraperId])
+}
+
+model RomMetadata {
+  id          String   @id @default(cuid())
+  romId       String
+  rom         Rom      @relation(fields: [romId], references: [id], onDelete: Cascade)
+  source      EnrichmentProvider
+  language    String?
+  region      String?
+  summary     String?
+  storyline   String?
+  developer   String?
+  publisher   String?
+  genre       String?
+  rating      Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([romId])
+  @@unique([romId, source])
+}
+
+model RomAsset {
+  id           String          @id @default(cuid())
+  romId        String
+  rom          Rom             @relation(fields: [romId], references: [id], onDelete: Cascade)
+  type         RomAssetType
+  source       RomAssetSource
+  providerId   String?
+  language     String?
+  region       String?
+  width        Int?
+  height       Int?
+  fileSize     Int?
+  format       String?
+  checksum     String?
+  storageKey   String?
+  externalUrl  String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([romId])
+  @@index([type])
+  @@index([providerId])
+  @@unique([romId, providerId])
+}
+
+model RomEnrichmentJob {
+  id              String             @id @default(cuid())
+  romId           String
+  rom             Rom                @relation(fields: [romId], references: [id], onDelete: Cascade)
+  requestedById   String?
+  requestedBy     User?              @relation(fields: [requestedById], references: [id], onDelete: SetNull)
+  status          EnrichmentStatus   @default(PENDING)
+  provider        EnrichmentProvider
+  providerRomId   String?
+  settings        Json
+  errorMessage    String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([romId])
+  @@index([status])
+}
+
+model ScreenScraperSettings {
+  id                 String   @id @default(cuid())
+  userId             String?  @unique
+  user               User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  languagePriority   String[] @default([])
+  regionPriority     String[] @default([])
+  mediaTypes         String[] @default([])
+  onlyBetterMedia    Boolean  @default(false)
+  maxAssetsPerType   Int      @default(3)
+  preferParentGames  Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model ScreenScraperCacheEntry {
+  id        String   @id @default(cuid())
+  cacheKey  String   @unique
+  payload   Json
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
 }
