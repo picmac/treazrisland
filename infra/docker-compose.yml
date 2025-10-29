@@ -39,6 +39,18 @@ services:
       - "4010:4010"
     restart: unless-stopped
 
+  netplay-signal-mock:
+    image: ghcr.io/wiremock/wiremock:3.5.4
+    container_name: treazrisland-netplay-mock
+    command:
+      - "--global-response-templating"
+      - "--verbose"
+    ports:
+      - "4100:8080"
+    volumes:
+      - ./mock/netplay:/home/wiremock:ro
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   minio-data:

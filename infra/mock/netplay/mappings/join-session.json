@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPattern": "/v1/sessions/.+/participants"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "participantId": "mock-participant-456",
+      "status": "connected"
+    }
+  }
+}

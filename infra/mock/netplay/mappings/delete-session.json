@@ -1,0 +1,9 @@
+{
+  "request": {
+    "method": "DELETE",
+    "urlPattern": "/v1/sessions/.+"
+  },
+  "response": {
+    "status": 204
+  }
+}

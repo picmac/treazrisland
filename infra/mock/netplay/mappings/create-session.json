@@ -1,0 +1,21 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/v1/sessions"
+  },
+  "response": {
+    "status": 201,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": "mock-session-123",
+      "joinCode": "GROG",
+      "ttlMinutes": "{{jsonPath request.body '$.ttlMinutes' default='60'}}",
+      "host": {
+        "playerId": "{{jsonPath request.body '$.host.playerId' default='mock-host'}}",
+        "connected": true
+      }
+    }
+  }
+}
