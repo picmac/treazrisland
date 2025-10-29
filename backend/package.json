@@ -12,7 +12,8 @@
     "test": "vitest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "screenscraper:encrypt": "tsx scripts/encrypt-screenscraper-secret.ts"
+    "screenscraper:encrypt": "tsx scripts/encrypt-screenscraper-secret.ts",
+    "prisma:seed:platforms": "tsx prisma/seed-platforms.ts"
   },
   "dependencies": {
     "@fastify/jwt": "^7.0.1",

@@ -2,6 +2,7 @@
 
 import type { ChangeEvent, DragEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import clsx from "clsx";
 import { listAdminPlatforms, type AdminPlatform } from "@lib/api/admin/platforms";
 import {
@@ -29,6 +30,12 @@ type UploadItem = {
 
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024;
 
+type RecentRom = {
+  id: string;
+  title: string;
+  platformSlug: string | null;
+};
+
 export function RomUploadManager() {
   const [platforms, setPlatforms] = useState<AdminPlatform[]>([]);
   const [platformError, setPlatformError] = useState<string | null>(null);
@@ -36,6 +43,7 @@ export function RomUploadManager() {
   const [dragActive, setDragActive] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [recentRoms, setRecentRoms] = useState<RecentRom[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -232,6 +240,25 @@ export function RomUploadManager() {
               : candidate
           )
         );
+
+        if (result.romId && (result.status === "success" || result.status === "duplicate")) {
+          const romTitle =
+            result.romTitle ??
+            (metadata.type === "rom"
+              ? metadata.romTitle ?? metadata.originalFilename
+              : metadata.originalFilename);
+          const platformSlug =
+            result.platformSlug ?? (metadata.type === "rom" ? metadata.platformSlug ?? null : null);
+          setRecentRoms((current) => {
+            const next: RecentRom = {
+              id: result.romId as string,
+              title: romTitle,
+              platformSlug
+            };
+            const deduped = current.filter((rom) => rom.id !== next.id);
+            return [next, ...deduped].slice(0, 8);
+          });
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Upload failed";
         setItems((current) =>
@@ -338,6 +365,40 @@ export function RomUploadManager() {
               />
             ))}
           </div>
+        </div>
+      )}
+
+      {recentRoms.length > 0 && (
+        <div className="space-y-2 rounded border border-slate-700 bg-slate-900/70 p-4 text-sm text-slate-200">
+          <h3 className="text-xs uppercase tracking-widest text-primary/80">Recently ingested ROMs</h3>
+          <ul className="space-y-2">
+            {recentRoms.map((rom) => (
+              <li key={rom.id} className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <Link href={`/roms/${rom.id}`} className="text-primary hover:underline">
+                    {rom.title}
+                  </Link>
+                  {rom.platformSlug && (
+                    <span className="ml-2 text-xs uppercase tracking-widest text-slate-400">
+                      ({rom.platformSlug})
+                    </span>
+                  )}
+                </div>
+                {rom.platformSlug ? (
+                  <Link
+                    href={`/platforms/${rom.platformSlug}`}
+                    className="text-xs uppercase tracking-widest text-slate-300 hover:text-primary"
+                  >
+                    View platform
+                  </Link>
+                ) : (
+                  <span className="text-xs uppercase tracking-widest text-slate-500">
+                    Platform pending
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

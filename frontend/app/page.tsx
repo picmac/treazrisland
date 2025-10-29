@@ -16,10 +16,10 @@ export default function HomePage() {
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
-            href="/play/demo"
+            href="/platforms"
             className="inline-block rounded-pixel bg-kelp px-4 py-2 font-semibold text-night shadow-pixel transition hover:bg-lagoon"
           >
-            Try the demo player
+            Explore the library
           </Link>
         </div>
       </section>

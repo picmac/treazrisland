@@ -31,5 +31,14 @@ application code for local development.
    docker compose -f infra/docker-compose.yml up postgres minio pixellab-mock
    ```
 
-3. Follow backend/frontend README files (to be authored) for dev server commands.
+3. Install backend dependencies, apply migrations, and seed the core platform catalog:
+
+   ```bash
+   cd backend
+   npm install
+   npx prisma migrate deploy
+   npm run prisma:seed:platforms
+   ```
+
+4. Follow backend/frontend README files (to be authored) for dev server commands.
 
