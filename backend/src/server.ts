@@ -13,6 +13,7 @@ import { registerScreenScraperRoutes } from "./routes/screenscraper.js";
 import { registerInvitationRoutes } from "./routes/invitations.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
+import { registerNetplayRoutes } from "./routes/netplay.js";
 
 type BuildServerOptions = {
   registerPrisma?: boolean;
@@ -57,6 +58,12 @@ export const buildServer = (options: BuildServerOptions = {}): FastifyInstance =
     if (registerPrisma) {
       await registerScreenScraperRoutes(instance);
       await registerAdminRoutes(instance);
+    }
+
+    if (instance.hasDecorator("netplayService")) {
+      await registerNetplayRoutes(instance);
+    } else {
+      instance.log.debug("Netplay service not registered; skipping netplay routes");
     }
   });
 
