@@ -9,6 +9,7 @@ shipping new features. Use it as a pre-flight checklist for reviews and release 
 - **Backend:** Fastify API with Prisma, JWT auth, storage integrations, PixelLab, and ScreenScraper services.
 - **External services:** PixelLab.ai, ScreenScraper, object storage, email provider.
 - **Infrastructure:** Docker Compose stack (PostgreSQL, MinIO, mocks) and any reverse proxies/tunnels.
+- **Observability:** `/health` liveness endpoint plus optional `/metrics` Prometheus scrape surface guarded by `METRICS_TOKEN`.
 
 ## Core Checklist
 
@@ -32,8 +33,9 @@ shipping new features. Use it as a pre-flight checklist for reviews and release 
    - [ ] PixelLab and ScreenScraper credentials rotated per vendor guidance.
 
 5. **Logging & Monitoring**
-   - [ ] Structured logs shipped to centralized store with retention ≥30 days.
-    - [ ] Sensitive values (API keys) hashed or redacted before logging.
+   - [ ] Structured logs (upload/enrichment/playback events) shipped to centralized store with retention ≥30 days.
+   - [ ] Sensitive values (API keys) hashed or redacted before logging; verify Fastify/Pino serializers redact `Authorization`, cookies, and password payloads.
+   - [ ] Prometheus scrape job authenticates with `METRICS_TOKEN`; alerts defined for spikes in `treaz_upload_events_total`, `treaz_enrichment_requests_total`, and `treaz_playback_events_total` error labels.
 
 6. **Dependency Hygiene**
    - [ ] npm audit / Snyk scan performed on backend and frontend packages.

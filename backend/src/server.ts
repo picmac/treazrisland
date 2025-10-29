@@ -1,4 +1,5 @@
 import Fastify, { FastifyInstance } from "fastify";
+import pino from "pino";
 import rateLimit from "@fastify/rate-limit";
 import sensible from "@fastify/sensible";
 import underPressure from "@fastify/under-pressure";
@@ -17,18 +18,47 @@ import { registerAdminRoutes } from "./routes/admin/index.js";
 import { registerLibraryRoutes } from "./routes/library.js";
 import { registerPlayerRoutes } from "./routes/player.js";
 import supportServices from "./plugins/support-services.js";
+import observabilityPlugin from "./plugins/observability.js";
 
 type BuildServerOptions = {
   registerPrisma?: boolean;
 };
 
-export const buildServer = (options: BuildServerOptions = {}): FastifyInstance => {
+export const buildServer = (
+  options: BuildServerOptions = {},
+): FastifyInstance => {
   const { registerPrisma = true } = options;
 
   const app = Fastify({
     logger: {
-      level: env.NODE_ENV === "production" ? "info" : "debug"
-    }
+      level: env.LOG_LEVEL,
+      redact: {
+        paths: [
+          "req.headers.authorization",
+          "req.headers.cookie",
+          "req.body.password",
+        ],
+        remove: true,
+      },
+      serializers: {
+        req(request) {
+          return {
+            id: request.id,
+            method: request.method,
+            url: request.url,
+            remoteAddress: request.ip,
+            userId: (request as typeof request & { user?: { sub: string } })
+              .user?.sub,
+          };
+        },
+        res(reply) {
+          return {
+            statusCode: reply.statusCode,
+          };
+        },
+        err: pino.stdSerializers.err,
+      },
+    },
   });
 
   app.register(sensible);
@@ -36,16 +66,17 @@ export const buildServer = (options: BuildServerOptions = {}): FastifyInstance =
   app.register(rateLimit, {
     global: false,
     max: env.RATE_LIMIT_DEFAULT_POINTS,
-    timeWindow: env.RATE_LIMIT_DEFAULT_DURATION * 1000
+    timeWindow: env.RATE_LIMIT_DEFAULT_DURATION * 1000,
   });
 
   app.register(jwt, {
     secret: env.JWT_SECRET,
     sign: {
-      expiresIn: env.JWT_ACCESS_TTL
-    }
+      expiresIn: env.JWT_ACCESS_TTL,
+    },
   });
 
+  app.register(observabilityPlugin);
   app.register(authPlugin);
   app.register(storagePlugin);
   app.register(supportServices);

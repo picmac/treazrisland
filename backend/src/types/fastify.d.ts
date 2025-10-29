@@ -4,6 +4,7 @@ import type { ScreenScraperService } from "../services/screenscraper/service.js"
 import type { StorageService } from "../services/storage/storage.js";
 import type { EmailService } from "../services/email/service.js";
 import type { MfaService } from "../services/mfa/service.js";
+import type { ObservabilityMetrics } from "../plugins/observability.js";
 
 declare module "@fastify/jwt" {
   interface FastifyJWT {
@@ -14,16 +15,26 @@ declare module "@fastify/jwt" {
 
 declare module "fastify" {
   interface FastifyInstance {
-    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    requireRole: (role: Role) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    authenticate: (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ) => Promise<void>;
+    requireRole: (
+      role: Role,
+    ) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    requireAdmin: (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ) => Promise<void>;
     screenScraperService: ScreenScraperService;
     storage: StorageService;
     emailService: EmailService;
     mfaService: MfaService;
+    metrics: ObservabilityMetrics;
   }
 
   interface FastifyRequest {
     user?: { sub: string; role: Role };
+    metricsStartTime?: bigint;
   }
 }

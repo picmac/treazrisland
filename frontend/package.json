@@ -9,6 +9,8 @@
     "lint": "next lint",
     "test": "vitest",
     "test:watch": "vitest watch",
+    "test:e2e": "playwright test",
+    "test:e2e:smoke": "RUN_SMOKE_E2E=1 playwright test --project=chromium",
     "update:emulator": "tsx scripts/update-emulatorjs.ts"
   },
   "dependencies": {
@@ -25,6 +27,7 @@
     "@types/react-dom": "18.3.0",
     "adm-zip": "0.5.12",
     "autoprefixer": "10.4.19",
+    "@playwright/test": "1.46.1",
     "eslint": "8.57.0",
     "eslint-config-next": "14.2.5",
     "jsdom": "24.0.0",

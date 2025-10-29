@@ -1,0 +1,30 @@
+# syntax=docker/dockerfile:1
+
+FROM node:20-bullseye AS base
+WORKDIR /app
+ENV NODE_ENV=production
+
+FROM base AS deps
+COPY package.json package-lock.json ./
+RUN npm ci
+
+FROM deps AS development
+ENV NODE_ENV=development
+RUN npm install --include=dev
+COPY . .
+CMD ["npm", "run", "dev"]
+
+FROM deps AS build
+ENV NODE_ENV=production
+COPY . .
+RUN npm run build
+
+FROM base AS production
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+COPY --from=build /app/.next ./.next
+COPY --from=build /app/public ./public
+COPY --from=build /app/next.config.mjs ./next.config.mjs
+ENV PORT=3000
+EXPOSE 3000
+CMD ["npm", "run", "start"]

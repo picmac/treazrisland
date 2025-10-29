@@ -17,28 +17,34 @@ const uploadMetadataSchema = z
     originalFilename: z.string().min(1),
     platformSlug: z
       .string()
-      .regex(/^[a-z0-9][a-z0-9-_]*$/i, "platformSlug must be alphanumeric with dashes or underscores")
+      .regex(
+        /^[a-z0-9][a-z0-9-_]*$/i,
+        "platformSlug must be alphanumeric with dashes or underscores",
+      )
       .optional(),
     romTitle: z.string().optional(),
     biosCore: z
       .string()
-      .regex(/^[a-z0-9][a-z0-9-_]*$/i, "biosCore must be alphanumeric with dashes or underscores")
+      .regex(
+        /^[a-z0-9][a-z0-9-_]*$/i,
+        "biosCore must be alphanumeric with dashes or underscores",
+      )
       .optional(),
-    biosRegion: z.string().optional()
+    biosRegion: z.string().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.type === "rom" && !value.platformSlug) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "platformSlug is required for ROM uploads",
-        path: ["platformSlug"]
+        path: ["platformSlug"],
       });
     }
     if (value.type === "bios" && !value.biosCore) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "biosCore is required for BIOS uploads",
-        path: ["biosCore"]
+        path: ["biosCore"],
       });
     }
   });
@@ -79,8 +85,14 @@ type UploadResult =
       uploadAuditId: string;
     };
 
-export async function registerRomUploadRoutes(app: FastifyInstance): Promise<void> {
-  const streamParser = (request: unknown, payload: NodeJS.ReadableStream, done: (err: Error | null, body?: unknown) => void) => {
+export async function registerRomUploadRoutes(
+  app: FastifyInstance,
+): Promise<void> {
+  const streamParser = (
+    request: unknown,
+    payload: NodeJS.ReadableStream,
+    done: (err: Error | null, body?: unknown) => void,
+  ) => {
     done(null, payload);
   };
 
@@ -90,8 +102,13 @@ export async function registerRomUploadRoutes(app: FastifyInstance): Promise<voi
 
   app.post("/roms/uploads", async (request, reply) => {
     const metadataHeader = request.headers["x-treaz-upload-metadata"];
-    if (typeof metadataHeader !== "string" || metadataHeader.trim().length === 0) {
-      throw app.httpErrors.badRequest("x-treaz-upload-metadata header is required");
+    if (
+      typeof metadataHeader !== "string" ||
+      metadataHeader.trim().length === 0
+    ) {
+      throw app.httpErrors.badRequest(
+        "x-treaz-upload-metadata header is required",
+      );
     }
 
     let metadata: UploadMetadata;
@@ -99,11 +116,14 @@ export async function registerRomUploadRoutes(app: FastifyInstance): Promise<voi
       metadata = uploadMetadataSchema.parse(JSON.parse(metadataHeader));
     } catch (error) {
       throw app.httpErrors.badRequest(
-        error instanceof Error ? error.message : "Invalid upload metadata"
+        error instanceof Error ? error.message : "Invalid upload metadata",
       );
     }
 
-    if (!request.body || typeof (request.body as NodeJS.ReadableStream).pipe !== "function") {
+    if (
+      !request.body ||
+      typeof (request.body as NodeJS.ReadableStream).pipe !== "function"
+    ) {
       throw app.httpErrors.badRequest("Binary payload is required");
     }
 
@@ -114,7 +134,9 @@ export async function registerRomUploadRoutes(app: FastifyInstance): Promise<voi
         throw app.httpErrors.badRequest("Invalid Content-Length header");
       }
       if (contentLength > env.ROM_UPLOAD_MAX_BYTES) {
-        throw app.httpErrors.payloadTooLarge("Archive exceeds maximum allowed size");
+        throw app.httpErrors.payloadTooLarge(
+          "Archive exceeds maximum allowed size",
+        );
       }
     }
 
@@ -143,10 +165,42 @@ export async function registerRomUploadRoutes(app: FastifyInstance): Promise<voi
           storageKey,
           archiveMimeType,
           uploadedById,
-          safeFilename
+          safeFilename,
         );
         await safeUnlink(processed.filePath);
-        return reply.code(result.status === "success" ? 201 : 200).send({ result });
+
+        const labels = { kind: "rom", status: result.status };
+        app.metrics.uploads.inc(labels);
+
+        if (result.status === "success") {
+          request.log.info(
+            {
+              event: "rom.upload",
+              status: result.status,
+              romId: result.romId,
+              platformSlug: result.platformSlug,
+              archiveSize: result.archiveSize,
+              checksumSha256: result.checksumSha256,
+              uploadAuditId: result.uploadAuditId,
+            },
+            "ROM upload succeeded",
+          );
+        } else {
+          request.log.info(
+            {
+              event: "rom.upload",
+              status: result.status,
+              romId: result.romId,
+              reason: result.reason,
+              uploadAuditId: result.uploadAuditId,
+            },
+            "Duplicate ROM upload detected",
+          );
+        }
+
+        return reply
+          .code(result.status === "success" ? 201 : 200)
+          .send({ result });
       }
 
       const result = await handleBiosUpload(
@@ -156,16 +210,48 @@ export async function registerRomUploadRoutes(app: FastifyInstance): Promise<voi
         storageKey,
         archiveMimeType,
         uploadedById,
-        safeFilename
+        safeFilename,
       );
       await safeUnlink(processed.filePath);
-      return reply.code(result.status === "success" ? 201 : 200).send({ result });
+
+      const labels = { kind: "bios", status: result.status };
+      app.metrics.uploads.inc(labels);
+
+      if (result.status === "success") {
+        request.log.info(
+          {
+            event: "bios.upload",
+            status: result.status,
+            biosCore: result.biosCore,
+            archiveSize: result.archiveSize,
+            checksumSha256: result.checksumSha256,
+            uploadAuditId: result.uploadAuditId,
+          },
+          "BIOS upload succeeded",
+        );
+      } else {
+        request.log.info(
+          {
+            event: "bios.upload",
+            status: result.status,
+            biosCore: result.biosCore,
+            reason: result.reason,
+            uploadAuditId: result.uploadAuditId,
+          },
+          "Duplicate BIOS upload detected",
+        );
+      }
+
+      return reply
+        .code(result.status === "success" ? 201 : 200)
+        .send({ result });
     } catch (error) {
       if (processed) {
         await safeUnlink(processed.filePath).catch(() => {});
       }
 
-      const errorMessage = error instanceof Error ? error.message : "Upload failed";
+      const errorMessage =
+        error instanceof Error ? error.message : "Upload failed";
       if (typeof (error as { statusCode?: number }).statusCode === "number") {
         throw error;
       }
@@ -177,8 +263,10 @@ export async function registerRomUploadRoutes(app: FastifyInstance): Promise<voi
         processed,
         errorMessage,
         uploadedById,
-        safeFilename
+        safeFilename,
       );
+
+      app.metrics.uploads.inc({ kind: metadata.type, status: "failed" });
 
       if (error instanceof z.ZodError) {
         throw app.httpErrors.badRequest(errorMessage);
@@ -188,7 +276,10 @@ export async function registerRomUploadRoutes(app: FastifyInstance): Promise<voi
         throw app.httpErrors.payloadTooLarge(errorMessage);
       }
 
-      request.log.error({ err: error }, "ROM upload failed");
+      request.log.error(
+        { err: error, event: `${metadata.type}.upload` },
+        "Upload failed",
+      );
       throw app.httpErrors.internalServerError(errorMessage);
     }
   });
@@ -201,24 +292,26 @@ async function handleRomUpload(
   storageKey: string,
   archiveMimeType: string,
   uploadedById: string | undefined,
-  safeFilename: string
+  safeFilename: string,
 ): Promise<UploadResult> {
   const platform = await app.prisma.platform.findUnique({
-    where: { slug: metadata.platformSlug! }
+    where: { slug: metadata.platformSlug! },
   });
 
   if (!platform) {
-    throw app.httpErrors.badRequest(`Unknown platform slug: ${metadata.platformSlug}`);
+    throw app.httpErrors.badRequest(
+      `Unknown platform slug: ${metadata.platformSlug}`,
+    );
   }
 
   const duplicateBinary = await app.prisma.romBinary.findFirst({
     where: {
       checksumSha256: processed.sha256,
-      rom: { platformId: platform.id }
+      rom: { platformId: platform.id },
     },
     include: {
-      rom: true
-    }
+      rom: true,
+    },
   });
 
   if (duplicateBinary) {
@@ -238,8 +331,8 @@ async function handleRomUpload(
         checksumSha1: processed.sha1,
         checksumMd5: processed.md5,
         checksumCrc32: processed.crc32,
-        errorMessage: `Duplicate ROM detected for ${duplicateBinary.rom.title}`
-      }
+        errorMessage: `Duplicate ROM detected for ${duplicateBinary.rom.title}`,
+      },
     });
 
     return {
@@ -248,7 +341,7 @@ async function handleRomUpload(
       romId: duplicateBinary.romId,
       romTitle: duplicateBinary.rom.title,
       reason: "Duplicate ROM binary",
-      uploadAuditId: audit.id
+      uploadAuditId: audit.id,
     };
   }
 
@@ -259,7 +352,7 @@ async function handleRomUpload(
     sha1: processed.sha1,
     md5: processed.md5,
     crc32: processed.crc32,
-    contentType: archiveMimeType
+    contentType: archiveMimeType,
   });
 
   const romTitle = deriveRomTitle(metadata);
@@ -267,7 +360,7 @@ async function handleRomUpload(
 
   const { rom, binary, audit } = await app.prisma.$transaction(async (tx) => {
     const existing = await tx.rom.findFirst({
-      where: { platformId: platform.id, title: romTitle }
+      where: { platformId: platform.id, title: romTitle },
     });
 
     const romRecord = existing
@@ -276,16 +369,16 @@ async function handleRomUpload(
           data: {
             romHash: processed.sha256,
             romSize: processed.size,
-            updatedAt: now
-          }
+            updatedAt: now,
+          },
         })
       : await tx.rom.create({
           data: {
             platformId: platform.id,
             title: romTitle,
             romHash: processed.sha256,
-            romSize: processed.size
-          }
+            romSize: processed.size,
+          },
         });
 
     const binaryRecord = await tx.romBinary.upsert({
@@ -300,7 +393,7 @@ async function handleRomUpload(
         checksumSha1: processed.sha1,
         checksumMd5: processed.md5,
         checksumCrc32: processed.crc32,
-        status: "READY"
+        status: "READY",
       },
       update: {
         storageKey,
@@ -311,8 +404,8 @@ async function handleRomUpload(
         checksumMd5: processed.md5,
         checksumCrc32: processed.crc32,
         status: "READY",
-        updatedAt: now
-      }
+        updatedAt: now,
+      },
     });
 
     const auditRecord = await tx.romUploadAudit.create({
@@ -330,8 +423,8 @@ async function handleRomUpload(
         checksumSha256: processed.sha256,
         checksumSha1: processed.sha1,
         checksumMd5: processed.md5,
-        checksumCrc32: processed.crc32
-      }
+        checksumCrc32: processed.crc32,
+      },
     });
 
     return { rom: romRecord, binary: binaryRecord, audit: auditRecord };
@@ -346,7 +439,7 @@ async function handleRomUpload(
     storageKey,
     archiveSize: processed.size,
     checksumSha256: processed.sha256,
-    uploadAuditId: audit.id
+    uploadAuditId: audit.id,
   };
 }
 
@@ -357,7 +450,7 @@ async function handleBiosUpload(
   storageKey: string,
   archiveMimeType: string,
   uploadedById: string | undefined,
-  safeFilename: string
+  safeFilename: string,
 ): Promise<UploadResult> {
   const coreSlug = metadata.biosCore!;
 
@@ -368,8 +461,8 @@ async function handleBiosUpload(
   const duplicate = await app.prisma.emulatorBios.findFirst({
     where: {
       coreSlug,
-      checksumSha256: processed.sha256
-    }
+      checksumSha256: processed.sha256,
+    },
   });
 
   if (duplicate) {
@@ -387,8 +480,8 @@ async function handleBiosUpload(
         checksumSha1: processed.sha1,
         checksumMd5: processed.md5,
         checksumCrc32: processed.crc32,
-        errorMessage: "Duplicate BIOS archive"
-      }
+        errorMessage: "Duplicate BIOS archive",
+      },
     });
 
     return {
@@ -397,7 +490,7 @@ async function handleBiosUpload(
       biosId: duplicate.id,
       biosCore: coreSlug,
       reason: "Duplicate BIOS archive",
-      uploadAuditId: audit.id
+      uploadAuditId: audit.id,
     };
   }
 
@@ -408,7 +501,7 @@ async function handleBiosUpload(
     sha1: processed.sha1,
     md5: processed.md5,
     crc32: processed.crc32,
-    contentType: archiveMimeType
+    contentType: archiveMimeType,
   });
 
   const { bios, audit } = await app.prisma.$transaction(async (tx) => {
@@ -416,8 +509,8 @@ async function handleBiosUpload(
       where: {
         coreSlug_originalFilename: {
           coreSlug,
-          originalFilename: safeFilename
-        }
+          originalFilename: safeFilename,
+        },
       },
       create: {
         coreSlug,
@@ -429,7 +522,7 @@ async function handleBiosUpload(
         checksumSha256: processed.sha256,
         checksumSha1: processed.sha1,
         checksumMd5: processed.md5,
-        checksumCrc32: processed.crc32
+        checksumCrc32: processed.crc32,
       },
       update: {
         region: metadata.biosRegion,
@@ -439,8 +532,8 @@ async function handleBiosUpload(
         checksumSha256: processed.sha256,
         checksumSha1: processed.sha1,
         checksumMd5: processed.md5,
-        checksumCrc32: processed.crc32
-      }
+        checksumCrc32: processed.crc32,
+      },
     });
 
     const auditRecord = await tx.romUploadAudit.create({
@@ -456,8 +549,8 @@ async function handleBiosUpload(
         checksumSha256: processed.sha256,
         checksumSha1: processed.sha1,
         checksumMd5: processed.md5,
-        checksumCrc32: processed.crc32
-      }
+        checksumCrc32: processed.crc32,
+      },
     });
 
     return { bios: biosRecord, audit: auditRecord };
@@ -471,7 +564,7 @@ async function handleBiosUpload(
     storageKey,
     archiveSize: processed.size,
     checksumSha256: processed.sha256,
-    uploadAuditId: audit.id
+    uploadAuditId: audit.id,
   };
 }
 
@@ -483,14 +576,17 @@ async function recordFailedAudit(
   processed: ProcessedUpload | undefined,
   errorMessage: string,
   uploadedById: string | undefined,
-  safeFilename: string
+  safeFilename: string,
 ): Promise<void> {
   try {
     await app.prisma.romUploadAudit.create({
       data: {
         kind: metadata.type === "rom" ? "ROM" : "BIOS",
         status: "FAILED",
-        platformId: metadata.type === "rom" ? await lookupPlatformId(app, metadata.platformSlug) : null,
+        platformId:
+          metadata.type === "rom"
+            ? await lookupPlatformId(app, metadata.platformSlug)
+            : null,
         uploadedById: uploadedById ?? null,
         storageKey,
         originalFilename: safeFilename,
@@ -500,8 +596,8 @@ async function recordFailedAudit(
         checksumSha1: processed?.sha1,
         checksumMd5: processed?.md5,
         checksumCrc32: processed?.crc32,
-        errorMessage
-      }
+        errorMessage,
+      },
     });
   } catch (auditError) {
     app.log.error({ err: auditError }, "Failed to persist rom upload audit");
@@ -510,7 +606,7 @@ async function recordFailedAudit(
 
 async function lookupPlatformId(
   app: FastifyInstance,
-  slug: string | undefined
+  slug: string | undefined,
 ): Promise<string | null> {
   if (!slug) {
     return null;
@@ -522,7 +618,7 @@ async function lookupPlatformId(
 
 async function persistUploadStream(
   stream: NodeJS.ReadableStream,
-  safeFilename: string
+  safeFilename: string,
 ): Promise<ProcessedUpload> {
   const tempDir = await mkdtemp(`${tmpdir()}/treaz-rom-`);
   const tempPath = `${tempDir}/${randomUUID()}-${safeFilename}`;
@@ -573,7 +669,7 @@ async function persistUploadStream(
     sha256: sha256.digest("hex"),
     sha1: sha1.digest("hex"),
     md5: md5.digest("hex"),
-    crc32: crc.digest().toString(16).padStart(8, "0")
+    crc32: crc.digest().toString(16).padStart(8, "0"),
   };
 }
 
@@ -583,7 +679,10 @@ function sanitizeFilename(filename: string): string {
   return sanitized.length > 0 ? sanitized : "archive.zip";
 }
 
-function buildStorageKey(metadata: UploadMetadata, safeFilename: string): string {
+function buildStorageKey(
+  metadata: UploadMetadata,
+  safeFilename: string,
+): string {
   if (metadata.type === "rom") {
     return pathPosix.join("roms", metadata.platformSlug!, safeFilename);
   }

@@ -7,20 +7,22 @@ const settingsSchema = z.object({
   mediaTypes: z.array(z.string().min(1)).max(20).optional(),
   onlyBetterMedia: z.boolean().optional(),
   maxAssetsPerType: z.number().int().min(1).max(10).optional(),
-  preferParentGames: z.boolean().optional()
+  preferParentGames: z.boolean().optional(),
 });
 
 const enrichParamsSchema = z.object({
-  romId: z.string().min(1)
+  romId: z.string().min(1),
 });
 
 const enrichBodySchema = z.object({
-  overrides: settingsSchema.optional()
+  overrides: settingsSchema.optional(),
 });
 
 export async function registerScreenScraperRoutes(app: FastifyInstance) {
   if (!app.screenScraperService) {
-    app.log.warn("ScreenScraper service is not configured; routes will not be registered");
+    app.log.warn(
+      "ScreenScraper service is not configured; routes will not be registered",
+    );
     return;
   }
 
@@ -42,19 +44,24 @@ export async function registerScreenScraperRoutes(app: FastifyInstance) {
       if (!parsed.success) {
         return reply.status(400).send({
           message: "Invalid ScreenScraper settings payload",
-          errors: parsed.error.flatten().fieldErrors
+          errors: parsed.error.flatten().fieldErrors,
         });
       }
 
       const userId = request.user?.sub;
       if (!userId) {
-        return reply.status(400).send({ message: "Authenticated user is required" });
+        return reply
+          .status(400)
+          .send({ message: "Authenticated user is required" });
       }
 
-      const record = await instance.screenScraperService.updateUserSettings(userId, parsed.data);
+      const record = await instance.screenScraperService.updateUserSettings(
+        userId,
+        parsed.data,
+      );
 
       return {
-        settings: record
+        settings: record,
       };
     });
 
@@ -63,7 +70,7 @@ export async function registerScreenScraperRoutes(app: FastifyInstance) {
       if (!params.success) {
         return reply.status(400).send({
           message: "Invalid ROM identifier",
-          errors: params.error.flatten().fieldErrors
+          errors: params.error.flatten().fieldErrors,
         });
       }
 
@@ -71,23 +78,36 @@ export async function registerScreenScraperRoutes(app: FastifyInstance) {
       if (!body.success) {
         return reply.status(400).send({
           message: "Invalid enrichment payload",
-          errors: body.error.flatten().fieldErrors
+          errors: body.error.flatten().fieldErrors,
         });
       }
 
       const userId = request.user?.sub;
       if (!userId) {
-        return reply.status(400).send({ message: "Authenticated user is required" });
+        return reply
+          .status(400)
+          .send({ message: "Authenticated user is required" });
       }
 
       const job = await instance.screenScraperService.enqueueEnrichmentJob({
         romId: params.data.romId,
         requestedById: userId,
-        overrides: body.data.overrides
+        overrides: body.data.overrides,
       });
 
+      instance.metrics.enrichment.inc({ status: "scheduled" });
+      request.log.info(
+        {
+          event: "rom.enrichment.enqueued",
+          romId: params.data.romId,
+          jobId: job.id,
+          requestedById: userId,
+        },
+        "Enrichment job queued",
+      );
+
       return reply.status(202).send({
-        job
+        job,
       });
     });
   });

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720">
+  <rect width="100%" height="100%" fill="#0a1020" />
+  <text x="640" y="120" font-size="36" text-anchor="middle" fill="#7fffd4">ONBOARDING BASELINE</text>
+  <rect x="340" y="180" width="600" height="360" fill="#101a33" stroke="#7fffd4" stroke-width="4" rx="24" />
+  <text x="640" y="240" font-size="28" text-anchor="middle" fill="#ffe4c4">Welcome, Keeper of the Vault</text>
+  <text x="640" y="290" font-size="18" text-anchor="middle" fill="#c0d6ff">Ensure the screenshot shows the Create Admin form populated with sample data.</text>
+  <text x="640" y="340" font-size="18" text-anchor="middle" fill="#c0d6ff">Capture after `/onboarding/status` returns `needsSetup=true`.</text>
+  <text x="640" y="390" font-size="18" text-anchor="middle" fill="#c0d6ff">Replace this SVG with a real screenshot when available.</text>
+</svg>
