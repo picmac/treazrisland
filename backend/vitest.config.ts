@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: true,
+    setupFiles: ["./src/test/setupEnv.ts"],
     coverage: {
       enabled: false
     }
