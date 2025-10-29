@@ -318,9 +318,9 @@ export class PixelLabService {
       prompt: log.prompt,
       styleId: log.styleId,
       cacheHit: log.cacheHit,
-      statusCode: log.statusCode ?? undefined,
-      durationMs: log.durationMs ?? undefined,
-      errorMessage: log.errorMessage ?? undefined,
+      statusCode: log.statusCode ?? null,
+      durationMs: log.durationMs ?? null,
+      errorMessage: log.errorMessage ?? null,
       createdAt: log.createdAt,
       rom: log.rom ? { id: log.rom.id, title: log.rom.title } : null,
       romAsset: log.romAsset ? { id: log.romAsset.id, type: log.romAsset.type } : null
@@ -360,14 +360,23 @@ export class PixelLabService {
     };
   }
 
-  async listCacheEntries(limit = 50): Promise<PixelLabCacheEntry[]> {
+  async listCacheEntries(
+    limit = 50,
+  ): Promise<
+    Array<
+      PixelLabCacheEntry & {
+        rom: { id: string; title: string } | null;
+        romAsset: { id: string; type: RomAssetType } | null;
+      }
+    >
+  > {
     return this.prisma.pixelLabCacheEntry.findMany({
       orderBy: { updatedAt: "desc" },
       take: limit,
       include: {
-        rom: true,
-        romAsset: true
-      }
+        rom: { select: { id: true, title: true } },
+        romAsset: { select: { id: true, type: true } },
+      },
     });
   }
 

@@ -4,6 +4,7 @@ import { mkdir, unlink, copyFile, stat } from "node:fs/promises";
 import { dirname, join, normalize } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
+import type { ReadableStream as WebReadableStream } from "node:stream/web";
 
 type StorageDriver = "filesystem" | "s3";
 
@@ -273,10 +274,13 @@ export class StorageService {
       headers.set("content-type", source.contentType);
     }
 
+    const bodyStream = Readable.toWeb(
+      createReadStream(source.filePath),
+    ) as unknown as globalThis.BodyInit;
     const response = await fetch(url, {
       method: "PUT",
       headers,
-      body: createReadStream(source.filePath)
+      body: bodyStream,
     });
 
     if (!response.ok) {
@@ -300,9 +304,8 @@ export class StorageService {
       );
     }
 
-    const nodeStream = Readable.fromWeb(
-      response.body as unknown as globalThis.ReadableStream<Uint8Array>
-    );
+    const webStream = response.body as WebReadableStream<Uint8Array>;
+    const nodeStream = Readable.fromWeb(webStream);
     const contentLengthHeader = response.headers.get("content-length");
     const contentTypeHeader = response.headers.get("content-type") ?? undefined;
 
