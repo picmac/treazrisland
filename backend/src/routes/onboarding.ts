@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import argon2 from "argon2";
 import { issueSessionTokens } from "../utils/tokens.js";
+import { setRefreshCookie } from "../utils/cookies.js";
 
 const adminPayloadSchema = z.object({
   email: z.string().email(),
@@ -59,6 +60,8 @@ export async function registerOnboardingRoutes(app: FastifyInstance) {
       adminUser.role
     );
 
+    setRefreshCookie(reply, refreshToken, refreshExpiresAt);
+
     request.log.info(
       { userId: adminUser.id },
       "Initial admin account created via onboarding"
@@ -72,7 +75,6 @@ export async function registerOnboardingRoutes(app: FastifyInstance) {
         role: adminUser.role
       },
       accessToken,
-      refreshToken,
       refreshExpiresAt: refreshExpiresAt.toISOString()
     });
   });

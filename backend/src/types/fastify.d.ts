@@ -2,6 +2,8 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Role } from "@prisma/client";
 import type { ScreenScraperService } from "../services/screenscraper/service.js";
 import type { StorageService } from "../services/storage/storage.js";
+import type { EmailService } from "../services/email/service.js";
+import type { MfaService } from "../services/mfa/service.js";
 
 declare module "@fastify/jwt" {
   interface FastifyJWT {
@@ -17,6 +19,8 @@ declare module "fastify" {
     requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     screenScraperService: ScreenScraperService;
     storage: StorageService;
+    emailService: EmailService;
+    mfaService: MfaService;
   }
 
   interface FastifyRequest {

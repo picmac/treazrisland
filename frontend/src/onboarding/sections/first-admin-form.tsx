@@ -1,8 +1,10 @@
 'use client';
 
+import { useRouter } from "next/navigation";
 import type { ChangeEvent, FormEvent } from "react";
 import { useState, useTransition } from "react";
 import { apiFetch, ApiError } from "@lib/api/client";
+import { useSession } from "@/src/auth/session-provider";
 
 interface FormState {
   email: string;
@@ -18,9 +20,10 @@ const initialState: FormState = {
 
 export function FirstAdminForm() {
   const [form, setForm] = useState<FormState>(initialState);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const { setSession } = useSession();
 
   const handleChange = (field: keyof FormState) => (event: ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -28,22 +31,26 @@ export function FirstAdminForm() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setMessage(null);
     setError(null);
 
     startTransition(async () => {
       try {
         const payload = await apiFetch<{
-          user: {
-            nickname: string;
-          };
+          user: { id: string; email: string; nickname: string; role: string };
+          accessToken: string;
+          refreshExpiresAt: string;
         }>("/onboarding/admin", {
           method: "POST",
           body: JSON.stringify(form)
         });
 
-        setMessage(`Welcome aboard, ${payload.user.nickname}. Secure the keys and continue to the main portal.`);
-        setForm(initialState);
+        setSession({
+          user: payload.user,
+          accessToken: payload.accessToken,
+          refreshExpiresAt: payload.refreshExpiresAt
+        });
+        router.push("/play");
+        router.refresh();
       } catch (err) {
         if (err instanceof ApiError) {
           setError(`${err.status}: ${err.message}`);
@@ -113,7 +120,6 @@ export function FirstAdminForm() {
         {isPending ? "Charting course…" : "Create Admin"}
       </button>
 
-      {message && <p className="text-xs text-emerald-300">{message}</p>}
       {error && <p className="text-xs text-red-300">{error}</p>}
     </form>
   );

@@ -13,6 +13,7 @@ import { registerScreenScraperRoutes } from "./routes/screenscraper.js";
 import { registerInvitationRoutes } from "./routes/invitations.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
+import supportServices from "./plugins/support-services.js";
 
 type BuildServerOptions = {
   registerPrisma?: boolean;
@@ -44,6 +45,7 @@ export const buildServer = (options: BuildServerOptions = {}): FastifyInstance =
 
   app.register(authPlugin);
   app.register(storagePlugin);
+  app.register(supportServices);
 
   if (registerPrisma) {
     app.register(prismaPlugin);

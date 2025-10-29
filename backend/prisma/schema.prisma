@@ -71,12 +71,14 @@ model User {
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
   refreshTokens  RefreshToken[]
+  refreshTokenFamilies RefreshTokenFamily[]
   mfaSecrets     MfaSecret[]
   passwordResets PasswordResetToken[]
   createdInvites UserInvitation[]     @relation("AdminInvitations")
   enrichmentJobs RomEnrichmentJob[]
   screenScraperSettings ScreenScraperSettings[]
   romUploadAudits RomUploadAudit[]
+  loginAudits    LoginAudit[]
 }
 
 model UserInvitation {
@@ -93,17 +95,56 @@ model UserInvitation {
   createdBy User? @relation("AdminInvitations", fields: [createdById], references: [id])
 }
 
-model RefreshToken {
-  id         String   @id @default(cuid())
-  tokenHash  String   @unique
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
-  expiresAt  DateTime
-  revokedAt  DateTime?
+model RefreshTokenFamily {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+  revokedAt     DateTime?
+  revokedReason String?
+  tokens        RefreshToken[]
 
   @@index([userId])
+}
+
+model RefreshToken {
+  id            String   @id @default(cuid())
+  tokenHash     String   @unique
+  userId        String
+  familyId      String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  family        RefreshTokenFamily @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  revokedReason String?
+
+  @@index([userId])
+  @@index([familyId])
   @@index([expiresAt])
+}
+
+enum LoginAuditEvent {
+  SUCCESS
+  FAILURE
+  MFA_REQUIRED
+  LOGOUT
+  PASSWORD_RESET
+}
+
+model LoginAudit {
+  id             String          @id @default(cuid())
+  userId         String?
+  user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  emailAttempted String?
+  ipAddress      String?
+  userAgent      String?
+  event          LoginAuditEvent
+  reason         String?
+  createdAt      DateTime        @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model PasswordResetToken {
