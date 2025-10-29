@@ -11,12 +11,52 @@ const originalFetch = global.fetch;
 
 describe("EmulatorPlayer", () => {
   beforeEach(() => {
-    global.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        arrayBuffer: () => Promise.resolve(new ArrayBuffer(4))
-      })
-    ) as unknown as typeof fetch;
+    global.fetch = vi
+      .fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+
+        if (url.includes("/api/player/roms/") && url.endsWith("/binary")) {
+          return Promise.resolve(
+            new Response(new Uint8Array([1, 2, 3, 4]), {
+              status: 200,
+              headers: { "Content-Type": "application/octet-stream" }
+            })
+          );
+        }
+
+        if (url.includes("/player/play-states") && (!init || init.method === undefined)) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ playStates: [] }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" }
+            })
+          );
+        }
+
+        if (url.includes("/player/play-states") && init?.method === "POST") {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                id: "state-1",
+                romId: "rom-2",
+                label: null,
+                slot: null,
+                size: 8,
+                checksumSha256: "abc",
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                downloadUrl: "/player/play-states/state-1/binary"
+              }),
+              {
+                status: 201,
+                headers: { "Content-Type": "application/json" }
+              }
+            )
+          );
+        }
+
+        return Promise.reject(new Error(`Unexpected fetch call for ${url}`));
+      }) as unknown as typeof fetch;
 
     (window as any).EJS_player = vi.fn();
     vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:rom");
@@ -42,6 +82,7 @@ describe("EmulatorPlayer", () => {
     expect(config.gameName).toBe("Chrono Trigger");
     expect(config.system).toBe("snes9x");
     expect(config.onSaveState).toBeTypeOf("function");
+    expect(config.loadStateUrl).toBeNull();
   });
 
   it("delegates save-state callbacks to the provided handler", async () => {
@@ -59,6 +100,12 @@ describe("EmulatorPlayer", () => {
     const payload = new ArrayBuffer(8);
     await config.onSaveState?.(payload);
 
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/player/play-states"),
+        expect.objectContaining({ method: "POST" })
+      );
+    });
     expect(onSaveState).toHaveBeenCalledWith(payload);
   });
 });

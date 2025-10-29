@@ -54,6 +54,10 @@ const envSchema = z.object({
     .string()
     .optional()
     .transform((value) => (value && value.trim().length > 0 ? value.trim() : undefined)),
+  STORAGE_SIGNED_URL_TTL: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value.trim() : undefined)),
   ROM_UPLOAD_MAX_BYTES: z
     .string()
     .regex(/^\d+$/)
@@ -96,7 +100,17 @@ const envSchema = z.object({
     .string()
     .regex(/^\d+$/)
     .transform(Number)
-    .default("3")
+    .default("3"),
+  PLAY_STATE_MAX_BYTES: z
+    .string()
+    .regex(/^\d+$/)
+    .transform(Number)
+    .default(String(5 * 1024 * 1024)),
+  PLAY_STATE_MAX_PER_ROM: z
+    .string()
+    .regex(/^\d+$/)
+    .transform(Number)
+    .default("5")
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -111,6 +125,9 @@ if (!parsed.success) {
 const accessMs = ms(parsed.data.JWT_ACCESS_TTL as StringValue);
 const refreshMs = ms(parsed.data.JWT_REFRESH_TTL as StringValue);
 const passwordResetMs = ms(parsed.data.PASSWORD_RESET_TTL as StringValue);
+const signedUrlTtlMs = parsed.data.STORAGE_SIGNED_URL_TTL
+  ? ms(parsed.data.STORAGE_SIGNED_URL_TTL as StringValue)
+  : undefined;
 
 if (typeof accessMs !== "number" || accessMs <= 0) {
   throw new Error("JWT_ACCESS_TTL must be a positive duration string");
@@ -120,6 +137,10 @@ if (typeof refreshMs !== "number" || refreshMs <= 0) {
 }
 if (typeof passwordResetMs !== "number" || passwordResetMs <= 0) {
   throw new Error("PASSWORD_RESET_TTL must be a positive duration string");
+}
+
+if (signedUrlTtlMs !== undefined && (typeof signedUrlTtlMs !== "number" || signedUrlTtlMs <= 0)) {
+  throw new Error("STORAGE_SIGNED_URL_TTL must be a positive duration string when set");
 }
 
 if (
@@ -160,6 +181,8 @@ export const env = {
   USER_INVITE_EXPIRY_HOURS: parsed.data.USER_INVITE_EXPIRY_HOURS,
   USER_INVITE_EXPIRY_MS: parsed.data.USER_INVITE_EXPIRY_HOURS * 60 * 60 * 1000,
   STORAGE_FORCE_PATH_STYLE: parsed.data.STORAGE_FORCE_PATH_STYLE ?? true,
+  STORAGE_SIGNED_URL_TTL_SECONDS:
+    signedUrlTtlMs !== undefined ? Math.floor(signedUrlTtlMs / 1000) : undefined,
   SCREENSCRAPER_DEFAULT_LANGUAGE_PRIORITY: splitCsv(
     parsed.data.SCREENSCRAPER_DEFAULT_LANGUAGE_PRIORITY
   ),
@@ -171,5 +194,7 @@ export const env = {
   ),
   SCREENSCRAPER_ONLY_BETTER_MEDIA:
     parsed.data.SCREENSCRAPER_ONLY_BETTER_MEDIA.toLowerCase() === "true" ||
-    parsed.data.SCREENSCRAPER_ONLY_BETTER_MEDIA === "1"
+    parsed.data.SCREENSCRAPER_ONLY_BETTER_MEDIA === "1",
+  PLAY_STATE_MAX_BYTES: parsed.data.PLAY_STATE_MAX_BYTES,
+  PLAY_STATE_MAX_PER_ROM: parsed.data.PLAY_STATE_MAX_PER_ROM
 };

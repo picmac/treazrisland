@@ -42,3 +42,13 @@ application code for local development.
 
 4. Follow backend/frontend README files (to be authored) for dev server commands.
 
+## Emulator Playback Requirements
+
+- Modern Chromium or Firefox builds are recommended for smooth canvas rendering and IndexedDB-backed save states. Safari
+  remains experimental until we validate WebAssembly SIMD performance on Apple Silicon.
+- ROM binaries stream through the Next.js proxy at `/api/player/roms/:id/binary`, which forwards authentication cookies and
+  transparently follows signed URLs when `STORAGE_SIGNED_URL_TTL` is configured.
+- Save states are persisted via the Fastify player API and stored in object storage. Maximum payload size and per-ROM limits
+  are controlled through `PLAY_STATE_MAX_BYTES` and `PLAY_STATE_MAX_PER_ROM` in the environment configuration. Older states are
+  trimmed automatically when the per-ROM limit is exceeded.
+

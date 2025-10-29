@@ -1,8 +1,9 @@
 import { createHash, createHmac } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
-import { mkdir, unlink, copyFile } from "node:fs/promises";
+import { mkdir, unlink, copyFile, stat } from "node:fs/promises";
 import { dirname, join, normalize } from "node:path";
 import { pipeline } from "node:stream/promises";
+import { Readable } from "node:stream";
 
 type StorageDriver = "filesystem" | "s3";
 
@@ -12,6 +13,7 @@ type CommonStorageConfig = {
   romBucket: string;
   biosBucket?: string;
   forcePathStyle: boolean;
+  signedUrlTTLSeconds?: number;
 };
 
 type FilesystemConfig = CommonStorageConfig & {
@@ -28,6 +30,17 @@ type S3Config = CommonStorageConfig & {
 };
 
 type StorageConfig = FilesystemConfig | S3Config;
+
+export type StorageStreamResult = {
+  stream: NodeJS.ReadableStream;
+  contentLength?: number;
+  contentType?: string;
+};
+
+export type StorageSignedUrlResult = {
+  url: string;
+  expiresAt: Date;
+};
 
 export type UploadSource = {
   filePath: string;
@@ -51,6 +64,18 @@ export class StorageService {
     return this.config.biosBucket;
   }
 
+  get assetBucket(): string {
+    return this.config.assetBucket;
+  }
+
+  get signedUrlTTLSeconds(): number | undefined {
+    return this.config.signedUrlTTLSeconds;
+  }
+
+  prefersSignedUrls(): boolean {
+    return this.config.driver === "s3" && typeof this.config.signedUrlTTLSeconds === "number";
+  }
+
   async putRomObject(key: string, source: UploadSource): Promise<void> {
     await this.putObject(this.config.romBucket, key, source);
   }
@@ -71,6 +96,74 @@ export class StorageService {
     await this.putObjectS3(bucket, key, source);
   }
 
+  async getRomObjectStream(key: string): Promise<StorageStreamResult> {
+    return this.getObjectStream(this.config.romBucket, key);
+  }
+
+  async getAssetObjectStream(key: string): Promise<StorageStreamResult> {
+    return this.getObjectStream(this.config.assetBucket, key);
+  }
+
+  async getObjectStream(bucket: string, key: string): Promise<StorageStreamResult> {
+    if (this.config.driver === "filesystem") {
+      return this.getObjectStreamFilesystem(bucket, key);
+    }
+
+    return this.getObjectStreamS3(bucket, key);
+  }
+
+  async getRomObjectSignedUrl(
+    key: string,
+    options: { expiresInSeconds?: number } = {}
+  ): Promise<StorageSignedUrlResult | null> {
+    return this.getObjectSignedUrl(this.config.romBucket, key, options);
+  }
+
+  async getAssetObjectSignedUrl(
+    key: string,
+    options: { expiresInSeconds?: number } = {}
+  ): Promise<StorageSignedUrlResult | null> {
+    return this.getObjectSignedUrl(this.config.assetBucket, key, options);
+  }
+
+  async getObjectSignedUrl(
+    bucket: string,
+    key: string,
+    options: { expiresInSeconds?: number } = {}
+  ): Promise<StorageSignedUrlResult | null> {
+    if (this.config.driver !== "s3") {
+      return null;
+    }
+
+    const ttl = options.expiresInSeconds ?? this.config.signedUrlTTLSeconds;
+    if (!ttl || ttl <= 0) {
+      return null;
+    }
+
+    const config = this.config as S3Config;
+    const expires = Math.min(ttl, 60 * 60 * 24 * 7); // clamp to 7 days per S3 constraints
+    const signedUrl = this.buildS3SignedUrl(config, bucket, key, expires);
+    const expiresAt = new Date(Date.now() + expires * 1000);
+    return { url: signedUrl.toString(), expiresAt };
+  }
+
+  async deleteObject(bucket: string, key: string): Promise<void> {
+    if (this.config.driver === "filesystem") {
+      await this.deleteObjectFilesystem(bucket, key);
+      return;
+    }
+
+    await this.deleteObjectS3(bucket, key);
+  }
+
+  async deleteAssetObject(key: string): Promise<void> {
+    await this.deleteObject(this.config.assetBucket, key);
+  }
+
+  async deleteRomObject(key: string): Promise<void> {
+    await this.deleteObject(this.config.romBucket, key);
+  }
+
   private async putObjectFilesystem(
     bucket: string,
     key: string,
@@ -82,6 +175,27 @@ export class StorageService {
     const destPath = normalize(join(this.config.localRoot, bucket, key));
     await mkdir(dirname(destPath), { recursive: true });
     await copyFile(source.filePath, destPath);
+  }
+
+  private async getObjectStreamFilesystem(bucket: string, key: string): Promise<StorageStreamResult> {
+    if (this.config.driver !== "filesystem") {
+      throw new Error("Filesystem storage is not configured");
+    }
+    const filePath = normalize(join(this.config.localRoot, bucket, key));
+    const stream = createReadStream(filePath);
+    const stats = await stat(filePath);
+    return {
+      stream,
+      contentLength: stats.size
+    };
+  }
+
+  private async deleteObjectFilesystem(bucket: string, key: string): Promise<void> {
+    if (this.config.driver !== "filesystem") {
+      throw new Error("Filesystem storage is not configured");
+    }
+    const filePath = normalize(join(this.config.localRoot, bucket, key));
+    await safeUnlink(filePath);
   }
 
   private async putObjectS3(bucket: string, key: string, source: UploadSource): Promise<void> {
@@ -173,6 +287,46 @@ export class StorageService {
     }
   }
 
+  private async getObjectStreamS3(bucket: string, key: string): Promise<StorageStreamResult> {
+    if (this.config.driver !== "s3") {
+      throw new Error("S3 storage is not configured");
+    }
+    const config = this.config as S3Config;
+    const response = await this.sendSignedS3Request(config, bucket, key, "GET");
+    if (!response.ok || !response.body) {
+      const errorBody = await response.text().catch(() => "");
+      throw new Error(
+        `S3 download failed with status ${response.status}: ${errorBody || response.statusText}`
+      );
+    }
+
+    const nodeStream = Readable.fromWeb(
+      response.body as unknown as globalThis.ReadableStream<Uint8Array>
+    );
+    const contentLengthHeader = response.headers.get("content-length");
+    const contentTypeHeader = response.headers.get("content-type") ?? undefined;
+
+    return {
+      stream: nodeStream,
+      contentLength: contentLengthHeader ? Number(contentLengthHeader) : undefined,
+      contentType: contentTypeHeader
+    };
+  }
+
+  private async deleteObjectS3(bucket: string, key: string): Promise<void> {
+    if (this.config.driver !== "s3") {
+      throw new Error("S3 storage is not configured");
+    }
+    const config = this.config as S3Config;
+    const response = await this.sendSignedS3Request(config, bucket, key, "DELETE");
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "");
+      throw new Error(
+        `S3 delete failed with status ${response.status}: ${errorBody || response.statusText}`
+      );
+    }
+  }
+
   private buildS3Url(config: S3Config, bucket: string, key: string): URL {
     const base = new URL(config.endpoint);
     const encodedKey = encodeS3Key(key);
@@ -183,6 +337,119 @@ export class StorageService {
       base.pathname = `/${encodedKey}`;
     }
     return base;
+  }
+
+  private buildS3SignedUrl(
+    config: S3Config,
+    bucket: string,
+    key: string,
+    expiresInSeconds: number
+  ): URL {
+    const url = this.buildS3Url(config, bucket, key);
+    const now = new Date();
+    const amzDate = formatAmzDate(now);
+    const dateStamp = formatDateStamp(now);
+    const credentialScope = `${dateStamp}/${config.region}/s3/aws4_request`;
+    const payloadHash = "UNSIGNED-PAYLOAD";
+
+    const queryEntries: Array<[string, string]> = [
+      ["X-Amz-Algorithm", "AWS4-HMAC-SHA256"],
+      ["X-Amz-Credential", `${config.accessKey}/${credentialScope}`],
+      ["X-Amz-Date", amzDate],
+      ["X-Amz-Expires", `${Math.floor(expiresInSeconds)}`],
+      ["X-Amz-SignedHeaders", "host"]
+    ];
+
+    queryEntries.sort(([a], [b]) => a.localeCompare(b));
+
+    const canonicalQuery = queryEntries
+      .map(([name, value]) => `${encodeURIComponent(name)}=${encodeURIComponent(value)}`)
+      .join("&");
+
+    const canonicalRequest = [
+      "GET",
+      url.pathname,
+      canonicalQuery,
+      `host:${url.host}\n`,
+      "host",
+      payloadHash
+    ].join("\n");
+
+    const canonicalHash = createHash("sha256").update(canonicalRequest).digest("hex");
+    const stringToSign = [
+      "AWS4-HMAC-SHA256",
+      amzDate,
+      credentialScope,
+      canonicalHash
+    ].join("\n");
+
+    const signingKey = getSigningKey(config.secretKey, dateStamp, config.region, "s3");
+    const signature = createHmac("sha256", signingKey).update(stringToSign).digest("hex");
+
+    const finalQuery = `${canonicalQuery}&X-Amz-Signature=${signature}`;
+    url.search = finalQuery;
+    return url;
+  }
+
+  private async sendSignedS3Request(
+    config: S3Config,
+    bucket: string,
+    key: string,
+    method: "GET" | "DELETE"
+  ): Promise<Response> {
+    const url = this.buildS3Url(config, bucket, key);
+    const now = new Date();
+    const amzDate = formatAmzDate(now);
+    const dateStamp = formatDateStamp(now);
+    const payloadHash = "UNSIGNED-PAYLOAD";
+
+    const headerEntries: Array<[string, string]> = [
+      ["host", url.host],
+      ["x-amz-content-sha256", payloadHash],
+      ["x-amz-date", amzDate]
+    ];
+
+    headerEntries.sort(([a], [b]) => a.localeCompare(b));
+
+    const canonicalHeaders = `${headerEntries
+      .map(([name, value]) => `${name}:${value.trim()}`)
+      .join("\n")}\n`;
+    const signedHeaders = headerEntries.map(([name]) => name).join(";");
+
+    const canonicalRequest = [
+      method,
+      url.pathname,
+      url.searchParams.toString(),
+      canonicalHeaders,
+      signedHeaders,
+      payloadHash
+    ].join("\n");
+
+    const canonicalHash = createHash("sha256").update(canonicalRequest).digest("hex");
+    const credentialScope = `${dateStamp}/${config.region}/s3/aws4_request`;
+    const stringToSign = [
+      "AWS4-HMAC-SHA256",
+      amzDate,
+      credentialScope,
+      canonicalHash
+    ].join("\n");
+
+    const signingKey = getSigningKey(config.secretKey, dateStamp, config.region, "s3");
+    const signature = createHmac("sha256", signingKey).update(stringToSign).digest("hex");
+    const authorization =
+      `AWS4-HMAC-SHA256 Credential=${config.accessKey}/${credentialScope}, ` +
+      `SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+    const headers = new Headers();
+    headers.set("host", url.host);
+    headers.set("x-amz-content-sha256", payloadHash);
+    headers.set("x-amz-date", amzDate);
+    headers.set("authorization", authorization);
+
+    return fetch(url, {
+      method,
+      headers
+    });
   }
 }
 

@@ -41,5 +41,15 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     throw new ApiError(message, response.status, parsedBody);
   }
 
-  return (await response.json()) as T;
+  if (response.status === 204 || response.status === 205) {
+    return undefined as T;
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    return (await response.json()) as T;
+  }
+
+  const text = await response.text();
+  return text as unknown as T;
 }
