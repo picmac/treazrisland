@@ -320,7 +320,7 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
         orderBy.push({ releaseYear: sortOrder });
         orderBy.push({ title: "asc" });
       } else if (resolvedSort === "publisher") {
-        orderBy.push({ metadata: { _min: { publisher: sortOrder } } });
+        orderBy.push({ metadata: { _count: sortOrder } });
         orderBy.push({ title: "asc" });
       } else if (resolvedSort === "createdAt") {
         orderBy.push({ createdAt: sortOrder });

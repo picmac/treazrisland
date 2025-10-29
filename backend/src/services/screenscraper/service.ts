@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
-import { FastifyBaseLogger } from "fastify";
+import type { FastifyBaseLogger } from "fastify";
 import { z } from "zod";
 import {
   EnrichmentProvider,
@@ -8,7 +8,8 @@ import {
   Prisma,
   PrismaClient,
   RomAssetSource,
-  RomAssetType
+  RomAssetType,
+  type ScreenScraperSettings
 } from "@prisma/client";
 import { ScreenScraperConfig } from "../../config/screenscraper.js";
 import { ScreenScraperQueue } from "./queue.js";
@@ -231,7 +232,7 @@ export class ScreenScraperService {
       preferParentGames: true
     };
 
-    let userSettings: Prisma.ScreenScraperSettings | null = null;
+    let userSettings: ScreenScraperSettings | null = null;
     if (userId) {
       userSettings = await this.prisma.screenScraperSettings.findFirst({
         where: { userId }
@@ -250,7 +251,7 @@ export class ScreenScraperService {
   async updateUserSettings(
     userId: string,
     input: Partial<EffectiveScreenScraperSettings>
-  ): Promise<Prisma.ScreenScraperSettings> {
+  ): Promise<ScreenScraperSettings> {
     const normalized = this.normalizeSettingsInput(input);
 
     const payload = {
@@ -311,7 +312,7 @@ export class ScreenScraperService {
       preferParentGames: true
     };
 
-    let userSettings: Prisma.ScreenScraperSettings | null = null;
+    let userSettings: ScreenScraperSettings | null = null;
     if (requestedById) {
       userSettings = await this.prisma.screenScraperSettings.findFirst({
         where: { userId: requestedById }
@@ -392,7 +393,7 @@ export class ScreenScraperService {
 
   private mergeSettings(
     defaults: EffectiveScreenScraperSettings,
-    record?: Prisma.ScreenScraperSettings,
+    record?: ScreenScraperSettings,
     overrides?: Partial<EffectiveScreenScraperSettings>
   ): EffectiveScreenScraperSettings {
     const normalizedOverrides = this.normalizeSettingsInput(overrides);
@@ -629,7 +630,7 @@ export class ScreenScraperService {
     }>
   ) {
     const desiredTypes = new Set(settings.mediaTypes.map((type) => type.toLowerCase()));
-    const results: Array<Prisma.RomAssetCreateInput> = [];
+    const results: Array<Prisma.RomAssetCreateInput & { providerId: string }> = [];
     const countsByType = new Map<RomAssetType, number>();
 
     for (const asset of existingAssets) {
@@ -847,7 +848,7 @@ export class ScreenScraperService {
     }
 
     const result = await producer();
-    const payload = JSON.parse(JSON.stringify(result)) as Prisma.JsonValue;
+    const payload = JSON.parse(JSON.stringify(result)) as Prisma.InputJsonValue;
     const expiresAt = new Date(Date.now() + 6 * 60 * 60 * 1000);
 
     await this.prisma.screenScraperCacheEntry.upsert({

@@ -654,7 +654,7 @@ async function persistUploadStream(
   }
 
   await new Promise<void>((resolve, reject) => {
-    writeStream.end((err) => {
+    writeStream.end((err: NodeJS.ErrnoException | null) => {
       if (err) {
         reject(err);
         return;

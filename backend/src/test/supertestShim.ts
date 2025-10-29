@@ -22,59 +22,85 @@ type RequestChain<T = unknown> = {
   expect: (status: number) => Promise<InjectResponse<T>>;
 };
 
-function buildResponse(raw: Awaited<ReturnType<FastifyInstance["inject"]>>): InjectResponse {
-  const contentType = (raw.headers["content-type"] ?? "").toString();
-  let parsed: unknown = raw.body;
+function buildResponse<T>(
+  raw: Awaited<ReturnType<FastifyInstance["inject"]>>
+): InjectResponse<T> {
+  const headerValue = raw.headers["content-type"];
+  const contentType = Array.isArray(headerValue)
+    ? headerValue.join(";")
+    : headerValue
+      ? String(headerValue)
+      : "";
+
+  const bodyValue = raw.body as unknown;
+  const text = (() => {
+    if (typeof bodyValue === "string") {
+      return bodyValue;
+    }
+    if (Buffer.isBuffer(bodyValue)) {
+      return bodyValue.toString("utf8");
+    }
+    if (bodyValue === undefined || bodyValue === null) {
+      return "";
+    }
+    if (typeof bodyValue === "object") {
+      try {
+        return JSON.stringify(bodyValue);
+      } catch {
+        return String(bodyValue);
+      }
+    }
+    return String(bodyValue);
+  })();
+
+  let parsed: unknown = bodyValue;
   if (contentType.includes("application/json")) {
-    try {
-      parsed = typeof raw.json === "function" ? raw.json() : raw.body;
-    } catch {
-      if (typeof raw.body === "string") {
-        parsed = raw.body.length > 0 ? JSON.parse(raw.body) : null;
-      } else if (Buffer.isBuffer(raw.body)) {
-        const text = raw.body.toString("utf8");
-        parsed = text.length > 0 ? JSON.parse(text) : null;
+    if (text.length === 0) {
+      parsed = null;
+    } else {
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = text;
       }
     }
   }
 
-  const text = (() => {
-    if (typeof raw.body === "string") {
-      return raw.body;
+  const headers: Record<string, string | string[]> = {};
+  for (const [key, value] of Object.entries(raw.headers)) {
+    if (Array.isArray(value)) {
+      headers[key] = value;
+    } else if (typeof value === "string" || typeof value === "number") {
+      headers[key] = value.toString();
     }
-    if (Buffer.isBuffer(raw.body)) {
-      return raw.body.toString("utf8");
-    }
-    if (raw.body === undefined || raw.body === null) {
-      return "";
-    }
-    return JSON.stringify(raw.body);
-  })();
+  }
 
   return {
     status: raw.statusCode,
     statusCode: raw.statusCode,
     body: parsed as T,
-    headers: raw.headers as Record<string, string | string[]>,
+    headers,
     text,
     json: async () => parsed as T
   };
 }
 
+type AllowedMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
+
 function createChain<T>(
   app: FastifyInstance,
-  method: string,
+  method: AllowedMethod,
   url: string,
-  options: { headers: Record<string, string | string[]>; payload: unknown }
+  options: { headers: Record<string, string | string[]>; payload?: string | Buffer }
 ): RequestChain<T> {
   const execute = async (): Promise<InjectResponse<T>> => {
-    const response = await app.inject({
+    const response = (await app.inject({
       method,
       url,
       headers: options.headers,
       payload: options.payload
-    });
-    return buildResponse(response) as InjectResponse<T>;
+    })) as Awaited<ReturnType<FastifyInstance["inject"]>>;
+    return buildResponse<T>(response);
   };
 
   const chain: RequestChain<T> = {
@@ -97,13 +123,15 @@ function createChain<T>(
       return chain;
     },
     send(payload) {
-      if (payload && typeof payload === "object" && !(payload instanceof Buffer)) {
+      if (payload && typeof payload === "object" && !Buffer.isBuffer(payload)) {
         options.payload = JSON.stringify(payload);
         if (!options.headers["content-type"]) {
           options.headers["content-type"] = "application/json";
         }
+      } else if (typeof payload === "number" || typeof payload === "boolean") {
+        options.payload = String(payload);
       } else {
-        options.payload = payload;
+        options.payload = payload as string | Buffer | undefined;
       }
       return chain;
     },

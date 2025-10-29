@@ -1,4 +1,4 @@
-import type { Logger } from "pino";
+import type { FastifyBaseLogger } from "fastify";
 
 export interface PasswordResetPayload {
   to: string;
@@ -12,7 +12,7 @@ export interface EmailService {
 }
 
 class LoggingEmailService implements EmailService {
-  constructor(private readonly logger: Logger) {}
+  constructor(private readonly logger: FastifyBaseLogger) {}
 
   async sendPasswordReset(payload: PasswordResetPayload): Promise<void> {
     this.logger.info(
@@ -26,5 +26,5 @@ class LoggingEmailService implements EmailService {
   }
 }
 
-export const createEmailService = (logger: Logger): EmailService =>
+export const createEmailService = (logger: FastifyBaseLogger): EmailService =>
   new LoggingEmailService(logger);
