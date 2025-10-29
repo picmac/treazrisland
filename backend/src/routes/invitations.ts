@@ -93,7 +93,11 @@ export async function registerInvitationRoutes(app: FastifyInstance) {
           id: invitation.id,
           role: invitation.role,
           email: invitation.email,
-          expiresAt: invitation.expiresAt.toISOString()
+          expiresAt: invitation.expiresAt.toISOString(),
+          redeemedAt: invitation.redeemedAt
+            ? invitation.redeemedAt.toISOString()
+            : null,
+          createdAt: invitation.createdAt.toISOString()
         },
         token
       });

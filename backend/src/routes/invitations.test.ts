@@ -118,8 +118,11 @@ describe("invitation routes", () => {
     expect(body.invitation).toMatchObject({
       id: "invite_1",
       role: "USER",
-      email: "test@example.com"
+      email: "test@example.com",
+      redeemedAt: null
     });
+    expect(typeof body.invitation.expiresAt).toBe("string");
+    expect(typeof body.invitation.createdAt).toBe("string");
     const expiresAt = new Date(body.invitation.expiresAt).getTime();
     expect(expiresAt).toBeGreaterThan(before);
     expect(expiresAt - before).toBeLessThanOrEqual(12 * 60 * 60 * 1000 + 1000);
