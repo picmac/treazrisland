@@ -20,7 +20,8 @@ export default fp(async (app) => {
     const storage = new StorageService({
       ...common,
       driver: "filesystem",
-      localRoot
+      localRoot,
+      signedUrlTTLSeconds: env.STORAGE_SIGNED_URL_TTL_SECONDS
     });
 
     app.decorate("storage", storage);
@@ -33,7 +34,8 @@ export default fp(async (app) => {
     endpoint: env.STORAGE_ENDPOINT!,
     region: env.STORAGE_REGION!,
     accessKey: env.STORAGE_ACCESS_KEY!,
-    secretKey: env.STORAGE_SECRET_KEY!
+    secretKey: env.STORAGE_SECRET_KEY!,
+    signedUrlTTLSeconds: env.STORAGE_SIGNED_URL_TTL_SECONDS
   });
 
   app.decorate("storage", storage);

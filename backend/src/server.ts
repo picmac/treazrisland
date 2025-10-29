@@ -14,6 +14,7 @@ import { registerInvitationRoutes } from "./routes/invitations.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
 import { registerLibraryRoutes } from "./routes/library.js";
+import { registerPlayerRoutes } from "./routes/player.js";
 import supportServices from "./plugins/support-services.js";
 
 type BuildServerOptions = {
@@ -61,6 +62,7 @@ export const buildServer = (options: BuildServerOptions = {}): FastifyInstance =
       await registerScreenScraperRoutes(instance);
       await registerAdminRoutes(instance);
       await registerLibraryRoutes(instance);
+      await registerPlayerRoutes(instance);
     }
   });
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadEmulatorBundle } from "@/lib/emulator/loadBundle";
 import MobileControls from "@/components/MobileControls";
+import { createPlayState, listPlayStates, type PlayState } from "@/src/lib/api/player";
 
 const ROM_ENDPOINT = "/api/player/roms";
 
@@ -66,6 +67,19 @@ async function fetchRomBinary(romId: string, authToken?: string) {
     throw new Error(`Failed to fetch ROM: ${response.status}`);
   }
 
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const payload = await response.json();
+    if (payload?.type === "signed-url" && typeof payload.url === "string") {
+      const signedResponse = await fetch(payload.url);
+      if (!signedResponse.ok) {
+        throw new Error(`Failed to fetch ROM from signed URL: ${signedResponse.status}`);
+      }
+      return await signedResponse.arrayBuffer();
+    }
+    throw new Error("Unexpected response while fetching ROM binary");
+  }
+
   const buffer = await response.arrayBuffer();
   return buffer;
 }
@@ -90,18 +104,24 @@ export default function EmulatorPlayer({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [playStates, setPlayStates] = useState<PlayState[]>([]);
 
   const core = useMemo(() => selectCore(platform), [platform]);
 
   const handleSaveState = useCallback(
     async (payload: ArrayBuffer) => {
       try {
+        const savedState = await createPlayState({ romId, data: payload });
+        setPlayStates((previous) => {
+          const filtered = previous.filter((state) => state.id !== savedState.id);
+          return [savedState, ...filtered];
+        });
         await onSaveState?.(payload);
       } catch (err) {
         console.error("Failed to persist save state", err);
       }
     },
-    [onSaveState]
+    [onSaveState, romId]
   );
 
   const emitVirtualKey = useCallback((key: string, pressed: boolean) => {
@@ -126,19 +146,30 @@ export default function EmulatorPlayer({
 
       try {
         await loadEmulatorBundle();
-        const romBinary = await fetchRomBinary(romId, authToken);
+        const [romBinary, loadedStates] = await Promise.all([
+          fetchRomBinary(romId, authToken),
+          listPlayStates(romId).catch((err) => {
+            console.error("Failed to load play states", err);
+            return [] as PlayState[];
+          })
+        ]);
         if (isCancelled) {
           return;
         }
 
+        setPlayStates(loadedStates);
         const romBlob = new Blob([romBinary], { type: "application/octet-stream" });
         const romUrl = URL.createObjectURL(romBlob);
+        const initialStateUrl = loadedStates[0]?.downloadUrl
+          ? `/api${loadedStates[0].downloadUrl}`
+          : null;
 
         (window as EmulatorWindow).EJS_player?.({
           gameUrl: romUrl,
           gameName: romName,
           system: core,
           onSaveState: handleSaveState,
+          loadStateUrl: initialStateUrl,
           customOptions: {
             container: containerRef.current ?? undefined,
             romId,
