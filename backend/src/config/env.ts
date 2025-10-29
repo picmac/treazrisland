@@ -95,7 +95,47 @@ const envSchema = z.object({
     .string()
     .regex(/^\d+$/)
     .transform(Number)
-    .default("3")
+    .default("3"),
+  NETPLAY_BASE_URL: z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (value === undefined) {
+        return undefined;
+      }
+
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    })
+    .superRefine((value, ctx) => {
+      if (!value) {
+        return;
+      }
+
+      try {
+        new URL(value);
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "NETPLAY_BASE_URL must be a valid URL"
+        });
+      }
+    }),
+  NETPLAY_API_KEY: z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (value === undefined) {
+        return undefined;
+      }
+
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    }),
+  NETPLAY_DEFAULT_TTL: z.string().default("30m"),
+  NETPLAY_MIN_TTL: z.string().default("5m"),
+  NETPLAY_MAX_TTL: z.string().default("6h"),
+  NETPLAY_CLEANUP_INTERVAL: z.string().default("5m")
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -110,11 +150,45 @@ if (!parsed.success) {
 const accessMs = ms(parsed.data.JWT_ACCESS_TTL as StringValue);
 const refreshMs = ms(parsed.data.JWT_REFRESH_TTL as StringValue);
 
+const parseDuration = (value: string, label: string): number => {
+  const parsedValue = ms(value as StringValue);
+
+  if (typeof parsedValue !== "number" || parsedValue <= 0) {
+    throw new Error(`${label} must be a positive duration string`);
+  }
+
+  return parsedValue;
+};
+
+const netplayMinTtlMs = parseDuration(parsed.data.NETPLAY_MIN_TTL, "NETPLAY_MIN_TTL");
+const netplayMaxTtlMs = parseDuration(parsed.data.NETPLAY_MAX_TTL, "NETPLAY_MAX_TTL");
+const netplayDefaultTtlMs = parseDuration(parsed.data.NETPLAY_DEFAULT_TTL, "NETPLAY_DEFAULT_TTL");
+const netplayCleanupIntervalMs = parseDuration(
+  parsed.data.NETPLAY_CLEANUP_INTERVAL,
+  "NETPLAY_CLEANUP_INTERVAL"
+);
+
 if (typeof accessMs !== "number" || accessMs <= 0) {
   throw new Error("JWT_ACCESS_TTL must be a positive duration string");
 }
 if (typeof refreshMs !== "number" || refreshMs <= 0) {
   throw new Error("JWT_REFRESH_TTL must be a positive duration string");
+}
+
+if (netplayMinTtlMs > netplayMaxTtlMs) {
+  throw new Error("NETPLAY_MIN_TTL must be less than or equal to NETPLAY_MAX_TTL");
+}
+
+if (netplayDefaultTtlMs < netplayMinTtlMs || netplayDefaultTtlMs > netplayMaxTtlMs) {
+  throw new Error("NETPLAY_DEFAULT_TTL must fall within the configured min/max range");
+}
+
+if (parsed.data.NETPLAY_BASE_URL && !parsed.data.NETPLAY_API_KEY) {
+  throw new Error("NETPLAY_API_KEY is required when NETPLAY_BASE_URL is configured");
+}
+
+if (parsed.data.NETPLAY_API_KEY && !parsed.data.NETPLAY_BASE_URL) {
+  throw new Error("NETPLAY_BASE_URL is required when NETPLAY_API_KEY is configured");
 }
 
 if (
@@ -165,5 +239,9 @@ export const env = {
   ),
   SCREENSCRAPER_ONLY_BETTER_MEDIA:
     parsed.data.SCREENSCRAPER_ONLY_BETTER_MEDIA.toLowerCase() === "true" ||
-    parsed.data.SCREENSCRAPER_ONLY_BETTER_MEDIA === "1"
+    parsed.data.SCREENSCRAPER_ONLY_BETTER_MEDIA === "1",
+  NETPLAY_DEFAULT_TTL_MS: netplayDefaultTtlMs,
+  NETPLAY_MIN_TTL_MS: netplayMinTtlMs,
+  NETPLAY_MAX_TTL_MS: netplayMaxTtlMs,
+  NETPLAY_CLEANUP_INTERVAL_MS: netplayCleanupIntervalMs
 };
