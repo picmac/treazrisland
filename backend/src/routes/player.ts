@@ -8,54 +8,50 @@ import {
   RomBinaryStatus,
   RomPlaybackAction,
   type PlayState,
-  type Prisma
+  type Prisma,
 } from "@prisma/client";
 import { env } from "../config/env.js";
 import { safeUnlink } from "../services/storage/storage.js";
 
-const BASE64_REGEX = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$/;
+const BASE64_REGEX =
+  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$/;
 
 const playStateSchema = z.object({
   romId: z.string().min(1),
-  label: z
-    .string()
-    .trim()
-    .min(1)
-    .max(120)
-    .optional(),
-  slot: z
-    .number()
-    .int()
-    .min(0)
-    .max(99)
-    .optional(),
+  label: z.string().trim().min(1).max(120).optional(),
+  slot: z.number().int().min(0).max(99).optional(),
   data: z
     .string()
     .transform((value) => value.replace(/\s+/g, ""))
     .refine((value) => value.length > 0, {
-      message: "data must not be empty"
+      message: "data must not be empty",
     })
     .refine((value) => BASE64_REGEX.test(value), {
-      message: "data must be base64-encoded"
-    })
+      message: "data must be base64-encoded",
+    }),
 });
 
-const updatePlayStateSchema = playStateSchema.partial({ romId: true }).refine(
-  (value) => value.label !== undefined || value.slot !== undefined || value.data !== undefined,
-  {
-    message: "At least one field must be provided"
-  }
-);
+const updatePlayStateSchema = playStateSchema
+  .partial({ romId: true })
+  .refine(
+    (value) =>
+      value.label !== undefined ||
+      value.slot !== undefined ||
+      value.data !== undefined,
+    {
+      message: "At least one field must be provided",
+    },
+  );
 
 const listPlayStatesQuery = z.object({
-  romId: z.string().min(1).optional()
+  romId: z.string().min(1).optional(),
 });
 
 function createRoleAwareRateLimit(app: FastifyInstance) {
   return app.rateLimit({
     hook: "preHandler",
     timeWindow: 60_000,
-    max: (request) => (request.user?.role === "ADMIN" ? 120 : 30)
+    max: (request) => (request.user?.role === "ADMIN" ? 120 : 30),
   });
 }
 
@@ -73,46 +69,85 @@ function serializePlayState(playState: PlayState) {
     checksumSha256: playState.checksumSha256,
     createdAt: playState.createdAt,
     updatedAt: playState.updatedAt,
-    downloadUrl: buildPlayStateDownloadPath(playState.id)
+    downloadUrl: buildPlayStateDownloadPath(playState.id),
   };
 }
+
+type PlaybackAuditContext = {
+  romId?: string | null;
+  romBinaryId?: string | null;
+  assetId?: string | null;
+  playStateId?: string | null;
+};
 
 async function logPlaybackAudit(
   app: FastifyInstance,
   request: FastifyRequest,
-  data: Prisma.RomPlaybackAuditCreateInput
+  data: Prisma.RomPlaybackAuditCreateInput,
+  context: PlaybackAuditContext,
 ) {
   try {
     await app.prisma.romPlaybackAudit.create({ data });
+    app.metrics.playback.inc({
+      action: data.action.toLowerCase(),
+      status: "recorded",
+    });
+    request.log.info(
+      {
+        event: "player.activity",
+        action: data.action,
+        romId: context.romId ?? null,
+        romBinaryId: context.romBinaryId ?? null,
+        assetId: context.assetId ?? null,
+        playStateId: context.playStateId ?? null,
+        userId: request.user?.sub ?? null,
+      },
+      "Playback event recorded",
+    );
   } catch (err) {
-    app.log.warn({ err }, "Failed to record playback audit entry");
+    app.metrics.playback.inc({
+      action: data.action.toLowerCase(),
+      status: "failed",
+    });
+    app.log.warn(
+      { err, action: data.action, context },
+      "Failed to record playback audit entry",
+    );
   }
 }
 
 async function removePlayState(
   app: FastifyInstance,
-  playState: Pick<PlayState, "id" | "storageKey">
+  playState: Pick<PlayState, "id" | "storageKey">,
 ) {
   try {
     await app.storage.deleteAssetObject(playState.storageKey);
   } catch (err) {
-    app.log.warn({ err, playStateId: playState.id }, "Failed to delete play-state object");
+    app.log.warn(
+      { err, playStateId: playState.id },
+      "Failed to delete play-state object",
+    );
   }
 
   try {
     await app.prisma.playState.delete({ where: { id: playState.id } });
   } catch (err) {
-    app.log.warn({ err, playStateId: playState.id }, "Failed to delete play-state record");
+    app.log.warn(
+      { err, playStateId: playState.id },
+      "Failed to delete play-state record",
+    );
   }
 }
 
-export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> {
+export async function registerPlayerRoutes(
+  app: FastifyInstance,
+): Promise<void> {
   const rateLimitHook = createRoleAwareRateLimit(app);
 
   app.get(
     "/player/roms/:id/binary",
     {
-      preHandler: [app.authenticate, rateLimitHook]
+      preHandler: [app.authenticate, rateLimitHook],
     },
     async (request, reply) => {
       const params = z.object({ id: z.string().min(1) }).parse(request.params);
@@ -120,51 +155,72 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
       const rom = await app.prisma.rom.findUnique({
         where: { id: params.id },
         include: {
-          binary: true
-        }
+          binary: true,
+        },
       });
 
       if (!rom || !rom.binary || rom.binary.status !== RomBinaryStatus.READY) {
         throw app.httpErrors.notFound("ROM binary is not available");
       }
 
-      await logPlaybackAudit(app, request, {
-        action: RomPlaybackAction.ROM_DOWNLOAD,
-        rom: { connect: { id: rom.id } },
-        romBinary: { connect: { id: rom.binary.id } },
-        user: request.user ? { connect: { id: request.user.sub } } : undefined,
-        ipAddress: request.ip,
-        userAgent: request.headers["user-agent"] ?? null
-      });
+      await logPlaybackAudit(
+        app,
+        request,
+        {
+          action: RomPlaybackAction.ROM_DOWNLOAD,
+          rom: { connect: { id: rom.id } },
+          romBinary: { connect: { id: rom.binary.id } },
+          user: request.user
+            ? { connect: { id: request.user.sub } }
+            : undefined,
+          ipAddress: request.ip,
+          userAgent: request.headers["user-agent"] ?? null,
+        },
+        { romId: rom.id, romBinaryId: rom.binary.id },
+      );
 
-      const signedUrl = await app.storage.getRomObjectSignedUrl(rom.binary.storageKey);
+      const signedUrl = await app.storage.getRomObjectSignedUrl(
+        rom.binary.storageKey,
+      );
       if (signedUrl) {
         return {
           type: "signed-url" as const,
           url: signedUrl.url,
           expiresAt: signedUrl.expiresAt.toISOString(),
           size: rom.binary.archiveSize,
-          contentType: rom.binary.archiveMimeType ?? "application/octet-stream"
+          contentType: rom.binary.archiveMimeType ?? "application/octet-stream",
         };
       }
 
-      const object = await app.storage.getRomObjectStream(rom.binary.storageKey);
-      reply.header("content-type", rom.binary.archiveMimeType ?? object.contentType ?? "application/octet-stream");
+      const object = await app.storage.getRomObjectStream(
+        rom.binary.storageKey,
+      );
+      reply.header(
+        "content-type",
+        rom.binary.archiveMimeType ??
+          object.contentType ??
+          "application/octet-stream",
+      );
       if ((object.contentLength ?? rom.binary.archiveSize) > 0) {
-        reply.header("content-length", String(object.contentLength ?? rom.binary.archiveSize));
+        reply.header(
+          "content-length",
+          String(object.contentLength ?? rom.binary.archiveSize),
+        );
       }
 
       return reply.send(object.stream);
-    }
+    },
   );
 
   app.get(
     "/rom-assets/:assetId",
     {
-      preHandler: [app.authenticate, rateLimitHook]
+      preHandler: [app.authenticate, rateLimitHook],
     },
     async (request, reply) => {
-      const params = z.object({ assetId: z.string().min(1) }).parse(request.params);
+      const params = z
+        .object({ assetId: z.string().min(1) })
+        .parse(request.params);
       const asset = await app.prisma.romAsset.findUnique({
         where: { id: params.assetId },
         select: {
@@ -173,8 +229,8 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
           storageKey: true,
           externalUrl: true,
           format: true,
-          fileSize: true
-        }
+          fileSize: true,
+        },
       });
 
       if (!asset) {
@@ -182,14 +238,21 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
       }
 
       if (asset.externalUrl) {
-        await logPlaybackAudit(app, request, {
-          action: RomPlaybackAction.ASSET_DOWNLOAD,
-          rom: asset.romId ? { connect: { id: asset.romId } } : undefined,
-          romAsset: { connect: { id: asset.id } },
-          user: request.user ? { connect: { id: request.user.sub } } : undefined,
-          ipAddress: request.ip,
-          userAgent: request.headers["user-agent"] ?? null
-        });
+        await logPlaybackAudit(
+          app,
+          request,
+          {
+            action: RomPlaybackAction.ASSET_DOWNLOAD,
+            rom: asset.romId ? { connect: { id: asset.romId } } : undefined,
+            romAsset: { connect: { id: asset.id } },
+            user: request.user
+              ? { connect: { id: request.user.sub } }
+              : undefined,
+            ipAddress: request.ip,
+            userAgent: request.headers["user-agent"] ?? null,
+          },
+          { romId: asset.romId ?? null, assetId: asset.id },
+        );
         return { type: "external" as const, url: asset.externalUrl };
       }
 
@@ -197,23 +260,32 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
         throw app.httpErrors.notFound("Asset is not stored locally");
       }
 
-      await logPlaybackAudit(app, request, {
-        action: RomPlaybackAction.ASSET_DOWNLOAD,
-        rom: asset.romId ? { connect: { id: asset.romId } } : undefined,
-        romAsset: { connect: { id: asset.id } },
-        user: request.user ? { connect: { id: request.user.sub } } : undefined,
-        ipAddress: request.ip,
-        userAgent: request.headers["user-agent"] ?? null
-      });
+      await logPlaybackAudit(
+        app,
+        request,
+        {
+          action: RomPlaybackAction.ASSET_DOWNLOAD,
+          rom: asset.romId ? { connect: { id: asset.romId } } : undefined,
+          romAsset: { connect: { id: asset.id } },
+          user: request.user
+            ? { connect: { id: request.user.sub } }
+            : undefined,
+          ipAddress: request.ip,
+          userAgent: request.headers["user-agent"] ?? null,
+        },
+        { romId: asset.romId ?? null, assetId: asset.id },
+      );
 
-      const signedUrl = await app.storage.getAssetObjectSignedUrl(asset.storageKey);
+      const signedUrl = await app.storage.getAssetObjectSignedUrl(
+        asset.storageKey,
+      );
       if (signedUrl) {
         return {
           type: "signed-url" as const,
           url: signedUrl.url,
           expiresAt: signedUrl.expiresAt.toISOString(),
           size: asset.fileSize ?? null,
-          format: asset.format ?? null
+          format: asset.format ?? null,
         };
       }
 
@@ -228,13 +300,13 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
       }
 
       return reply.send(object.stream);
-    }
+    },
   );
 
   app.get(
     "/player/play-states",
     {
-      preHandler: [app.authenticate, rateLimitHook]
+      preHandler: [app.authenticate, rateLimitHook],
     },
     async (request) => {
       if (!request.user) {
@@ -245,19 +317,19 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
       const playStates = await app.prisma.playState.findMany({
         where: {
           userId: request.user.sub,
-          ...(query.romId ? { romId: query.romId } : {})
+          ...(query.romId ? { romId: query.romId } : {}),
         },
-        orderBy: { updatedAt: "desc" }
+        orderBy: { updatedAt: "desc" },
       });
 
       return { playStates: playStates.map(serializePlayState) };
-    }
+    },
   );
 
   app.get(
     "/player/play-states/:id",
     {
-      preHandler: [app.authenticate, rateLimitHook]
+      preHandler: [app.authenticate, rateLimitHook],
     },
     async (request) => {
       if (!request.user) {
@@ -266,7 +338,7 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
 
       const params = z.object({ id: z.string().min(1) }).parse(request.params);
       const playState = await app.prisma.playState.findUnique({
-        where: { id: params.id }
+        where: { id: params.id },
       });
 
       if (!playState || playState.userId !== request.user.sub) {
@@ -274,13 +346,13 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
       }
 
       return serializePlayState(playState);
-    }
+    },
   );
 
   app.get(
     "/player/play-states/:id/binary",
     {
-      preHandler: [app.authenticate, rateLimitHook]
+      preHandler: [app.authenticate, rateLimitHook],
     },
     async (request, reply) => {
       if (!request.user) {
@@ -289,44 +361,56 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
 
       const params = z.object({ id: z.string().min(1) }).parse(request.params);
       const playState = await app.prisma.playState.findUnique({
-        where: { id: params.id }
+        where: { id: params.id },
       });
 
       if (!playState || playState.userId !== request.user.sub) {
         throw app.httpErrors.notFound("Play state not found");
       }
 
-      await logPlaybackAudit(app, request, {
-        action: RomPlaybackAction.PLAY_STATE_DOWNLOAD,
-        rom: { connect: { id: playState.romId } },
-        playState: { connect: { id: playState.id } },
-        user: { connect: { id: request.user.sub } },
-        ipAddress: request.ip,
-        userAgent: request.headers["user-agent"] ?? null
-      });
+      await logPlaybackAudit(
+        app,
+        request,
+        {
+          action: RomPlaybackAction.PLAY_STATE_DOWNLOAD,
+          rom: { connect: { id: playState.romId } },
+          playState: { connect: { id: playState.id } },
+          user: { connect: { id: request.user.sub } },
+          ipAddress: request.ip,
+          userAgent: request.headers["user-agent"] ?? null,
+        },
+        { romId: playState.romId, playStateId: playState.id },
+      );
 
-      const signedUrl = await app.storage.getAssetObjectSignedUrl(playState.storageKey);
+      const signedUrl = await app.storage.getAssetObjectSignedUrl(
+        playState.storageKey,
+      );
       if (signedUrl) {
         return {
           type: "signed-url" as const,
           url: signedUrl.url,
           expiresAt: signedUrl.expiresAt.toISOString(),
-          size: playState.size
+          size: playState.size,
         };
       }
 
-      const object = await app.storage.getAssetObjectStream(playState.storageKey);
+      const object = await app.storage.getAssetObjectStream(
+        playState.storageKey,
+      );
       reply.header("content-type", "application/octet-stream");
-      reply.header("content-length", String(object.contentLength ?? playState.size));
+      reply.header(
+        "content-length",
+        String(object.contentLength ?? playState.size),
+      );
 
       return reply.send(object.stream);
-    }
+    },
   );
 
   app.post(
     "/player/play-states",
     {
-      preHandler: [app.authenticate, rateLimitHook]
+      preHandler: [app.authenticate, rateLimitHook],
     },
     async (request, reply) => {
       if (!request.user) {
@@ -337,7 +421,7 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
 
       const rom = await app.prisma.rom.findUnique({
         where: { id: body.romId },
-        select: { id: true }
+        select: { id: true },
       });
 
       if (!rom) {
@@ -347,7 +431,7 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
       const buffer = Buffer.from(body.data, "base64");
       if (buffer.byteLength > env.PLAY_STATE_MAX_BYTES) {
         throw app.httpErrors.badRequest(
-          `Save state exceeds ${env.PLAY_STATE_MAX_BYTES} bytes limit`
+          `Save state exceeds ${env.PLAY_STATE_MAX_BYTES} bytes limit`,
         );
       }
 
@@ -362,7 +446,7 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
           filePath: tempPath,
           size: buffer.byteLength,
           sha256,
-          contentType: "application/octet-stream"
+          contentType: "application/octet-stream",
         });
       } finally {
         await safeUnlink(tempPath);
@@ -371,7 +455,7 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
       if (typeof body.slot === "number") {
         const existing = await app.prisma.playState.findFirst({
           where: { userId: request.user.sub, romId: rom.id, slot: body.slot },
-          select: { id: true, storageKey: true }
+          select: { id: true, storageKey: true },
         });
         if (existing) {
           await removePlayState(app, existing);
@@ -387,18 +471,21 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
           label: body.label,
           slot: body.slot,
           size: buffer.byteLength,
-          checksumSha256: sha256
-        }
+          checksumSha256: sha256,
+        },
       });
 
       const statesForUser = await app.prisma.playState.findMany({
         where: { userId: request.user.sub, romId: rom.id },
         orderBy: { updatedAt: "asc" },
-        select: { id: true, storageKey: true }
+        select: { id: true, storageKey: true },
       });
 
       if (statesForUser.length > env.PLAY_STATE_MAX_PER_ROM) {
-        const overflow = statesForUser.slice(0, statesForUser.length - env.PLAY_STATE_MAX_PER_ROM);
+        const overflow = statesForUser.slice(
+          0,
+          statesForUser.length - env.PLAY_STATE_MAX_PER_ROM,
+        );
         for (const state of overflow) {
           if (state.id === playState.id) {
             continue;
@@ -407,24 +494,29 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
         }
       }
 
-      await logPlaybackAudit(app, request, {
-        action: RomPlaybackAction.PLAY_STATE_UPLOAD,
-        rom: { connect: { id: playState.romId } },
-        playState: { connect: { id: playState.id } },
-        user: { connect: { id: request.user.sub } },
-        ipAddress: request.ip,
-        userAgent: request.headers["user-agent"] ?? null
-      });
+      await logPlaybackAudit(
+        app,
+        request,
+        {
+          action: RomPlaybackAction.PLAY_STATE_UPLOAD,
+          rom: { connect: { id: playState.romId } },
+          playState: { connect: { id: playState.id } },
+          user: { connect: { id: request.user.sub } },
+          ipAddress: request.ip,
+          userAgent: request.headers["user-agent"] ?? null,
+        },
+        { romId: playState.romId, playStateId: playState.id },
+      );
 
       reply.code(201);
       return serializePlayState(playState);
-    }
+    },
   );
 
   app.patch(
     "/player/play-states/:id",
     {
-      preHandler: [app.authenticate, rateLimitHook]
+      preHandler: [app.authenticate, rateLimitHook],
     },
     async (request) => {
       if (!request.user) {
@@ -435,7 +527,7 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
       const body = updatePlayStateSchema.parse(request.body ?? {});
 
       const playState = await app.prisma.playState.findUnique({
-        where: { id: params.id }
+        where: { id: params.id },
       });
 
       if (!playState || playState.userId !== request.user.sub) {
@@ -455,19 +547,23 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
         const buffer = Buffer.from(body.data, "base64");
         if (buffer.byteLength > env.PLAY_STATE_MAX_BYTES) {
           throw app.httpErrors.badRequest(
-            `Save state exceeds ${env.PLAY_STATE_MAX_BYTES} bytes limit`
+            `Save state exceeds ${env.PLAY_STATE_MAX_BYTES} bytes limit`,
           );
         }
         const sha256 = createHash("sha256").update(buffer).digest("hex");
         const tempPath = join(tmpdir(), `treaz-play-state-${playState.id}.bin`);
         await writeFile(tempPath, buffer);
         try {
-          await app.storage.putObject(app.storage.assetBucket, playState.storageKey, {
-            filePath: tempPath,
-            size: buffer.byteLength,
-            sha256,
-            contentType: "application/octet-stream"
-          });
+          await app.storage.putObject(
+            app.storage.assetBucket,
+            playState.storageKey,
+            {
+              filePath: tempPath,
+              size: buffer.byteLength,
+              sha256,
+              contentType: "application/octet-stream",
+            },
+          );
         } finally {
           await safeUnlink(tempPath);
         }
@@ -481,9 +577,9 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
             userId: request.user.sub,
             romId: playState.romId,
             slot: body.slot,
-            NOT: { id: playState.id }
+            NOT: { id: playState.id },
           },
-          select: { id: true, storageKey: true }
+          select: { id: true, storageKey: true },
         });
         if (existing) {
           await removePlayState(app, existing);
@@ -492,28 +588,33 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
 
       const updated = await app.prisma.playState.update({
         where: { id: playState.id },
-        data: updateData
+        data: updateData,
       });
 
       if (body.data !== undefined) {
-        await logPlaybackAudit(app, request, {
-          action: RomPlaybackAction.PLAY_STATE_UPLOAD,
-          rom: { connect: { id: updated.romId } },
-          playState: { connect: { id: updated.id } },
-          user: { connect: { id: request.user.sub } },
-          ipAddress: request.ip,
-          userAgent: request.headers["user-agent"] ?? null
-        });
+        await logPlaybackAudit(
+          app,
+          request,
+          {
+            action: RomPlaybackAction.PLAY_STATE_UPLOAD,
+            rom: { connect: { id: updated.romId } },
+            playState: { connect: { id: updated.id } },
+            user: { connect: { id: request.user.sub } },
+            ipAddress: request.ip,
+            userAgent: request.headers["user-agent"] ?? null,
+          },
+          { romId: updated.romId, playStateId: updated.id },
+        );
       }
 
       return serializePlayState(updated);
-    }
+    },
   );
 
   app.delete(
     "/player/play-states/:id",
     {
-      preHandler: [app.authenticate, rateLimitHook]
+      preHandler: [app.authenticate, rateLimitHook],
     },
     async (request, reply) => {
       if (!request.user) {
@@ -523,7 +624,7 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
       const params = z.object({ id: z.string().min(1) }).parse(request.params);
       const playState = await app.prisma.playState.findUnique({
         where: { id: params.id },
-        select: { id: true, userId: true, storageKey: true }
+        select: { id: true, userId: true, storageKey: true },
       });
 
       if (!playState || playState.userId !== request.user.sub) {
@@ -532,6 +633,6 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
 
       await removePlayState(app, playState);
       reply.code(204);
-    }
+    },
   );
 }

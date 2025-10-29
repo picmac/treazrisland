@@ -39,6 +39,54 @@ services:
       - "4010:4010"
     restart: unless-stopped
 
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      target: development
+    container_name: treazrisland-backend
+    env_file:
+      - ../backend/.env.docker
+    environment:
+      DATABASE_URL: postgresql://treazrisland:treazrisland@postgres:5432/treazrisland?schema=public
+      STORAGE_ENDPOINT: http://minio:9000
+      PIXELLAB_BASE_URL: http://pixellab-mock:4010
+    depends_on:
+      - postgres
+      - minio
+      - pixellab-mock
+    ports:
+      - "3001:3001"
+    volumes:
+      - ../backend:/app
+      - backend-node-modules:/app/node_modules
+      - backend-dist:/app/dist
+    command: npm run dev
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      target: development
+    container_name: treazrisland-frontend
+    env_file:
+      - ../frontend/.env.docker
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../frontend:/app
+      - frontend-node-modules:/app/node_modules
+      - frontend-next:/app/.next
+    command: npm run dev
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   minio-data:
+  backend-node-modules:
+  backend-dist:
+  frontend-node-modules:
+  frontend-next:
