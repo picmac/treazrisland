@@ -16,14 +16,13 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 - Stream ROMs in-browser through EmulatorJS with synchronized play states across devices.
 - Keep ROM binaries and assets private via signed URLs, strict JWT enforcement, and rate limiting.
 - Provide admins with powerful upload, enrichment, and auditing flows, including integration with external metadata sources.
-- Support cooperative play through Netplay sessions and social discovery features.
 - Ensure the brand consistently reflects the SNES/Monkey Island vibe by integrating PixelLab.ai powered artwork.
 
 ## Non-Goals (Current Scope)
 - Cloud-hosted sync, leaderboards, or public multiplayer matchmaking.
 - Automatic ROM scraping from third parties; uploads remain user-sourced.
 - Native mobile clients; focus remains on a responsive web app.
-- Full-featured netplay orchestration (current service is a placeholder with future expansion planned).
+- Netplay or other synchronized multiplayer features.
 
 ## Target Personas
 - **Archivist Admin (ROLE: ADMIN):** Manages invitations, uploads, metadata enrichment, and asset curation. Needs comprehensive tooling and audits.
@@ -40,7 +39,6 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 | Favorites & Collections | Personalized lists | All | `/favorites/*`, `/collections`, `/top-lists`, `UserRomFavorite` |
 | Admin Upload & Enrichment | ROM intake, metadata fetch | Admin | `/roms/upload`, `/roms/:id/enrich`, `UploadAudit` |
 | PixelLab Creative Pipeline | Generate SNES-style art | Admin / Maintainer | PixelLab.ai API workflows, CDN cache |
-| Netplay | Cooperative sessions | All | `/netplay/*`, `NetplaySession`, `NetplayParticipant` |
 | Monitoring & Stats | Usage metrics | All (read), Admin (analysis) | `/stats/overview` |
 
 ## Functional Requirements
@@ -75,7 +73,7 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 ### 5. Favorites, Recents & Stats
 - **Favorites:** `/favorites/` (GET) and `/favorites/:romId` (POST/DELETE) manage per-user favorites. Conflicts return 204, preventing duplicate errors.
 - **Recent activity:** `/play-states/recent` returns latest sessions with embedded ROM metadata and relevant assets for quick resume.
-- **Stats overview:** `/stats/overview` aggregates per-user metrics (favorites, save states, uploads, top platforms) and server KPIs (user count, ROM total, storage bytes, active netplay sessions).
+- **Stats overview:** `/stats/overview` aggregates per-user metrics (favorites, save states, uploads, top platforms) and server KPIs (user count, ROM total, storage bytes).
 
 ### 6. Admin Upload & Enrichment
 - **Upload workflow:** `/admin/uploads` dropzone batches hundreds of ROM archives or BIOS packages. Client streams each archive with metadata headers, enforces a 1 GiB cap (`ROM_UPLOAD_MAX_BYTES`), preserves the original filename, and surfaces duplicate or failure states inline. ROM uploads require a platform slug; BIOS uploads target `bios/<core>/` in storage.
@@ -95,22 +93,14 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
   - Render 16-bit SNES-style NPCs for onboarding, with palettes matching Monkey Island’s warm-cold contrasts.
 - **Caching & CDN:** Outputs cached in MinIO and optionally pre-rendered into responsive breakpoints. Future enhancement: integrate with CDN invalidation workflows.
 
-### 8. Netplay
-- **Session creation (`POST /netplay/sessions`):** Accepts optional `romId`, TTL (5–360 min), returns join code using a human-friendly alphabet. Persists session and host participant. External integration uses `NetplayService` (currently dummy).
-- **Join/Manage:** `/netplay/sessions/join` adds participant and activates session; `/netplay/sessions` lists user’s sessions; `/netplay/sessions/:id` fetches details; DELETE `/netplay/sessions/:id` cancels if requester is host.
-- **Frontend:** Netplay page offers host/join forms, session list, status badges, and ability to end sessions. UI also surfaces participant display names/nicknames.
-- **Configuration:** Backend pulls `NETPLAY_SERVICE_BASE_URL`, `NETPLAY_SERVICE_API_KEY`, timeout/TTL guardrails, and cleanup cadence from env. Frontend consumes `NEXT_PUBLIC_NETPLAY_SIGNALING_HINT` + TURN relay hints for WebRTC fallback.
-- **Security:** Join codes must provide ≥20 bits entropy, expire on first use, and revoke session if the host cancels. Transport security enforced via TLS and API key rotation.
-- **Observability:** Emit `netplay.session_created_total`, `netplay.sessions_active`, and structured lifecycle logs to monitor adoption and anomalies.
-
-### 9. API & Documentation
+### 8. API & Documentation
 - REST endpoints documented in `docs/API_AUTH.md`, `docs/API_LIBRARY.md`, `docs/API_PLAYER.md`.
 - Next.js runtime rewrites `/api/*` and `/rom-assets/*` to the backend, isolating the API to the Docker network.
 - CSP reports handled by `/app/api/csp-report` route and logged server-side.
 - Investigate future OpenAPI spec export to simplify integrations.
 
 ## Data Model Highlights (from `backend/prisma/schema.prisma`)
-- **User:** Email, nickname, role, MFA fields, avatar references, relations to uploads, tokens, netplay.
+- **User:** Email, nickname, role, MFA fields, avatar references, relations to uploads, tokens.
 - **Rom:** Title, platform relation, checksum metadata, relations to `RomBinary`, assets, favorites, play states.
 - **RomBinary:** One-to-one with `Rom`, tracks storage key, archive metadata, checksum suite, and status flags.
 - **EmulatorBios:** Stores BIOS archives per emulator core/region, including storage keys and checksum suite for EmulatorJS cores that require BIOS.
@@ -118,7 +108,6 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 - **RomAsset:** Type enum (COVER/LOGO/SCREENSHOT/VIDEO/MANUAL/OTHER), format, source URL, storage key.
 - **UserRomFavorite & RomPlayState:** Composite primary keys, track personalized relationships.
 - **RefreshToken, PasswordResetToken, UserInvitation:** Manage auth token lifecycles securely.
-- **NetplaySession & NetplayParticipant:** Manage codes, statuses, roles, external session IDs.
 
 ## Infrastructure & Deployment
 - **Docker Compose (`docker-compose.yml`):**
@@ -128,9 +117,7 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
   - `backend` Fastify service (Node 22), internal-only via `expose`, environment-driven config for JWT, storage, ScreenScraper, PixelLab (planned).
   - `frontend` Next.js app published on host port 3000 with API rewrites.
   - Optional `cloudflared` profile for Cloudflare Tunnel exposure.
-  - Optional `netplay-mock` Prism instance exposing the signaling REST contract at `http://localhost:4011`.
 - **Environment variables:** `.env.example` covers JWT secrets, rate limits, storage credentials, ScreenScraper config, Cloudflare token, and will be extended for PixelLab.ai (`PIXELLAB_API_KEY`, `PIXELLAB_STYLE_ID`, optional `PIXELLAB_BASE_URL`).
-  - Netplay configuration adds `NETPLAY_SERVICE_BASE_URL`, `NETPLAY_SERVICE_API_KEY`, timeout defaults, session TTL guardrails, cleanup sweep interval, and public frontend hints for WebRTC relays.
 - **Build/test scripts:** Backend `npm run dev/build/test`, Frontend `npm run dev/build/test/test:e2e`. Utility scripts generate pixel assets and icon sets.
 
 ## Non-Functional Requirements
@@ -140,8 +127,7 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 - **Reliability:** Health endpoint `/health` verifies DB connectivity. Prisma transactions ensure atomic user creation + invitation updates. Upload audits provide traceability for incident response.
 - **Accessibility & Responsiveness:** Layout adapts based on orientation hooks; bottom navigation for mobile; follow-up accessibility audit planned.
 - **Localization:** Currently English-only; ScreenScraper preferences allow localized metadata. Future i18n expansion noted.
-- **Observability:** Structured logging via Fastify logger, upload checkpoints, netplay error logs, CSP report ingestion. Planned integration with centralized logging (e.g., OpenSearch).
-  - Netplay service calls emit latency histograms, active session gauges, and join/cancel counters with sanitized join-code hashes.
+- **Observability:** Structured logging via Fastify logger, upload checkpoints, CSP report ingestion. Planned integration with centralized logging (e.g., OpenSearch).
 
 ## Testing & Quality Assurance
 - **Backend:** Vitest + Supertest with Testcontainers (PostgreSQL). Requires Docker runtime.
@@ -154,7 +140,6 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 - **Performance:** LCP < 2.5 s on primary pages, ROM download latency, upload throughput (≤30 s for 256 MB).
 - **Security:** MFA adoption rate, blocked rate-limit events, time-to-acknowledge CSP reports.
 - **Creative output:** PixelLab render count, approval rate of generated assets, CDN cache hit rate for art.
-- **Netplay adoption:** Hosted sessions per week, join success rate, average participants per session.
 
 ## Risks & Assumptions
 - **ScreenScraper throttling:** External API quotas may limit enrichment throughput; caching mitigates but fallback messaging required.
@@ -162,16 +147,14 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 - **PixelLab dependency:** API downtime affects timely art generation. Implement retry/backoff and cached fallbacks.
 - **XSS concerns:** SPA stores access token in localStorage; CSP + sanitation reduce risk but further hardening (e.g., Trusted Types) recommended.
 - **Large ROM uploads:** 1 GiB max per upload; larger libraries require chunked uploads or CLI tooling.
-- **Netplay backend:** Dummy integration delays full multiplayer experience; roadmap item for real signaling/relay infrastructure.
 
 ## Roadmap & Open Items
 1. **PixelLab Service Implementation:** Build backend client, admin UI tooling, caching, and CDN invalidation pipeline for SNES-style assets.
-2. **Netplay Evolution:** Integrate real signaling server, WebRTC relay (TURN), and health monitoring of sessions.
-3. **Secrets Management:** Shift from `.env` to a managed secret store; automate JWT/PixelLab credential rotation.
-4. **Telemetry Expansion:** Forward logs to centralized store, add alerting for auth anomalies and PixelLab API failures.
-5. **Admin UX Enhancements:** Bulk enrichment queue management, manual metadata editing, ROM status workflow (pending/approved/rejected).
-6. **Community Features (Stretch):** Shared collections, seasonal events with PixelLab-driven art, family safety/age ratings.
-7. **Accessibility Audit:** Formal WCAG review, color-contrast validation (especially for pixel themes), keyboard navigation pass.
+2. **Secrets Management:** Shift from `.env` to a managed secret store; automate JWT/PixelLab credential rotation.
+3. **Telemetry Expansion:** Forward logs to centralized store, add alerting for auth anomalies and PixelLab API failures.
+4. **Admin UX Enhancements:** Bulk enrichment queue management, manual metadata editing, ROM status workflow (pending/approved/rejected).
+5. **Community Features (Stretch):** Shared collections, seasonal events with PixelLab-driven art, family safety/age ratings.
+6. **Accessibility Audit:** Formal WCAG review, color-contrast validation (especially for pixel themes), keyboard navigation pass.
 
 ---
 

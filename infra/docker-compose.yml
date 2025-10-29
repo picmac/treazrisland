@@ -39,17 +39,6 @@ services:
       - "4010:4010"
     restart: unless-stopped
 
-  netplay-mock:
-    image: stoplight/prism:4
-    container_name: treazrisland-netplay-mock
-    command: mock -h 0.0.0.0 /tmp/netplay-openapi.yaml
-    volumes:
-      - ./mock/netplay-openapi.yaml:/tmp/netplay-openapi.yaml:ro
-    ports:
-      - "4011:4011"
-    restart: unless-stopped
-    # Comment this service out if pointing at a real Netplay deployment instead.
-
 volumes:
   postgres-data:
   minio-data:

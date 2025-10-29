@@ -61,20 +61,6 @@ enum RomAssetSource {
   MANUAL_ENTRY
 }
 
-enum NetplaySessionStatus {
-  LOBBY
-  ACTIVE
-  COMPLETED
-  CANCELLED
-  EXPIRED
-}
-
-enum NetplayParticipantRole {
-  HOST
-  PLAYER
-  SPECTATOR
-}
-
 model User {
   id             String               @id @default(cuid())
   email          String               @unique
@@ -91,8 +77,6 @@ model User {
   enrichmentJobs RomEnrichmentJob[]
   screenScraperSettings ScreenScraperSettings[]
   romUploadAudits RomUploadAudit[]
-  hostedNetplaySessions NetplaySession[] @relation("HostedNetplaySessions")
-  netplayParticipants  NetplayParticipant[]
 }
 
 model UserInvitation {
@@ -176,7 +160,6 @@ model Rom {
   enrichmentJobs  RomEnrichmentJob[]
   binary          RomBinary?
   uploadAudits    RomUploadAudit[]
-  netplaySessions NetplaySession[]
 
   @@index([platformId])
   @@index([screenscraperId])
@@ -318,36 +301,6 @@ model RomEnrichmentJob {
 
   @@index([romId])
   @@index([status])
-}
-
-model NetplaySession {
-  id        String                @id @default(cuid())
-  hostId    String
-  host      User                  @relation("HostedNetplaySessions", fields: [hostId], references: [id])
-  romId     String?
-  rom       Rom?                  @relation(fields: [romId], references: [id], onDelete: SetNull)
-  joinCode  String                @unique
-  status    NetplaySessionStatus  @default(LOBBY)
-  expiresAt DateTime?
-  createdAt DateTime              @default(now())
-  updatedAt DateTime              @updatedAt
-  participants NetplayParticipant[]
-
-  @@index([status, expiresAt])
-}
-
-model NetplayParticipant {
-  id         String                   @id @default(cuid())
-  sessionId  String
-  session    NetplaySession           @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role       NetplayParticipantRole   @default(PLAYER)
-  joinedAt   DateTime                 @default(now())
-
-  @@unique([sessionId, userId])
-  @@index([sessionId])
-  @@index([userId])
 }
 
 model ScreenScraperSettings {
