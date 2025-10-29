@@ -14,7 +14,51 @@ const envSchema = z.object({
   RATE_LIMIT_DEFAULT_POINTS: z.string().regex(/^\d+$/).transform(Number).default("60"),
   RATE_LIMIT_DEFAULT_DURATION: z.string().regex(/^\d+$/).transform(Number).default("60"),
   RATE_LIMIT_AUTH_POINTS: z.string().regex(/^\d+$/).transform(Number).default("5"),
-  RATE_LIMIT_AUTH_DURATION: z.string().regex(/^\d+$/).transform(Number).default("60")
+  RATE_LIMIT_AUTH_DURATION: z.string().regex(/^\d+$/).transform(Number).default("60"),
+  SCREENSCRAPER_USERNAME: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value.trim() : undefined)),
+  SCREENSCRAPER_PASSWORD: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value : undefined)),
+  SCREENSCRAPER_SECRET_KEY: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value : undefined)),
+  SCREENSCRAPER_DEV_ID_ENC: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value : undefined)),
+  SCREENSCRAPER_DEV_PASSWORD_ENC: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.trim().length > 0 ? value : undefined)),
+  SCREENSCRAPER_BASE_URL: z
+    .string()
+    .url()
+    .default("https://www.screenscraper.fr/api2"),
+  SCREENSCRAPER_REQUESTS_PER_MINUTE: z.string().regex(/^\d+$/).transform(Number).default("30"),
+  SCREENSCRAPER_CONCURRENCY: z.string().regex(/^\d+$/).transform(Number).default("2"),
+  SCREENSCRAPER_TIMEOUT_MS: z.string().regex(/^\d+$/).transform(Number).default("15000"),
+  SCREENSCRAPER_DEFAULT_LANGUAGE_PRIORITY: z
+    .string()
+    .default("en,fr"),
+  SCREENSCRAPER_DEFAULT_REGION_PRIORITY: z
+    .string()
+    .default("us,eu,wor,jp"),
+  SCREENSCRAPER_DEFAULT_MEDIA_TYPES: z
+    .string()
+    .default("box-2D,box-3D,wheel,marquee,screenshot,titlescreen"),
+  SCREENSCRAPER_ONLY_BETTER_MEDIA: z
+    .string()
+    .default("true"),
+  SCREENSCRAPER_MAX_ASSETS_PER_TYPE: z
+    .string()
+    .regex(/^\d+$/)
+    .transform(Number)
+    .default("3")
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -34,8 +78,26 @@ if (typeof refreshMs !== "number" || refreshMs <= 0) {
   throw new Error("JWT_REFRESH_TTL must be a positive duration string");
 }
 
+const splitCsv = (value: string): string[] =>
+  value
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+
 export const env = {
   ...parsed.data,
   JWT_ACCESS_TTL_MS: accessMs,
-  JWT_REFRESH_TTL_MS: refreshMs
+  JWT_REFRESH_TTL_MS: refreshMs,
+  SCREENSCRAPER_DEFAULT_LANGUAGE_PRIORITY: splitCsv(
+    parsed.data.SCREENSCRAPER_DEFAULT_LANGUAGE_PRIORITY
+  ),
+  SCREENSCRAPER_DEFAULT_REGION_PRIORITY: splitCsv(
+    parsed.data.SCREENSCRAPER_DEFAULT_REGION_PRIORITY
+  ),
+  SCREENSCRAPER_DEFAULT_MEDIA_TYPES: splitCsv(
+    parsed.data.SCREENSCRAPER_DEFAULT_MEDIA_TYPES
+  ),
+  SCREENSCRAPER_ONLY_BETTER_MEDIA:
+    parsed.data.SCREENSCRAPER_ONLY_BETTER_MEDIA.toLowerCase() === "true" ||
+    parsed.data.SCREENSCRAPER_ONLY_BETTER_MEDIA === "1"
 };

@@ -1,6 +1,14 @@
+process.env.JWT_SECRET = process.env.JWT_SECRET ?? "test-secret-test-secret-test-secret-12345";
+process.env.JWT_ACCESS_TTL = process.env.JWT_ACCESS_TTL ?? "15m";
+process.env.JWT_REFRESH_TTL = process.env.JWT_REFRESH_TTL ?? "30d";
+process.env.CORS_ALLOWED_ORIGINS = process.env.CORS_ALLOWED_ORIGINS ?? "http://localhost";
+process.env.RATE_LIMIT_DEFAULT_POINTS = process.env.RATE_LIMIT_DEFAULT_POINTS ?? "60";
+process.env.RATE_LIMIT_DEFAULT_DURATION = process.env.RATE_LIMIT_DEFAULT_DURATION ?? "60";
+process.env.RATE_LIMIT_AUTH_POINTS = process.env.RATE_LIMIT_AUTH_POINTS ?? "5";
+process.env.RATE_LIMIT_AUTH_DURATION = process.env.RATE_LIMIT_AUTH_DURATION ?? "60";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { buildServer } from "../server.js";
 import { PrismaClient } from "@prisma/client";
 
 type PrismaMock = Pick<
@@ -10,6 +18,7 @@ type PrismaMock = Pick<
 
 describe("onboarding routes", () => {
   let app: FastifyInstance;
+  let buildServer: (typeof import("../server.js"))['buildServer'];
   let prisma: PrismaMock & {
     user: {
       count: ReturnType<typeof vi.fn>;
@@ -21,6 +30,8 @@ describe("onboarding routes", () => {
   };
 
   beforeEach(async () => {
+    vi.resetModules();
+    ({ buildServer } = await import("../server.js"));
     app = buildServer({ registerPrisma: false });
 
     prisma = {
