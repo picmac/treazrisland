@@ -42,6 +42,21 @@ application code for local development.
 
 4. Follow backend/frontend README files (to be authored) for dev server commands.
 
+### PixelLab configuration
+
+- Populate the PixelLab environment variables in `.env` before starting the backend:
+  - `PIXELLAB_API_KEY` – API key issued by PixelLab.ai or the mock service.
+  - `PIXELLAB_STYLE_ID` – default style applied when admin users request new hero art.
+  - `PIXELLAB_BASE_URL` – defaults to the hosted API; point this at the mock server for local testing.
+  - `PIXELLAB_CACHE_TTL` – duration string (`12h`, `1d`, etc.) that governs cache expiration.
+  - `PIXELLAB_TIMEOUT_MS` – HTTP request timeout for render calls.
+  - `PIXELLAB_ASSET_PREFIX` – folder prefix inside the asset bucket where renders are stored.
+- The `pixellab-mock` service defined in `infra/docker-compose.yml` emulates the PixelLab REST API and returns placeholder PNGs.
+  Export `PIXELLAB_BASE_URL=http://localhost:4010` when running the mock and keep the API key/style values in sync with the
+  mock server’s configuration payloads.
+- Cached renders are written to the asset bucket with metadata describing the prompt, style ID, and cache key. Admins can review
+  cache health and render history from the `/admin/pixellab` dashboard.
+
 ## Emulator Playback Requirements
 
 - Modern Chromium or Firefox builds are recommended for smooth canvas rendering and IndexedDB-backed save states. Safari

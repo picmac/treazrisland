@@ -8,6 +8,7 @@ import prismaPlugin from "./plugins/prisma.js";
 import authPlugin from "./plugins/auth.js";
 import storagePlugin from "./plugins/storage.js";
 import screenScraperPlugin from "./plugins/screenscraper.js";
+import pixelLabPlugin from "./plugins/pixellab.js";
 import { registerOnboardingRoutes } from "./routes/onboarding.js";
 import { registerScreenScraperRoutes } from "./routes/screenscraper.js";
 import { registerInvitationRoutes } from "./routes/invitations.js";
@@ -52,6 +53,7 @@ export const buildServer = (options: BuildServerOptions = {}): FastifyInstance =
   if (registerPrisma) {
     app.register(prismaPlugin);
     app.register(screenScraperPlugin);
+    app.register(pixelLabPlugin);
   }
 
   app.register(async (instance) => {

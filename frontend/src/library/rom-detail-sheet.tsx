@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getRom, type RomDetail } from "@lib/api/library";
 import { PixelFrame } from "@/src/components/pixel-frame";
+import { useSession } from "@/src/auth/session-provider";
+import { enqueueScreenScraperEnrichment } from "@/src/lib/api/admin/screenscraper";
 
 type RomDetailSheetProps = {
   id: string;
@@ -15,6 +17,12 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
   const [state, setState] = useState<FetchState>("idle");
   const [rom, setRom] = useState<RomDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useSession();
+  const isAdmin = user?.role === "ADMIN";
+  const [enrichmentStatus, setEnrichmentStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
+  const [enrichmentMessage, setEnrichmentMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,6 +53,25 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
   const metadata = rom?.metadata ?? [];
   const primary = metadata[0] ?? null;
 
+  const handleEnrichment = async () => {
+    if (!rom) {
+      return;
+    }
+
+    setEnrichmentStatus("loading");
+    setEnrichmentMessage(null);
+    try {
+      await enqueueScreenScraperEnrichment(rom.id);
+      setEnrichmentStatus("success");
+      setEnrichmentMessage("ScreenScraper enrichment queued.");
+    } catch (err) {
+      setEnrichmentStatus("error");
+      setEnrichmentMessage(
+        err instanceof Error ? err.message : "Failed to enqueue ScreenScraper job"
+      );
+    }
+  };
+
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 text-parchment">
       <PixelFrame className="space-y-4 bg-night/80 p-6">
@@ -62,6 +89,27 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
                 <span className="mr-4">Year: {rom.releaseYear ?? "????"}</span>
                 <span>Players: {rom.players ?? "?"}</span>
               </div>
+              {isAdmin && (
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.3em]">
+                  <button
+                    type="button"
+                    onClick={handleEnrichment}
+                    disabled={enrichmentStatus === "loading"}
+                    className="rounded border border-primary/60 px-4 py-1 text-primary transition hover:bg-primary/20 disabled:cursor-not-allowed disabled:border-slate-600 disabled:text-slate-500"
+                  >
+                    {enrichmentStatus === "loading" ? "Queueing…" : "Queue ScreenScraper job"}
+                  </button>
+                  {enrichmentMessage && (
+                    <span
+                      className={
+                        enrichmentStatus === "error" ? "text-red-300" : "text-slate-300"
+                      }
+                    >
+                      {enrichmentMessage}
+                    </span>
+                  )}
+                </div>
+              )}
             </header>
 
             {primary?.summary && (
@@ -92,7 +140,9 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
                   {rom.assets.map((asset) => (
                     <li key={asset.id} className="flex items-center justify-between gap-4">
                       <span>
-                        {asset.type} • {asset.source}
+                        {asset.source === "PIXELLAB"
+                          ? `PixelLab hero art • ${asset.type}`
+                          : `${asset.type} • ${asset.source}`}
                         {asset.language ? ` • ${asset.language}` : ""}
                         {asset.region ? ` • ${asset.region}` : ""}
                       </span>
