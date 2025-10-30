@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition, type ChangeEvent, type FormEvent } from "react";
 import { useSession } from "@/src/auth/session-provider";
@@ -21,6 +22,7 @@ const initialState: FormState = {
 
 export function LoginForm() {
   const router = useRouter();
+  const playRoute: Route = "/play";
   const { login } = useSession();
   const [form, setForm] = useState<FormState>(initialState);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +50,7 @@ export function LoginForm() {
         });
         setForm(initialState);
         setMfaRequired(false);
-        router.push("/play");
+        router.push(playRoute);
         router.refresh();
       } catch (err) {
         if (err instanceof ApiError) {
