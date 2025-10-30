@@ -9,11 +9,13 @@ type UseVirtualizedGridResetKeyParams = {
     sort: string;
     direction: string;
   };
+  favoritesOnly?: boolean;
 };
 
 export function useVirtualizedGridResetKey({
   slug,
-  filters
+  filters,
+  favoritesOnly
 }: UseVirtualizedGridResetKeyParams): string {
   return useMemo(() => {
     const parts: Array<string> = [
@@ -24,6 +26,9 @@ export function useVirtualizedGridResetKey({
       filters.sort,
       filters.direction
     ];
+    if (typeof favoritesOnly === "boolean") {
+      parts.push(favoritesOnly ? "favorites" : "all");
+    }
     return parts.join("|");
-  }, [filters.direction, filters.publisher, filters.search, filters.sort, filters.year, slug]);
+  }, [favoritesOnly, filters.direction, filters.publisher, filters.search, filters.sort, filters.year, slug]);
 }

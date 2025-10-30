@@ -12,6 +12,12 @@ npm run dev
 
 The application renders App Router entries from `app/`. The player route lives at `/play/[romId]` and streams ROM binaries from the backend player API once authenticated.
 
+## Library favorites & curation
+
+- Use the star button on any ROM card within the platform detail grid to add it to your personal favorites. The toggle persists via the `/favorites` API and updates instantly in the UI.
+- The platform view now includes a **Favorites only** switch that filters the virtualized grid to the ROMs you've starred.
+- Collections (`/collections`) and top lists (`/top-lists`) exposed by the backend API will power future discovery surfaces in the UI. The new API clients live under `src/lib/api/`.
+
 ## EmulatorJS vendor workflow
 
 The emulator bundle, WASM cores, and metadata are vendored into `public/vendor/emulatorjs/`. Run the helper script whenever you want to pull the latest upstream release:
