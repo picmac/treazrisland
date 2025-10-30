@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent, type ChangeEvent } from "react";
 import { signupWithInvitation } from "@/src/lib/api/invitations";
@@ -31,6 +32,7 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const playRoute: Route = "/play";
   const { setSession } = useSession();
 
   const handleChange = (field: keyof FormState) => (event: ChangeEvent<HTMLInputElement>) => {
@@ -52,7 +54,7 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
         });
 
         setSession(payload);
-        router.push("/play");
+        router.push(playRoute);
         router.refresh();
       } catch (err) {
         if (err instanceof ApiError) {

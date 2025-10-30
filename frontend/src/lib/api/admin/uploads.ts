@@ -39,6 +39,7 @@ export type UploadDuplicateResult = {
   metadata: UploadMetadata;
   romId?: string;
   romTitle?: string;
+  platformSlug?: string;
   biosId?: string;
   biosCore?: string;
   reason: string;
