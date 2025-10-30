@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { listPlatforms, type PlatformSummary } from "@lib/api/library";
 import { PixelFrame } from "@/src/components/pixel-frame";
@@ -55,6 +55,74 @@ export function PlatformLibraryPage() {
     };
   }, [filters.search, includeEmpty]);
 
+  const visiblePlatforms = useMemo(() => {
+    const normalizedSearch = filters.search.trim().toLowerCase();
+    const directionMultiplier = filters.direction === "desc" ? -1 : 1;
+
+    const filtered = normalizedSearch
+      ? platforms.filter((platform) => {
+          const candidates = [
+            platform.name,
+            platform.shortName,
+            platform.slug,
+            platform.featuredRom?.title
+          ].filter(Boolean) as string[];
+          return candidates.some((candidate) =>
+            candidate.toLowerCase().includes(normalizedSearch)
+          );
+        })
+      : platforms.slice();
+
+    const getSortValue = (platform: PlatformSummary) => {
+      switch (filters.sort) {
+        case "createdAt":
+          return platform.featuredRom?.updatedAt ?? platform.featuredRom?.title ?? "";
+        case "releaseYear":
+          return platform.featuredRom?.updatedAt ?? platform.featuredRom?.title ?? "";
+        case "publisher":
+          return platform.featuredRom?.title ?? platform.name ?? platform.slug;
+        case "title":
+        default:
+          return platform.name ?? platform.slug;
+      }
+    };
+
+    const toComparable = (value: string | number | null | undefined) => {
+      if (value === null || value === undefined) {
+        return "";
+      }
+      if (typeof value === "number") {
+        return value;
+      }
+      const timestamp = Date.parse(value);
+      if (!Number.isNaN(timestamp)) {
+        return timestamp;
+      }
+      return value.toLowerCase();
+    };
+
+    return filtered.sort((a, b) => {
+      const aValue = toComparable(getSortValue(a));
+      const bValue = toComparable(getSortValue(b));
+
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        if (aValue === bValue) {
+          return 0;
+        }
+        return (aValue - bValue) * directionMultiplier;
+      }
+
+      const aString = String(aValue);
+      const bString = String(bValue);
+
+      if (aString === bString) {
+        return 0;
+      }
+
+      return aString.localeCompare(bString) * directionMultiplier;
+    });
+  }, [filters.direction, filters.sort, filters.search, platforms]);
+
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-6 text-parchment">
       <PixelFrame className="space-y-3 bg-night/80 p-6">
@@ -97,7 +165,7 @@ export function PlatformLibraryPage() {
       )}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {platforms.map((platform) => (
+        {visiblePlatforms.map((platform) => (
           <Link
             key={platform.id}
             href={`/platforms/${platform.slug}`}
@@ -121,7 +189,7 @@ export function PlatformLibraryPage() {
         ))}
       </section>
 
-      {state === "loaded" && platforms.length === 0 && (
+      {state === "loaded" && visiblePlatforms.length === 0 && (
         <div className="rounded-pixel border border-ink/40 bg-night/70 p-6 text-sm text-parchment/70">
           No platforms match those filters yet. Adjust your search or ingest new ROMs via the admin
           uploads tool.
