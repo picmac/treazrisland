@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
           cache-dependency-path: ${{ matrix.project }}/package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Lint
         run: npm run lint
@@ -39,3 +39,25 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: lint-test-build
+    runs-on:
+      - self-hosted
+      - treaz-home
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Deploy to home infrastructure
+        env:
+          TREAZ_BACKEND_ENV_FILE: /opt/treazrisland/config/backend.env
+          TREAZ_FRONTEND_ENV_FILE: /opt/treazrisland/config/frontend.env
+          TREAZ_COMPOSE_ENV_FILE: /opt/treazrisland/config/compose.env
+          TREAZ_COMPOSE_PROJECT_NAME: treazrisland
+        run: |
+          chmod +x scripts/deploy/deploy-local.sh
+          scripts/deploy/deploy-local.sh

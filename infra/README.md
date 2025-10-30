@@ -23,3 +23,13 @@ docker compose -f infra/docker-compose.yml up --build
 ```
 
 Each service consumes the `.env.docker` template in its package. Override values using `.env` files or Compose environment variables when promoting beyond local development.
+
+## Home production stack
+
+`docker-compose.prod.yml` mirrors the service list but targets the production stages of each Dockerfile, removes live code mounts, and adds health checks. The file expects you to provide:
+
+- `TREAZ_BACKEND_ENV_FILE` – path to the backend `.env` containing all secrets.
+- `TREAZ_FRONTEND_ENV_FILE` – path to the frontend `.env`.
+- `POSTGRES_PASSWORD`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` – exported via shell or an env file loaded before running Compose.
+
+Deployments are orchestrated by `scripts/deploy/deploy-local.sh`, which is invoked from the `deploy` job in `.github/workflows/ci.yml`. Review `docs/ops/ci-cd.md` for the full setup and operations checklist.
