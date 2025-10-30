@@ -17,7 +17,7 @@ This matrix captures the minimum automated coverage for TREAZRISLAND. Run the re
 1. **Install dependencies**: `npm ci` inside `backend/` and `frontend/`. If the lockfiles lag behind new tooling (e.g., Playwright), run `npm install` once to refresh them and commit the resulting `package-lock.json` updates.
 2. **Run lint**: `npm run lint` in each package (use `npm run format:write` in the backend if Prettier reports changes).
 3. **Unit tests**: execute `npm test` in both directories.
-4. **Smoke E2E (optional)**: start the Docker Compose stack or local servers, then run `RUN_SMOKE_E2E=1 npm run test:e2e:smoke` from `frontend/`. The Playwright specs stub backend responses so they can execute against a static Next dev server.
+4. **Smoke E2E (optional)**: start the Docker Compose stack or local servers, then run `RUN_SMOKE_E2E=1 npm run test:e2e:smoke` from `frontend/`. The Playwright specs stub backend responses so they can execute against a static Next dev server. Refer to [`docs/testing/e2e.md`](./e2e.md) for detailed prerequisites, environment variables, and troubleshooting tips.
 5. **Builds**: finish with `npm run build` in both packages to catch type regressions that static analysis may miss.
 
 Document any skipped checks in the PR description and create follow-up issues when tests expose gaps.
