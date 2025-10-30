@@ -1,5 +1,5 @@
 import React from "react";
-import { render, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import EmulatorPlayer from "./EmulatorPlayer";
 
 vi.mock("@/lib/emulator/loadBundle", () => ({
@@ -83,6 +83,8 @@ describe("EmulatorPlayer", () => {
     expect(config.system).toBe("snes9x");
     expect(config.onSaveState).toBeTypeOf("function");
     expect(config.loadStateUrl).toBeNull();
+    expect(config.customOptions?.systemId).toBe("snes");
+    expect(config.customOptions?.preferredCores).toEqual(["snes9x", "bsnes"]);
   });
 
   it("delegates save-state callbacks to the provided handler", async () => {
@@ -118,6 +120,28 @@ describe("EmulatorPlayer", () => {
 
     const config = (window.EJS_player as vi.Mock).mock.calls.at(-1)?.[0];
     expect(config?.system).toBe("fbneo");
-    expect(config?.customOptions?.preferredCores).toEqual(["fbneo"]);
+    expect(config?.customOptions?.systemId).toBe("arcade");
+    expect(config?.customOptions?.preferredCores).toEqual([
+      "fbneo",
+      "fbalpha2012_cps1",
+      "fbalpha2012_cps2",
+      "same_cdi"
+    ]);
+  });
+
+  it("surfaces an error when the requested platform lacks a mapped core", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    render(<EmulatorPlayer romId="rom-4" romName="Crazy Taxi" platform="dreamcast" />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/is not supported/i)).toBeInTheDocument();
+    });
+
+    const loadSpy = loadEmulatorBundleModule.loadEmulatorBundle as unknown as vi.Mock;
+    expect(loadSpy).not.toHaveBeenCalled();
+    expect(window.EJS_player).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
   });
 });
