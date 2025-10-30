@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { listPlatforms, listRoms, type PlatformSummary, type RomListItem } from "@lib/api/library";
+import { ApiError } from "@lib/api/client";
+import { getPlatform, listRoms, type PlatformSummary, type RomListItem } from "@lib/api/library";
 import { PixelFrame } from "@/src/components/pixel-frame";
 import {
   LibraryFilterControls,
   type LibraryFilterState
 } from "@/src/components/library-filter-controls";
 import { VirtualizedGrid } from "@/src/components/virtualized-grid";
+import { useVirtualizedGridResetKey } from "@/src/hooks/useVirtualizedGrid";
 
 const DEFAULT_FILTERS: LibraryFilterState = {
   search: "",
@@ -32,6 +34,7 @@ export function PlatformDetailPage({ slug }: PlatformDetailPageProps) {
   const [roms, setRoms] = useState<RomListItem[]>([]);
   const [state, setState] = useState<FetchState>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [platformError, setPlatformError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -40,19 +43,24 @@ export function PlatformDetailPage({ slug }: PlatformDetailPageProps) {
     let cancelled = false;
 
     async function loadPlatform() {
+      setPlatform(null);
+      setPlatformError(null);
       try {
-        const response = await listPlatforms({ includeEmpty: true });
+        const response = await getPlatform(slug);
         if (cancelled) {
           return;
         }
-        const match = response.platforms.find((candidate) => candidate.slug === slug) ?? null;
-        setPlatform(match);
-        if (!match) {
-          setError("Platform not found");
-        }
+        setPlatform(response.platform);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load platform metadata");
+          const message =
+            err instanceof ApiError && err.status === 404
+              ? "Platform not found"
+              : err instanceof Error
+                ? err.message
+                : "Failed to load platform metadata";
+          setPlatform(null);
+          setPlatformError(message);
         }
       }
     }
@@ -71,7 +79,9 @@ export function PlatformDetailPage({ slug }: PlatformDetailPageProps) {
     let cancelled = false;
 
     async function loadRoms() {
-      setError(null);
+      if (page === 1) {
+        setError(null);
+      }
       setState(page === 1 ? "loading" : "loaded");
       setLoadingMore(page > 1);
       try {
@@ -129,6 +139,8 @@ export function PlatformDetailPage({ slug }: PlatformDetailPageProps) {
     return parts.join(", ");
   }, [filters]);
 
+  const gridResetKey = useVirtualizedGridResetKey({ slug, filters });
+
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-6 text-parchment">
       <PixelFrame className="space-y-4 bg-night/80 p-6">
@@ -141,6 +153,9 @@ export function PlatformDetailPage({ slug }: PlatformDetailPageProps) {
             <p className="text-sm text-parchment/70">
               {platform.romCount} ROMs catalogued • Slug: <span className="text-parchment/90">{platform.slug}</span>
             </p>
+          )}
+          {platformError && (
+            <p className="text-sm text-red-300">{platformError}</p>
           )}
         </header>
         <LibraryFilterControls
@@ -187,6 +202,7 @@ export function PlatformDetailPage({ slug }: PlatformDetailPageProps) {
             columns={1}
             rowHeight={160}
             overscan={3}
+            resetKey={gridResetKey}
             renderItem={(rom) => <RomCard rom={rom} />}
           />
         </div>

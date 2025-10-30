@@ -32,13 +32,53 @@ const metadataSelect = {
   language: true,
   region: true,
   summary: true,
-  storyline: true,
   developer: true,
   publisher: true,
   genre: true,
   rating: true,
   createdAt: true
 } satisfies Prisma.RomMetadataSelect;
+
+const platformSummaryInclude = {
+  _count: { select: { roms: true } },
+  roms: {
+    take: 1,
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      updatedAt: true,
+      assets: {
+        where: { type: { in: SUMMARY_ASSET_TYPES } },
+        orderBy: { createdAt: "desc" },
+        take: 4,
+        select: assetSelect
+      }
+    }
+  }
+} satisfies Prisma.PlatformInclude;
+
+function toPlatformSummary(
+  platform: Prisma.PlatformGetPayload<{ include: typeof platformSummaryInclude }>
+) {
+  const featuredRom = platform.roms[0];
+  return {
+    id: platform.id,
+    name: platform.name,
+    slug: platform.slug,
+    shortName: platform.shortName,
+    screenscraperId: platform.screenscraperId,
+    romCount: platform._count.roms,
+    featuredRom: featuredRom
+      ? {
+          id: featuredRom.id,
+          title: featuredRom.title,
+          updatedAt: featuredRom.updatedAt,
+          assetSummary: buildAssetSummary(featuredRom.assets)
+        }
+      : null
+  };
+}
 
 const listPlatformsQuerySchema = z.object({
   search: z
@@ -92,7 +132,45 @@ const listRomsQuerySchema = z.object({
     .int()
     .min(1)
     .max(60)
-    .default(24)
+    .default(24),
+  includeHistory: z
+    .preprocess((value) => {
+      if (typeof value === "string") {
+        if (value.length === 0) {
+          return undefined;
+        }
+        return value === "true" || value === "1";
+      }
+      if (typeof value === "boolean") {
+        return value;
+      }
+      return undefined;
+    }, z.boolean().optional())
+    .transform((value) => value ?? false),
+  assetTypes: z
+    .preprocess((value) => {
+      if (Array.isArray(value)) {
+        return value;
+      }
+      if (typeof value === "string") {
+        return value
+          .split(",")
+          .map((part) => part.trim())
+          .filter((part) => part.length > 0);
+      }
+      return undefined;
+    }, z.array(z.string()).optional())
+    .transform((value) => {
+      if (!value || value.length === 0) {
+        return undefined;
+      }
+      const normalized = value
+        .map((candidate) => candidate.toUpperCase())
+        .filter((candidate): candidate is RomAssetType =>
+          (Object.values(RomAssetType) as string[]).includes(candidate)
+        );
+      return normalized.length > 0 ? normalized : undefined;
+    })
 });
 
 const listRomAssetsQuerySchema = z.object({
@@ -200,7 +278,8 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
       if (search) {
         where.OR = [
           { name: { contains: search, mode: "insensitive" } },
-          { shortName: { contains: search, mode: "insensitive" } }
+          { shortName: { contains: search, mode: "insensitive" } },
+          { slug: { contains: search, mode: "insensitive" } }
         ];
       }
       if (!includeEmpty) {
@@ -210,47 +289,33 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
       const platforms = await app.prisma.platform.findMany({
         where,
         orderBy: { name: "asc" },
-        include: {
-          _count: { select: { roms: true } },
-          roms: {
-            take: 1,
-            orderBy: { updatedAt: "desc" },
-            select: {
-              id: true,
-              title: true,
-              updatedAt: true,
-              assets: {
-                where: { type: { in: SUMMARY_ASSET_TYPES } },
-                orderBy: { createdAt: "desc" },
-                take: 4,
-                select: assetSelect
-              }
-            }
-          }
-        }
+        include: platformSummaryInclude
       });
 
       return {
-        platforms: platforms.map((platform) => {
-          const featuredRom = platform.roms[0];
-          return {
-            id: platform.id,
-            name: platform.name,
-            slug: platform.slug,
-            shortName: platform.shortName,
-            screenscraperId: platform.screenscraperId,
-            romCount: platform._count.roms,
-            featuredRom: featuredRom
-              ? {
-                  id: featuredRom.id,
-                  title: featuredRom.title,
-                  updatedAt: featuredRom.updatedAt,
-                  assetSummary: buildAssetSummary(featuredRom.assets)
-                }
-              : null
-          };
-        })
+        platforms: platforms.map(toPlatformSummary)
       };
+    }
+  );
+
+  app.get(
+    "/platforms/:slug",
+    {
+      preHandler: app.authenticate
+    },
+    async (request) => {
+      const params = z.object({ slug: z.string().min(1) }).parse(request.params);
+
+      const platform = await app.prisma.platform.findUnique({
+        where: { slug: params.slug },
+        include: platformSummaryInclude
+      });
+
+      if (!platform) {
+        throw app.httpErrors.notFound("Platform not found");
+      }
+
+      return { platform: toPlatformSummary(platform) };
     }
   );
 
@@ -261,7 +326,18 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
     },
     async (request) => {
       const parsed = listRomsQuerySchema.parse(request.query ?? {});
-      const { platform, search, publisher, year, sort, direction, page, pageSize } = parsed;
+      const {
+        platform,
+        search,
+        publisher,
+        year,
+        sort,
+        direction,
+        page,
+        pageSize,
+        includeHistory,
+        assetTypes
+      } = parsed;
 
       const sortFieldMap: Record<string, "title" | "releaseYear" | "publisher" | "createdAt"> = {
         title: "title",
@@ -329,6 +405,20 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
 
       const skip = (page - 1) * pageSize;
 
+      const resolvedAssetTypes = assetTypes ?? [RomAssetType.COVER, RomAssetType.SCREENSHOT];
+      const assetTake = assetTypes ? 20 : 2;
+
+      const metadataInclude: Prisma.RomMetadataFindManyArgs = includeHistory
+        ? {
+            orderBy: { createdAt: "desc" },
+            select: metadataSelect
+          }
+        : {
+            orderBy: { createdAt: "desc" },
+            select: metadataSelect,
+            take: 1
+          };
+
       const [total, roms] = await Promise.all([
         app.prisma.rom.count({ where }),
         app.prisma.rom.findMany({
@@ -341,15 +431,12 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
               select: { id: true, name: true, slug: true, shortName: true }
             },
             assets: {
-              where: { type: { in: SUMMARY_ASSET_TYPES } },
+              where: { type: { in: resolvedAssetTypes } },
               orderBy: { createdAt: "desc" },
-              take: 20,
+              take: assetTake,
               select: assetSelect
             },
-            metadata: {
-              orderBy: { createdAt: "desc" },
-              select: metadataSelect
-            }
+            metadata: metadataInclude
           }
         })
       ]);
@@ -369,7 +456,8 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
             romSize: rom.romSize,
             screenscraperId: rom.screenscraperId,
             metadata,
-            assetSummary: buildAssetSummary(rom.assets)
+            assetSummary: buildAssetSummary(rom.assets),
+            metadataHistory: includeHistory ? rom.metadata : undefined
           };
         })
       };

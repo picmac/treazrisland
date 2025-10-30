@@ -68,6 +68,7 @@ export type RomListItem = {
   screenscraperId: number | null;
   metadata: RomMetadata | null;
   assetSummary: AssetSummary;
+  metadataHistory?: RomMetadata[];
 };
 
 export type RomListResponse = {
@@ -151,6 +152,10 @@ export async function listPlatforms(params: {
   return apiFetch(path);
 }
 
+export async function getPlatform(slug: string): Promise<{ platform: PlatformSummary }> {
+  return apiFetch(`/platforms/${encodeURIComponent(slug)}`);
+}
+
 export type ListRomsParams = {
   platform?: string;
   search?: string;
@@ -160,6 +165,8 @@ export type ListRomsParams = {
   direction?: "asc" | "desc";
   page?: number;
   pageSize?: number;
+  includeHistory?: boolean;
+  assetTypes?: string[];
 };
 
 export async function listRoms(params: ListRomsParams = {}): Promise<RomListResponse> {
@@ -187,6 +194,12 @@ export async function listRoms(params: ListRomsParams = {}): Promise<RomListResp
   }
   if (typeof params.pageSize === "number") {
     query.set("pageSize", String(params.pageSize));
+  }
+  if (params.includeHistory) {
+    query.set("includeHistory", "true");
+  }
+  if (params.assetTypes && params.assetTypes.length > 0) {
+    query.set("assetTypes", params.assetTypes.join(","));
   }
   const suffix = query.toString();
   const path = suffix.length > 0 ? `/roms?${suffix}` : "/roms";

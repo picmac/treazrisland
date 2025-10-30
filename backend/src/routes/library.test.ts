@@ -25,7 +25,7 @@ beforeAll(async () => {
 });
 
 type PrismaMock = {
-  platform: { findMany: ReturnType<typeof vi.fn> };
+  platform: { findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
   rom: {
     count: ReturnType<typeof vi.fn>;
     findMany: ReturnType<typeof vi.fn>;
@@ -37,7 +37,7 @@ type PrismaMock = {
 describe("library routes", () => {
   let app: FastifyInstance;
   const prismaMock: PrismaMock = {
-    platform: { findMany: vi.fn() },
+    platform: { findMany: vi.fn(), findUnique: vi.fn() },
     rom: { count: vi.fn(), findMany: vi.fn(), findUnique: vi.fn() },
     romAsset: { findMany: vi.fn() }
   };
@@ -46,6 +46,7 @@ describe("library routes", () => {
     vi.clearAllMocks();
     app = buildServer({ registerPrisma: false });
     prismaMock.platform.findMany.mockResolvedValue([]);
+    prismaMock.platform.findUnique.mockResolvedValue(null);
     prismaMock.rom.count.mockResolvedValue(0);
     prismaMock.rom.findMany.mockResolvedValue([]);
     prismaMock.romAsset.findMany.mockResolvedValue([]);
@@ -128,6 +129,68 @@ describe("library routes", () => {
     );
   });
 
+  it("allows searching platforms by slug", async () => {
+    const token = app.jwt.sign({ sub: "user_1", role: "USER" });
+    await request(app)
+      .get("/platforms?search=nes")
+      .set("authorization", `Bearer ${token}`);
+
+    expect(prismaMock.platform.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([
+            expect.objectContaining({ slug: { contains: "nes", mode: "insensitive" } })
+          ])
+        })
+      })
+    );
+  });
+
+  it("returns platform detail by slug", async () => {
+    const now = new Date();
+    prismaMock.platform.findUnique.mockResolvedValueOnce({
+      id: "platform_1",
+      name: "Nintendo Entertainment System",
+      slug: "nes",
+      shortName: "NES",
+      screenscraperId: 1,
+      _count: { roms: 2 },
+      roms: [
+        {
+          id: "rom_1",
+          title: "The Legend of Zelda",
+          updatedAt: now,
+          assets: []
+        }
+      ]
+    });
+
+    const token = app.jwt.sign({ sub: "user_1", role: "USER" });
+    const response = await request(app)
+      .get("/platforms/nes")
+      .set("authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.platform).toMatchObject({ slug: "nes", name: "Nintendo Entertainment System" });
+    expect(prismaMock.platform.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { slug: "nes" },
+        include: expect.objectContaining({
+          roms: expect.objectContaining({ take: 1 })
+        })
+      })
+    );
+  });
+
+  it("returns 404 when platform detail missing", async () => {
+    const token = app.jwt.sign({ sub: "user_1", role: "USER" });
+    const response = await request(app)
+      .get("/platforms/missing")
+      .set("authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(404);
+  });
+
   it("supports rom listing with filtering and sorting", async () => {
     prismaMock.rom.count.mockResolvedValueOnce(1);
     prismaMock.rom.findMany.mockResolvedValueOnce([
@@ -206,9 +269,105 @@ describe("library routes", () => {
           releaseYear: 1995
         }),
         orderBy: expect.arrayContaining([expect.objectContaining({ releaseYear: "desc" })]),
-        take: 12
+        take: 12,
+        include: expect.objectContaining({
+          assets: expect.objectContaining({
+            where: { type: { in: [RomAssetType.COVER, RomAssetType.SCREENSHOT] } },
+            take: 2
+          }),
+          metadata: expect.objectContaining({ take: 1 })
+        })
       })
     );
+  });
+
+  it("allows requesting metadata history and custom asset types", async () => {
+    const first = new Date("2024-01-01T00:00:00Z");
+    const second = new Date("2023-01-01T00:00:00Z");
+    prismaMock.rom.count.mockResolvedValueOnce(1);
+    prismaMock.rom.findMany.mockResolvedValueOnce([
+      {
+        id: "rom_1",
+        title: "Chrono Trigger",
+        platformId: "platform_1",
+        platform: {
+          id: "platform_1",
+          name: "Super Nintendo Entertainment System",
+          slug: "snes",
+          shortName: "SNES"
+        },
+        releaseYear: 1995,
+        players: 1,
+        romSize: 8388608,
+        screenscraperId: 1234,
+        romHash: null,
+        createdAt: first,
+        updatedAt: first,
+        assets: [
+          {
+            id: "asset_manual",
+            type: RomAssetType.MANUAL,
+            source: RomAssetSource.SCREEN_SCRAPER,
+            providerId: "provider_11",
+            language: "en",
+            region: "us",
+            width: 800,
+            height: 600,
+            fileSize: 4096,
+            format: "pdf",
+            checksum: "checksum",
+            storageKey: "manuals/asset_manual.pdf",
+            externalUrl: null,
+            createdAt: first
+          }
+        ],
+        metadata: [
+          {
+            id: "meta_1",
+            source: EnrichmentProvider.SCREEN_SCRAPER,
+            language: "en",
+            region: "us",
+            summary: "Epic time-traveling adventure",
+            developer: "Square",
+            publisher: "Square",
+            genre: "RPG",
+            rating: 4.9,
+            createdAt: first
+          },
+          {
+            id: "meta_0",
+            source: EnrichmentProvider.SCREEN_SCRAPER,
+            language: "en",
+            region: "us",
+            summary: "Older notes",
+            developer: "Square",
+            publisher: "Square",
+            genre: "RPG",
+            rating: 4.5,
+            createdAt: second
+          }
+        ]
+      }
+    ]);
+
+    const token = app.jwt.sign({ sub: "user_1", role: "USER" });
+    const response = await request(app)
+      .get("/roms?includeHistory=true&assetTypes=manual,video")
+      .set("authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(200);
+    expect(prismaMock.rom.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          assets: expect.objectContaining({
+            where: { type: { in: [RomAssetType.MANUAL, RomAssetType.VIDEO] } },
+            take: 20
+          }),
+          metadata: expect.not.objectContaining({ take: expect.anything() })
+        })
+      })
+    );
+    expect(response.body.roms[0].metadataHistory).toHaveLength(2);
   });
 
   it("returns rom details and not found errors", async () => {
