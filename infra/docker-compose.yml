@@ -29,16 +29,6 @@ services:
     volumes:
       - minio-data:/data
 
-  pixellab-mock:
-    image: stoplight/prism:4
-    container_name: treazrisland-pixellab-mock
-    command: mock -h 0.0.0.0 /tmp/pixellab-openapi.yaml
-    volumes:
-      - ./mock/pixellab-openapi.yaml:/tmp/pixellab-openapi.yaml:ro
-    ports:
-      - "4010:4010"
-    restart: unless-stopped
-
   backend:
     build:
       context: ..
@@ -50,11 +40,9 @@ services:
     environment:
       DATABASE_URL: postgresql://treazrisland:treazrisland@postgres:5432/treazrisland?schema=public
       STORAGE_ENDPOINT: http://minio:9000
-      PIXELLAB_BASE_URL: http://pixellab-mock:4010
     depends_on:
       - postgres
       - minio
-      - pixellab-mock
     ports:
       - "3001:3001"
     volumes:

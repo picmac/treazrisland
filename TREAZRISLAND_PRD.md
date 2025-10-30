@@ -8,7 +8,7 @@
 ## Vision & Background
 TREAZRISLAND is a self-hosted retro gaming portal that delivers a curated library of classics through a modern web experience. The stack pairs a Next.js SPA with a Fastify REST API, PostgreSQL for persistent data, and object storage (MinIO/S3). A built-in onboarding flow, strict role-based access, and per-user personalization make it ideal for families and homelab crews who want privacy-first retro gaming.
 
-Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Island. Custom hero art, UI embellishments, and promotional visuals are generated on demand via the **PixelLab.ai API**, ensuring stylistic consistency and reproducibility.
+Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Island. Custom hero art, UI embellishments, and promotional visuals are curated in-house to maintain stylistic consistency and reproducibility.
 
 ## Goals
 - Deliver a full self-hosted experience: onboarding, Admin/User roles, secure authentication, and SPA navigation.
@@ -16,7 +16,7 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 - Stream ROMs in-browser through EmulatorJS with synchronized play states across devices.
 - Keep ROM binaries and assets private via signed URLs, strict JWT enforcement, and rate limiting.
 - Provide admins with powerful upload, enrichment, and auditing flows, including integration with external metadata sources.
-- Ensure the brand consistently reflects the SNES/Monkey Island vibe by integrating PixelLab.ai powered artwork.
+- Ensure the brand consistently reflects the SNES/Monkey Island vibe through curated artwork guidelines and tooling.
 
 ## Non-Goals (Current Scope)
 - Cloud-hosted sync, leaderboards, or public multiplayer matchmaking.
@@ -38,7 +38,6 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 | Game Detail & Player | EmulatorJS canvas, downloads | All | `/play/:id`, `/roms/:id/download`, `/play-states/*` |
 | Favorites & Collections | Personalized lists | All | `/favorites/*`, `/collections`, `/top-lists`, `UserRomFavorite` |
 | Admin Upload & Enrichment | ROM intake, metadata fetch | Admin | `/roms/upload`, `/roms/:id/enrich`, `UploadAudit` |
-| PixelLab Creative Pipeline | Generate SNES-style art | Admin / Maintainer | PixelLab.ai API workflows, CDN cache |
 | Monitoring & Stats | Usage metrics | All (read), Admin (analysis) | `/stats/overview` |
 
 ## Functional Requirements
@@ -81,17 +80,13 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 - **ScreenScraper enrichment:** `/roms/:id/enrich` fetches metadata/assets when ScreenScraper credentials are configured. Respects per-request rate limits (`RATE_LIMIT_ENRICH_*`), caches results, and syncs `Rom.coverUrl` with stored asset ID. Audit records success/failure messages.
 - **Admin guardrails:** All upload/enrich routes require `ADMIN` role via `requireRole` pre-handler.
 
-### 7. PixelLab.ai Creative Pipeline
+### 7. Creative Asset Management
 - **Purpose:** Guarantee a cohesive SNES-era visual identity reminiscent of Monkey Island across hero banners, badges, and promotional images.
-- **API Integration:**
-  - Backend service `PixelLabService` (to be implemented) stores API credentials (`PIXELLAB_API_KEY`, `PIXELLAB_STYLE_ID`) and handles rate limiting.
-  - Admin UI exposes tooling to request new art variants (e.g., themed platform banners, campaign posters) directly from PixelLab.ai.
-  - Responses (PNG/WebP) are stored in object storage with metadata linking to the originating prompt and style parameters.
-- **Usage Scenarios:** 
-  - Regenerate hero art on platform detail pages when new ROMs land.
-  - Create seasonal artwork (e.g., “TreazFest”) delivered through marketing sliders.
-  - Render 16-bit SNES-style NPCs for onboarding, with palettes matching Monkey Island’s warm-cold contrasts.
-- **Caching & CDN:** Outputs cached in MinIO and optionally pre-rendered into responsive breakpoints. Future enhancement: integrate with CDN invalidation workflows.
+- **Asset Pipeline:**
+  - Curate and store high-quality artwork in object storage with metadata describing origin, usage rights, and associated ROMs or campaigns.
+  - Admin UI exposes tooling to refresh artwork metadata, swap featured assets, and audit usage across the frontend.
+  - Support seasonal artwork (e.g., “TreazFest”) delivered through marketing sliders while keeping prior assets available for rollback.
+- **Governance:** Document palette, typography, and framing standards so contributors can produce consistent art without external generation services.
 
 ### 8. API & Documentation
 - REST endpoints documented in `docs/API_AUTH.md`, `docs/API_LIBRARY.md`, `docs/API_PLAYER.md`.
@@ -114,16 +109,16 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
   - `db` (PostgreSQL 16) with health check.
   - `adminer` for DB inspection.
   - `minio` for object storage.
-  - `backend` Fastify service (Node 22), internal-only via `expose`, environment-driven config for JWT, storage, ScreenScraper, PixelLab (planned).
+  - `backend` Fastify service (Node 22), internal-only via `expose`, environment-driven config for JWT, storage, and ScreenScraper.
   - `frontend` Next.js app published on host port 3000 with API rewrites.
   - Optional `cloudflared` profile for Cloudflare Tunnel exposure.
-- **Environment variables:** `.env.example` covers JWT secrets, rate limits, storage credentials, ScreenScraper config, Cloudflare token, and will be extended for PixelLab.ai (`PIXELLAB_API_KEY`, `PIXELLAB_STYLE_ID`, optional `PIXELLAB_BASE_URL`).
+- **Environment variables:** `.env.example` covers JWT secrets, rate limits, storage credentials, ScreenScraper config, and Cloudflare token.
 - **Build/test scripts:** Backend `npm run dev/build/test`, Frontend `npm run dev/build/test/test:e2e`. Utility scripts generate pixel assets and icon sets.
 
 ## Non-Functional Requirements
 - **Security:** Strict auth guards, rate limiting, hashed secrets, signed asset tokens, comprehensive Helmet policy, threat model (see `docs/security/threat-model.md`). Storage layer enforces bucket policy and cleans up orphaned temp files.
 - **Performance:** Fastify with Prisma ensures low latency; library grids virtualized via `@tanstack/react-virtual`. Upload streaming avoids memory spikes. Rate limits mitigate abuse.
-- **Privacy:** API accessible only through frontend proxy; ROM assets locked behind signed URLs; no third-party trackers. PixelLab integration stores only derived assets, not user data.
+- **Privacy:** API accessible only through frontend proxy; ROM assets locked behind signed URLs; no third-party trackers.
 - **Reliability:** Health endpoint `/health` verifies DB connectivity. Prisma transactions ensure atomic user creation + invitation updates. Upload audits provide traceability for incident response.
 - **Accessibility & Responsiveness:** Layout adapts based on orientation hooks; bottom navigation for mobile; follow-up accessibility audit planned.
 - **Localization:** Currently English-only; ScreenScraper preferences allow localized metadata. Future i18n expansion noted.
@@ -139,23 +134,23 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 - **Library quality:** Total curated ROMs, enrichment coverage, upload success vs. failure ratio.
 - **Performance:** LCP < 2.5 s on primary pages, ROM download latency, upload throughput (≤30 s for 256 MB).
 - **Security:** MFA adoption rate, blocked rate-limit events, time-to-acknowledge CSP reports.
-- **Creative output:** PixelLab render count, approval rate of generated assets, CDN cache hit rate for art.
+- **Creative output:** Admin-reviewed artwork rotation cadence, freshness of featured assets, CDN cache hit rate for art.
 
 ## Risks & Assumptions
 - **ScreenScraper throttling:** External API quotas may limit enrichment throughput; caching mitigates but fallback messaging required.
 - **Storage credentials:** Secrets must be rotated securely; migration to managed secret storage planned (Vault/SSM).
-- **PixelLab dependency:** API downtime affects timely art generation. Implement retry/backoff and cached fallbacks.
+- **Art sourcing:** Maintaining a steady pipeline of curated artwork requires coordination with contributors; establish guidelines and fallback assets.
 - **XSS concerns:** SPA stores access token in localStorage; CSP + sanitation reduce risk but further hardening (e.g., Trusted Types) recommended.
 - **Large ROM uploads:** 1 GiB max per upload; larger libraries require chunked uploads or CLI tooling.
 
 ## Roadmap & Open Items
-1. **PixelLab Service Implementation:** Build backend client, admin UI tooling, caching, and CDN invalidation pipeline for SNES-style assets.
-2. **Secrets Management:** Shift from `.env` to a managed secret store; automate JWT/PixelLab credential rotation.
-3. **Telemetry Expansion:** Forward logs to centralized store, add alerting for auth anomalies and PixelLab API failures.
+1. **Creative Asset Tooling:** Build admin UI workflows for curated art management, caching, and CDN invalidation of static assets.
+2. **Secrets Management:** Shift from `.env` to a managed secret store; automate JWT credential rotation.
+3. **Telemetry Expansion:** Forward logs to centralized store and add alerting for auth anomalies.
 4. **Admin UX Enhancements:** Bulk enrichment queue management, manual metadata editing, ROM status workflow (pending/approved/rejected).
-5. **Community Features (Stretch):** Shared collections, seasonal events with PixelLab-driven art, family safety/age ratings.
+5. **Community Features (Stretch):** Shared collections, seasonal events with curated art, family safety/age ratings.
 6. **Accessibility Audit:** Formal WCAG review, color-contrast validation (especially for pixel themes), keyboard navigation pass.
 
 ---
 
-**References:** Compiled from the TREAZRISLAND repository (frontend, backend, docs, Docker setup) as of 2025-10-29, augmented with the required PixelLab.ai creative pipeline integration and rebranded product identity.
+**References:** Compiled from the TREAZRISLAND repository (frontend, backend, docs, Docker setup) as of 2025-10-29, augmented with the required creative tooling updates and rebranded product identity.
