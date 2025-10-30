@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import clsx from "clsx";
 import { ApiError } from "@lib/api/client";
 import { getPlatform, listRoms, type PlatformSummary, type RomListItem } from "@lib/api/library";
 import { PixelFrame } from "@/src/components/pixel-frame";
@@ -11,6 +12,7 @@ import {
 } from "@/src/components/library-filter-controls";
 import { VirtualizedGrid } from "@/src/components/virtualized-grid";
 import { useVirtualizedGridResetKey } from "@/src/hooks/useVirtualizedGrid";
+import { useFavorites } from "@/src/hooks/useFavorites";
 
 const DEFAULT_FILTERS: LibraryFilterState = {
   search: "",
@@ -38,6 +40,16 @@ export function PlatformDetailPage({ slug }: PlatformDetailPageProps) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
+  const {
+    favorites,
+    loading: favoritesLoading,
+    error: favoritesError,
+    isFavorite: isFavoriteRom,
+    isPending: isFavoritePending,
+    toggleFavorite
+  } = useFavorites();
 
   useEffect(() => {
     let cancelled = false;
@@ -139,7 +151,32 @@ export function PlatformDetailPage({ slug }: PlatformDetailPageProps) {
     return parts.join(", ");
   }, [filters]);
 
-  const gridResetKey = useVirtualizedGridResetKey({ slug, filters });
+  const favoriteSet = useMemo(
+    () => new Set(favorites.map((favorite) => favorite.romId)),
+    [favorites]
+  );
+
+  const visibleRoms = useMemo(() => {
+    if (!showFavoritesOnly) {
+      return roms;
+    }
+    return roms.filter((rom) => favoriteSet.has(rom.id));
+  }, [favoriteSet, roms, showFavoritesOnly]);
+
+  const gridResetKey = useVirtualizedGridResetKey({
+    slug,
+    filters,
+    favoritesOnly: showFavoritesOnly
+  });
+
+  const romCountLabel = showFavoritesOnly
+    ? `${visibleRoms.length} favorite${visibleRoms.length === 1 ? "" : "s"}`
+    : `${roms.length} ROM${roms.length === 1 ? "" : "s"} loaded`;
+
+  const handleToggleFavorite = useCallback(
+    (romId: string) => toggleFavorite(romId),
+    [toggleFavorite]
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-6 text-parchment">
@@ -163,10 +200,32 @@ export function PlatformDetailPage({ slug }: PlatformDetailPageProps) {
           onChange={(next) => setFilters((current) => ({ ...current, ...next }))}
           onReset={() => setFilters(DEFAULT_FILTERS)}
         />
-        {filterSummary.length > 0 && (
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <p className="text-xs uppercase tracking-widest text-parchment/60">
-            Active filters: <span className="text-parchment/80">{filterSummary}</span>
+            {filterSummary.length > 0 ? (
+              <>
+                Active filters: <span className="text-parchment/80">{filterSummary}</span>
+              </>
+            ) : (
+              <span className="text-parchment/40">No additional filters applied</span>
+            )}
           </p>
+          <label className="flex items-center gap-2 text-xs uppercase tracking-widest text-parchment/60">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-ink/50 bg-night text-lagoon focus:ring-lagoon"
+              checked={showFavoritesOnly}
+              onChange={(event) => setShowFavoritesOnly(event.target.checked)}
+              disabled={favoritesLoading && favorites.length === 0}
+            />
+            Favorites only
+            {favoritesLoading && (
+              <span className="text-parchment/40">Loading…</span>
+            )}
+          </label>
+        </div>
+        {favoritesError && (
+          <p className="text-xs text-red-300">Favorites unavailable: {favoritesError}</p>
         )}
       </PixelFrame>
 
@@ -184,7 +243,7 @@ export function PlatformDetailPage({ slug }: PlatformDetailPageProps) {
 
       <div className="rounded-pixel border border-ink/40 bg-night/70 p-4">
         <div className="mb-4 flex items-center justify-between text-xs uppercase tracking-widest text-parchment/60">
-          <span>{roms.length} ROMs loaded</span>
+          <span>{romCountLabel}</span>
           {hasMore && (
             <button
               type="button"
@@ -198,18 +257,27 @@ export function PlatformDetailPage({ slug }: PlatformDetailPageProps) {
         </div>
         <div className="h-[540px]">
           <VirtualizedGrid
-            items={roms}
+            items={visibleRoms}
             columns={1}
             rowHeight={160}
             overscan={3}
             resetKey={gridResetKey}
-            renderItem={(rom) => <RomCard rom={rom} />}
+            renderItem={(rom) => (
+              <RomCard
+                rom={rom}
+                favorite={favoriteSet.has(rom.id)}
+                pending={isFavoritePending(rom.id)}
+                disabled={favoritesLoading}
+                onToggleFavorite={handleToggleFavorite}
+              />
+            )}
           />
         </div>
-        {state === "loaded" && roms.length === 0 && (
+        {state === "loaded" && visibleRoms.length === 0 && (
           <p className="mt-4 text-sm text-parchment/70">
-            No ROMs match those filters. Try adjusting your search or triggering an enrichment job from
-            the admin area.
+            {showFavoritesOnly
+              ? "You have not marked any favorites on this platform yet. Tap the star on a ROM to keep it on your personal list."
+              : "No ROMs match those filters. Try adjusting your search or triggering an enrichment job from the admin area."}
           </p>
         )}
       </div>
@@ -219,32 +287,61 @@ export function PlatformDetailPage({ slug }: PlatformDetailPageProps) {
 
 type RomCardProps = {
   rom: RomListItem;
+  favorite: boolean;
+  pending: boolean;
+  disabled: boolean;
+  onToggleFavorite: (romId: string) => void;
 };
 
-function RomCard({ rom }: RomCardProps) {
+function RomCard({ rom, favorite, pending, disabled, onToggleFavorite }: RomCardProps) {
   const primaryMetadata = rom.metadata;
+  const buttonLabel = favorite ? "Remove from favorites" : "Add to favorites";
+  const isDisabled = disabled || pending;
+  const buttonClasses = clsx(
+    "rounded-pixel border px-2 py-1 text-lg leading-none transition focus:outline-none focus:ring-2 focus:ring-lagoon",
+    favorite
+      ? "border-amber-300 bg-amber-200/10 text-amber-200"
+      : "border-ink/40 bg-night/60 text-parchment/60 hover:border-lagoon hover:text-parchment",
+    isDisabled && "cursor-not-allowed opacity-50 hover:border-ink/40 hover:text-parchment/60"
+  );
+
   return (
     <div className="flex h-full flex-col justify-between rounded border border-ink/40 bg-night/80 p-4 text-sm text-parchment">
-      <div className="space-y-2">
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="text-lg font-semibold text-parchment">{rom.title}</h2>
-          <span className="text-xs uppercase tracking-widest text-parchment/50">
-            {rom.releaseYear ?? "????"}
-          </span>
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-1 space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-lg font-semibold text-parchment">{rom.title}</h2>
+              <span className="text-xs uppercase tracking-widest text-parchment/50">
+                {rom.releaseYear ?? "????"}
+              </span>
+            </div>
+            {primaryMetadata?.summary ? (
+              <p className="text-xs leading-relaxed text-parchment/70 max-h-24 overflow-hidden">
+                {primaryMetadata.summary}
+              </p>
+            ) : (
+              <p className="text-xs text-parchment/50">No synopsis available yet.</p>
+            )}
+            {primaryMetadata?.genre && (
+              <p className="text-xs text-parchment/60">Genre: {primaryMetadata.genre}</p>
+            )}
+            {primaryMetadata?.publisher && (
+              <p className="text-xs text-parchment/60">Publisher: {primaryMetadata.publisher}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            className={buttonClasses}
+            onClick={() => onToggleFavorite(rom.id)}
+            disabled={isDisabled}
+            aria-pressed={favorite}
+            aria-label={buttonLabel}
+            title={buttonLabel}
+          >
+            <span aria-hidden="true">{pending ? "…" : favorite ? "★" : "☆"}</span>
+          </button>
         </div>
-        {primaryMetadata?.summary ? (
-          <p className="text-xs leading-relaxed text-parchment/70 max-h-24 overflow-hidden">
-            {primaryMetadata.summary}
-          </p>
-        ) : (
-          <p className="text-xs text-parchment/50">No synopsis available yet.</p>
-        )}
-        {primaryMetadata?.genre && (
-          <p className="text-xs text-parchment/60">Genre: {primaryMetadata.genre}</p>
-        )}
-        {primaryMetadata?.publisher && (
-          <p className="text-xs text-parchment/60">Publisher: {primaryMetadata.publisher}</p>
-        )}
       </div>
       <div className="mt-3 flex items-center justify-between text-xs uppercase tracking-widest text-parchment/60">
         <span>{rom.players ? `${rom.players} player${rom.players > 1 ? "s" : ""}` : "Players TBD"}</span>

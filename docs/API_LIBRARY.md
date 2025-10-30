@@ -102,3 +102,124 @@ Lists assets for a ROM. Optional query parameters:
 
 Response includes both the raw assets and a derived `assetSummary` grouped by cover, screenshots,
 videos, and manuals.
+
+## `GET /favorites`
+
+Returns the authenticated user's favorite ROM identifiers ordered by most recent activity.
+
+**Response**
+
+```json
+{
+  "favorites": [
+    { "romId": "rom_123", "createdAt": "2025-02-14T12:34:00.000Z" }
+  ]
+}
+```
+
+## `POST /favorites/:romId`
+
+Marks a ROM as a favorite for the current user. Duplicate requests return HTTP 204 without an
+error to keep the interaction idempotent. Returns HTTP 404 when the ROM does not exist.
+
+**Response**
+
+```json
+{
+  "favorite": { "romId": "rom_123", "createdAt": "2025-02-14T12:34:00.000Z" }
+}
+```
+
+## `DELETE /favorites/:romId`
+
+Removes a ROM from the caller's favorites. The route always returns HTTP 204, even when the ROM was
+not previously marked as a favorite.
+
+## `GET /collections`
+
+Lists published ROM collections with ordered entries. Each collection surfaces high-level metadata
+along with the associated ROM IDs and platform context.
+
+**Response**
+
+```json
+{
+  "collections": [
+    {
+      "id": "collection_1",
+      "slug": "treaz-essentials",
+      "title": "Treaz Essentials",
+      "description": "Must-play picks across platforms",
+      "isPublished": true,
+      "createdAt": "2025-02-01T00:00:00.000Z",
+      "updatedAt": "2025-02-14T08:00:00.000Z",
+      "createdById": "user_admin",
+      "roms": [
+        {
+          "id": "rom_123",
+          "title": "Chrono Trigger",
+          "position": 1,
+          "note": "Time-traveling classic",
+          "platform": {
+            "id": "platform_snes",
+            "name": "Super Nintendo",
+            "slug": "snes",
+            "shortName": "SNES"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+## `GET /collections/:slug`
+
+Returns a single published collection by slug. Responds with HTTP 404 when the slug is unknown or
+the collection has not been published yet.
+
+## `GET /top-lists`
+
+Surfaces curated top lists that have been published. Entries include the ranked ROM, platform
+context, and optional blurbs describing the pick.
+
+**Response**
+
+```json
+{
+  "topLists": [
+    {
+      "id": "toplist_1",
+      "slug": "february-legends",
+      "title": "February Legends",
+      "description": "Community favorites for the month",
+      "publishedAt": "2025-02-15T00:00:00.000Z",
+      "effectiveFrom": "2025-02-01T00:00:00.000Z",
+      "effectiveTo": "2025-02-29T00:00:00.000Z",
+      "createdAt": "2025-02-01T00:00:00.000Z",
+      "updatedAt": "2025-02-15T00:00:00.000Z",
+      "createdById": "user_admin",
+      "entries": [
+        {
+          "id": "entry_1",
+          "romId": "rom_123",
+          "title": "Chrono Trigger",
+          "rank": 1,
+          "blurb": "Era-defining RPG",
+          "platform": {
+            "id": "platform_snes",
+            "name": "Super Nintendo",
+            "slug": "snes",
+            "shortName": "SNES"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+## `GET /top-lists/:slug`
+
+Returns a single published top list by slug. Responds with HTTP 404 when no published list matches
+the provided slug.

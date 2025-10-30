@@ -86,6 +86,9 @@ model User {
   loginAudits    LoginAudit[]
   playStates     PlayState[]
   romPlaybackAudits RomPlaybackAudit[]
+  favorites      UserRomFavorite[]
+  createdCollections RomCollection[] @relation("CollectionCreators")
+  createdTopLists    RomTopList[]    @relation("TopListCreators")
 }
 
 model UserInvitation {
@@ -210,6 +213,9 @@ model Rom {
   uploadAudits    RomUploadAudit[]
   playStates      PlayState[]
   romPlaybackAudits RomPlaybackAudit[]
+  favorites       UserRomFavorite[]
+  collectionItems RomCollectionItem[]
+  topListEntries  RomTopListEntry[]
 
   @@index([platformId])
   @@index([screenscraperId])
@@ -379,6 +385,82 @@ model RomPlaybackAudit {
   @@index([romAssetId])
   @@index([playStateId])
   @@index([createdAt])
+}
+
+model UserRomFavorite {
+  userId    String
+  romId     String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rom  Rom  @relation(fields: [romId], references: [id], onDelete: Cascade)
+
+  @@id([userId, romId])
+  @@index([romId])
+}
+
+model RomCollection {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String?
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+
+  createdBy User? @relation("CollectionCreators", fields: [createdById], references: [id], onDelete: SetNull)
+  items      RomCollectionItem[]
+
+  @@index([isPublished])
+}
+
+model RomCollectionItem {
+  id           String   @id @default(cuid())
+  collectionId String
+  romId        String
+  position     Int
+  note         String?
+  createdAt    DateTime @default(now())
+
+  collection RomCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  rom        Rom           @relation(fields: [romId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, romId])
+  @@unique([collectionId, position])
+  @@index([romId])
+}
+
+model RomTopList {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String?
+  publishedAt DateTime?
+  effectiveFrom DateTime?
+  effectiveTo DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+
+  createdBy User? @relation("TopListCreators", fields: [createdById], references: [id], onDelete: SetNull)
+  entries   RomTopListEntry[]
+}
+
+model RomTopListEntry {
+  id        String   @id @default(cuid())
+  topListId String
+  romId     String
+  rank      Int
+  blurb     String?
+  createdAt DateTime @default(now())
+
+  topList RomTopList @relation(fields: [topListId], references: [id], onDelete: Cascade)
+  rom     Rom        @relation(fields: [romId], references: [id], onDelete: Cascade)
+
+  @@unique([topListId, romId])
+  @@unique([topListId, rank])
+  @@index([romId])
 }
 
 model RomEnrichmentJob {

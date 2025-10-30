@@ -16,6 +16,9 @@ import { registerAuthRoutes } from "./routes/auth.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
 import { registerLibraryRoutes } from "./routes/library.js";
 import { registerPlayerRoutes } from "./routes/player.js";
+import { registerFavoriteRoutes } from "./routes/favorites.js";
+import { registerCollectionRoutes } from "./routes/collections.js";
+import { registerTopListRoutes } from "./routes/topLists.js";
 import supportServices from "./plugins/support-services.js";
 import observabilityPlugin from "./plugins/observability.js";
 
@@ -105,6 +108,9 @@ export const buildServer = (
       await registerAdminRoutes(instance);
       await registerLibraryRoutes(instance);
       await registerPlayerRoutes(instance);
+      await registerFavoriteRoutes(instance);
+      await registerCollectionRoutes(instance);
+      await registerTopListRoutes(instance);
     }
   });
 
