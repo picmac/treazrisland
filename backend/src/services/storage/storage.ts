@@ -1,10 +1,11 @@
-import { createHash, createHmac } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
-import { mkdir, unlink, copyFile, stat } from "node:fs/promises";
+import { mkdir, unlink, copyFile, stat, readFile } from "node:fs/promises";
 import { dirname, join, normalize } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 import type { ReadableStream as WebReadableStream } from "node:stream/web";
+import { tmpdir } from "node:os";
 
 type StorageDriver = "filesystem" | "s3";
 
@@ -52,6 +53,13 @@ export type UploadSource = {
   crc32?: string;
   contentType?: string;
   metadata?: Record<string, string | undefined>;
+};
+
+export type AvatarUploadResult = {
+  storageKey: string;
+  size: number;
+  contentType: string;
+  checksumSha256: string;
 };
 
 export class StorageService {
@@ -163,6 +171,75 @@ export class StorageService {
 
   async deleteRomObject(key: string): Promise<void> {
     await this.deleteObject(this.config.romBucket, key);
+  }
+
+  async uploadUserAvatar(
+    params: {
+      userId: string;
+      stream: NodeJS.ReadableStream;
+      maxBytes: number;
+      contentType?: string | undefined;
+    },
+  ): Promise<AvatarUploadResult> {
+    const { userId, stream, maxBytes, contentType } = params;
+    if (!userId) {
+      throw new Error("userId is required for avatar uploads");
+    }
+
+    const tempPath = join(
+      tmpdir(),
+      "treazrisland",
+      "avatars",
+      `${randomUUID()}`,
+    );
+
+    await writeStreamToTempFile(stream, tempPath);
+
+    try {
+      const fileBuffer = await readFile(tempPath);
+      const size = fileBuffer.byteLength;
+      if (size === 0) {
+        throw new Error("Avatar file is empty");
+      }
+      if (size > maxBytes) {
+        throw new Error(
+          `Avatar exceeds maximum size of ${maxBytes} bytes`,
+        );
+      }
+
+      const detectedMime = detectAvatarMimeType(fileBuffer);
+      const providedMime = normalizeMimeType(contentType);
+      const mimeType = detectedMime ?? providedMime;
+
+      if (!mimeType || !AVATAR_MIME_TYPE_EXTENSIONS.has(mimeType)) {
+        throw new Error("Unsupported avatar format");
+      }
+
+      if (providedMime && providedMime !== mimeType) {
+        throw new Error("Avatar content-type does not match file signature");
+      }
+
+      const sha256 = createHash("sha256").update(fileBuffer).digest("hex");
+      const extension = AVATAR_MIME_TYPE_EXTENSIONS.get(mimeType)!;
+      const storageKey = `avatars/${userId}/${randomUUID()}.${extension}`;
+
+      await this.putObject(this.config.assetBucket, storageKey, {
+        filePath: tempPath,
+        size,
+        sha256,
+        contentType: mimeType,
+        metadata: { userId },
+      });
+
+      return {
+        storageKey,
+        size,
+        contentType: mimeType,
+        checksumSha256: sha256,
+      };
+    } finally {
+      await safeUnlink(tempPath);
+    }
   }
 
   private async putObjectFilesystem(
@@ -481,6 +558,55 @@ function encodeS3Key(key: string): string {
     .split("/")
     .map((segment) => encodeURIComponent(segment).replace(/%2F/gi, "/"))
     .join("/");
+}
+
+const AVATAR_MIME_TYPE_EXTENSIONS = new Map<
+  string,
+  "png" | "jpg" | "webp"
+>([
+  ["image/png", "png"],
+  ["image/jpeg", "jpg"],
+  ["image/webp", "webp"],
+]);
+
+function detectAvatarMimeType(buffer: Buffer): string | null {
+  if (buffer.length >= 8) {
+    const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+    if (buffer.subarray(0, 8).equals(pngSignature)) {
+      return "image/png";
+    }
+  }
+
+  if (buffer.length >= 4) {
+    if (buffer[0] === 0xff && buffer[1] === 0xd8) {
+      const hasJpegEnd =
+        buffer[buffer.length - 2] === 0xff && buffer[buffer.length - 1] === 0xd9;
+      if (hasJpegEnd) {
+        return "image/jpeg";
+      }
+    }
+  }
+
+  if (buffer.length >= 12) {
+    const riffHeader = buffer.toString("ascii", 0, 4);
+    const webpHeader = buffer.toString("ascii", 8, 12);
+    if (riffHeader === "RIFF" && webpHeader === "WEBP") {
+      return "image/webp";
+    }
+  }
+
+  return null;
+}
+
+function normalizeMimeType(contentType?: string): string | null {
+  if (!contentType) {
+    return null;
+  }
+  const normalized = contentType.trim().toLowerCase();
+  if (normalized === "image/jpg") {
+    return "image/jpeg";
+  }
+  return normalized;
 }
 
 function formatAmzDate(date: Date): string {

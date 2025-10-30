@@ -12,6 +12,12 @@ interface InjectResponse<T = unknown> {
 type RequestChain<T = unknown> = {
   set: (header: string, value: string) => RequestChain<T>;
   send: (payload: unknown) => RequestChain<T>;
+  field: (name: string, value: string | number | boolean) => RequestChain<T>;
+  attach: (
+    name: string,
+    data: Buffer | string,
+    options?: { filename?: string; contentType?: string }
+  ) => RequestChain<T>;
   then: <TResult = InjectResponse<T>, TError = unknown>(
     onFulfilled?: ((value: InjectResponse<T>) => TResult | Promise<TResult>) | null,
     onRejected?: ((reason: TError) => TResult | Promise<TResult>) | null
@@ -87,18 +93,63 @@ function buildResponse<T>(
 
 type AllowedMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
+type MultipartField = { name: string; value: string };
+type MultipartFile = {
+  name: string;
+  data: Buffer;
+  filename: string;
+  contentType: string;
+};
+
 function createChain<T>(
   app: FastifyInstance,
   method: AllowedMethod,
   url: string,
-  options: { headers: Record<string, string | string[]>; payload?: string | Buffer }
+  options: {
+    headers: Record<string, string | string[]>;
+    payload?: string | Buffer;
+    fields: MultipartField[];
+    files: MultipartFile[];
+  }
 ): RequestChain<T> {
   const execute = async (): Promise<InjectResponse<T>> => {
+    let payloadToSend: string | Buffer | undefined = options.payload;
+
+    if (options.files.length > 0 || options.fields.length > 0) {
+      const boundary = `--------------------------${Date.now().toString(16)}${Math.random()
+        .toString(16)
+        .slice(2)}`;
+      const parts: Buffer[] = [];
+
+      for (const field of options.fields) {
+        parts.push(
+          Buffer.from(
+            `--${boundary}\r\nContent-Disposition: form-data; name="${field.name}"\r\n\r\n${field.value}\r\n`
+          )
+        );
+      }
+
+      for (const file of options.files) {
+        parts.push(
+          Buffer.from(
+            `--${boundary}\r\nContent-Disposition: form-data; name="${file.name}"; filename="${file.filename}"\r\nContent-Type: ${file.contentType}\r\n\r\n`
+          )
+        );
+        parts.push(file.data);
+        parts.push(Buffer.from("\r\n"));
+      }
+
+      parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+      payloadToSend = Buffer.concat(parts);
+      options.headers["content-type"] = `multipart/form-data; boundary=${boundary}`;
+    }
+
     const response = (await app.inject({
       method,
       url,
       headers: options.headers,
-      payload: options.payload
+      payload: payloadToSend
     })) as Awaited<ReturnType<FastifyInstance["inject"]>>;
     return buildResponse<T>(response);
   };
@@ -135,6 +186,19 @@ function createChain<T>(
       }
       return chain;
     },
+    field(name, value) {
+      options.fields.push({ name, value: String(value) });
+      return chain;
+    },
+    attach(name, data, opts) {
+      options.files.push({
+        name,
+        data: Buffer.isBuffer(data) ? data : Buffer.from(data),
+        filename: opts?.filename ?? "file",
+        contentType: opts?.contentType ?? "application/octet-stream"
+      });
+      return chain;
+    },
     then(onFulfilled, onRejected) {
       return execute().then(onFulfilled as never, onRejected as never);
     },
@@ -156,10 +220,28 @@ function createChain<T>(
 export default function request(app: FastifyInstance) {
   return {
     get<T = unknown>(url: string): RequestChain<T> {
-      return createChain<T>(app, "GET", url, { headers: {}, payload: undefined });
+      return createChain<T>(app, "GET", url, {
+        headers: {},
+        payload: undefined,
+        fields: [],
+        files: []
+      });
     },
     post<T = unknown>(url: string): RequestChain<T> {
-      return createChain<T>(app, "POST", url, { headers: {}, payload: undefined });
+      return createChain<T>(app, "POST", url, {
+        headers: {},
+        payload: undefined,
+        fields: [],
+        files: []
+      });
+    },
+    patch<T = unknown>(url: string): RequestChain<T> {
+      return createChain<T>(app, "PATCH", url, {
+        headers: {},
+        payload: undefined,
+        fields: [],
+        files: []
+      });
     }
   };
 }

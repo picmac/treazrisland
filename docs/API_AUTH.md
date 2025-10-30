@@ -6,6 +6,8 @@ The authentication endpoints power account onboarding, session rotation, MFA cha
 
 ## `POST /auth/signup`
 
+> Profile management endpoints (`GET/PATCH /users/me`) are documented separately in [`docs/API_PROFILE.md`](./API_PROFILE.md).
+
 Redeems an invitation token and creates a new user.
 
 | Field         | Type     | Required | Notes |

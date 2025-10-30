@@ -24,6 +24,13 @@ export default fp(async (app) => {
       signedUrlTTLSeconds: env.STORAGE_SIGNED_URL_TTL_SECONDS
     });
 
+    if (app.hasDecorator("storage")) {
+      app.log.warn(
+        "storage decorator already registered, overriding existing instance",
+      );
+      (app as { storage: StorageService }).storage = storage;
+      return;
+    }
     app.decorate("storage", storage);
     return;
   }
@@ -38,5 +45,12 @@ export default fp(async (app) => {
     signedUrlTTLSeconds: env.STORAGE_SIGNED_URL_TTL_SECONDS
   });
 
+  if (app.hasDecorator("storage")) {
+    app.log.warn(
+      "storage decorator already registered, overriding existing instance",
+    );
+    (app as { storage: StorageService }).storage = storage;
+    return;
+  }
   app.decorate("storage", storage);
 });
