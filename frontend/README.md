@@ -25,10 +25,18 @@ The script downloads the latest release archive from [`EmulatorJS/EmulatorJS`](h
 
 ## Testing
 
-Vitest with React Testing Library provides smoke coverage for the emulator player initialization hooks and save-state delegation:
+- **Unit & component tests**: Vitest with React Testing Library powers the component and hook suites.
 
-```bash
-npm test
-```
+  ```bash
+  npm test
+  ```
 
-Add additional component or hook specs alongside their source files using the `.test.tsx` suffix.
+  Add additional specs alongside their source files using the `.test.tsx` suffix.
+
+- **Playwright smoke E2E**: follow the [Playwright smoke guide](../docs/testing/e2e.md) for prerequisites, then run the suite from this directory:
+
+  ```bash
+  RUN_SMOKE_E2E=1 npm run test:e2e:smoke
+  ```
+
+  The specs stub backend routes for deterministic flows while exercising the live Next.js UI.
