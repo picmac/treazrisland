@@ -2,37 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadEmulatorBundle } from "@/lib/emulator/loadBundle";
+import { getPlatformConfig, type EmulatorPlatformConfig } from "@/lib/emulator/platforms";
 import MobileControls from "@/components/MobileControls";
 import { createPlayState, listPlayStates, type PlayState } from "@/src/lib/api/player";
 
 const ROM_ENDPOINT = "/api/player/roms";
 
-const RAW_PLATFORM_CORE_MAP = {
-  nes: ["nestopia", "fceumm"],
-  snes: ["snes9x", "bsnes"],
-  gba: ["mgba"],
-  gbc: ["gambatte"],
-  gb: ["gambatte"],
-  genesis: ["genesis-plus-gx"],
-  n64: ["mupen64plus"],
-  psx: ["pcsx-rearmed"],
-  sms: ["genesis-plus-gx"],
-  gg: ["genesis-plus-gx"],
-  atari2600: ["stella"],
-  atari7800: ["prosystem"],
-  sega32x: ["picodrive"],
-  segaCD: ["picodrive"],
-  ngp: ["mednafen-ngp"],
-  wonderswan: ["mednafen-ws"],
-  neoGeo: ["fbneo"],
-  arcade: ["fbneo"],
-  virtualboy: ["mednafen-vb"],
-  nintendoDS: ["melonds"]
-} as const;
-
-const PLATFORM_CORE_MAP: Record<string, readonly string[]> = Object.fromEntries(
-  Object.entries(RAW_PLATFORM_CORE_MAP).map(([platform, cores]) => [platform.toLowerCase(), cores])
-);
+const FALLBACK_PLATFORM_CONFIG: EmulatorPlatformConfig =
+  getPlatformConfig("snes") ?? {
+    systemId: "snes",
+    defaultCore: "snes9x",
+    preferredCores: ["snes9x", "bsnes"]
+  };
 
 type EmulatorPlayerProps = {
   romId: string;
@@ -55,8 +36,6 @@ type EmulatorLaunchConfig = {
   onSaveState?: (payload: ArrayBuffer) => void;
   customOptions?: Record<string, unknown>;
 };
-
-const DEFAULT_CORE = "snes9x";
 
 async function fetchRomBinary(romId: string, authToken?: string) {
   const response = await fetch(`${ROM_ENDPOINT}/${encodeURIComponent(romId)}/binary`, {
@@ -88,16 +67,6 @@ async function fetchRomBinary(romId: string, authToken?: string) {
   return buffer;
 }
 
-function selectCore(platform: string) {
-  const normalized = platform.toLowerCase();
-  const candidates = PLATFORM_CORE_MAP[normalized];
-  if (!candidates || candidates.length === 0) {
-    return DEFAULT_CORE;
-  }
-
-  return candidates[0];
-}
-
 export default function EmulatorPlayer({
   romId,
   romName,
@@ -109,8 +78,9 @@ export default function EmulatorPlayer({
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [playStates, setPlayStates] = useState<PlayState[]>([]);
-
-  const core = useMemo(() => selectCore(platform), [platform]);
+  const platformConfig = useMemo(() => getPlatformConfig(platform), [platform]);
+  const activePlatformConfig = platformConfig ?? FALLBACK_PLATFORM_CONFIG;
+  const { defaultCore, preferredCores, systemId } = activePlatformConfig;
 
   const handleSaveState = useCallback(
     async (payload: ArrayBuffer) => {
@@ -148,6 +118,15 @@ export default function EmulatorPlayer({
       setStatus("loading");
       setError(null);
 
+      if (!platformConfig) {
+        const normalized = platform.trim().length > 0 ? platform : "unknown";
+        const message = `Platform "${normalized}" is not supported by the bundled EmulatorJS cores yet.`;
+        console.warn(message);
+        setError(message);
+        setStatus("error");
+        return;
+      }
+
       try {
         await loadEmulatorBundle();
         const [romBinary, loadedStates] = await Promise.all([
@@ -171,14 +150,15 @@ export default function EmulatorPlayer({
         (window as EmulatorWindow).EJS_player?.({
           gameUrl: romUrl,
           gameName: romName,
-          system: core,
+          system: defaultCore,
           onSaveState: handleSaveState,
           loadStateUrl: initialStateUrl,
           customOptions: {
             container: containerRef.current ?? undefined,
             romId,
             romName,
-            preferredCores: PLATFORM_CORE_MAP[platform.toLowerCase()] ?? [core]
+            systemId,
+            preferredCores
           }
         });
 
@@ -195,7 +175,7 @@ export default function EmulatorPlayer({
     return () => {
       isCancelled = true;
     };
-  }, [authToken, core, handleSaveState, platform, romId, romName]);
+  }, [authToken, defaultCore, handleSaveState, platform, platformConfig, preferredCores, romId, romName, systemId]);
 
   return (
     <div className="flex flex-1 flex-col gap-4">
