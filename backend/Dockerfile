@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-bullseye AS base
+FROM node:24-bullseye AS base
 WORKDIR /app
 ENV NODE_ENV=production
 
