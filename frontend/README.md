@@ -1,48 +1,71 @@
 # TREAZRISLAND Frontend
 
-This package contains the Next.js 19 (App Router) frontend for TREAZRISLAND. It delivers the SNES-inspired experience described in [`docs/TREAZRISLAND_PRD.md`](../docs/TREAZRISLAND_PRD.md) and provides a locally hosted EmulatorJS runtime for ROM playback.
+Next.js 19 App Router client that renders the SNES-inspired experience described in [`TREAZRISLAND_PRD.md`](../TREAZRISLAND_PRD.md). The UI streams ROM binaries from the Fastify backend and runs EmulatorJS locally for fully self-hosted gameplay.
 
-## Getting started
+## Requirements
+
+- Node.js 20 LTS and npm 10.
+- A running backend at `NEXT_PUBLIC_API_BASE_URL` (defaults to `http://localhost:3001`).
+
+## Environment setup
+
+1. Ensure the repository-level `.env` file has the `NEXT_PUBLIC_*` keys populated. Copy them into the Next.js local environment file:
+
+   ```bash
+   cp ../.env .env.local
+   # or only export the public keys
+   grep '^NEXT_' ../.env > .env.local
+   ```
+
+2. Adjust the following keys when required:
+
+   - `NEXT_PUBLIC_API_BASE_URL`: URL that proxies API calls in the browser and server components.
+   - `NEXT_PUBLIC_PIXEL_THEME`: selects the pixel-art theme tokens. Keep `monkey-island` for the canonical SNES look.
+   - `NEXT_PUBLIC_MEDIA_CDN`: optional absolute URL for serving artwork/ROM assets (defaults to the MinIO bucket from Docker Compose).
+
+Next.js automatically reloads when `.env.local` changes during development.
+
+## Running the app
 
 ```bash
-cd frontend
 npm install
-npm run dev
+npm run dev             # http://localhost:3000
 ```
 
-The application renders App Router entries from `app/`. The player route lives at `/play/[romId]` and streams ROM binaries from the backend player API once authenticated.
+The App Router tree lives in `app/`. Key routes include:
 
-## Library favorites & curation
+- `/` – onboarding/login flows.
+- `/library/[platformSlug]` – virtualised ROM grid with filters and favorites.
+- `/play/[romId]` – EmulatorJS host that streams ROM binaries via the backend proxy.
 
-- Use the star button on any ROM card within the platform detail grid to add it to your personal favorites. The toggle persists via the `/favorites` API and updates instantly in the UI.
-- The platform view now includes a **Favorites only** switch that filters the virtualized grid to the ROMs you've starred.
-- Collections (`/collections`) and top lists (`/top-lists`) exposed by the backend API will power future discovery surfaces in the UI. The new API clients live under `src/lib/api/`.
+For production builds:
+
+```bash
+npm run build
+npm start               # serves the compiled output
+```
 
 ## EmulatorJS vendor workflow
 
-The emulator bundle, WASM cores, and metadata are vendored into `public/vendor/emulatorjs/`. Run the helper script whenever you want to pull the latest upstream release:
+EmulatorJS assets are vendored into `public/vendor/emulatorjs/`. Update them when upstream releases new cores or bug fixes:
 
 ```bash
-# Optional: export GITHUB_TOKEN to increase rate limits
+# Optional: export GITHUB_TOKEN to increase GitHub API rate limits
 npm run update:emulator
 ```
 
-The script downloads the latest release archive from [`EmulatorJS/EmulatorJS`](https://github.com/EmulatorJS/EmulatorJS), extracts it locally, and records release metadata in `treazrisland-emulatorjs.json`. Assets are served directly from the Next.js static file server to keep gameplay offline-first.
+The script downloads the latest `EmulatorJS/EmulatorJS` release, unpacks it, and records metadata in `treazrisland-emulatorjs.json`.
 
-## Testing
+## Testing & linting
 
-- **Unit & component tests**: Vitest with React Testing Library powers the component and hook suites.
+```bash
+npm run lint            # ESLint with Next.js config
+npm test                # Vitest + React Testing Library
+RUN_SMOKE_E2E=1 npm run test:e2e:smoke   # Optional Playwright smoke suite
+```
 
-  ```bash
-  npm test
-  ```
+See [`docs/testing/e2e.md`](../docs/testing/e2e.md) for Playwright prerequisites and environment variables.
 
-  Add additional specs alongside their source files using the `.test.tsx` suffix.
+## API utilities
 
-- **Playwright smoke E2E**: follow the [Playwright smoke guide](../docs/testing/e2e.md) for prerequisites, then run the suite from this directory:
-
-  ```bash
-  RUN_SMOKE_E2E=1 npm run test:e2e:smoke
-  ```
-
-  The specs stub backend routes for deterministic flows while exercising the live Next.js UI.
+Client-side data fetching helpers live in `src/lib/api/`. Reuse these hooks before introducing new fetch logic to benefit from shared error handling and revalidation policies.

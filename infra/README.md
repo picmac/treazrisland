@@ -1,34 +1,65 @@
 # Infrastructure Assets
 
-Target location for Docker Compose definitions, deployment manifests, and infrastructure automation supporting the self-hosted TREAZRISLAND stack.
+Home for Docker Compose definitions, deployment manifests, and helper scripts that support the self-hosted TREAZRISLAND stack.
 
-## Secrets Management
+## Service catalogue
 
-ScreenScraper developer credentials are stored encrypted-at-rest. Generate encrypted blobs with `npm run screenscraper:encrypt` (see `docs/integrations/screenscraper.md`) and commit only the ciphertext. Inject the decryption key (`SCREENSCRAPER_SECRET_KEY`) via your secret manager or deployment pipeline; never store it in plaintext under version control.
+| Service   | Compose name | Purpose |
+| --------- | ------------ | ------- |
+| PostgreSQL | `postgres`  | Primary relational database for Prisma migrations and gameplay metadata. |
+| MinIO     | `minio`      | S3-compatible object storage for ROM binaries, BIOS archives, artwork, and save states. |
+| Backend   | `backend`    | Fastify API container that mounts the project source during development. |
+| Frontend  | `frontend`   | Next.js dev server with Playwright-friendly configuration. |
 
-## Local Services
+All services live in [`docker-compose.yml`](./docker-compose.yml). Production overrides are stored in [`docker-compose.prod.yml`](./docker-compose.prod.yml).
 
-Docker Compose files in this directory spin up the full development stack:
+## Configuration files
 
-- `postgres`: primary database for Prisma migrations.
-- `minio`: S3-compatible object storage (ROMs, assets, BIOS archives).
-- `backend`: Fastify API container (hot reload via `npm run dev`).
-- `frontend`: Next.js dev server with Playwright-friendly settings.
+Each application consumes a package-scoped environment template:
 
-Run the stack:
+- [`backend/.env.docker`](../backend/.env.docker)
+- [`frontend/.env.docker`](../frontend/.env.docker)
+
+Edit these files (or provide overrides) before running Compose. Secrets—such as database passwords or ScreenScraper credentials—must be injected via environment variables or Docker secrets; never commit plaintext secrets to the repository.
+
+## Local development stack
+
+Build and start the full stack:
 
 ```bash
 docker compose -f infra/docker-compose.yml up --build
 ```
 
-Each service consumes the `.env.docker` template in its package. Override values using `.env` files or Compose environment variables when promoting beyond local development.
+To iterate on code without rebuilding containers, launch only the dependencies and run the apps on the host machine:
 
-## Home production stack
+```bash
+docker compose -f infra/docker-compose.yml up postgres minio
+```
 
-`docker-compose.prod.yml` mirrors the service list but targets the production stages of each Dockerfile, removes live code mounts, and adds health checks. The file expects you to provide:
+Ensure your host `.env`, `backend/.env`, and `frontend/.env.local` files mirror the Docker defaults so the services share the same credentials.
 
-- `TREAZ_BACKEND_ENV_FILE` – path to the backend `.env` containing all secrets.
-- `TREAZ_FRONTEND_ENV_FILE` – path to the frontend `.env`.
-- `POSTGRES_PASSWORD`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` – exported via shell or an env file loaded before running Compose.
+## Production-style stack
 
-Deployments are orchestrated by `scripts/deploy/deploy-local.sh`, which is invoked from the `deploy` job in `.github/workflows/ci.yml`. Review `docs/ops/ci-cd.md` for the full setup and operations checklist.
+`docker-compose.prod.yml` mirrors the service list but targets the production stages of each Dockerfile, removes source mounts, and adds health checks. It expects you to export the following before running Compose:
+
+```bash
+export TREAZ_BACKEND_ENV_FILE=/path/to/backend.env
+export TREAZ_FRONTEND_ENV_FILE=/path/to/frontend.env
+export POSTGRES_PASSWORD=super-secret
+export MINIO_ROOT_USER=treaz-admin
+export MINIO_ROOT_PASSWORD=super-secret
+```
+
+Then deploy with:
+
+```bash
+docker compose -f infra/docker-compose.prod.yml up -d
+```
+
+The referenced `backend.env` and `frontend.env` files should contain the same keys documented in `.env.example`, scoped to each service.
+
+## Secrets management
+
+ScreenScraper developer credentials are stored encrypted-at-rest. Generate encrypted blobs with `npm run screenscraper:encrypt` inside `backend/` and commit only the ciphertext. Inject the decryption key (`SCREENSCRAPER_SECRET_KEY`) via your secret manager or deployment pipeline.
+
+For end-to-end deployment automation, review `scripts/deploy/deploy-local.sh` and the `deploy` job in `.github/workflows/ci.yml` (documented in `docs/ops/ci-cd.md`).
