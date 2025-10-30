@@ -12,7 +12,6 @@ Docker Compose files in this directory spin up the full development stack:
 
 - `postgres`: primary database for Prisma migrations.
 - `minio`: S3-compatible object storage (ROMs, assets, BIOS archives).
-- `pixellab-mock`: Prism-powered mock for PixelLab APIs.
 - `backend`: Fastify API container (hot reload via `npm run dev`).
 - `frontend`: Next.js dev server with Playwright-friendly settings.
 

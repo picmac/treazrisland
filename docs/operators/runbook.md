@@ -20,26 +20,23 @@ Keep the following API references handy when debugging login issues or player da
    - `JWT_SECRET`
    - `STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY`
    - Postmark transactional email secrets (`POSTMARK_SERVER_TOKEN`, `POSTMARK_FROM_EMAIL`, optional `POSTMARK_MESSAGE_STREAM`)
-   - `PIXELLAB_API_KEY` / `PIXELLAB_STYLE_ID`
-   - `SCREENSCRAPER_*` credentials (encrypted dev keys plus runtime secret)
-   - `METRICS_TOKEN`
+  - `SCREENSCRAPER_*` credentials (encrypted dev keys plus runtime secret)
+  - `METRICS_TOKEN`
 4. Launch the infrastructure: `docker compose -f infra/docker-compose.yml up -d`.
 5. Run database migrations: `docker compose exec backend npm run prisma:migrate -- --name init` (first boot only).
 6. Seed platform metadata: `docker compose exec backend npm run prisma:seed:platforms`.
 
-## 2. PixelLab & Enrichment
+## 2. Metadata Enrichment
 
-1. Generate a PixelLab API key + style ID in the vendor portal.
-2. Set the values in the backend environment (`PIXELLAB_API_KEY`, `PIXELLAB_STYLE_ID`, optionally `PIXELLAB_BASE_URL`).
-3. Confirm connectivity with the mock or production PixelLab API by hitting `/admin/pixellab/status`.
-4. Upload a ROM via `/admin/uploads` and enqueue enrichment:
+1. Configure ScreenScraper credentials in the backend environment (`SCREENSCRAPER_DEV_ID`, `SCREENSCRAPER_DEV_PASSWORD`, `SCREENSCRAPER_API_KEY`).
+2. Upload a ROM via `/admin/uploads` and enqueue enrichment:
    ```bash
    curl -X POST \
      -H "Authorization: Bearer <ACCESS_TOKEN>" \
      -H "Content-Type: application/json" \
      http://localhost:3001/admin/roms/<ROM_ID>/enrich
    ```
-5. Monitor `treaz_enrichment_requests_total` metrics and backend logs for job completion status.
+3. Monitor `treaz_enrichment_requests_total` metrics and backend logs for job completion status.
 
 ## 3. Storage Validation
 

@@ -140,9 +140,7 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
                   {rom.assets.map((asset) => (
                     <li key={asset.id} className="flex items-center justify-between gap-4">
                       <span>
-                        {asset.source === "PIXELLAB"
-                          ? `PixelLab hero art • ${asset.type}`
-                          : `${asset.type} • ${asset.source}`}
+                        {`${asset.type} • ${asset.source}`}
                         {asset.language ? ` • ${asset.language}` : ""}
                         {asset.region ? ` • ${asset.region}` : ""}
                       </span>

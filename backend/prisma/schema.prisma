@@ -14,7 +14,6 @@ enum Role {
 
 enum EnrichmentProvider {
   SCREEN_SCRAPER
-  PIXELLAB
   MANUAL
 }
 
@@ -63,7 +62,6 @@ enum RomAssetType {
 
 enum RomAssetSource {
   SCREEN_SCRAPER
-  PIXELLAB
   USER_UPLOAD
   MANUAL_ENTRY
 }
@@ -212,8 +210,6 @@ model Rom {
   uploadAudits    RomUploadAudit[]
   playStates      PlayState[]
   romPlaybackAudits RomPlaybackAudit[]
-  pixelLabCache   PixelLabCacheEntry[]
-  pixelLabRenderLogs PixelLabRenderLog[]
 
   @@index([platformId])
   @@index([screenscraperId])
@@ -259,8 +255,6 @@ model RomAsset {
   updatedAt    DateTime        @updatedAt
 
   playbackAudits RomPlaybackAudit[]
-  pixelLabCacheEntries PixelLabCacheEntry[]
-  pixelLabRenderLogs PixelLabRenderLog[]
 
   @@index([romId])
   @@index([type])
@@ -431,51 +425,3 @@ model ScreenScraperCacheEntry {
   createdAt DateTime @default(now())
 }
 
-model PixelLabCacheEntry {
-  id             String          @id @default(cuid())
-  cacheKey       String          @unique
-  prompt         String
-  styleId        String
-  romId          String?
-  rom            Rom?            @relation(fields: [romId], references: [id], onDelete: SetNull)
-  romAssetId     String?
-  romAsset       RomAsset?       @relation(fields: [romAssetId], references: [id], onDelete: SetNull)
-  storageKey     String?
-  mimeType       String?
-  width          Int?
-  height         Int?
-  fileSize       Int?
-  expiresAt      DateTime?
-  hitCount       Int             @default(0)
-  missCount      Int             @default(0)
-  lastRequestedAt DateTime       @default(now())
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  logs           PixelLabRenderLog[]
-
-  @@index([romId])
-  @@index([styleId])
-  @@index([expiresAt])
-}
-
-model PixelLabRenderLog {
-  id            String            @id @default(cuid())
-  cacheEntryId  String?
-  cacheEntry    PixelLabCacheEntry? @relation(fields: [cacheEntryId], references: [id], onDelete: SetNull)
-  romId         String?
-  rom           Rom?             @relation(fields: [romId], references: [id], onDelete: SetNull)
-  romAssetId    String?
-  romAsset      RomAsset?        @relation(fields: [romAssetId], references: [id], onDelete: SetNull)
-  cacheKey      String
-  prompt        String
-  styleId       String
-  cacheHit      Boolean
-  statusCode    Int?
-  durationMs    Int?
-  errorMessage  String?
-  createdAt     DateTime         @default(now())
-
-  @@index([cacheEntryId])
-  @@index([romId])
-  @@index([createdAt])
-}

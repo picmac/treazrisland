@@ -10,7 +10,7 @@ This guide enumerates the operational controls required before promoting a TREAZ
 
 ## Secrets & Key Management
 
-- [ ] PixelLab and ScreenScraper API tokens rotated every 90 days; replacement values stored outside the codebase. _(Pending – Owner: Integrations (Ravi Patel); align vendor credential rotation by 2025-03-15; tracked in **SEC-47**.)_
+- [ ] ScreenScraper API tokens rotated every 90 days; replacement values stored outside the codebase. _(Pending – Owner: Integrations (Ravi Patel); align vendor credential rotation by 2025-03-15; tracked in **SEC-47**.)_
 - [x] `METRICS_TOKEN` set to a long, random value and distributed only to observability tooling. _(Rotated 2025-02-08; stored in Vault `secret/data/treaz/prod/observability#METRICS_TOKEN`; Compose overrides documented in [Operator Runbook §4](../operators/runbook.md#4-metrics--health).)_
 - [ ] Audit access to the object storage credentials (`STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY`). Keys must be scoped to the TREAZ buckets with read/write but no delete permissions unless lifecycle policies exist. _(Pending – Owner: Security (Marta Chen); enabling IAM audit export to the SIEM by 2025-03-20; tracked in **SEC-48**.)_
 
@@ -29,14 +29,14 @@ This guide enumerates the operational controls required before promoting a TREAZ
 ## Change Management
 
 - [x] CI pipeline (`.github/workflows/ci.yml`) succeeds on lint, unit tests, and build steps for both frontend and backend packages. _(GitHub Actions run `CI #2025-02-17` succeeded for backend/frontend lint, test, build; logged in `docs/releases/ci-history.md`.)_
-- [x] Release notes updated with manual runbooks for seeding, enrichment, and PixelLab provisioning. _(Updated 2025-02-18 in `docs/releases/mvp.md` to reflect current seeding, enrichment, and PixelLab steps.)_
+- [x] Release notes updated with manual runbooks for seeding and enrichment. _(Updated 2025-02-18 in `docs/releases/mvp.md` to reflect current seeding and enrichment steps.)_
 - [ ] Regression screenshots in `docs/qa/` refreshed when UI flows change. _(Pending – Owner: QA Design (Lara Ng); capture staging baseline after UI polish by 2025-02-25; tracked in **SEC-53**.)_
 
 ### Follow-up tickets
 
 - **SEC-45** – Auth rate-limit load test & tuning (Owner: Nadia Kim, due 2025-03-05).
 - **SEC-46** – Authentication lockout log rehearsal (Owner: Inez Morales, due 2025-02-28).
-- **SEC-47** – PixelLab & ScreenScraper credential rotation cadence (Owner: Ravi Patel, due 2025-03-15).
+- **SEC-47** – ScreenScraper credential rotation cadence (Owner: Ravi Patel, due 2025-03-15).
 - **SEC-48** – Object storage credential audit logging (Owner: Marta Chen, due 2025-03-20).
 - **SEC-49** – Malicious archive antivirus validation (Owner: Ben Ortiz, due 2025-03-12).
 - **SEC-50** – Storage + DB retention automation (Owner: Sara Lee, due 2025-03-22).

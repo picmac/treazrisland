@@ -33,7 +33,7 @@ This runbook describes how to deliver continuous integration and delivery for TR
 
 Create `/opt/treazrisland/config` and store secrets outside of Git:
 
-- `/opt/treazrisland/config/backend.env` – contains **all** required backend variables such as `DATABASE_URL`, JWT secrets, Postmark credentials, storage config, PixelLab keys, ScreenScraper secret key, and observability settings. Use `backend/.env.example` as a checklist.
+- `/opt/treazrisland/config/backend.env` – contains **all** required backend variables such as `DATABASE_URL`, JWT secrets, Postmark credentials, storage config, ScreenScraper secret key, and observability settings. Use `backend/.env.example` as a checklist.
 - `/opt/treazrisland/config/frontend.env` – contains production Next.js variables (auth endpoints, API base URL, public metrics keys, etc.) referenced in `frontend/.env.example`.
 - `/opt/treazrisland/config/compose.env` – holds Docker infrastructure secrets that Docker Compose needs at parse time:
   ```env

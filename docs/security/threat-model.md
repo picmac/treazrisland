@@ -6,8 +6,8 @@ shipping new features. Use it as a pre-flight checklist for reviews and release 
 ## Attack Surface Overview
 
 - **Frontend:** Next.js app delivering EmulatorJS and admin tooling.
-- **Backend:** Fastify API with Prisma, JWT auth, storage integrations, PixelLab, and ScreenScraper services.
-- **External services:** PixelLab.ai, ScreenScraper, object storage, email provider.
+- **Backend:** Fastify API with Prisma, JWT auth, storage integrations, and ScreenScraper services.
+- **External services:** ScreenScraper, object storage, email provider.
 - **Infrastructure:** Docker Compose stack (PostgreSQL, MinIO, mocks) and any reverse proxies/tunnels.
 - **Observability:** `/health` liveness endpoint plus optional `/metrics` Prometheus scrape surface guarded by `METRICS_TOKEN`.
 
@@ -30,7 +30,7 @@ shipping new features. Use it as a pre-flight checklist for reviews and release 
 
 4. **Secrets Management**
    - [x] `.env` populated from secure store (Vault/SSM) in production. _(Deployment pipeline pulls from Vault `secret/data/treaz/prod/backend` and injects env vars per [Operator Runbook §1](../operators/runbook.md#1-bootstrap-the-stack).)_
-   - [ ] PixelLab and ScreenScraper credentials rotated per vendor guidance. _(Pending – Owner: Integrations (Ravi Patel); cadence tracked in **SEC-47**, due 2025-03-15.)_
+- [ ] ScreenScraper credentials rotated per vendor guidance. _(Pending – Owner: Integrations (Ravi Patel); cadence tracked in **SEC-47**, due 2025-03-15.)_
 
 5. **Logging & Monitoring**
    - [ ] Structured logs (upload/enrichment/playback events) shipped to centralized store with retention ≥30 days. _(Pending – Owner: Observability (Nora Blake); Fluent Bit → Loki pipeline rollout planned 2025-03-04; tracked in **SEC-56**.)_

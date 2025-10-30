@@ -24,7 +24,7 @@ If you manage services manually (without Compose), ensure the backend, frontend,
    docker compose -f infra/docker-compose.yml up --build
    ```
 
-   This brings up PostgreSQL, MinIO, the PixelLab mock, and hot-reloading containers for the backend and frontend apps. Wait until the frontend container reports that the Next.js dev server is listening on port `3000`.
+   This brings up PostgreSQL, MinIO, and hot-reloading containers for the backend and frontend apps. Wait until the frontend container reports that the Next.js dev server is listening on port `3000`.
 
 3. (Optional) If you prefer running the apps directly, start them from separate terminals after installing dependencies:
 
