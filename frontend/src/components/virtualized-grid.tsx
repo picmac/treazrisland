@@ -12,6 +12,7 @@ type VirtualizedGridProps<T> = {
   gap?: string;
   className?: string;
   renderItem: (item: T, index: number) => ReactNode;
+  resetKey?: string | number;
 };
 
 export function VirtualizedGrid<T>({
@@ -21,11 +22,14 @@ export function VirtualizedGrid<T>({
   overscan = 2,
   gap = "1rem",
   className,
-  renderItem
+  renderItem,
+  resetKey
 }: VirtualizedGridProps<T>) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
+  const previousResetKeyRef = useRef<string | number | undefined>(resetKey);
+  const previousLengthRef = useRef<number>(items.length);
 
   const totalRows = useMemo(() => Math.ceil(items.length / columns), [items.length, columns]);
   const totalHeight = totalRows * rowHeight;
@@ -58,12 +62,33 @@ export function VirtualizedGrid<T>({
   }, [handleScroll]);
 
   useEffect(() => {
-    // Reset scroll position when the data set changes dramatically
-    if (containerRef.current) {
-      containerRef.current.scrollTop = 0;
+    const container = containerRef.current;
+    if (!container) {
+      previousResetKeyRef.current = resetKey;
+      previousLengthRef.current = items.length;
+      return;
+    }
+
+    const keyChanged =
+      resetKey !== undefined && previousResetKeyRef.current !== undefined
+        ? resetKey !== previousResetKeyRef.current
+        : resetKey !== undefined && previousResetKeyRef.current === undefined;
+    const keyRemoved = resetKey === undefined && previousResetKeyRef.current !== undefined;
+    const lengthShrank = resetKey === undefined && items.length < previousLengthRef.current;
+    const datasetCleared = items.length === 0 && previousLengthRef.current > 0;
+
+    if (keyChanged || keyRemoved || lengthShrank || datasetCleared) {
+      if (typeof container.scrollTo === "function") {
+        container.scrollTo({ top: 0 });
+      } else {
+        container.scrollTop = 0;
+      }
       setScrollTop(0);
     }
-  }, [items]);
+
+    previousResetKeyRef.current = resetKey;
+    previousLengthRef.current = items.length;
+  }, [items.length, resetKey]);
 
   const visibleRange = useMemo(() => {
     if (viewportHeight === 0) {
