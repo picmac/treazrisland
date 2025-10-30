@@ -14,6 +14,7 @@ This runbook summarizes the day-2 operations for TREAZRISLAND administrators.
 3. Update the following secrets in your secret manager and inject them at runtime:
    - `JWT_SECRET`
    - `STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY`
+   - Postmark transactional email secrets (`POSTMARK_SERVER_TOKEN`, `POSTMARK_FROM_EMAIL`, optional `POSTMARK_MESSAGE_STREAM`)
    - `PIXELLAB_API_KEY` / `PIXELLAB_STYLE_ID`
    - `SCREENSCRAPER_*` credentials (encrypted dev keys plus runtime secret)
    - `METRICS_TOKEN`
@@ -57,3 +58,19 @@ This runbook summarizes the day-2 operations for TREAZRISLAND administrators.
 - Review `docs/releases/mvp.md` for manual steps.
 - Capture new screenshots for onboarding, login, library, and admin flows (see `docs/qa/`).
 - Verify CI pipeline is green and all migrations have been applied to staging before production promotion.
+
+## 6. Email Delivery (Postmark)
+
+- **Provisioning:**
+  - Create a dedicated [Postmark Server](https://account.postmarkapp.com/servers) for TREAZRISLAND with an "outbound" message stream.
+  - Generate a Server API token and record the From address authorized for the stream.
+  - Store the token, from address, and (if customized) the stream name in the platform secret manager under `POSTMARK_SERVER_TOKEN`, `POSTMARK_FROM_EMAIL`, and `POSTMARK_MESSAGE_STREAM`.
+- **Configuration:**
+  - Set `EMAIL_PROVIDER=postmark` in the backend environment.
+  - Validate mail delivery by triggering a password reset in staging. Check Postmark activity for a 200 response and matching metadata.
+- **Rotation:**
+  - Postmark supports creating additional Server tokens without downtime. Every 90 days:
+    1. Create a new Server token in the Postmark UI and stage it in the secret manager as `POSTMARK_SERVER_TOKEN_NEXT`.
+    2. Update the backend deployment to read the new token (swap `POSTMARK_SERVER_TOKEN` to the staged value).
+    3. Trigger a password reset to confirm delivery, then revoke the previous token in Postmark.
+  - Update the `POSTMARK_FROM_EMAIL` sender signature only after verifying the new domain. Deploy the change and perform a live test before decommissioning the old sender.

@@ -19,6 +19,25 @@ const envSchema = z.object({
   JWT_ACCESS_TTL: z.string().default("15m"),
   JWT_REFRESH_TTL: z.string().default("30d"),
   PASSWORD_RESET_TTL: z.string().default("1h"),
+  EMAIL_PROVIDER: z.enum(["postmark"]).default("postmark"),
+  POSTMARK_SERVER_TOKEN: z
+    .string()
+    .optional()
+    .transform((value) =>
+      value && value.trim().length > 0 ? value.trim() : undefined,
+    ),
+  POSTMARK_FROM_EMAIL: z
+    .string()
+    .optional()
+    .transform((value) =>
+      value && value.trim().length > 0 ? value.trim() : undefined,
+    ),
+  POSTMARK_MESSAGE_STREAM: z
+    .string()
+    .optional()
+    .transform((value) =>
+      value && value.trim().length > 0 ? value.trim() : undefined,
+    ),
   CORS_ALLOWED_ORIGINS: z.string().default("http://localhost:3000"),
   RATE_LIMIT_DEFAULT_POINTS: z
     .string()
@@ -270,6 +289,25 @@ if (
   );
 }
 
+if (parsed.data.EMAIL_PROVIDER === "postmark") {
+  const missingPostmark = [
+    ["POSTMARK_SERVER_TOKEN", parsed.data.POSTMARK_SERVER_TOKEN],
+    ["POSTMARK_FROM_EMAIL", parsed.data.POSTMARK_FROM_EMAIL],
+  ].filter(([, value]) => !value);
+
+  if (missingPostmark.length > 0) {
+    throw new Error(
+      `Postmark provider requires configuration for: ${missingPostmark
+        .map(([key]) => key)
+        .join(", ")}`,
+    );
+  }
+
+  if (!parsed.data.POSTMARK_FROM_EMAIL!.includes("@")) {
+    throw new Error("POSTMARK_FROM_EMAIL must be a valid email address");
+  }
+}
+
 if (typeof pixelLabCacheTtlMs !== "number" || pixelLabCacheTtlMs <= 0) {
   throw new Error("PIXELLAB_CACHE_TTL must be a positive duration string");
 }
@@ -338,6 +376,10 @@ export const env = {
   PIXELLAB_CACHE_TTL_SECONDS: Math.floor(pixelLabCacheTtlMs / 1000),
   PIXELLAB_TIMEOUT_MS: pixelLabTimeoutMs,
   PIXELLAB_ASSET_PREFIX: parsed.data.PIXELLAB_ASSET_PREFIX!,
+  EMAIL_PROVIDER: parsed.data.EMAIL_PROVIDER,
+  POSTMARK_SERVER_TOKEN: parsed.data.POSTMARK_SERVER_TOKEN!,
+  POSTMARK_FROM_EMAIL: parsed.data.POSTMARK_FROM_EMAIL!,
+  POSTMARK_MESSAGE_STREAM: parsed.data.POSTMARK_MESSAGE_STREAM,
   PLAY_STATE_MAX_BYTES: parsed.data.PLAY_STATE_MAX_BYTES,
   PLAY_STATE_MAX_PER_ROM: parsed.data.PLAY_STATE_MAX_PER_ROM,
   METRICS_ENABLED: parsed.data.METRICS_ENABLED ?? false,
