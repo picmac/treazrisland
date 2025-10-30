@@ -192,6 +192,11 @@ const envSchema = z.object({
     .regex(/^\d+$/)
     .default("5")
     .transform(Number),
+  USER_AVATAR_MAX_BYTES: z
+    .string()
+    .regex(/^\d+$/)
+    .default(String(5 * 1024 * 1024))
+    .transform(Number),
   METRICS_ENABLED: z
     .string()
     .optional()
@@ -306,6 +311,7 @@ export const env = {
     signedUrlTtlMs !== undefined
       ? Math.floor(signedUrlTtlMs / 1000)
       : undefined,
+  USER_AVATAR_MAX_BYTES: parsed.data.USER_AVATAR_MAX_BYTES,
   SCREENSCRAPER_DEFAULT_LANGUAGE_PRIORITY: splitCsv(
     parsed.data.SCREENSCRAPER_DEFAULT_LANGUAGE_PRIORITY,
   ),

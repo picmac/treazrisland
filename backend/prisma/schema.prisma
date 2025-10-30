@@ -75,6 +75,10 @@ model User {
   role           Role                 @default(USER)
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
+  avatarStorageKey String?
+  avatarMimeType String?
+  avatarFileSize Int?
+  avatarUpdatedAt DateTime?
   refreshTokens  RefreshToken[]
   refreshTokenFamilies RefreshTokenFamily[]
   mfaSecrets     MfaSecret[]

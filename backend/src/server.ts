@@ -4,6 +4,7 @@ import rateLimit from "@fastify/rate-limit";
 import sensible from "@fastify/sensible";
 import underPressure from "@fastify/under-pressure";
 import jwt from "@fastify/jwt";
+import multipart from "@fastify/multipart";
 import { env } from "./config/env.js";
 import prismaPlugin from "./plugins/prisma.js";
 import authPlugin from "./plugins/auth.js";
@@ -19,6 +20,7 @@ import { registerPlayerRoutes } from "./routes/player.js";
 import { registerFavoriteRoutes } from "./routes/favorites.js";
 import { registerCollectionRoutes } from "./routes/collections.js";
 import { registerTopListRoutes } from "./routes/topLists.js";
+import { registerUserRoutes } from "./routes/users.js";
 import supportServices from "./plugins/support-services.js";
 import observabilityPlugin from "./plugins/observability.js";
 
@@ -88,6 +90,8 @@ export const buildServer = (
     },
   });
 
+  app.register(multipart);
+
   app.register(observabilityPlugin);
   app.register(authPlugin);
   app.register(storagePlugin);
@@ -102,6 +106,7 @@ export const buildServer = (
     await registerOnboardingRoutes(instance);
     await registerInvitationRoutes(instance);
     await registerAuthRoutes(instance);
+    await registerUserRoutes(instance);
     if (registerPrisma) {
       await registerScreenScraperRoutes(instance);
       await registerAdminRoutes(instance);
