@@ -37,6 +37,11 @@ type EmulatorLaunchConfig = {
   customOptions?: Record<string, unknown>;
 };
 
+type SignedUrlPayload = {
+  type: "signed-url";
+  url: string;
+};
+
 async function fetchRomBinary(romId: string, authToken?: string) {
   const response = await fetch(`${ROM_ENDPOINT}/${encodeURIComponent(romId)}/binary`, {
     headers: {
@@ -52,8 +57,8 @@ async function fetchRomBinary(romId: string, authToken?: string) {
 
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
-    const payload = await response.json();
-    if (payload?.type === "signed-url" && typeof payload.url === "string") {
+    const payload: unknown = await response.json();
+    if (isSignedUrlPayload(payload)) {
       const signedResponse = await fetch(payload.url);
       if (!signedResponse.ok) {
         throw new Error(`Failed to fetch ROM from signed URL: ${signedResponse.status}`);
@@ -77,7 +82,7 @@ export default function EmulatorPlayer({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  const [playStates, setPlayStates] = useState<PlayState[]>([]);
+  const [, setPlayStates] = useState<PlayState[]>([]);
   const platformConfig = useMemo(() => getPlatformConfig(platform), [platform]);
   const activePlatformConfig = platformConfig ?? FALLBACK_PLATFORM_CONFIG;
   const { defaultCore, preferredCores, systemId } = activePlatformConfig;
@@ -194,4 +199,13 @@ export default function EmulatorPlayer({
       <MobileControls onVirtualKey={emitVirtualKey} />
     </div>
   );
+}
+
+function isSignedUrlPayload(payload: unknown): payload is SignedUrlPayload {
+  if (payload && typeof payload === "object") {
+    const candidate = payload as Record<string, unknown>;
+    return candidate.type === "signed-url" && typeof candidate.url === "string";
+  }
+
+  return false;
 }

@@ -1,4 +1,4 @@
-import type { Config } from "tailwindcss";
+import { type Config } from "tailwindcss";
 
 const pixelSpacing = {
   px: "1px",
@@ -13,7 +13,7 @@ const pixelSpacing = {
   8: "32px"
 };
 
-const colors = {
+const palette = {
   ink: "#1f2933",
   parchment: "#f4ede2",
   lagoon: "#5dbbcd",
@@ -22,14 +22,22 @@ const colors = {
   night: "#12121c"
 };
 
-const config: Config = {
-  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}", "./pages/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}", "./app/**/*.{md,mdx}", "./scripts/**/*.{ts,tsx}", "./tests/**/*.{ts,tsx}"],
+const config = {
+  content: [
+    "./app/**/*.{ts,tsx,md,mdx}",
+    "./components/**/*.{ts,tsx}",
+    "./lib/**/*.{ts,tsx}",
+    "./pages/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
+    "./scripts/**/*.{ts,tsx}",
+    "./tests/**/*.{ts,tsx}"
+  ],
   theme: {
     extend: {
       colors: {
-        ...colors,
-        background: colors.night,
-        foreground: colors.parchment
+        ...palette,
+        background: palette.night,
+        foreground: palette.parchment
       },
       spacing: {
         ...pixelSpacing,
@@ -47,6 +55,6 @@ const config: Config = {
     }
   },
   plugins: []
-};
+} satisfies Config;
 
 export default config;

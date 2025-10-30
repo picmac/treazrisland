@@ -3,13 +3,21 @@ import type { NextRequest } from "next/server";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 
 type RouteParams = {
-  params: {
+  params: Promise<{
     stateId: string;
-  };
+  }>;
+};
+
+type SignedUrlPayload = {
+  type: "signed-url";
+  url: string;
+  contentType?: string;
+  size?: number;
 };
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const backendPath = `/player/play-states/${encodeURIComponent(params.stateId)}/binary`;
+  const { stateId } = await params;
+  const backendPath = `/player/play-states/${encodeURIComponent(stateId)}/binary`;
   return proxyBinaryRequest(request, backendPath);
 }
 
@@ -37,14 +45,14 @@ async function proxyBinaryRequest(request: NextRequest, backendPath: string): Pr
   const contentType = backendResponse.headers.get("content-type") ?? "";
 
   if (contentType.includes("application/json")) {
-    let payload: any = null;
+    let payload: unknown = null;
     try {
       payload = await backendResponse.json();
     } catch (error) {
       console.error("Failed to parse backend JSON response", error);
     }
 
-    if (payload?.type === "signed-url" && typeof payload.url === "string") {
+    if (isSignedUrlPayload(payload)) {
       try {
         const signedResponse = await fetch(payload.url);
         if (!signedResponse.ok || !signedResponse.body) {
@@ -71,7 +79,7 @@ async function proxyBinaryRequest(request: NextRequest, backendPath: string): Pr
       }
     }
 
-    return new Response(JSON.stringify(payload), {
+    return new Response(JSON.stringify(payload ?? {}), {
       status: backendResponse.status,
       headers: { "content-type": "application/json" }
     });
@@ -93,4 +101,13 @@ async function proxyBinaryRequest(request: NextRequest, backendPath: string): Pr
     status: backendResponse.status,
     headers: proxiedHeaders
   });
+}
+
+function isSignedUrlPayload(payload: unknown): payload is SignedUrlPayload {
+  if (payload && typeof payload === "object") {
+    const candidate = payload as Record<string, unknown>;
+    return candidate.type === "signed-url" && typeof candidate.url === "string";
+  }
+
+  return false;
 }

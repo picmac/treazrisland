@@ -46,7 +46,6 @@ export function PlatformDetailPage({ slug }: PlatformDetailPageProps) {
     favorites,
     loading: favoritesLoading,
     error: favoritesError,
-    isFavorite: isFavoriteRom,
     isPending: isFavoritePending,
     toggleFavorite
   } = useFavorites();
