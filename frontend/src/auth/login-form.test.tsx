@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, type MockedFunction } from "vitest";
 import { ApiError } from "@/src/lib/api/client";
 import { LoginForm } from "@/src/auth/login-form";
 
@@ -17,8 +17,22 @@ vi.mock("@/src/auth/session-provider", () => ({
   useSession: vi.fn()
 }));
 
-import { useSession } from "@/src/auth/session-provider";
-const useSessionMock = useSession as unknown as vi.Mock;
+import { useSession, type AuthContextValue } from "@/src/auth/session-provider";
+const useSessionMock = useSession as unknown as MockedFunction<typeof useSession>;
+
+function createSessionStub(overrides: Partial<AuthContextValue>): AuthContextValue {
+  return {
+    user: null,
+    accessToken: null,
+    loading: false,
+    login: async () => ({ accessToken: "", refreshToken: "", user: null }),
+    logout: vi.fn(),
+    refresh: vi.fn(),
+    setSession: vi.fn(),
+    clearSession: vi.fn(),
+    ...overrides
+  };
+}
 
 describe("LoginForm", () => {
   beforeEach(() => {
@@ -27,7 +41,7 @@ describe("LoginForm", () => {
 
   it("submits credentials and redirects on success", async () => {
     const loginMock = vi.fn().mockResolvedValue({});
-    useSessionMock.mockReturnValue({ login: loginMock } as any);
+    useSessionMock.mockReturnValue(createSessionStub({ login: loginMock }));
 
     render(<LoginForm />);
 
@@ -52,7 +66,7 @@ describe("LoginForm", () => {
     const loginMock = vi
       .fn()
       .mockRejectedValueOnce(new ApiError("MFA challenge required", 401, { mfaRequired: true }));
-    useSessionMock.mockReturnValue({ login: loginMock } as any);
+    useSessionMock.mockReturnValue(createSessionStub({ login: loginMock }));
 
     render(<LoginForm />);
 
@@ -70,7 +84,7 @@ describe("LoginForm", () => {
     const loginMock = vi
       .fn()
       .mockRejectedValueOnce(new ApiError("Invalid credentials", 401, { message: "Invalid credentials" }));
-    useSessionMock.mockReturnValue({ login: loginMock } as any);
+    useSessionMock.mockReturnValue(createSessionStub({ login: loginMock }));
 
     render(<LoginForm />);
 

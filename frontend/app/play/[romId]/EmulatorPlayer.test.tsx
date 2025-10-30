@@ -9,8 +9,13 @@ vi.mock("@/lib/emulator/loadBundle", () => ({
 const loadEmulatorBundleModule = await import("@/lib/emulator/loadBundle");
 const originalFetch = global.fetch;
 
+type EmulatorWindow = Window & {
+  EJS_player?: vi.Mock;
+};
+
 describe("EmulatorPlayer", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     global.fetch = vi
       .fn((input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input.toString();
@@ -58,13 +63,15 @@ describe("EmulatorPlayer", () => {
         return Promise.reject(new Error(`Unexpected fetch call for ${url}`));
       }) as unknown as typeof fetch;
 
-    (window as any).EJS_player = vi.fn();
+    const emulatorWindow = window as EmulatorWindow;
+    emulatorWindow.EJS_player = vi.fn();
     vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:rom");
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
-    delete (window as any).EJS_player;
+    const emulatorWindow = window as EmulatorWindow;
+    delete emulatorWindow.EJS_player;
     vi.restoreAllMocks();
   });
 

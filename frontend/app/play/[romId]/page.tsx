@@ -15,7 +15,8 @@ async function getRomMetadata(romId: string): Promise<RomDetail | null> {
     return null;
   }
 
-  const cookieHeader = cookies()
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore
     .getAll()
     .map((entry) => `${entry.name}=${entry.value}`)
     .join("; ");

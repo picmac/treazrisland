@@ -3,6 +3,18 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import AdmZip from "adm-zip";
 
+type GitHubAsset = {
+  name: string;
+  browser_download_url: string;
+};
+
+type GitHubRelease = {
+  assets: GitHubAsset[];
+  tag_name: string;
+  published_at: string;
+  html_url: string;
+};
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -26,7 +38,7 @@ async function downloadAsset(url: string, token?: string) {
   return Buffer.from(arrayBuffer);
 }
 
-async function getLatestRelease(token?: string) {
+async function getLatestRelease(token?: string): Promise<GitHubRelease> {
   const response = await fetch(API_URL, {
     headers: {
       Accept: "application/vnd.github+json",
@@ -39,7 +51,8 @@ async function getLatestRelease(token?: string) {
     throw new Error(`Failed to fetch latest release: ${response.status} ${response.statusText}`);
   }
 
-  return response.json();
+  const release = (await response.json()) as GitHubRelease;
+  return release;
 }
 
 async function extractZip(buffer: Buffer, destination: string) {
@@ -52,11 +65,11 @@ async function main() {
 
   console.log(`Fetching latest EmulatorJS release from ${API_URL}`);
   const release = await getLatestRelease(githubToken);
-  if (!release?.assets || !Array.isArray(release.assets)) {
+  if (!release.assets || !Array.isArray(release.assets)) {
     throw new Error("No assets found on the latest release");
   }
 
-  const archiveAsset = release.assets.find((asset: any) => asset.name.endsWith(".zip"));
+  const archiveAsset = release.assets.find((asset) => asset.name.endsWith(".zip"));
 
   if (!archiveAsset) {
     throw new Error("Could not find a .zip archive in the latest release");

@@ -83,7 +83,11 @@ export function VirtualizedGrid<T>({
       } else {
         container.scrollTop = 0;
       }
-      setScrollTop(0);
+      if (typeof window !== "undefined") {
+        window.requestAnimationFrame(() => {
+          setScrollTop(container.scrollTop);
+        });
+      }
     }
 
     previousResetKeyRef.current = resetKey;

@@ -12,7 +12,7 @@ import {
 import type { SessionPayload, SessionUser, LoginResponse } from "@/src/lib/api/auth";
 import { login as apiLogin, logout as apiLogout, refreshSession } from "@/src/lib/api/auth";
 
-type AuthContextValue = {
+export type AuthContextValue = {
   user: SessionUser | null;
   accessToken: string | null;
   loading: boolean;
