@@ -108,4 +108,16 @@ describe("EmulatorPlayer", () => {
     });
     expect(onSaveState).toHaveBeenCalledWith(payload);
   });
+
+  it("normalizes platform identifiers when choosing emulator cores", async () => {
+    render(<EmulatorPlayer romId="rom-3" romName="Metal Slug" platform="neoGeo" />);
+
+    await waitFor(() => {
+      expect(window.EJS_player).toHaveBeenCalled();
+    });
+
+    const config = (window.EJS_player as vi.Mock).mock.calls.at(-1)?.[0];
+    expect(config?.system).toBe("fbneo");
+    expect(config?.customOptions?.preferredCores).toEqual(["fbneo"]);
+  });
 });
