@@ -4,7 +4,7 @@ This runbook describes how to deliver continuous integration and delivery for TR
 
 ## 1. Prepare the Ubuntu host
 
-1. Create a dedicated system user (for example `treaz`) and add it to the `docker` group. Grant passwordless sudo only if absolutely necessary for Docker maintenance.
+1. Create a dedicated system user (`picmac`) and add it to the `docker` group. Grant passwordless sudo only if absolutely necessary for Docker maintenance.
 2. Install Docker Engine and Compose V2:
    ```bash
    sudo apt update
@@ -19,8 +19,8 @@ This runbook describes how to deliver continuous integration and delivery for TR
 3. Clone the repository once under `/opt/treazrisland/app` and ensure the working tree is clean:
    ```bash
    sudo mkdir -p /opt/treazrisland
-   sudo chown treaz:treaz /opt/treazrisland
-   git clone git@github.com:<owner>/treazrisland.git /opt/treazrisland/app
+   sudo chown picmac:picmac /opt/treazrisland
+   git clone git@github.com/picmac/treazrisland.git /opt/treazrisland/app
    ```
 4. Install global dependencies required for one-time tasks:
    ```bash
@@ -46,7 +46,7 @@ Create `/opt/treazrisland/config` and store secrets outside of Git:
 
 Set restrictive permissions:
 ```bash
-sudo chown treaz:treaz /opt/treazrisland/config/*.env
+sudo chown picmac:picmac /opt/treazrisland/config/*.env
 chmod 640 /opt/treazrisland/config/*.env
 ```
 
@@ -59,23 +59,23 @@ chmod 640 /opt/treazrisland/config/*.env
 
 ## 4. Register the self-hosted GitHub runner
 
-1. Download and configure the runner as the `treaz` user:
+1. Download and configure the runner as the `picmac` user:
    ```bash
    mkdir -p /opt/github-runner && cd /opt/github-runner
-   curl -o actions-runner-linux-x64-2.317.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.317.0/actions-runner-linux-x64-2.317.0.tar.gz
-   tar xzf actions-runner-linux-x64-2.317.0.tar.gz
-   ./config.sh --url https://github.com/<owner>/treazrisland --token <registration-token> --name treaz-home-runner --labels treaz-home --work _work
+   curl -o actions-runner-linux-x64-2.329.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.329.0/actions-runner-linux-x64-2.329.0.tar.gz
+   tar xzf actions-runner-linux-x64-2.329.0.tar.gz
+   ./config.sh --url https://github.com/picmac/treazrisland --token <registration-token> --name picmac-home-runner --labels picmac-home --work _work
    ```
 2. Install and start the runner service:
    ```bash
-   sudo ./svc.sh install treaz
+   sudo ./svc.sh install picmac
    sudo ./svc.sh start
    ```
-3. Confirm the runner appears as **online** in **Settings → Actions → Runners** with the `treaz-home` label. The workflow uses this label for the deploy stage.
+3. Confirm the runner appears as **online** in **Settings → Actions → Runners** with the `picmac-home` label. The workflow uses this label for the deploy stage.
 
 ## 5. Validate Docker permissions for the runner
 
-Run these commands as `treaz` to prove the runner can control Docker:
+Run these commands as `picmac` to prove the runner can control Docker:
 ```bash
 docker info
 cd /opt/treazrisland/app
@@ -116,7 +116,7 @@ Set `TREAZ_RUN_PLATFORM_SEED=true` the first time to populate reference data.
 
 ## 9. Monitoring and troubleshooting
 
-- Tail runner logs with `journalctl -u actions.runner.treaz-home-runner.service -f`.
+- Tail runner logs with `journalctl -u actions.runner.picmac-home-runner.service -f`.
 - Inspect deployment output through the Actions UI or `/opt/github-runner/_diag/` log files.
 - Check container logs:
   ```bash
@@ -126,7 +126,18 @@ Set `TREAZ_RUN_PLATFORM_SEED=true` the first time to populate reference data.
 - Verify Prisma migrations with `docker compose -f infra/docker-compose.prod.yml exec backend npx prisma migrate status`.
 - Confirm services are healthy by curling the frontend (`http://localhost:3000`) and backend health endpoints (`http://localhost:3001/health` if exposed).
 
-## 10. Security hygiene
+## 10. Receive local build notifications
+
+You can receive a push notification on your phone when the self-hosted deployment job completes by using the GitHub Mobile app:
+
+1. Install the GitHub Mobile app on iOS or Android and sign in with the `picmac` account.
+2. In the app, navigate to **Settings → Notifications → Actions** and enable **Workflow run completed** notifications.
+3. Subscribe to the `picmac/treazrisland` repository and ensure **Participating and @mentions** as well as **Watching** notifications are turned on for Actions events.
+4. Optional: Within a specific workflow run in the app, tap the bell icon to receive updates for that run only (useful when manually triggering `deploy-local.sh`).
+
+When the local build and deploy job finishes, GitHub will send a push notification through the app. You can also enable email notifications for redundancy via the web UI under **Settings → Notifications**.
+
+## 11. Security hygiene
 
 - Rotate JWT, Postmark, MinIO, and ScreenScraper secrets quarterly.
 - Keep Ubuntu patched (`sudo unattended-upgrades` or monthly `apt upgrade`).
