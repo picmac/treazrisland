@@ -119,7 +119,7 @@ const listRomsQuerySchema = z.object({
     .transform((value) => (value.length > 0 ? value : undefined))
     .optional(),
   year: z.coerce
-    .number({ invalid_type_error: "year must be a number" })
+    .number()
     .int()
     .min(1950)
     .max(new Date().getFullYear() + 1)

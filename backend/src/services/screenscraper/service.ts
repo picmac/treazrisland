@@ -50,7 +50,7 @@ const gameInfoSchema = z.object({
         .optional(),
       synopsis: z.union([localizedTextSchema, z.array(localizedTextSchema)]).optional(),
       infos: z
-        .record(z.unknown())
+        .record(z.string(), z.unknown())
         .optional()
         .default({}),
       medias: z

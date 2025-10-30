@@ -72,7 +72,6 @@ export const buildServer = (
     onExceeded: async (request) => {
       const routeOptions = request.routeOptions as { urlPattern?: string };
       const route =
-        request.routerPath ??
         request.routeOptions.url ??
         routeOptions.urlPattern ??
         request.raw.url ??
