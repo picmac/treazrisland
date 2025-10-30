@@ -7,7 +7,7 @@ import { createPlayState, listPlayStates, type PlayState } from "@/src/lib/api/p
 
 const ROM_ENDPOINT = "/api/player/roms";
 
-const PLATFORM_CORE_MAP: Record<string, string[]> = {
+const RAW_PLATFORM_CORE_MAP = {
   nes: ["nestopia", "fceumm"],
   snes: ["snes9x", "bsnes"],
   gba: ["mgba"],
@@ -28,7 +28,11 @@ const PLATFORM_CORE_MAP: Record<string, string[]> = {
   arcade: ["fbneo"],
   virtualboy: ["mednafen-vb"],
   nintendoDS: ["melonds"]
-};
+} as const;
+
+const PLATFORM_CORE_MAP: Record<string, readonly string[]> = Object.fromEntries(
+  Object.entries(RAW_PLATFORM_CORE_MAP).map(([platform, cores]) => [platform.toLowerCase(), cores])
+);
 
 type EmulatorPlayerProps = {
   romId: string;
