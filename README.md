@@ -10,6 +10,8 @@ application code for local development.
 - [Security & Threat Model](./docs/security/threat-model.md)
 - [Integration Guides](./docs/integrations)
   - [ScreenScraper](./docs/integrations/screenscraper.md)
+- [Authentication API](./docs/API_AUTH.md)
+- [Player API](./docs/API_PLAYER.md)
 
 ## Authentication Model
 

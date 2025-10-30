@@ -2,6 +2,11 @@
 
 This runbook summarizes the day-2 operations for TREAZRISLAND administrators.
 
+Keep the following API references handy when debugging login issues or player data flows:
+
+- [Authentication API](../API_AUTH.md)
+- [Player API](../API_PLAYER.md)
+
 ## 1. Bootstrap the Stack
 
 1. Copy `.env.example` to `.env` for local testing, or use `.env.docker` templates for Compose deployments.
