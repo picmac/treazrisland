@@ -67,6 +67,17 @@ export const buildServer = (
     global: false,
     max: env.RATE_LIMIT_DEFAULT_POINTS,
     timeWindow: env.RATE_LIMIT_DEFAULT_DURATION * 1000,
+    onExceeded: async (request) => {
+      const routeOptions = request.routeOptions as { urlPattern?: string };
+      const route =
+        request.routerPath ??
+        request.routeOptions.url ??
+        routeOptions.urlPattern ??
+        request.raw.url ??
+        "unknown";
+      const role = (request.user?.role ?? "anonymous").toLowerCase();
+      request.server.metrics.rateLimit.inc({ route, role });
+    },
   });
 
   app.register(jwt, {

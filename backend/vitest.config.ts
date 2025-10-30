@@ -7,7 +7,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
-      supertest: resolve(__dirname, "src/test/supertestShim.ts")
+      supertest: resolve(__dirname, "src/test/supertestShim.ts"),
+      postmark: resolve(__dirname, "src/test/postmarkStub.ts")
     }
   },
   test: {

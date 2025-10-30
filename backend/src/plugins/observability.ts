@@ -17,6 +17,7 @@ export type ObservabilityMetrics = {
   uploads: MetricsCounter;
   enrichment: MetricsCounter;
   playback: MetricsCounter;
+  rateLimit: MetricsCounter;
   httpRequestDuration: MetricsHistogram;
   render: () => string;
 };
@@ -154,6 +155,7 @@ function createMetrics(): ObservabilityMetrics {
       uploads: noopCounter,
       enrichment: noopCounter,
       playback: noopCounter,
+      rateLimit: noopCounter,
       httpRequestDuration: noopHistogram,
       render: () => "Metrics disabled\n",
     };
@@ -177,6 +179,12 @@ function createMetrics(): ObservabilityMetrics {
     ["action", "status"],
   );
 
+  const rateLimit = new CounterMetric(
+    "treaz_rate_limit_exceeded_total",
+    "Count of rate limit rejections grouped by route and role",
+    ["route", "role"],
+  );
+
   const httpRequestDuration = new HistogramMetric(
     "treaz_http_request_duration_seconds",
     "Histogram of HTTP request durations",
@@ -189,12 +197,14 @@ function createMetrics(): ObservabilityMetrics {
     uploads,
     enrichment,
     playback,
+    rateLimit,
     httpRequestDuration,
     render: () =>
       [
         uploads.render(),
         enrichment.render(),
         playback.render(),
+        rateLimit.render(),
         httpRequestDuration.render(),
       ].join("\n"),
   };

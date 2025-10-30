@@ -113,4 +113,30 @@ describe("player routes", () => {
     );
     expect(prismaMock.romPlaybackAudit.create).toHaveBeenCalled();
   });
+
+  it("increments the rate limit metric when requests exceed the threshold", async () => {
+    prismaMock.rom.findUnique.mockResolvedValue(null);
+    const rateLimitInc = vi.fn();
+    app.metrics.rateLimit = { inc: rateLimitInc };
+
+    const token = app.jwt.sign({ sub: "user-1", role: "USER" });
+
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      await request(app)
+        .get("/player/roms/rom-1/binary")
+        .set("authorization", `Bearer ${token}`)
+        .expect(404);
+    }
+
+    await request(app)
+      .get("/player/roms/rom-1/binary")
+      .set("authorization", `Bearer ${token}`)
+      .expect(429);
+
+    expect(rateLimitInc).toHaveBeenCalledTimes(1);
+    expect(rateLimitInc).toHaveBeenCalledWith({
+      route: "/player/roms/:id/binary",
+      role: "user",
+    });
+  });
 });
