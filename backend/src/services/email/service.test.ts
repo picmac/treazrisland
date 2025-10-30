@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const sendEmailMock = vi.fn();
-  const serverClientCtor = vi.fn(() => ({ sendEmail: sendEmailMock }));
+  const serverClientCtor = vi.fn(function () {
+    return { sendEmail: sendEmailMock };
+  });
   const mockEnv = {
     EMAIL_PROVIDER: "postmark" as const,
     POSTMARK_SERVER_TOKEN: "server-token",

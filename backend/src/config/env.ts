@@ -8,7 +8,7 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
-  PORT: z.string().regex(/^\d+$/).transform(Number).default("3001"),
+  PORT: z.string().regex(/^\d+$/).default("3001").transform(Number),
   LOG_LEVEL: z
     .string()
     .optional()
@@ -42,28 +42,28 @@ const envSchema = z.object({
   RATE_LIMIT_DEFAULT_POINTS: z
     .string()
     .regex(/^\d+$/)
-    .transform(Number)
-    .default("60"),
+    .default("60")
+    .transform(Number),
   RATE_LIMIT_DEFAULT_DURATION: z
     .string()
     .regex(/^\d+$/)
-    .transform(Number)
-    .default("60"),
+    .default("60")
+    .transform(Number),
   RATE_LIMIT_AUTH_POINTS: z
     .string()
     .regex(/^\d+$/)
-    .transform(Number)
-    .default("5"),
+    .default("5")
+    .transform(Number),
   RATE_LIMIT_AUTH_DURATION: z
     .string()
     .regex(/^\d+$/)
-    .transform(Number)
-    .default("60"),
+    .default("60")
+    .transform(Number),
   USER_INVITE_EXPIRY_HOURS: z
     .string()
     .regex(/^\d+$/)
-    .transform(Number)
-    .default("168"),
+    .default("168")
+    .transform(Number),
   STORAGE_DRIVER: z.enum(["filesystem", "s3"]).default("filesystem"),
   STORAGE_LOCAL_ROOT: z
     .string()
@@ -120,8 +120,8 @@ const envSchema = z.object({
   ROM_UPLOAD_MAX_BYTES: z
     .string()
     .regex(/^\d+$/)
-    .transform(Number)
-    .default(String(1024 * 1024 * 1024)),
+    .default(String(1024 * 1024 * 1024))
+    .transform(Number),
   SCREENSCRAPER_USERNAME: z
     .string()
     .optional()
@@ -159,18 +159,18 @@ const envSchema = z.object({
   SCREENSCRAPER_REQUESTS_PER_MINUTE: z
     .string()
     .regex(/^\d+$/)
-    .transform(Number)
-    .default("30"),
+    .default("30")
+    .transform(Number),
   SCREENSCRAPER_CONCURRENCY: z
     .string()
     .regex(/^\d+$/)
-    .transform(Number)
-    .default("2"),
+    .default("2")
+    .transform(Number),
   SCREENSCRAPER_TIMEOUT_MS: z
     .string()
     .regex(/^\d+$/)
-    .transform(Number)
-    .default("15000"),
+    .default("15000")
+    .transform(Number),
   SCREENSCRAPER_DEFAULT_LANGUAGE_PRIORITY: z.string().default("en,fr"),
   SCREENSCRAPER_DEFAULT_REGION_PRIORITY: z.string().default("us,eu,wor,jp"),
   SCREENSCRAPER_DEFAULT_MEDIA_TYPES: z
@@ -180,18 +180,18 @@ const envSchema = z.object({
   SCREENSCRAPER_MAX_ASSETS_PER_TYPE: z
     .string()
     .regex(/^\d+$/)
-    .transform(Number)
-    .default("3"),
+    .default("3")
+    .transform(Number),
   PLAY_STATE_MAX_BYTES: z
     .string()
     .regex(/^\d+$/)
-    .transform(Number)
-    .default(String(5 * 1024 * 1024)),
+    .default(String(5 * 1024 * 1024))
+    .transform(Number),
   PLAY_STATE_MAX_PER_ROM: z
     .string()
     .regex(/^\d+$/)
-    .transform(Number)
-    .default("5"),
+    .default("5")
+    .transform(Number),
   METRICS_ENABLED: z
     .string()
     .optional()

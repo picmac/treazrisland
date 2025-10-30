@@ -213,7 +213,6 @@ function createMetrics(): ObservabilityMetrics {
 function extractRouteLabel(request: FastifyRequest): string {
   const routeOptions = request.routeOptions as { urlPattern?: string };
   return (
-    request.routerPath ??
     request.routeOptions.url ??
     routeOptions.urlPattern ??
     request.raw.url ??
