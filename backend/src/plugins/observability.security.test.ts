@@ -24,8 +24,10 @@ let buildServer: typeof import("../server.js").buildServer;
 
 describe("/metrics endpoint hardening", () => {
   let app: FastifyInstance;
+  let env: typeof import("../config/env.js").env;
 
   beforeAll(async () => {
+    ({ env } = await import("../config/env.js"));
     ({ buildServer } = await import("../server.js"));
   });
 
@@ -79,5 +81,31 @@ describe("/metrics endpoint hardening", () => {
 
     expect(response.statusCode).toBe(401);
     expect(response.json()).toEqual({ message: "Unauthorized" });
+  });
+
+  it("denies scrapes when no safeguards are configured", async () => {
+    const originalAllowedCidrs = [...env.METRICS_ALLOWED_CIDRS];
+    const originalToken = env.METRICS_TOKEN;
+
+    try {
+      env.METRICS_ALLOWED_CIDRS.splice(0, env.METRICS_ALLOWED_CIDRS.length);
+      env.METRICS_TOKEN = undefined;
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/metrics",
+        remoteAddress: "203.0.113.5",
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toEqual({ message: "Forbidden" });
+    } finally {
+      env.METRICS_ALLOWED_CIDRS.splice(
+        0,
+        env.METRICS_ALLOWED_CIDRS.length,
+        ...originalAllowedCidrs,
+      );
+      env.METRICS_TOKEN = originalToken;
+    }
   });
 });

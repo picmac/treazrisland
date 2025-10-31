@@ -332,6 +332,19 @@ if (
   );
 }
 
+if (parsed.data.METRICS_ENABLED) {
+  const hasToken = Boolean(parsed.data.METRICS_TOKEN);
+  const hasAllowedCidrs =
+    Array.isArray(parsed.data.METRICS_ALLOWED_CIDRS) &&
+    parsed.data.METRICS_ALLOWED_CIDRS.length > 0;
+
+  if (!hasToken && !hasAllowedCidrs) {
+    throw new Error(
+      "METRICS_ENABLED requires METRICS_TOKEN or METRICS_ALLOWED_CIDRS",
+    );
+  }
+}
+
 if (parsed.data.STORAGE_DRIVER === "s3") {
   const missing = [
     ["STORAGE_ENDPOINT", parsed.data.STORAGE_ENDPOINT],
