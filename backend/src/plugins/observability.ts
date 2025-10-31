@@ -207,28 +207,45 @@ class HistogramMetric implements MetricsHistogram {
 
   render(): string {
     let output = `# HELP ${this.name} ${this.help}\n# TYPE ${this.name} histogram\n`;
+    const formatBaseLabels = (labels: LabelSet) =>
+      formatLabels(this.labelNames, labels);
+    const formatBucketLabels = (labels: LabelSet, le: string) =>
+      formatLabels([...this.labelNames, "le"], { ...labels, le });
+
     if (this.store.size === 0) {
-      const labels = formatLabels(this.labelNames, {});
       const bucketName = `${this.name}_bucket`;
+      const emptyLabels = Object.fromEntries(
+        this.labelNames.map((label) => [label, ""] as const),
+      ) as LabelSet;
+
       for (const bucket of this.buckets) {
-        output += `${bucketName}${labels}{le="${bucket}"} 0\n`;
+        output += `${bucketName}${formatBucketLabels(
+          emptyLabels,
+          bucket.toString(),
+        )} 0\n`;
       }
-      output += `${bucketName}${labels}{le="+Inf"} 0\n`;
-      output += `${this.name}_sum${labels} 0\n${this.name}_count${labels} 0\n`;
+
+      output += `${bucketName}${formatBucketLabels(emptyLabels, "+Inf")} 0\n`;
+      output += `${this.name}_sum${formatBaseLabels(emptyLabels)} 0\n`;
+      output += `${this.name}_count${formatBaseLabels(emptyLabels)} 0\n`;
       return output;
     }
 
     for (const record of this.store.values()) {
-      const baseLabels = formatLabels(this.labelNames, record.labels);
       const bucketName = `${this.name}_bucket`;
       for (let index = 0; index < this.buckets.length; index += 1) {
-        const bucketLabels = `${baseLabels.length > 0 ? baseLabels.slice(0, -1) + "," : "{"}le="${this.buckets[index]}"}`;
-        output += `${bucketName}${bucketLabels} ${record.buckets[index]}\n`;
+        output += `${bucketName}${formatBucketLabels(
+          record.labels,
+          this.buckets[index].toString(),
+        )} ${record.buckets[index]}\n`;
       }
-      const infLabels = `${baseLabels.length > 0 ? baseLabels.slice(0, -1) + "," : "{"}le="+Inf"}`;
-      output += `${bucketName}${infLabels} ${record.count}\n`;
-      output += `${this.name}_sum${baseLabels} ${record.sum}\n`;
-      output += `${this.name}_count${baseLabels} ${record.count}\n`;
+      output += `${bucketName}${formatBucketLabels(record.labels, "+Inf")} ${
+        record.count
+      }\n`;
+      output += `${this.name}_sum${formatBaseLabels(record.labels)} ${record.sum}\n`;
+      output += `${this.name}_count${formatBaseLabels(record.labels)} ${
+        record.count
+      }\n`;
     }
 
     return output;
