@@ -1,10 +1,28 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import type { FastifyInstance } from "fastify";
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import prisma from "@prisma/client";
 
 const { Prisma } = prisma;
+
+function createPrismaKnownRequestError(
+  code: string,
+  message: string,
+  meta?: Prisma.PrismaClientKnownRequestError["meta"]
+): Prisma.PrismaClientKnownRequestError {
+  const error = Object.create(
+    Prisma.PrismaClientKnownRequestError.prototype
+  ) as Prisma.PrismaClientKnownRequestError;
+
+  return Object.assign(error, {
+    code,
+    clientVersion: "test",
+    meta,
+    message,
+    name: "PrismaClientKnownRequestError"
+  });
+}
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
@@ -114,10 +132,7 @@ describe("favorites routes", () => {
 
   it("silently accepts duplicates", async () => {
     prismaMock.userRomFavorite.create.mockRejectedValueOnce(
-      new Prisma.PrismaClientKnownRequestError("duplicate", {
-        code: "P2002",
-        clientVersion: "test"
-      })
+      createPrismaKnownRequestError("P2002", "duplicate")
     );
 
     const token = app.jwt.sign({ sub: "user_1", role: "USER" });
@@ -130,10 +145,7 @@ describe("favorites routes", () => {
 
   it("returns 404 when rom is missing", async () => {
     prismaMock.userRomFavorite.create.mockRejectedValueOnce(
-      new Prisma.PrismaClientKnownRequestError("missing", {
-        code: "P2003",
-        clientVersion: "test"
-      })
+      createPrismaKnownRequestError("P2003", "missing")
     );
 
     const token = app.jwt.sign({ sub: "user_1", role: "USER" });

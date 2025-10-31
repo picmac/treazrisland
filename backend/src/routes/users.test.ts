@@ -7,6 +7,24 @@ import { Readable } from "node:stream";
 
 const { Prisma: PrismaNamespace } = prisma;
 
+function createPrismaKnownRequestError(
+  code: string,
+  message: string,
+  meta?: Prisma.PrismaClientKnownRequestError["meta"]
+): Prisma.PrismaClientKnownRequestError {
+  const error = Object.create(
+    PrismaNamespace.PrismaClientKnownRequestError.prototype
+  ) as Prisma.PrismaClientKnownRequestError;
+
+  return Object.assign(error, {
+    code,
+    clientVersion: "test",
+    meta,
+    message,
+    name: "PrismaClientKnownRequestError"
+  });
+}
+
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
 process.env.JWT_SECRET = "this-is-a-test-secret-at-least-32";
@@ -236,10 +254,7 @@ describe("user profile routes", () => {
       avatarUpdatedAt: null,
     });
     prisma.user.update.mockRejectedValueOnce(
-      new PrismaNamespace.PrismaClientKnownRequestError("duplicate", {
-        code: "P2002",
-        clientVersion: "test",
-      }),
+      createPrismaKnownRequestError("P2002", "duplicate"),
     );
 
     const token = app.jwt.sign({ sub: "user_1", role: "USER" });
