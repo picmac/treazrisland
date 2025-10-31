@@ -4,7 +4,6 @@ import type { FastifyInstance } from "fastify";
 import type { Prisma } from "@prisma/client";
 import { Prisma as PrismaNamespace } from "@prisma/client";
 import { Readable } from "node:stream";
-import type { MultipartFile, MultipartValue } from "@fastify/multipart";
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
@@ -42,9 +41,6 @@ describe("user profile routes", () => {
   let app: FastifyInstance;
   let prisma: PrismaMock;
   let storage: StorageMock;
-  let multipartPartsStub: (() => AsyncIterableIterator<
-    MultipartFile | MultipartValue<string>
-  >) | null;
 
   beforeAll(async () => {
     ({ buildServer } = await import("../server.js"));
@@ -60,8 +56,6 @@ describe("user profile routes", () => {
         findFirst: vi.fn(),
       },
     } satisfies PrismaMock;
-
-    multipartPartsStub = null;
 
     storage = {
       uploadUserAvatar: vi.fn().mockImplementation(async (options: unknown) => {
@@ -86,19 +80,6 @@ describe("user profile routes", () => {
 
     app = buildServer({ registerPrisma: false });
     app.decorate("prisma", prisma as unknown as Prisma.PrismaClient);
-    app.addHook("preHandler", async (request) => {
-      if (
-        request.method === "PATCH" &&
-        request.url === "/users/me" &&
-        request.headers["x-test-multipart"] === "1" &&
-        multipartPartsStub
-      ) {
-        (request as typeof request & { isMultipart: () => boolean }).isMultipart = () => true;
-        (request as typeof request & {
-          parts: () => AsyncIterableIterator<MultipartFile | MultipartValue<string>>;
-        }).parts = () => multipartPartsStub!();
-      }
-    });
     await app.ready();
     (app as unknown as { storage: unknown }).storage =
       storage as unknown as import("../services/storage/storage.js").StorageService;
@@ -309,30 +290,16 @@ describe("user profile routes", () => {
     });
 
     const token = app.jwt.sign({ sub: "user_1", role: "USER" });
-    multipartPartsStub = () =>
-      (async function* () {
-        yield {
-          type: "field",
-          fieldname: "displayName",
-          value: "Pirate",
-          encoding: "utf-8",
-          mimetype: "text/plain",
-        } as MultipartValue<string>;
-        yield {
-          type: "file",
-          fieldname: "avatar",
-          filename: "avatar.png",
-          encoding: "7bit",
-          mimetype: "image/png",
-          file: Readable.from([137, 80, 78, 71, 13, 10, 26, 10, 0]),
-          fields: {},
-        } as unknown as MultipartFile;
-      })();
 
     const response = await request(app)
       .patch("/users/me")
       .set("authorization", `Bearer ${token}`)
-      .set("x-test-multipart", "1");
+      .field("displayName", "Pirate")
+      .attach(
+        "avatar",
+        Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]),
+        { filename: "avatar.png", contentType: "image/png" },
+      );
 
     expect(response.status).toBe(200);
     expect(storage.uploadUserAvatar).toHaveBeenCalledWith(
