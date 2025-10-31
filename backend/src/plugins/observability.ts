@@ -5,6 +5,12 @@ import { env } from "../config/env.js";
 
 type LabelSet = Record<string, string>;
 
+function isIPv6Address(
+  address: ipaddr.IPv4 | ipaddr.IPv6,
+): address is ipaddr.IPv6 {
+  return address.kind() === "ipv6";
+}
+
 export type MetricsCounter = {
   inc: (labels?: LabelSet, value?: number) => void;
 };
@@ -45,7 +51,7 @@ const METRIC_HEADER = "text/plain; version=0.0.4; charset=utf-8";
 function parseAddress(value: string): ipaddr.IPv4 | ipaddr.IPv6 | null {
   try {
     const parsed = ipaddr.parse(value);
-    if (parsed.kind() === "ipv6" && parsed.isIPv4MappedAddress()) {
+    if (isIPv6Address(parsed) && parsed.isIPv4MappedAddress()) {
       return parsed.toIPv4Address();
     }
 
@@ -59,7 +65,7 @@ function parseCidr(entry: string): [ipaddr.IPv4 | ipaddr.IPv6, number] | null {
   try {
     if (entry.includes("/")) {
       const [address, prefix] = ipaddr.parseCIDR(entry);
-      if (address.kind() === "ipv6" && address.isIPv4MappedAddress()) {
+      if (isIPv6Address(address) && address.isIPv4MappedAddress()) {
         return [address.toIPv4Address(), Math.max(0, prefix - 96)];
       }
 
@@ -67,7 +73,7 @@ function parseCidr(entry: string): [ipaddr.IPv4 | ipaddr.IPv6, number] | null {
     }
 
     const address = ipaddr.parse(entry);
-    if (address.kind() === "ipv6" && address.isIPv4MappedAddress()) {
+    if (isIPv6Address(address) && address.isIPv4MappedAddress()) {
       return [address.toIPv4Address(), 32];
     }
 
