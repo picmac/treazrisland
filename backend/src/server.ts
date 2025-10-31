@@ -4,7 +4,6 @@ import rateLimit from "@fastify/rate-limit";
 import sensible from "@fastify/sensible";
 import underPressure from "@fastify/under-pressure";
 import jwt from "@fastify/jwt";
-import multipart from "@fastify/multipart";
 import { env } from "./config/env.js";
 import prismaPlugin from "./plugins/prisma.js";
 import authPlugin from "./plugins/auth.js";
@@ -90,8 +89,6 @@ export const buildServer = (
       expiresIn: env.JWT_ACCESS_TTL,
     },
   });
-
-  app.register(multipart);
 
   app.register(observabilityPlugin);
   app.register(authPlugin);

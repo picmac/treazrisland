@@ -1,5 +1,6 @@
-import type { FastifyInstance } from "fastify";
-import type { Multipart, MultipartFile } from "@fastify/multipart";
+import type { FastifyInstance, FastifyRequest } from "fastify";
+import Busboy from "busboy";
+import { PassThrough, Readable } from "node:stream";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { env } from "../config/env.js";
@@ -124,37 +125,131 @@ async function buildAvatarMetadata(
   } as const;
 }
 
-async function parseMultipartPayload(
-  parts: AsyncIterableIterator<Multipart>,
-): Promise<{
+type AvatarMultipartFile = {
+  stream: NodeJS.ReadableStream;
+  filename: string;
+  mimetype: string;
+};
+
+type MultipartParseResult = {
   fields: z.infer<typeof formPatchSchema>;
-  avatarFile: MultipartFile | null;
-}> {
-  const fieldValues: Record<string, string> = {};
-  let avatarFile: MultipartFile | null = null;
+  avatarFile: AvatarMultipartFile | null;
+};
 
-  for await (const part of parts) {
-    if (part.type === "file") {
-      if (part.fieldname === "avatar") {
-        if (avatarFile) {
-          part.file.resume();
-          throw new Error("Only one avatar file may be uploaded");
-        }
-        avatarFile = part;
-      } else {
-        part.file.resume();
+const MULTIPART_ERROR_CODES = {
+  avatarTooLarge: "AVATAR_FILE_TOO_LARGE",
+  duplicateAvatar: "AVATAR_DUPLICATE",
+} as const;
+
+async function parseMultipartPayload(
+  request: FastifyRequest,
+): Promise<MultipartParseResult> {
+  return new Promise((resolve, reject) => {
+    const busboy = Busboy({
+      headers: request.headers,
+      limits: {
+        fileSize: env.USER_AVATAR_MAX_BYTES,
+        files: 1,
+      },
+    });
+
+    const fieldValues: Record<string, string> = {};
+    let avatarFile: AvatarMultipartFile | null = null;
+    let parseFailed = false;
+    let deferredError: Error | null = null;
+
+    const source = Buffer.isBuffer(request.body)
+      ? Readable.from(request.body)
+      : request.raw;
+
+    const rejectOnce = (error: Error) => {
+      if (parseFailed) {
+        return;
       }
-    } else {
-      fieldValues[part.fieldname] = String(part.value ?? "");
-    }
-  }
+      parseFailed = true;
+      reject(error);
+      if (typeof (source as NodeJS.ReadableStream).unpipe === "function") {
+        (source as NodeJS.ReadableStream).unpipe(busboy);
+      }
+      if (typeof (source as NodeJS.ReadableStream).resume === "function") {
+        (source as NodeJS.ReadableStream).resume();
+      }
+    };
 
-  const parsed = formPatchSchema.safeParse(fieldValues);
-  if (!parsed.success) {
-    throw parsed.error;
-  }
+    busboy.on("file", (fieldname, file, info) => {
+      if (fieldname !== "avatar") {
+        file.resume();
+        return;
+      }
 
-  return { fields: parsed.data, avatarFile };
+      if (avatarFile) {
+        file.resume();
+        const error = new Error("Only one avatar file may be uploaded");
+        (error as Error & { code: string }).code =
+          MULTIPART_ERROR_CODES.duplicateAvatar;
+        rejectOnce(error);
+        return;
+      }
+
+      const stream = new PassThrough();
+      file.pipe(stream);
+
+      file.on("limit", () => {
+        const error = new Error("Avatar exceeds maximum allowed size");
+        (error as Error & { code: string }).code =
+          MULTIPART_ERROR_CODES.avatarTooLarge;
+        deferredError = error;
+        stream.destroy(error);
+      });
+
+      file.once("error", (error) => {
+        deferredError = error instanceof Error ? error : new Error(String(error));
+        stream.destroy(deferredError);
+      });
+
+      avatarFile = {
+        stream,
+        filename: info.filename,
+        mimetype: info.mimeType ?? "application/octet-stream",
+      };
+    });
+
+    busboy.on("field", (fieldname, value) => {
+      fieldValues[fieldname] = value;
+    });
+
+    busboy.once("filesLimit", () => {
+      const error = new Error("Only one avatar file may be uploaded");
+      (error as Error & { code: string }).code =
+        MULTIPART_ERROR_CODES.duplicateAvatar;
+      rejectOnce(error);
+    });
+
+    busboy.once("error", (error) => {
+      rejectOnce(error instanceof Error ? error : new Error(String(error)));
+    });
+
+    busboy.once("finish", () => {
+      if (parseFailed) {
+        return;
+      }
+
+      if (deferredError) {
+        rejectOnce(deferredError);
+        return;
+      }
+
+      const parsed = formPatchSchema.safeParse(fieldValues);
+      if (!parsed.success) {
+        rejectOnce(parsed.error);
+        return;
+      }
+
+      resolve({ fields: parsed.data, avatarFile });
+    });
+
+    (source as NodeJS.ReadableStream).pipe(busboy);
+  });
 }
 
 function normalizePrismaError(error: unknown, app: FastifyInstance): never {
@@ -183,6 +278,10 @@ function mapAvatarUploadError(error: unknown, app: FastifyInstance): never {
 }
 
 export async function registerUserRoutes(app: FastifyInstance) {
+  app.addContentTypeParser(/^(multipart\/form-data)(;.*)?$/i, (request, payload, done) => {
+    done(null, payload);
+  });
+
   app.get(
     "/users/me",
     {
@@ -272,14 +371,16 @@ export async function registerUserRoutes(app: FastifyInstance) {
         throw app.httpErrors.unauthorized();
       }
 
-      let avatarFile: MultipartFile | null = null;
+      let avatarFile: AvatarMultipartFile | null = null;
       let payload: z.infer<typeof jsonPatchSchema> | null = null;
 
-      if (request.isMultipart && request.isMultipart()) {
+      const contentTypeHeader = request.headers["content-type"];
+      if (
+        typeof contentTypeHeader === "string" &&
+        contentTypeHeader.toLowerCase().includes("multipart/form-data")
+      ) {
         try {
-          const parsed = await parseMultipartPayload(
-            request.parts({ limits: { fileSize: env.USER_AVATAR_MAX_BYTES } }),
-          );
+          const parsed = await parseMultipartPayload(request);
           avatarFile = parsed.avatarFile;
           payload = {
             nickname: parsed.fields.nickname,
@@ -292,6 +393,22 @@ export async function registerUserRoutes(app: FastifyInstance) {
               message: "Invalid payload",
               errors: error.flatten().fieldErrors,
             });
+          }
+          if (
+            error instanceof Error &&
+            (error as Error & { code?: string }).code ===
+              MULTIPART_ERROR_CODES.avatarTooLarge
+          ) {
+            throw app.httpErrors.payloadTooLarge(
+              "Avatar exceeds maximum allowed size",
+            );
+          }
+          if (
+            error instanceof Error &&
+            (error as Error & { code?: string }).code ===
+              MULTIPART_ERROR_CODES.duplicateAvatar
+          ) {
+            throw app.httpErrors.badRequest(error.message);
           }
           throw error;
         }
@@ -340,7 +457,7 @@ export async function registerUserRoutes(app: FastifyInstance) {
         if (avatarFile) {
           uploadedAvatar = await app.storage.uploadUserAvatar({
             userId: currentUser.id,
-            stream: avatarFile.file,
+            stream: avatarFile.stream,
             maxBytes: env.USER_AVATAR_MAX_BYTES,
             contentType: avatarFile.mimetype,
           });
