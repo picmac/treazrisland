@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import type { AssetSummary } from "./library";
 
 export type PlayState = {
   id: string;
@@ -18,6 +19,28 @@ export async function listPlayStates(romId: string): Promise<PlayState[]> {
     `/player/play-states?${params.toString()}`
   );
   return response.playStates;
+}
+
+export type RecentPlayState = {
+  playState: PlayState;
+  rom: {
+    id: string;
+    title: string;
+    platform: {
+      id: string;
+      name: string;
+      slug: string;
+      shortName: string | null;
+    } | null;
+    assetSummary: AssetSummary;
+  } | null;
+};
+
+export async function listRecentPlayStates(): Promise<RecentPlayState[]> {
+  const response = await apiFetch<{ recent: RecentPlayState[] }>(
+    "/player/play-states/recent"
+  );
+  return response.recent;
 }
 
 export async function createPlayState(payload: {

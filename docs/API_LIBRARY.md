@@ -219,6 +219,41 @@ context, and optional blurbs describing the pick.
 }
 ```
 
+## `GET /stats/overview`
+
+Aggregates usage statistics for the signed-in user alongside server-wide KPIs. The endpoint pulls
+Prisma aggregates for counts and byte totals, then derives the caller's most active platforms from
+their save-state history.
+
+- **Auth**: Required.
+- **Rate limit**: Adaptive (higher ceilings for admins).
+
+**Response**
+
+```json
+{
+  "user": {
+    "favorites": { "count": 12 },
+    "playStates": { "count": 5, "totalBytes": 5242880 },
+    "uploads": { "count": 3 },
+    "topPlatforms": [
+      { "id": "platform_snes", "name": "Super Nintendo", "slug": "snes", "shortName": "SNES", "playStateCount": 3 }
+    ]
+  },
+  "server": {
+    "users": 4,
+    "roms": 128,
+    "playStates": 27,
+    "storageBytes": {
+      "romBinaries": 2147483648,
+      "assets": 536870912,
+      "playStates": 8388608,
+      "total": 2694840320
+    }
+  }
+}
+```
+
 ## `GET /top-lists/:slug`
 
 Returns a single published top list by slug. Responds with HTTP 404 when no published list matches

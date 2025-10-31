@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DashboardPanels } from "@/src/components/dashboard-panels";
 
 export default function HomePage() {
   return (
@@ -23,6 +24,8 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
+
+      <DashboardPanels />
     </main>
   );
 }

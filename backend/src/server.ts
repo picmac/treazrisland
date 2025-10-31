@@ -20,6 +20,7 @@ import { registerPlayerRoutes } from "./routes/player.js";
 import { registerFavoriteRoutes } from "./routes/favorites.js";
 import { registerCollectionRoutes } from "./routes/collections.js";
 import { registerTopListRoutes } from "./routes/topLists.js";
+import { registerStatsRoutes } from "./routes/stats.js";
 import { registerUserRoutes } from "./routes/users.js";
 import supportServices from "./plugins/support-services.js";
 import observabilityPlugin from "./plugins/observability.js";
@@ -115,6 +116,7 @@ export const buildServer = (
       await registerFavoriteRoutes(instance);
       await registerCollectionRoutes(instance);
       await registerTopListRoutes(instance);
+      await registerStatsRoutes(instance);
     }
   });
 

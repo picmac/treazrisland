@@ -6,6 +6,11 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import * as PrismaClientPackage from "@prisma/client";
 import { RomBinaryStatus, type PlayState, type Prisma } from "@prisma/client";
+import {
+  SUMMARY_ASSET_TYPES,
+  assetSummarySelect,
+  buildAssetSummary,
+} from "../utils/asset-summary.js";
 import { env } from "../config/env.js";
 import { safeUnlink } from "../services/storage/storage.js";
 
@@ -66,6 +71,8 @@ const updatePlayStateSchema = playStateSchema
 const listPlayStatesQuery = z.object({
   romId: z.string().min(1).optional(),
 });
+
+const RECENT_PLAY_STATE_LIMIT = 10;
 
 function createRoleAwareRateLimit(app: FastifyInstance) {
   return app.rateLimit({
@@ -343,6 +350,67 @@ export async function registerPlayerRoutes(
       });
 
       return { playStates: playStates.map(serializePlayState) };
+    },
+  );
+
+  app.get(
+    "/player/play-states/recent",
+    {
+      preHandler: [app.authenticate, rateLimitHook],
+    },
+    async (request) => {
+      if (!request.user) {
+        throw app.httpErrors.unauthorized();
+      }
+
+      const playStates = await app.prisma.playState.findMany({
+        where: { userId: request.user.sub },
+        orderBy: { updatedAt: "desc" },
+        take: RECENT_PLAY_STATE_LIMIT,
+        include: {
+          rom: {
+            select: {
+              id: true,
+              title: true,
+              platform: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  shortName: true,
+                },
+              },
+              assets: {
+                where: { type: { in: SUMMARY_ASSET_TYPES } },
+                orderBy: { createdAt: "desc" },
+                take: 8,
+                select: assetSummarySelect,
+              },
+            },
+          },
+        },
+      });
+
+      return {
+        recent: playStates.map((playState) => ({
+          playState: serializePlayState(playState),
+          rom: playState.rom
+            ? {
+                id: playState.rom.id,
+                title: playState.rom.title,
+                platform: playState.rom.platform
+                  ? {
+                      id: playState.rom.platform.id,
+                      name: playState.rom.platform.name,
+                      slug: playState.rom.platform.slug,
+                      shortName: playState.rom.platform.shortName,
+                    }
+                  : null,
+                assetSummary: buildAssetSummary(playState.rom.assets),
+              }
+            : null,
+        })),
+      };
     },
   );
 
