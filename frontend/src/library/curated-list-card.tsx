@@ -4,8 +4,10 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 
+type LinkHref = Parameters<typeof Link>[0]["href"];
+
 export type CuratedListCardProps = {
-  href: string;
+  href: LinkHref;
   title: string;
   description?: string | null;
   meta?: ReactNode;

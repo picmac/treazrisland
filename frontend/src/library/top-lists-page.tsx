@@ -72,7 +72,10 @@ export function TopListsPage() {
           return (
             <CuratedListCard
               key={topList.id}
-              href={`/top-lists/${topList.slug}`}
+              href={{
+                pathname: "/top-lists/[slug]",
+                query: { slug: topList.slug }
+              }}
               title={topList.title}
               description={topList.description}
               meta={

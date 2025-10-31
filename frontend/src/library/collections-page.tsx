@@ -70,7 +70,10 @@ export function CollectionsPage() {
           return (
             <CuratedListCard
               key={collection.id}
-              href={`/collections/${collection.slug}`}
+              href={{
+                pathname: "/collections/[slug]",
+                query: { slug: collection.slug }
+              }}
               title={collection.title}
               description={collection.description}
               meta={collection.isPublished ? "Published" : "Draft"}
