@@ -66,6 +66,22 @@ RUN_SMOKE_E2E=1 npm run test:e2e:smoke   # Optional Playwright smoke suite
 
 See [`docs/testing/e2e.md`](../docs/testing/e2e.md) for Playwright prerequisites and environment variables.
 
+## Security headers & CSP maintenance
+
+The App Router emits strict security headers for every route via [`next.config.ts`](./next.config.ts). The baseline policy enforces:
+
+- `Content-Security-Policy` with `default-src 'self'`, ROM/media allowances, `report-uri /api/csp-report`, and automatic upgrades for mixed content.
+- `Strict-Transport-Security` (two-year TTL with subdomain coverage and preload hint).
+- `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and `Referrer-Policy: strict-origin-when-cross-origin`.
+
+Routes that still require inline scripts (for example, the EmulatorJS boot sequence under `/play/*`) receive a nonce-scoped CSP through [`middleware.ts`](./middleware.ts). Server components can read the nonce from the `x-csp-nonce` request header to attribute inline `<script>` tags without falling back to `unsafe-inline`.
+
+When adding new external assets:
+
+1. Update [`security-headers.ts`](./security-headers.ts) with the additional `img-src`, `connect-src`, or `media-src` directives, avoiding wildcards when possible.
+2. Extend the Vitest suite in [`tests/security/security-headers.test.ts`](./tests/security/security-headers.test.ts) to cover the new directive so regressions are caught automatically.
+3. Run `npm test` to confirm the integration coverage passes before shipping.
+
 ## API utilities
 
 Client-side data fetching helpers live in `src/lib/api/`. Reuse these hooks before introducing new fetch logic to benefit from shared error handling and revalidation policies.
