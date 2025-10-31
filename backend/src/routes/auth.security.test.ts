@@ -14,6 +14,7 @@ process.env.STORAGE_BUCKET_ROMS = "roms";
 process.env.STORAGE_BUCKET_BIOS = "bios";
 process.env.ROM_UPLOAD_MAX_BYTES = `${1024 * 1024}`;
 process.env.MFA_ISSUER = "TREAZRISLAND";
+process.env.MFA_ENCRYPTION_KEY = "test-suite-encryption-key-32-characters";
 process.env.MFA_RECOVERY_CODE_COUNT = "4";
 process.env.MFA_RECOVERY_CODE_LENGTH = "8";
 process.env.RATE_LIMIT_AUTH_POINTS = "3";

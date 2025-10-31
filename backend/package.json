@@ -13,7 +13,7 @@
     "format:write": "prettier --write \"src/config/env.ts\" \"src/routes/admin/romUploads.ts\" \"src/routes/player.ts\" \"src/routes/screenscraper.ts\" \"src/server.ts\" \"src/types/fastify.d.ts\" \"src/plugins/observability.ts\"",
     "test": "vitest",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate": "prisma migrate dev && tsx prisma/migrate-reencrypt-mfa-secrets.ts",
     "screenscraper:encrypt": "tsx scripts/encrypt-screenscraper-secret.ts",
     "prisma:seed:platforms": "tsx prisma/seed-platforms.ts",
     "retention:prune": "tsx scripts/retention/prune-rom-upload-audit.ts"

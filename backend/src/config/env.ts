@@ -27,6 +27,9 @@ const envSchema = z.object({
     .refine((value) => value.length > 0, {
       message: "MFA_ISSUER cannot be empty",
     }),
+  MFA_ENCRYPTION_KEY: z
+    .string()
+    .min(32, "MFA_ENCRYPTION_KEY must be at least 32 characters"),
   MFA_RECOVERY_CODE_COUNT: z
     .string()
     .regex(/^\d+$/)
@@ -382,6 +385,7 @@ export const env = {
     parsed.data.SCREENSCRAPER_ONLY_BETTER_MEDIA.toLowerCase() === "true" ||
     parsed.data.SCREENSCRAPER_ONLY_BETTER_MEDIA === "1",
   MFA_ISSUER: parsed.data.MFA_ISSUER,
+  MFA_ENCRYPTION_KEY: parsed.data.MFA_ENCRYPTION_KEY,
   MFA_RECOVERY_CODE_COUNT: parsed.data.MFA_RECOVERY_CODE_COUNT,
   MFA_RECOVERY_CODE_LENGTH: parsed.data.MFA_RECOVERY_CODE_LENGTH,
   EMAIL_PROVIDER: parsed.data.EMAIL_PROVIDER,

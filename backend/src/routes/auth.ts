@@ -277,6 +277,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       }
 
       const secret = app.mfaService.generateSecret();
+      const encryptedSecret = app.mfaService.encryptSecret(secret);
       const recoveryCodes = generateRecoveryCodes(
         env.MFA_RECOVERY_CODE_COUNT,
         env.MFA_RECOVERY_CODE_LENGTH
@@ -302,7 +303,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           return tx.mfaSecret.create({
             data: {
               userId: user.id,
-              secret,
+              secret: encryptedSecret,
               recoveryCodes: hashedRecoveryCodes.join("\n")
             }
           });
@@ -358,9 +359,23 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         return reply.status(404).send({ message: "MFA setup request not found" });
       }
 
+      let decryptedSecret: ReturnType<typeof app.mfaService.decryptSecret>;
+      try {
+        decryptedSecret = app.mfaService.decryptSecret(pendingSecret.secret);
+      } catch (error) {
+        request.log.error(
+          { err: error, userId: request.user.sub },
+          "Failed to decrypt stored MFA secret",
+        );
+        return reply.status(500).send({ message: "Unable to verify MFA code" });
+      }
+
       let verified = false;
       try {
-        verified = await app.mfaService.verifyTotp(pendingSecret.secret, parsed.data.code);
+        verified = await app.mfaService.verifyTotp(
+          decryptedSecret.secret,
+          parsed.data.code,
+        );
       } catch (error) {
         request.log.error({ err: error, userId: request.user.sub }, "Failed to verify MFA code");
         return reply.status(500).send({ message: "Unable to verify MFA code" });
@@ -385,7 +400,10 @@ export async function registerAuthRoutes(app: FastifyInstance) {
             where: { id: pendingSecret.id },
             data: {
               confirmedAt: new Date(),
-              disabledAt: null
+              disabledAt: null,
+              ...(decryptedSecret.needsRotation
+                ? { secret: app.mfaService.encryptSecret(decryptedSecret.secret) }
+                : {})
             }
           });
         });
@@ -432,10 +450,24 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       let verified = false;
       let hashedCodes = extractHashedRecoveryCodes(activeSecret.recoveryCodes);
       let recoveryCodeUsed = false;
+      let decryptedSecret: ReturnType<typeof app.mfaService.decryptSecret> | null = null;
 
       if (parsed.data.mfaCode) {
         try {
-          verified = await app.mfaService.verifyTotp(activeSecret.secret, parsed.data.mfaCode);
+          decryptedSecret = app.mfaService.decryptSecret(activeSecret.secret);
+        } catch (error) {
+          request.log.error(
+            { err: error, userId: request.user.sub },
+            "Failed to decrypt MFA secret during disable",
+          );
+          return reply.status(500).send({ message: "Unable to verify MFA challenge" });
+        }
+
+        try {
+          verified = await app.mfaService.verifyTotp(
+            decryptedSecret.secret,
+            parsed.data.mfaCode,
+          );
         } catch (error) {
           request.log.error({ err: error, userId: request.user.sub }, "Failed to verify MFA code during disable");
           return reply.status(500).send({ message: "Unable to verify MFA challenge" });
@@ -465,13 +497,20 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
       try {
         await app.prisma.$transaction(async (tx) => {
-          if (recoveryCodeUsed) {
+          if (recoveryCodeUsed || decryptedSecret?.needsRotation) {
+            const updateData: Prisma.MfaSecretUpdateInput = {};
+            if (recoveryCodeUsed) {
+              updateData.recoveryCodes = hashedCodes.join("\n");
+              updateData.rotatedAt = new Date();
+            }
+            if (decryptedSecret?.needsRotation) {
+              updateData.secret = app.mfaService.encryptSecret(decryptedSecret.secret);
+              updateData.rotatedAt = new Date();
+            }
+
             await tx.mfaSecret.update({
               where: { id: activeSecret.id },
-              data: {
-                recoveryCodes: hashedCodes.join("\n"),
-                rotatedAt: new Date()
-              }
+              data: updateData
             });
           }
 
@@ -564,10 +603,21 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         }
 
         let mfaSatisfied = false;
+        let decryptedSecretForLogin: ReturnType<typeof app.mfaService.decryptSecret> | null = null;
 
         if (mfaCode) {
           try {
-            mfaSatisfied = await app.mfaService.verifyTotp(activeSecret.secret, mfaCode);
+            decryptedSecretForLogin = app.mfaService.decryptSecret(activeSecret.secret);
+          } catch (error) {
+            request.log.error({ err: error, userId: user.id }, "Failed to decrypt MFA secret");
+            return reply.status(500).send({ message: "Unable to verify MFA challenge" });
+          }
+
+          try {
+            mfaSatisfied = await app.mfaService.verifyTotp(
+              decryptedSecretForLogin.secret,
+              mfaCode,
+            );
           } catch (error) {
             request.log.error({ err: error, userId: user.id }, "Failed to verify MFA code");
             return reply.status(500).send({ message: "Unable to verify MFA challenge" });
@@ -606,6 +656,20 @@ export async function registerAuthRoutes(app: FastifyInstance) {
             reason: "mfa_failed"
           });
           return reply.status(401).send({ message: "Invalid multi-factor credentials" });
+        }
+
+        if (decryptedSecretForLogin?.needsRotation) {
+          try {
+            await app.prisma.mfaSecret.update({
+              where: { id: activeSecret.id },
+              data: {
+                secret: app.mfaService.encryptSecret(decryptedSecretForLogin.secret),
+                rotatedAt: new Date()
+              }
+            });
+          } catch (error) {
+            request.log.error({ err: error, userId: user.id }, "Failed to rotate MFA secret after challenge");
+          }
         }
       }
 

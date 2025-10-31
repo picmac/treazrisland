@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { BasicMfaService } from "./service.js";
 
+const TEST_KEY = "test-encryption-key-that-is-long-enough";
+
 describe("BasicMfaService", () => {
-  const service = new BasicMfaService();
+  const service = new BasicMfaService(TEST_KEY);
 
   it("generates a base32 secret of the requested size", () => {
     const secret = service.generateSecret(16);
@@ -30,5 +32,24 @@ describe("BasicMfaService", () => {
     });
 
     expect(uri).toContain("secret=JBSWY3DPEHPK3PXP");
+  });
+
+  it("encrypts and decrypts MFA secrets symmetrically", () => {
+    const plaintext = "JBSWY3DPEHPK3PXP";
+
+    const ciphertext = service.encryptSecret(plaintext);
+    expect(ciphertext).not.toEqual(plaintext);
+
+    const result = service.decryptSecret(ciphertext);
+    expect(result.secret).toEqual(plaintext);
+    expect(result.needsRotation).toBe(false);
+  });
+
+  it("flags legacy base32 secrets for rotation", () => {
+    const legacy = "JBSWY3DPEHPK3PXP";
+
+    const result = service.decryptSecret(legacy);
+    expect(result.secret).toEqual(legacy);
+    expect(result.needsRotation).toBe(true);
   });
 });
