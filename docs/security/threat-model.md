@@ -35,7 +35,7 @@ shipping new features. Use it as a pre-flight checklist for reviews and release 
 5. **Logging & Monitoring**
    - [ ] Structured logs (upload/enrichment/playback events) shipped to centralized store with retention ≥30 days. _(Pending – Owner: Observability (Nora Blake); Fluent Bit → Loki pipeline rollout planned 2025-03-04; tracked in **SEC-56**.)_
    - [x] Sensitive values (API keys) hashed or redacted before logging; verify Fastify/Pino serializers redact `Authorization`, cookies, and password payloads. _(Verified 2025-02-14 via logger configuration in `backend/src/server.ts`; sample stored in `docs/observability/redaction-verification-2025-02.md`.)_
-   - [ ] Prometheus scrape job authenticates with `METRICS_TOKEN`; alerts defined for spikes in `treaz_upload_events_total`, `treaz_enrichment_requests_total`, and `treaz_playback_events_total` error labels. _(Partial – `METRICS_TOKEN` rotated 2025-02-08, but scrape network policy and Alertmanager rules pending in **SEC-51**/**SEC-52**, due early March.)_
+  - [x] Prometheus scrape job authenticates with `METRICS_TOKEN`; alerts defined for spikes in `treaz_upload_events_total`, `treaz_enrichment_requests_total`, and `treaz_playback_events_total` error labels. _(Configured 2025-02-24 via `infra/monitoring/prometheus.yml` + `alertmanager.yml`; `/metrics` restricted with `METRICS_ALLOWED_CIDRS` and queue depth gauge `treaz_enrichment_queue_depth` driving Alertmanager rules documented in `infra/monitoring/rules/treazrisland.rules.yml`.)_
 
 6. **Dependency Hygiene**
    - [ ] npm audit / Snyk scan performed on backend and frontend packages. _(Pending – Owner: Platform (Omar Reed); add weekly `npm audit` job in CI by 2025-03-06; tracked in **SEC-57**.)_

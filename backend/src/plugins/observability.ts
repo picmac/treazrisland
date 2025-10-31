@@ -1,5 +1,6 @@
 import fp from "fastify-plugin";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import ipaddr from "ipaddr.js";
 import { env } from "../config/env.js";
 
 type LabelSet = Record<string, string>;
@@ -12,6 +13,10 @@ export type MetricsHistogram = {
   observe: (labels: LabelSet, value: number) => void;
 };
 
+export type MetricsGauge = {
+  set: (labels: LabelSet, value: number) => void;
+};
+
 export type ObservabilityMetrics = {
   enabled: boolean;
   uploads: MetricsCounter;
@@ -19,6 +24,7 @@ export type ObservabilityMetrics = {
   playback: MetricsCounter;
   rateLimit: MetricsCounter;
   httpRequestDuration: MetricsHistogram;
+  enrichmentQueueDepth: MetricsGauge;
   render: () => string;
 };
 
@@ -30,7 +36,74 @@ const noopHistogram: MetricsHistogram = {
   observe: () => {},
 };
 
+const noopGauge: MetricsGauge = {
+  set: () => {},
+};
+
 const METRIC_HEADER = "text/plain; version=0.0.4; charset=utf-8";
+
+function parseAddress(value: string): ipaddr.IPv4 | ipaddr.IPv6 | null {
+  try {
+    const parsed = ipaddr.parse(value);
+    if (parsed.kind() === "ipv6" && parsed.isIPv4MappedAddress()) {
+      return parsed.toIPv4Address();
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function parseCidr(entry: string): [ipaddr.IPv4 | ipaddr.IPv6, number] | null {
+  try {
+    if (entry.includes("/")) {
+      const [address, prefix] = ipaddr.parseCIDR(entry);
+      if (address.kind() === "ipv6" && address.isIPv4MappedAddress()) {
+        return [address.toIPv4Address(), Math.max(0, prefix - 96)];
+      }
+
+      return [address, prefix];
+    }
+
+    const address = ipaddr.parse(entry);
+    if (address.kind() === "ipv6" && address.isIPv4MappedAddress()) {
+      return [address.toIPv4Address(), 32];
+    }
+
+    return [address, address.kind() === "ipv4" ? 32 : 128];
+  } catch {
+    return null;
+  }
+}
+
+function isAddressAllowed(
+  address: string,
+  allowedCidrs: readonly string[],
+): boolean {
+  if (!allowedCidrs || allowedCidrs.length === 0) {
+    return true;
+  }
+
+  const parsedAddress = parseAddress(address);
+  if (!parsedAddress) {
+    return false;
+  }
+
+  return allowedCidrs.some((entry) => {
+    const cidr = parseCidr(entry);
+    if (!cidr) {
+      return false;
+    }
+
+    const [network, prefix] = cidr;
+    if (network.kind() !== parsedAddress.kind()) {
+      return false;
+    }
+
+    return parsedAddress.match([network, prefix]);
+  });
+}
 
 function formatLabels(labelNames: string[], labels: LabelSet): string {
   if (labelNames.length === 0) {
@@ -148,6 +221,35 @@ class HistogramMetric implements MetricsHistogram {
   }
 }
 
+class GaugeMetric implements MetricsGauge {
+  private readonly store = new Map<string, { labels: LabelSet; value: number }>();
+
+  constructor(
+    private readonly name: string,
+    private readonly help: string,
+    private readonly labelNames: string[],
+  ) {}
+
+  set(labels: LabelSet, value: number): void {
+    const key = this.labelNames.map((label) => labels[label] ?? "").join("|");
+    this.store.set(key, { labels, value });
+  }
+
+  render(): string {
+    let output = `# HELP ${this.name} ${this.help}\n# TYPE ${this.name} gauge\n`;
+    if (this.store.size === 0) {
+      output += `${this.name} 0\n`;
+      return output;
+    }
+
+    for (const entry of this.store.values()) {
+      output += `${this.name}${formatLabels(this.labelNames, entry.labels)} ${entry.value}\n`;
+    }
+
+    return output;
+  }
+}
+
 function createMetrics(): ObservabilityMetrics {
   if (!env.METRICS_ENABLED) {
     return {
@@ -157,6 +259,7 @@ function createMetrics(): ObservabilityMetrics {
       playback: noopCounter,
       rateLimit: noopCounter,
       httpRequestDuration: noopHistogram,
+      enrichmentQueueDepth: noopGauge,
       render: () => "Metrics disabled\n",
     };
   }
@@ -192,6 +295,12 @@ function createMetrics(): ObservabilityMetrics {
     [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10],
   );
 
+  const enrichmentQueueDepth = new GaugeMetric(
+    "treaz_enrichment_queue_depth",
+    "Depth of the ScreenScraper enrichment queue",
+    [],
+  );
+
   return {
     enabled: true,
     uploads,
@@ -199,6 +308,7 @@ function createMetrics(): ObservabilityMetrics {
     playback,
     rateLimit,
     httpRequestDuration,
+    enrichmentQueueDepth,
     render: () =>
       [
         uploads.render(),
@@ -206,6 +316,7 @@ function createMetrics(): ObservabilityMetrics {
         playback.render(),
         rateLimit.render(),
         httpRequestDuration.render(),
+        enrichmentQueueDepth.render(),
       ].join("\n"),
   };
 }
@@ -227,6 +338,10 @@ async function handleMetricsRequest(
 ) {
   if (!metrics.enabled) {
     return reply.status(404).send({ message: "Metrics endpoint disabled" });
+  }
+
+  if (!isAddressAllowed(request.ip, env.METRICS_ALLOWED_CIDRS)) {
+    return reply.status(403).send({ message: "Forbidden" });
   }
 
   if (env.METRICS_TOKEN) {

@@ -1,0 +1,38 @@
+groups:
+  - name: treazrisland-operational
+    rules:
+      - alert: TreazUploadFailureSpike
+        expr: sum(rate(treaz_upload_events_total{status!~"success"}[5m])) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: Upload failures are elevated
+          description: >-
+            Upload failure rate has remained above 0.5 req/s for 10m. Inspect admin upload logs
+            and recent ROM submissions.
+
+      - alert: TreazEnrichmentQueueBacklog
+        expr: treaz_enrichment_queue_depth > 10
+        for: 10m
+        labels:
+          severity: warning
+          service: screenscraper
+        annotations:
+          summary: ScreenScraper enrichment queue backlog detected
+          description: >-
+            The enrichment queue depth has been above 10 items for 10m. Investigate ScreenScraper availability
+            and worker throughput.
+
+      - alert: TreazPlaybackErrorRate
+        expr: sum(rate(treaz_playback_events_total{status="failed"}[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: critical
+          service: playback
+        annotations:
+          summary: Playback errors are spiking
+          description: >-
+            Playback failures are exceeding 0.2 req/s over the last 5m. Check storage connectivity and
+            player client health.

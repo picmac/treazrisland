@@ -9,11 +9,18 @@ export class ScreenScraperQueue {
     reject: (error: unknown) => void;
   }> = [];
   private requestTimestamps: number[] = [];
+  private readonly onQueueDepthChange?: (depth: number) => void;
 
-  constructor(options: { concurrency: number; requestsPerMinute: number }) {
+  constructor(options: {
+    concurrency: number;
+    requestsPerMinute: number;
+    onQueueDepthChange?: (depth: number) => void;
+  }) {
     this.concurrency = Math.max(1, options.concurrency);
     this.requestsPerInterval = Math.max(1, options.requestsPerMinute);
     this.intervalMs = 60_000;
+    this.onQueueDepthChange = options.onQueueDepthChange;
+    this.reportDepth();
   }
 
   async enqueue<T>(task: () => Promise<T>): Promise<T> {
@@ -23,6 +30,7 @@ export class ScreenScraperQueue {
         resolve: resolve as (value: unknown) => void,
         reject
       });
+      this.reportDepth();
       this.processQueue();
     });
   }
@@ -47,6 +55,7 @@ export class ScreenScraperQueue {
       return;
     }
 
+    this.reportDepth();
     this.running += 1;
     this.requestTimestamps.push(Date.now());
 
@@ -62,6 +71,7 @@ export class ScreenScraperQueue {
         this.running -= 1;
         this.trimTimestamps();
         this.processQueue();
+        this.reportDepth();
       });
   }
 
@@ -84,5 +94,9 @@ export class ScreenScraperQueue {
   private trimTimestamps(): void {
     const threshold = Date.now() - this.intervalMs;
     this.requestTimestamps = this.requestTimestamps.filter((timestamp) => timestamp >= threshold);
+  }
+
+  private reportDepth(): void {
+    this.onQueueDepthChange?.(this.queue.length);
   }
 }

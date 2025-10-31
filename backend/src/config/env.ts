@@ -1,6 +1,7 @@
 import { config as loadEnv } from "dotenv";
 import { z } from "zod";
 import ms, { StringValue } from "ms";
+import ipaddr from "ipaddr.js";
 
 loadEnv();
 
@@ -228,6 +229,29 @@ const envSchema = z.object({
     .transform((value) =>
       value && value.trim().length > 0 ? value : undefined,
     ),
+  METRICS_ALLOWED_CIDRS: z
+    .string()
+    .optional()
+    .transform((value) => {
+      const entries =
+        value && value.trim().length > 0 ? splitCsv(value) : [];
+
+      for (const entry of entries) {
+        try {
+          if (entry.includes("/")) {
+            ipaddr.parseCIDR(entry);
+          } else {
+            ipaddr.parse(entry);
+          }
+        } catch (error) {
+          throw new Error(
+            `METRICS_ALLOWED_CIDRS contains an invalid CIDR or address: ${entry}`,
+          );
+        }
+      }
+
+      return entries;
+    }),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -321,11 +345,12 @@ if (parsed.data.STORAGE_DRIVER === "s3") {
   }
 }
 
-const splitCsv = (value: string): string[] =>
-  value
+function splitCsv(value: string): string[] {
+  return value
     .split(",")
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
+}
 
 export const env = {
   ...parsed.data,
@@ -366,4 +391,5 @@ export const env = {
   PLAY_STATE_MAX_PER_ROM: parsed.data.PLAY_STATE_MAX_PER_ROM,
   METRICS_ENABLED: parsed.data.METRICS_ENABLED ?? false,
   METRICS_TOKEN: parsed.data.METRICS_TOKEN,
+  METRICS_ALLOWED_CIDRS: parsed.data.METRICS_ALLOWED_CIDRS ?? [],
 };

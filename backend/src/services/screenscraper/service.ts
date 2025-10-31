@@ -184,6 +184,8 @@ type EnrichmentJobOptions = {
   overrides?: Partial<EffectiveScreenScraperSettings>;
 };
 
+type EnrichmentJobMetricStatus = "succeeded" | "failed";
+
 export class ScreenScraperConfigurationError extends Error {
   constructor(message: string) {
     super(message);
@@ -197,14 +199,23 @@ export class ScreenScraperService {
   private readonly config: ScreenScraperConfig;
   private readonly queue: ScreenScraperQueue;
   private readonly hashedPassword?: string;
+  private readonly onJobStatusChange?: (status: EnrichmentJobMetricStatus) => void;
 
-  constructor(deps: { prisma: PrismaClient; logger: FastifyBaseLogger; config: ScreenScraperConfig }) {
+  constructor(deps: {
+    prisma: PrismaClient;
+    logger: FastifyBaseLogger;
+    config: ScreenScraperConfig;
+    onQueueDepthChange?: (depth: number) => void;
+    onJobStatusChange?: (status: EnrichmentJobMetricStatus) => void;
+  }) {
     this.prisma = deps.prisma;
     this.logger = deps.logger;
     this.config = deps.config;
+    this.onJobStatusChange = deps.onJobStatusChange;
     this.queue = new ScreenScraperQueue({
       concurrency: this.config.concurrency,
-      requestsPerMinute: this.config.requestsPerMinute
+      requestsPerMinute: this.config.requestsPerMinute,
+      onQueueDepthChange: deps.onQueueDepthChange,
     });
     this.hashedPassword = this.config.password
       ? createHash("md5").update(this.config.password).digest("hex")
@@ -436,6 +447,7 @@ export class ScreenScraperService {
           completedAt: new Date()
         }
       });
+      this.onJobStatusChange?.("succeeded");
     } catch (error) {
       await this.prisma.romEnrichmentJob.update({
         where: { id: job.id },
@@ -445,6 +457,7 @@ export class ScreenScraperService {
           completedAt: new Date()
         }
       });
+      this.onJobStatusChange?.("failed");
       throw error;
     }
   }

@@ -6,7 +6,13 @@ export default fp(async (app) => {
   const service = new ScreenScraperService({
     prisma: app.prisma,
     logger: app.log.child({ module: "ScreenScraperService" }),
-    config: screenScraperConfig
+    config: screenScraperConfig,
+    onQueueDepthChange: (depth) => {
+      app.metrics.enrichmentQueueDepth.set({}, depth);
+    },
+    onJobStatusChange: (status) => {
+      app.metrics.enrichment.inc({ status });
+    },
   });
 
   app.decorate("screenScraperService", service);

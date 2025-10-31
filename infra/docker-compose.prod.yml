@@ -47,6 +47,7 @@ services:
       - ${TREAZ_BACKEND_ENV_FILE}
     environment:
       NODE_ENV: production
+      METRICS_ALLOWED_CIDRS: ${METRICS_ALLOWED_CIDRS:-127.0.0.1/32,172.16.0.0/12}
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,6 +56,9 @@ services:
     ports:
       - "3001:3001"
     restart: unless-stopped
+    networks:
+      - default
+      - monitoring
 
   frontend:
     build:
@@ -73,6 +77,51 @@ services:
       - "3000:3000"
     restart: unless-stopped
 
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: treazrisland-prometheus
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - monitoring
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/rules:/etc/prometheus/rules:ro
+    secrets:
+      - source: metrics_token
+        target: metrics_token
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-lifecycle
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: treazrisland-alertmanager
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_started
+    networks:
+      - monitoring
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+
 volumes:
   postgres-data:
   minio-data:
+
+networks:
+  monitoring:
+    driver: bridge
+
+secrets:
+  metrics_token:
+    file: ./monitoring/secrets/metrics_token
