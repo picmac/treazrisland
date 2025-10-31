@@ -222,7 +222,10 @@ class HistogramMetric implements MetricsHistogram {
 }
 
 class GaugeMetric implements MetricsGauge {
-  private readonly store = new Map<string, { labels: LabelSet; value: number }>();
+  private readonly store = new Map<
+    string,
+    { labels: LabelSet; value: number }
+  >();
 
   constructor(
     private readonly name: string,

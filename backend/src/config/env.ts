@@ -233,8 +233,7 @@ const envSchema = z.object({
     .string()
     .optional()
     .transform((value) => {
-      const entries =
-        value && value.trim().length > 0 ? splitCsv(value) : [];
+      const entries = value && value.trim().length > 0 ? splitCsv(value) : [];
 
       for (const entry of entries) {
         try {
@@ -325,7 +324,9 @@ if (
   parsed.data.MFA_RECOVERY_CODE_LENGTH < 6 ||
   parsed.data.MFA_RECOVERY_CODE_LENGTH > 32
 ) {
-  throw new Error("MFA_RECOVERY_CODE_LENGTH must be between 6 and 32 characters");
+  throw new Error(
+    "MFA_RECOVERY_CODE_LENGTH must be between 6 and 32 characters",
+  );
 }
 
 if (parsed.data.STORAGE_DRIVER === "s3") {
