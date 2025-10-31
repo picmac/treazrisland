@@ -307,6 +307,10 @@ const settingsPlugin = fp(async (app: FastifyInstance) => {
 
   await load();
 
+  app.addHook("onReady", async () => {
+    await load();
+  });
+
   const save = async (
     payload: SettingsUpdatePayload,
     actorId?: string,
