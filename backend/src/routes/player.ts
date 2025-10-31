@@ -11,8 +11,7 @@ import {
   assetSummarySelect,
   buildAssetSummary,
 } from "../utils/asset-summary.js";
-
-const { RomBinaryStatus } = prisma;
+import { RomBinaryStatus } from "../utils/prisma-enums.js";
 const PrismaClientPackage = prisma;
 import { env } from "../config/env.js";
 import { safeUnlink } from "../services/storage/storage.js";

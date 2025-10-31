@@ -4,8 +4,9 @@ import { createHash, randomBytes } from "node:crypto";
 import argon2 from "argon2";
 import prisma from "@prisma/client";
 import type { Prisma as PrismaNamespace } from "@prisma/client";
+import { LoginAuditEvent } from "../utils/prisma-enums.js";
 
-const { Prisma, LoginAuditEvent } = prisma;
+const { Prisma } = prisma;
 import {
   issueSessionTokens,
   rotateRefreshToken,

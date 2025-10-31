@@ -1,14 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import prisma from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import {
   SUMMARY_ASSET_TYPES,
   assetSummarySelect,
   buildAssetSummary,
 } from "../utils/asset-summary.js";
-
-const { EnrichmentProvider, RomAssetType } = prisma;
+import { EnrichmentProvider, RomAssetType } from "../utils/prisma-enums.js";
 
 const metadataSelect = {
   id: true,

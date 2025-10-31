@@ -1,9 +1,7 @@
 import fp from "fastify-plugin";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import prisma from "@prisma/client";
 import type { Role as RoleValue } from "@prisma/client";
-
-const { Role } = prisma;
+import { Role } from "../utils/prisma-enums.js";
 
 export default fp(async (app) => {
   app.decorate(
