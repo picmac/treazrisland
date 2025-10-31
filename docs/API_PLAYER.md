@@ -108,6 +108,53 @@ Lists the caller's save states, optionally filtered by ROM.
 }
 ```
 
+### `GET /player/play-states/recent`
+
+Returns up to 10 of the most recent save states for the authenticated user. Each entry embeds ROM
+metadata and a condensed asset summary so the frontend can present “resume” tiles without issuing
+additional library requests.
+
+- **Auth**: Required.
+- **Rate limit**: Same adaptive limit as other player routes.
+
+**Success (200)**
+
+```json
+{
+  "recent": [
+    {
+      "playState": {
+        "id": "ps_123",
+        "romId": "rom_456",
+        "label": "Dungeon Entrance",
+        "slot": 1,
+        "size": 20480,
+        "checksumSha256": "...",
+        "createdAt": "2025-01-10T05:00:00.000Z",
+        "updatedAt": "2025-01-12T08:30:00.000Z",
+        "downloadUrl": "/player/play-states/ps_123/binary"
+      },
+      "rom": {
+        "id": "rom_456",
+        "title": "Chrono Trigger",
+        "platform": {
+          "id": "platform_snes",
+          "name": "Super Nintendo",
+          "slug": "snes",
+          "shortName": "SNES"
+        },
+        "assetSummary": {
+          "cover": { "id": "asset_1", "storageKey": "covers/rom_456.png" },
+          "screenshots": [],
+          "videos": [],
+          "manuals": []
+        }
+      }
+    }
+  ]
+}
+```
+
 ### `GET /player/play-states/:id`
 
 Fetches metadata for a single save state owned by the caller.

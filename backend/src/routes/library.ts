@@ -1,30 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { EnrichmentProvider, Prisma, RomAssetType, type RomAsset } from "@prisma/client";
-
-const SUMMARY_ASSET_TYPES: RomAssetType[] = [
-  RomAssetType.COVER,
-  RomAssetType.SCREENSHOT,
-  RomAssetType.VIDEO,
-  RomAssetType.MANUAL
-];
-
-const assetSelect = {
-  id: true,
-  type: true,
-  source: true,
-  providerId: true,
-  language: true,
-  region: true,
-  width: true,
-  height: true,
-  fileSize: true,
-  format: true,
-  checksum: true,
-  storageKey: true,
-  externalUrl: true,
-  createdAt: true
-} satisfies Prisma.RomAssetSelect;
+import { EnrichmentProvider, Prisma, RomAssetType } from "@prisma/client";
+import {
+  SUMMARY_ASSET_TYPES,
+  assetSummarySelect,
+  buildAssetSummary,
+} from "../utils/asset-summary.js";
 
 const metadataSelect = {
   id: true,
@@ -52,7 +33,7 @@ const platformSummaryInclude = {
         where: { type: { in: SUMMARY_ASSET_TYPES } },
         orderBy: { createdAt: "desc" },
         take: 4,
-        select: assetSelect
+        select: assetSummarySelect
       }
     }
   }
@@ -200,60 +181,6 @@ const listRomAssetsQuerySchema = z.object({
     }),
   limit: z.coerce.number().int().min(1).max(100).default(50)
 });
-
-type AssetSummary = {
-  cover?: RomAssetSummary;
-  screenshots: RomAssetSummary[];
-  videos: RomAssetSummary[];
-  manuals: RomAssetSummary[];
-};
-
-type RomAssetSummary = Pick<
-  RomAsset,
-  | "id"
-  | "type"
-  | "source"
-  | "providerId"
-  | "language"
-  | "region"
-  | "width"
-  | "height"
-  | "fileSize"
-  | "format"
-  | "checksum"
-  | "storageKey"
-  | "externalUrl"
-  | "createdAt"
->;
-
-function buildAssetSummary(assets: RomAssetSummary[]): AssetSummary {
-  const summary: AssetSummary = {
-    screenshots: [],
-    videos: [],
-    manuals: []
-  };
-
-  for (const asset of assets) {
-    switch (asset.type) {
-      case RomAssetType.COVER:
-        summary.cover = summary.cover ?? asset;
-        break;
-      case RomAssetType.SCREENSHOT:
-        summary.screenshots.push(asset);
-        break;
-      case RomAssetType.VIDEO:
-        summary.videos.push(asset);
-        break;
-      case RomAssetType.MANUAL:
-        summary.manuals.push(asset);
-        break;
-      default:
-        break;
-    }
-  }
-
-  return summary;
-}
 
 function pickPrimaryMetadata(
   metadata: Array<Prisma.RomMetadataGetPayload<{ select: typeof metadataSelect }>>
@@ -434,7 +361,7 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
               where: { type: { in: resolvedAssetTypes } },
               orderBy: { createdAt: "desc" },
               take: assetTake,
-              select: assetSelect
+              select: assetSummarySelect
             },
             metadata: metadataInclude
           }
@@ -476,7 +403,7 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
         include: {
           platform: { select: { id: true, name: true, slug: true, shortName: true } },
           metadata: { orderBy: { createdAt: "desc" }, select: metadataSelect },
-          assets: { orderBy: { createdAt: "desc" }, select: assetSelect },
+          assets: { orderBy: { createdAt: "desc" }, select: assetSummarySelect },
           binary: {
             select: {
               id: true,
@@ -567,7 +494,7 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
         },
         take: limit,
         orderBy: { createdAt: "desc" },
-        select: assetSelect
+        select: assetSummarySelect
       });
 
       if (assets.length === 0) {
