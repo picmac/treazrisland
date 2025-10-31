@@ -13,6 +13,12 @@ export default fp(async (app) => {
     onJobStatusChange: (status) => {
       app.metrics.enrichment.inc({ status });
     },
+    onJobDuration: (phase, durationSeconds) => {
+      app.metrics.enrichmentJobDuration.observe(
+        { phase },
+        durationSeconds,
+      );
+    },
   });
 
   app.decorate("screenScraperService", service);

@@ -1,5 +1,6 @@
 import fp from "fastify-plugin";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { monitorEventLoopDelay } from "node:perf_hooks";
 import ipaddr from "ipaddr.js";
 import { env } from "../config/env.js";
 
@@ -26,11 +27,18 @@ export type MetricsGauge = {
 export type ObservabilityMetrics = {
   enabled: boolean;
   uploads: MetricsCounter;
+  uploadDuration: MetricsHistogram;
   enrichment: MetricsCounter;
+  enrichmentJobDuration: MetricsHistogram;
   playback: MetricsCounter;
+  playerErrors: MetricsCounter;
   rateLimit: MetricsCounter;
   httpRequestDuration: MetricsHistogram;
   enrichmentQueueDepth: MetricsGauge;
+  prismaQueryDuration: MetricsHistogram;
+  processMemory: MetricsGauge;
+  eventLoopLag: MetricsGauge;
+  processHandles: MetricsGauge;
   render: () => string;
 };
 
@@ -264,19 +272,33 @@ function createMetrics(): ObservabilityMetrics {
     return {
       enabled: false,
       uploads: noopCounter,
+      uploadDuration: noopHistogram,
       enrichment: noopCounter,
+      enrichmentJobDuration: noopHistogram,
       playback: noopCounter,
+      playerErrors: noopCounter,
       rateLimit: noopCounter,
       httpRequestDuration: noopHistogram,
       enrichmentQueueDepth: noopGauge,
+      prismaQueryDuration: noopHistogram,
+      processMemory: noopGauge,
+      eventLoopLag: noopGauge,
+      processHandles: noopGauge,
       render: () => "Metrics disabled\n",
     };
   }
 
   const uploads = new CounterMetric(
     "treaz_upload_events_total",
-    "Count of ROM and BIOS upload attempts grouped by status",
+    "Count of ROM and BIOS upload attempts grouped by status and reason",
+    ["kind", "status", "reason"],
+  );
+
+  const uploadDuration = new HistogramMetric(
+    "treaz_upload_duration_seconds",
+    "Histogram of ROM and BIOS upload durations",
     ["kind", "status"],
+    [1, 2.5, 5, 10, 30, 60, 120, 300],
   );
 
   const enrichment = new CounterMetric(
@@ -285,10 +307,23 @@ function createMetrics(): ObservabilityMetrics {
     ["status"],
   );
 
+  const enrichmentJobDuration = new HistogramMetric(
+    "treaz_enrichment_job_duration_seconds",
+    "ScreenScraper enrichment job latency broken down by phase",
+    ["phase"],
+    [5, 15, 30, 60, 120, 300, 600],
+  );
+
   const playback = new CounterMetric(
     "treaz_playback_events_total",
     "Count of playback interactions recorded",
-    ["action", "status"],
+    ["action", "status", "route", "reason"],
+  );
+
+  const playerErrors = new CounterMetric(
+    "treaz_player_errors_total",
+    "Count of playback API failures grouped by operation and reason",
+    ["operation", "reason"],
   );
 
   const rateLimit = new CounterMetric(
@@ -310,22 +345,61 @@ function createMetrics(): ObservabilityMetrics {
     [],
   );
 
+  const prismaQueryDuration = new HistogramMetric(
+    "treaz_prisma_query_duration_seconds",
+    "Histogram of Prisma ORM query durations",
+    ["model", "action", "outcome"],
+    [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2],
+  );
+
+  const processMemory = new GaugeMetric(
+    "treaz_process_memory_bytes",
+    "Node.js process memory usage in bytes",
+    ["type"],
+  );
+
+  const eventLoopLag = new GaugeMetric(
+    "treaz_process_event_loop_lag_seconds",
+    "Observed Node.js event loop lag in seconds",
+    ["stat"],
+  );
+
+  const processHandles = new GaugeMetric(
+    "treaz_process_handles_total",
+    "Active Node.js handles and requests",
+    ["type"],
+  );
+
   return {
     enabled: true,
     uploads,
+    uploadDuration,
     enrichment,
+    enrichmentJobDuration,
     playback,
+    playerErrors,
     rateLimit,
     httpRequestDuration,
     enrichmentQueueDepth,
+    prismaQueryDuration,
+    processMemory,
+    eventLoopLag,
+    processHandles,
     render: () =>
       [
         uploads.render(),
+        uploadDuration.render(),
         enrichment.render(),
+        enrichmentJobDuration.render(),
         playback.render(),
+        playerErrors.render(),
         rateLimit.render(),
         httpRequestDuration.render(),
         enrichmentQueueDepth.render(),
+        prismaQueryDuration.render(),
+        processMemory.render(),
+        eventLoopLag.render(),
+        processHandles.render(),
       ].join("\n"),
   };
 }
@@ -382,6 +456,54 @@ export default fp(async (app: FastifyInstance) => {
   app.decorate("metrics", metrics);
 
   if (metrics.enabled) {
+    const loopMonitor = monitorEventLoopDelay({ resolution: 20 });
+    loopMonitor.enable();
+
+    const collectProcessMetrics = () => {
+      const memory = process.memoryUsage();
+      metrics.processMemory.set({ type: "rss" }, memory.rss);
+      metrics.processMemory.set({ type: "heap_total" }, memory.heapTotal);
+      metrics.processMemory.set({ type: "heap_used" }, memory.heapUsed);
+      metrics.processMemory.set({ type: "external" }, memory.external);
+      metrics.processMemory.set({ type: "array_buffers" }, memory.arrayBuffers);
+
+      const handles =
+        ((process as typeof process & { _getActiveHandles?: () => unknown[] })
+          ._getActiveHandles?.() ?? []).length;
+      const requests =
+        ((process as typeof process & { _getActiveRequests?: () => unknown[] })
+          ._getActiveRequests?.() ?? []).length;
+
+      metrics.processHandles.set({ type: "handles" }, handles);
+      metrics.processHandles.set({ type: "requests" }, requests);
+
+      metrics.eventLoopLag.set(
+        { stat: "mean" },
+        loopMonitor.mean / 1_000_000_000,
+      );
+      metrics.eventLoopLag.set(
+        { stat: "p50" },
+        loopMonitor.percentile(50) / 1_000_000_000,
+      );
+      metrics.eventLoopLag.set(
+        { stat: "p90" },
+        loopMonitor.percentile(90) / 1_000_000_000,
+      );
+      metrics.eventLoopLag.set(
+        { stat: "p99" },
+        loopMonitor.percentile(99) / 1_000_000_000,
+      );
+      metrics.eventLoopLag.set(
+        { stat: "max" },
+        loopMonitor.max / 1_000_000_000,
+      );
+
+      loopMonitor.reset();
+    };
+
+    collectProcessMetrics();
+    const metricInterval = setInterval(collectProcessMetrics, 5000);
+
     app.addHook("onRequest", (request, _reply, done) => {
       request.metricsStartTime = process.hrtime.bigint();
       done();
@@ -407,6 +529,11 @@ export default fp(async (app: FastifyInstance) => {
       }
 
       done();
+    });
+
+    app.addHook("onClose", async () => {
+      clearInterval(metricInterval);
+      loopMonitor.disable();
     });
   }
 

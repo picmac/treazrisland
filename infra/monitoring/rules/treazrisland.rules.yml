@@ -36,3 +36,61 @@ groups:
           description: >-
             Playback failures are exceeding 0.2 req/s over the last 5m. Check storage connectivity and
             player client health.
+
+      - alert: TreazUploadLatencySLO
+        expr: histogram_quantile(0.95, sum(rate(treaz_upload_duration_seconds_bucket{status="success"}[10m])) by (le, kind)) > 30
+        for: 10m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: Upload latency 95th percentile above 30s
+          description: >-
+            The 95th percentile upload latency has exceeded 30s for 10 minutes. Investigate storage performance
+            or upstream network slowness impacting ROM/BIOS ingest.
+
+      - alert: TreazEventLoopLag
+        expr: treaz_process_event_loop_lag_seconds{stat="p99"} > 0.5
+        for: 5m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: Backend event loop lag above 500ms
+          description: >-
+            Node.js event loop lag (p99) has stayed above 500ms for 5 minutes, indicating CPU saturation or blocking
+            work on the API instance.
+
+      - alert: TreazExporterDown
+        expr: up{job=~"treaz-node|treaz-cadvisor|treaz-postgres|treaz-minio"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          service: monitoring
+        annotations:
+          summary: {{ $labels.job }} exporter is unreachable
+          description: >-
+            Prometheus has been unable to scrape the {{ $labels.job }} exporter for 5 minutes. Check container health
+            or network connectivity for the monitoring stack.
+
+      - alert: TreazPostgresDown
+        expr: pg_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: postgres
+        annotations:
+          summary: PostgreSQL exporter reports database offline
+          description: >-
+            The postgres_exporter reports pg_up=0. Confirm the database container is healthy and accepting connections.
+
+      - alert: TreazMinioUnavailable
+        expr: up{job="treaz-minio"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: storage
+        annotations:
+          summary: MinIO metrics endpoint is unavailable
+          description: >-
+            Prometheus cannot reach the MinIO metrics endpoint. Verify the MinIO container is running and metrics are enabled.
