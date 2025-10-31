@@ -110,6 +110,20 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 
+  cloudflared:
+    image: cloudflare/cloudflared:2024.6.1
+    container_name: treazrisland-cloudflared
+    profiles: ["cloudflared"]
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    environment:
+      - CLOUDFLARE_TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   minio-data:

@@ -1,0 +1,11 @@
+# Example Cloudflare Tunnel configuration for local TREAZRISLAND development.
+ingress:
+  - hostname: frontend.treazrisland.dev
+    service: http://frontend:3000
+  - hostname: api.treazrisland.dev
+    service: http://backend:3001
+  - service: http_status:404
+
+# Uncomment and populate these values when running a named tunnel with a credentials file.
+# tunnel: ${CLOUDFLARE_TUNNEL_ID}
+# credentials-file: /etc/cloudflared/${CLOUDFLARE_TUNNEL_ID}.json
