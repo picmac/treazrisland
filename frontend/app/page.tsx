@@ -22,6 +22,18 @@ export default function HomePage() {
           >
             Explore the library
           </Link>
+          <Link
+            href="/top-lists"
+            className="inline-block rounded-pixel border border-kelp/70 bg-night/70 px-4 py-2 font-semibold text-parchment shadow-pixel transition hover:border-lagoon hover:text-lagoon"
+          >
+            Browse top lists
+          </Link>
+          <Link
+            href="/collections"
+            className="inline-block rounded-pixel border border-kelp/70 bg-night/70 px-4 py-2 font-semibold text-parchment shadow-pixel transition hover:border-lagoon hover:text-lagoon"
+          >
+            View collections
+          </Link>
         </div>
       </section>
 
