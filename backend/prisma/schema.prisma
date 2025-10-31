@@ -174,15 +174,16 @@ model PasswordResetToken {
 }
 
 model MfaSecret {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  secret     String
-  recoveryCodes String
-  createdAt  DateTime @default(now())
-  rotatedAt  DateTime?
-  disabledAt DateTime?
-  confirmedAt DateTime?
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// AES-256-GCM ciphertext encoded as base64 (IV + ciphertext + auth tag).
+  secret        String   @db.Text
+  recoveryCodes String   @db.Text
+  createdAt     DateTime @default(now())
+  rotatedAt     DateTime?
+  disabledAt    DateTime?
+  confirmedAt   DateTime?
 
   @@index([userId])
 }

@@ -17,6 +17,7 @@ process.env.STORAGE_BUCKET_ROMS = "roms";
 process.env.STORAGE_BUCKET_BIOS = "bios";
 process.env.ROM_UPLOAD_MAX_BYTES = `${1024 * 1024}`;
 process.env.MFA_ISSUER = "TREAZRISLAND";
+process.env.MFA_ENCRYPTION_KEY = "test-suite-encryption-key-32-characters";
 process.env.MFA_RECOVERY_CODE_COUNT = "4";
 process.env.MFA_RECOVERY_CODE_LENGTH = "8";
 
@@ -93,7 +94,11 @@ describe("auth routes", () => {
       generateSecret: vi.fn().mockReturnValue("JBSWY3DPEHPK3PXP"),
       buildOtpAuthUri: vi.fn().mockReturnValue("otpauth://totp/TREAZRISLAND:player?secret=JBSWY3DPEHPK3PXP"),
       verifyTotp: vi.fn().mockResolvedValue(true),
-      findMatchingRecoveryCode: vi.fn().mockResolvedValue(null)
+      findMatchingRecoveryCode: vi.fn().mockResolvedValue(null),
+      encryptSecret: vi.fn().mockImplementation((value: string) => `encrypted-${value}`),
+      decryptSecret: vi
+        .fn()
+        .mockReturnValue({ secret: "JBSWY3DPEHPK3PXP", needsRotation: false })
     } satisfies MfaService;
     await app.ready();
     app.mfaService = mfaService;
@@ -275,10 +280,11 @@ describe("auth routes", () => {
     expect(prisma.mfaSecret.create).toHaveBeenCalledWith({
       data: {
         userId: "user-setup",
-        secret: "JBSWY3DPEHPK3PXP",
+        secret: "encrypted-JBSWY3DPEHPK3PXP",
         recoveryCodes: expect.stringContaining("hashed-password")
       }
     });
+    expect(mfaService.encryptSecret).toHaveBeenCalledWith("JBSWY3DPEHPK3PXP");
     expect(mfaService.buildOtpAuthUri).toHaveBeenCalledWith({
       issuer: "TREAZRISLAND",
       label: "player@example.com",
@@ -290,7 +296,7 @@ describe("auth routes", () => {
     prisma.mfaSecret.findFirst.mockResolvedValueOnce({
       id: "secret-setup",
       userId: "user-setup",
-      secret: "JBSWY3DPEHPK3PXP",
+      secret: "encrypted-JBSWY3DPEHPK3PXP",
       recoveryCodes: "",
       confirmedAt: null,
       disabledAt: null
@@ -310,6 +316,9 @@ describe("auth routes", () => {
     expect(await response.json()).toEqual({
       message: "Multi-factor authentication enabled"
     });
+    expect(mfaService.decryptSecret).toHaveBeenCalledWith(
+      "encrypted-JBSWY3DPEHPK3PXP"
+    );
     expect(mfaService.verifyTotp).toHaveBeenCalledWith("JBSWY3DPEHPK3PXP", "123456");
     expect(prisma.mfaSecret.updateMany).toHaveBeenCalledWith({
       where: {
@@ -325,11 +334,45 @@ describe("auth routes", () => {
     });
   });
 
+  it("re-encrypts legacy MFA secrets during confirmation", async () => {
+    prisma.mfaSecret.findFirst.mockResolvedValueOnce({
+      id: "legacy-secret",
+      userId: "user-setup",
+      secret: "legacy-secret-value",
+      recoveryCodes: "",
+      confirmedAt: null,
+      disabledAt: null
+    });
+    prisma.mfaSecret.updateMany.mockResolvedValueOnce({ count: 1 });
+    prisma.mfaSecret.update.mockResolvedValueOnce({ id: "legacy-secret" });
+    mfaService.decryptSecret = vi
+      .fn()
+      .mockReturnValue({ secret: "JBSWY3DPEHPK3PXP", needsRotation: true });
+
+    const token = app.jwt.sign({ sub: "user-setup", role: "USER" });
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/mfa/confirm",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { secretId: "legacy-secret", code: "123456" }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mfaService.encryptSecret).toHaveBeenCalledWith("JBSWY3DPEHPK3PXP");
+    expect(prisma.mfaSecret.update).toHaveBeenCalledWith({
+      where: { id: "legacy-secret" },
+      data: expect.objectContaining({
+        secret: "encrypted-JBSWY3DPEHPK3PXP",
+        confirmedAt: expect.any(Date)
+      })
+    });
+  });
+
   it("disables MFA with a valid code", async () => {
     prisma.mfaSecret.findFirst.mockResolvedValueOnce({
       id: "secret-active",
       userId: "user-setup",
-      secret: "JBSWY3DPEHPK3PXP",
+      secret: "encrypted-JBSWY3DPEHPK3PXP",
       recoveryCodes: "hashed-one\nhashed-two",
       confirmedAt: new Date("2025-01-01T00:00:00Z"),
       disabledAt: null
@@ -349,6 +392,9 @@ describe("auth routes", () => {
     expect(await response.json()).toEqual({
       message: "Multi-factor authentication disabled"
     });
+    expect(mfaService.decryptSecret).toHaveBeenCalledWith(
+      "encrypted-JBSWY3DPEHPK3PXP"
+    );
     expect(mfaService.verifyTotp).toHaveBeenCalledWith("JBSWY3DPEHPK3PXP", "123456");
     expect(prisma.mfaSecret.update).not.toHaveBeenCalled();
     expect(prisma.mfaSecret.updateMany).toHaveBeenCalledWith({

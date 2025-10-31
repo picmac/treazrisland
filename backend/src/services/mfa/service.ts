@@ -1,5 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import argon2 from "argon2";
+import { env } from "../../config/env.js";
+import { createSecretCipher, type SecretCipher } from "../../utils/secret-encryption.js";
 
 const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
@@ -79,14 +81,27 @@ export interface BuildOtpAuthUriOptions {
   period?: number;
 }
 
+export interface DecryptedMfaSecret {
+  secret: string;
+  needsRotation: boolean;
+}
+
 export interface MfaService {
   verifyTotp(secret: string, token: string): Promise<boolean>;
   findMatchingRecoveryCode(hashedCodes: string[], providedCode: string): Promise<number | null>;
   generateSecret(byteLength?: number): string;
   buildOtpAuthUri(options: BuildOtpAuthUriOptions): string;
+  encryptSecret(secret: string): string;
+  decryptSecret(payload: string): DecryptedMfaSecret;
 }
 
 export class BasicMfaService implements MfaService {
+  private readonly cipher: SecretCipher;
+
+  constructor(private readonly encryptionKey: string = env.MFA_ENCRYPTION_KEY) {
+    this.cipher = createSecretCipher(this.encryptionKey);
+  }
+
   generateSecret(byteLength = 20): string {
     if (!Number.isInteger(byteLength) || byteLength <= 0) {
       throw new Error("byteLength must be a positive integer");
@@ -170,6 +185,25 @@ export class BasicMfaService implements MfaService {
 
     return null;
   }
+
+  encryptSecret(secret: string): string {
+    return this.cipher.encrypt(secret);
+  }
+
+  decryptSecret(payload: string): DecryptedMfaSecret {
+    try {
+      const decrypted = this.cipher.decrypt(payload);
+      return { secret: decrypted, needsRotation: false };
+    } catch (error) {
+      const normalized = payload.replace(/\s+/g, "").toUpperCase();
+      if (/^[A-Z2-7]+=*$/.test(normalized)) {
+        return { secret: normalized, needsRotation: true };
+      }
+
+      throw error;
+    }
+  }
 }
 
-export const createMfaService = (): MfaService => new BasicMfaService();
+export const createMfaService = (encryptionKey = env.MFA_ENCRYPTION_KEY): MfaService =>
+  new BasicMfaService(encryptionKey);
