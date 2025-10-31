@@ -2,8 +2,10 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import request from "supertest";
 import type { FastifyInstance } from "fastify";
 import type { Prisma } from "@prisma/client";
-import { Prisma as PrismaNamespace } from "@prisma/client";
+import prisma from "@prisma/client";
 import { Readable } from "node:stream";
+
+const { Prisma: PrismaNamespace } = prisma;
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";

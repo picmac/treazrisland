@@ -2,7 +2,9 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import type { FastifyInstance } from "fastify";
 import request from "supertest";
 import type { PrismaClient } from "@prisma/client";
-import { RomBinaryStatus, RomUploadStatus } from "@prisma/client";
+import prisma from "@prisma/client";
+
+const { RomBinaryStatus, RomUploadStatus } = prisma;
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";

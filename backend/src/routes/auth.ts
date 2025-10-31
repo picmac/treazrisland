@@ -2,7 +2,10 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { createHash, randomBytes } from "node:crypto";
 import argon2 from "argon2";
-import { Prisma, LoginAuditEvent } from "@prisma/client";
+import prisma from "@prisma/client";
+import type { Prisma as PrismaNamespace } from "@prisma/client";
+
+const { Prisma, LoginAuditEvent } = prisma;
 import {
   issueSessionTokens,
   rotateRefreshToken,
@@ -498,7 +501,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       try {
         await app.prisma.$transaction(async (tx) => {
           if (recoveryCodeUsed || decryptedSecret?.needsRotation) {
-            const updateData: Prisma.MfaSecretUpdateInput = {};
+            const updateData: PrismaNamespace.MfaSecretUpdateInput = {};
             if (recoveryCodeUsed) {
               updateData.recoveryCodes = hashedCodes.join("\n");
               updateData.rotatedAt = new Date();

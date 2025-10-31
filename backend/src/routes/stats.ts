@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
-import { RomBinaryStatus, RomUploadStatus } from "@prisma/client";
+import prisma from "@prisma/client";
+
+const { RomBinaryStatus, RomUploadStatus } = prisma;
 
 function createStatsRateLimit(app: FastifyInstance) {
   return app.rateLimit({

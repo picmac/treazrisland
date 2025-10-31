@@ -95,15 +95,15 @@ export const buildServer = (
     },
   });
 
+  if (registerPrisma) {
+    app.register(prismaPlugin);
+  }
+
   app.register(settingsPlugin);
   app.register(observabilityPlugin);
   app.register(authPlugin);
   app.register(storagePlugin);
   app.register(supportServices);
-
-  if (registerPrisma) {
-    app.register(prismaPlugin);
-  }
 
   if (registerPrisma) {
     app.register(screenScraperPlugin);

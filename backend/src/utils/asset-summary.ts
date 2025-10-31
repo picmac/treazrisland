@@ -1,4 +1,7 @@
-import { RomAssetType, type RomAsset } from "@prisma/client";
+import prisma from "@prisma/client";
+import type { RomAsset } from "@prisma/client";
+
+const { RomAssetType } = prisma;
 import type { Prisma } from "@prisma/client";
 
 export const SUMMARY_ASSET_TYPES: RomAssetType[] = [
