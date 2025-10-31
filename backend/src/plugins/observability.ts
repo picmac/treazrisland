@@ -349,7 +349,14 @@ async function handleMetricsRequest(
     return reply.status(404).send({ message: "Metrics endpoint disabled" });
   }
 
-  if (!isAddressAllowed(request.ip, env.METRICS_ALLOWED_CIDRS)) {
+  const hasAllowedCidrs = env.METRICS_ALLOWED_CIDRS.length > 0;
+  const tokenConfigured = Boolean(env.METRICS_TOKEN);
+
+  if (!hasAllowedCidrs && !tokenConfigured) {
+    return reply.status(403).send({ message: "Forbidden" });
+  }
+
+  if (hasAllowedCidrs && !isAddressAllowed(request.ip, env.METRICS_ALLOWED_CIDRS)) {
     return reply.status(403).send({ message: "Forbidden" });
   }
 
