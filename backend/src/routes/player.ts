@@ -283,9 +283,7 @@ export async function registerPlayerRoutes(
 
       let object;
       try {
-        object = await app.storage.getRomObjectStream(
-          rom.binary.storageKey,
-        );
+        object = await app.storage.getRomObjectStream(rom.binary.storageKey);
       } catch (error) {
         recordPlaybackError(
           app,
@@ -294,9 +292,7 @@ export async function registerPlayerRoutes(
           "stream_failure",
           error,
         );
-        throw app.httpErrors.internalServerError(
-          "Failed to stream ROM binary",
-        );
+        throw app.httpErrors.internalServerError("Failed to stream ROM binary");
       }
       reply.header(
         "content-type",
@@ -574,9 +570,7 @@ export async function registerPlayerRoutes(
 
       let object;
       try {
-        object = await app.storage.getAssetObjectStream(
-          playState.storageKey,
-        );
+        object = await app.storage.getAssetObjectStream(playState.storageKey);
       } catch (error) {
         recordPlaybackError(
           app,
@@ -585,9 +579,7 @@ export async function registerPlayerRoutes(
           "stream_failure",
           error,
         );
-        throw app.httpErrors.internalServerError(
-          "Failed to stream play state",
-        );
+        throw app.httpErrors.internalServerError("Failed to stream play state");
       }
       reply.header("content-type", "application/octet-stream");
       reply.header(

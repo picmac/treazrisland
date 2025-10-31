@@ -484,12 +484,16 @@ export default fp(async (app: FastifyInstance) => {
       metrics.processMemory.set({ type: "external" }, memory.external);
       metrics.processMemory.set({ type: "array_buffers" }, memory.arrayBuffers);
 
-      const handles =
-        ((process as typeof process & { _getActiveHandles?: () => unknown[] })
-          ._getActiveHandles?.() ?? []).length;
-      const requests =
-        ((process as typeof process & { _getActiveRequests?: () => unknown[] })
-          ._getActiveRequests?.() ?? []).length;
+      const handles = (
+        (
+          process as typeof process & { _getActiveHandles?: () => unknown[] }
+        )._getActiveHandles?.() ?? []
+      ).length;
+      const requests = (
+        (
+          process as typeof process & { _getActiveRequests?: () => unknown[] }
+        )._getActiveRequests?.() ?? []
+      ).length;
 
       metrics.processHandles.set({ type: "handles" }, handles);
       metrics.processHandles.set({ type: "requests" }, requests);
