@@ -1,4 +1,5 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import type { ExtendedPrismaClient } from "../../types/prisma-extensions.js";
 
 export const ONBOARDING_STEP_KEYS = [
   "first-admin",
@@ -87,7 +88,7 @@ const computeSetupComplete = (
 };
 
 export const fetchSetupState = async (
-  prisma: PrismaClient,
+  prisma: ExtendedPrismaClient,
 ): Promise<SetupStateView> => {
   const existing = await prisma.setupState.findUnique({ where: { id: 1 } });
   if (!existing) {
@@ -113,7 +114,7 @@ export const fetchSetupState = async (
 };
 
 export const updateSetupStep = async (
-  prisma: PrismaClient,
+  prisma: ExtendedPrismaClient,
   stepKey: OnboardingStepKey,
   status: OnboardingStepStatus,
   payload?: unknown,
@@ -150,7 +151,7 @@ export const updateSetupStep = async (
 };
 
 export const markSetupComplete = async (
-  prisma: PrismaClient,
+  prisma: ExtendedPrismaClient,
 ): Promise<SetupStateView> => {
   const current = await fetchSetupState(prisma);
   const setupComplete = computeSetupComplete(current.steps);

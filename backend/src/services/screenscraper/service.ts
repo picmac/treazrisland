@@ -9,6 +9,8 @@ import {
   RomAssetSource,
   RomAssetType,
 } from "../../utils/prisma-enums.js";
+
+type RomAssetTypeValue = (typeof RomAssetType)[keyof typeof RomAssetType];
 import { ScreenScraperConfig } from "../../config/screenscraper.js";
 import { ScreenScraperQueue } from "./queue.js";
 
@@ -128,7 +130,7 @@ const uniqueList = (values: string[]): string[] => {
   return result;
 };
 
-const mediaTypeMap: Record<string, RomAssetType> = {
+const mediaTypeMap: Record<string, RomAssetTypeValue> = {
   "box-2d": RomAssetType.COVER,
   "box-3d": RomAssetType.COVER,
   "box-texture": RomAssetType.COVER,
@@ -662,7 +664,7 @@ export class ScreenScraperService {
     romId: string,
     existingAssets: Array<{
       providerId: string | null;
-      type: RomAssetType;
+      type: RomAssetTypeValue;
       fileSize: number | null;
       width: number | null;
       height: number | null;
@@ -672,7 +674,7 @@ export class ScreenScraperService {
   ) {
     const desiredTypes = new Set(settings.mediaTypes.map((type) => type.toLowerCase()));
     const results: Array<Prisma.RomAssetCreateInput & { providerId: string }> = [];
-    const countsByType = new Map<RomAssetType, number>();
+    const countsByType = new Map<RomAssetTypeValue, number>();
 
     for (const asset of existingAssets) {
       countsByType.set(asset.type, (countsByType.get(asset.type) ?? 0) + 1);
