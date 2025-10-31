@@ -57,6 +57,25 @@ const passwordResetConfirmSchema = z.object({
   password: passwordSchema
 });
 
+const mfaConfirmSchema = z.object({
+  secretId: z.string().min(1),
+  code: z.string().trim().min(6).max(10)
+});
+
+const mfaDisableSchema = z
+  .object({
+    mfaCode: z.string().trim().min(6).max(10).optional(),
+    recoveryCode: z.string().trim().min(6).max(128).optional()
+  })
+  .refine((value) => value.mfaCode || value.recoveryCode, {
+    message: "Provide either mfaCode or recoveryCode",
+    path: ["mfaCode"]
+  })
+  .refine((value) => !(value.mfaCode && value.recoveryCode), {
+    message: "Provide either mfaCode or recoveryCode, not both",
+    path: ["mfaCode"]
+  });
+
 const recordLoginAudit = async (
   app: FastifyInstance,
   request: FastifyRequest,
@@ -83,6 +102,28 @@ const extractHashedRecoveryCodes = (raw: string): string[] =>
     .split("\n")
     .map((value) => value.trim())
     .filter((value) => value.length > 0);
+
+const RECOVERY_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+const generateRecoveryCodes = (count: number, length: number): string[] => {
+  if (count <= 0 || length <= 0) {
+    return [];
+  }
+
+  const codes: string[] = [];
+  while (codes.length < count) {
+    const bytes = randomBytes(length);
+    let code = "";
+    for (let index = 0; index < length; index += 1) {
+      const byte = bytes[index];
+      const alphabetIndex = byte % RECOVERY_CODE_ALPHABET.length;
+      code += RECOVERY_CODE_ALPHABET[alphabetIndex];
+    }
+    codes.push(code);
+  }
+
+  return codes;
+};
 
 export async function registerAuthRoutes(app: FastifyInstance) {
   app.post("/auth/invitations/preview", async (request, reply) => {
@@ -217,6 +258,242 @@ export async function registerAuthRoutes(app: FastifyInstance) {
   });
 
   app.post(
+    "/auth/mfa/setup",
+    {
+      preHandler: app.authenticate
+    },
+    async (request, reply) => {
+      if (!request.user) {
+        throw app.httpErrors.unauthorized();
+      }
+
+      const user = await app.prisma.user.findUnique({
+        where: { id: request.user.sub },
+        select: { id: true, email: true, nickname: true }
+      });
+
+      if (!user) {
+        throw app.httpErrors.notFound("User not found");
+      }
+
+      const secret = app.mfaService.generateSecret();
+      const recoveryCodes = generateRecoveryCodes(
+        env.MFA_RECOVERY_CODE_COUNT,
+        env.MFA_RECOVERY_CODE_LENGTH
+      );
+
+      let hashedRecoveryCodes: string[];
+      try {
+        hashedRecoveryCodes = await Promise.all(
+          recoveryCodes.map((code) => argon2.hash(code, { type: argon2.argon2id }))
+        );
+      } catch (error) {
+        request.log.error({ err: error, userId: user.id }, "Failed to hash recovery codes");
+        return reply.status(500).send({ message: "Unable to prepare recovery codes" });
+      }
+
+      let record: { id: string };
+      try {
+        record = await app.prisma.$transaction(async (tx) => {
+          await tx.mfaSecret.deleteMany({
+            where: { userId: user.id, confirmedAt: null }
+          });
+
+          return tx.mfaSecret.create({
+            data: {
+              userId: user.id,
+              secret,
+              recoveryCodes: hashedRecoveryCodes.join("\n")
+            }
+          });
+        });
+      } catch (error) {
+        request.log.error({ err: error, userId: user.id }, "Failed to create MFA secret");
+        return reply.status(500).send({ message: "Unable to prepare MFA secret" });
+      }
+
+      const label = user.email ?? user.nickname;
+      const otpauthUri = app.mfaService.buildOtpAuthUri({
+        issuer: env.MFA_ISSUER,
+        label,
+        secret
+      });
+
+      return reply.send({
+        secretId: record.id,
+        secret,
+        otpauthUri,
+        recoveryCodes
+      });
+    }
+  );
+
+  app.post(
+    "/auth/mfa/confirm",
+    {
+      preHandler: app.authenticate
+    },
+    async (request, reply) => {
+      if (!request.user) {
+        throw app.httpErrors.unauthorized();
+      }
+
+      const parsed = mfaConfirmSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          message: "Invalid payload",
+          errors: parsed.error.flatten().fieldErrors
+        });
+      }
+
+      const pendingSecret = await app.prisma.mfaSecret.findFirst({
+        where: {
+          id: parsed.data.secretId,
+          userId: request.user.sub,
+          confirmedAt: null
+        }
+      });
+
+      if (!pendingSecret) {
+        return reply.status(404).send({ message: "MFA setup request not found" });
+      }
+
+      let verified = false;
+      try {
+        verified = await app.mfaService.verifyTotp(pendingSecret.secret, parsed.data.code);
+      } catch (error) {
+        request.log.error({ err: error, userId: request.user.sub }, "Failed to verify MFA code");
+        return reply.status(500).send({ message: "Unable to verify MFA code" });
+      }
+
+      if (!verified) {
+        return reply.status(400).send({ message: "Invalid MFA code" });
+      }
+
+      try {
+        await app.prisma.$transaction(async (tx) => {
+          await tx.mfaSecret.updateMany({
+            where: {
+              userId: request.user!.sub,
+              disabledAt: null,
+              confirmedAt: { not: null }
+            },
+            data: { disabledAt: new Date() }
+          });
+
+          await tx.mfaSecret.update({
+            where: { id: pendingSecret.id },
+            data: {
+              confirmedAt: new Date(),
+              disabledAt: null
+            }
+          });
+        });
+      } catch (error) {
+        request.log.error({ err: error, userId: request.user.sub }, "Failed to confirm MFA setup");
+        return reply.status(500).send({ message: "Unable to activate MFA" });
+      }
+
+      return reply.send({ message: "Multi-factor authentication enabled" });
+    }
+  );
+
+  app.post(
+    "/auth/mfa/disable",
+    {
+      preHandler: app.authenticate
+    },
+    async (request, reply) => {
+      if (!request.user) {
+        throw app.httpErrors.unauthorized();
+      }
+
+      const parsed = mfaDisableSchema.safeParse(request.body ?? {});
+      if (!parsed.success) {
+        return reply.status(400).send({
+          message: "Invalid payload",
+          errors: parsed.error.flatten().fieldErrors
+        });
+      }
+
+      const activeSecret = await app.prisma.mfaSecret.findFirst({
+        where: {
+          userId: request.user.sub,
+          disabledAt: null,
+          confirmedAt: { not: null }
+        },
+        orderBy: { createdAt: "desc" }
+      });
+
+      if (!activeSecret) {
+        return reply.status(400).send({ message: "No active MFA secret to disable" });
+      }
+
+      let verified = false;
+      let hashedCodes = extractHashedRecoveryCodes(activeSecret.recoveryCodes);
+      let recoveryCodeUsed = false;
+
+      if (parsed.data.mfaCode) {
+        try {
+          verified = await app.mfaService.verifyTotp(activeSecret.secret, parsed.data.mfaCode);
+        } catch (error) {
+          request.log.error({ err: error, userId: request.user.sub }, "Failed to verify MFA code during disable");
+          return reply.status(500).send({ message: "Unable to verify MFA challenge" });
+        }
+      }
+
+      if (!verified && parsed.data.recoveryCode) {
+        try {
+          const matchIndex = await app.mfaService.findMatchingRecoveryCode(
+            hashedCodes,
+            parsed.data.recoveryCode
+          );
+          if (matchIndex !== null) {
+            verified = true;
+            recoveryCodeUsed = true;
+            hashedCodes.splice(matchIndex, 1);
+          }
+        } catch (error) {
+          request.log.error({ err: error, userId: request.user.sub }, "Failed to verify recovery code during disable");
+          return reply.status(500).send({ message: "Unable to verify MFA challenge" });
+        }
+      }
+
+      if (!verified) {
+        return reply.status(401).send({ message: "Invalid multi-factor credentials" });
+      }
+
+      try {
+        await app.prisma.$transaction(async (tx) => {
+          if (recoveryCodeUsed) {
+            await tx.mfaSecret.update({
+              where: { id: activeSecret.id },
+              data: {
+                recoveryCodes: hashedCodes.join("\n"),
+                rotatedAt: new Date()
+              }
+            });
+          }
+
+          await tx.mfaSecret.updateMany({
+            where: { userId: request.user!.sub, disabledAt: null },
+            data: { disabledAt: new Date() }
+          });
+
+          await tx.mfaSecret.deleteMany({
+            where: { userId: request.user!.sub, confirmedAt: null }
+          });
+        });
+      } catch (error) {
+        request.log.error({ err: error, userId: request.user.sub }, "Failed to disable MFA");
+        return reply.status(500).send({ message: "Unable to disable MFA" });
+      }
+
+      return reply.send({ message: "Multi-factor authentication disabled" });
+    }
+  );
+
+  app.post(
     "/auth/login",
     {
       config: {
@@ -244,7 +521,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         },
         include: {
           mfaSecrets: {
-            where: { disabledAt: null },
+            where: { disabledAt: null, confirmedAt: { not: null } },
             orderBy: { createdAt: "desc" }
           }
         }
@@ -270,7 +547,9 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         return reply.status(401).send({ message: "Invalid credentials" });
       }
 
-      const activeSecret = user.mfaSecrets.find((secret) => !secret.disabledAt);
+      const activeSecret = user.mfaSecrets.find(
+        (secret) => !secret.disabledAt && secret.confirmedAt
+      );
       if (activeSecret) {
         if (!mfaCode && !recoveryCode) {
           await recordLoginAudit(app, request, {

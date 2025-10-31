@@ -12,6 +12,7 @@ import {
 import { ApiError, API_BASE } from "@/src/lib/api/client";
 import type { UserProfile } from "@/src/lib/api/user";
 import { updateUserProfile } from "@/src/lib/api/user";
+import { MfaSettingsPanel } from "@/src/auth/mfa-settings";
 
 interface SettingsPageClientProps {
   initialProfile: UserProfile;
@@ -189,8 +190,9 @@ export function SettingsPageClient({ initialProfile }: SettingsPageClientProps) 
   const hasProfileAvatar = Boolean(profile.avatar);
 
   return (
-    <section className="pixel-frame flex flex-col gap-6 p-6">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
+      <section className="pixel-frame flex flex-col gap-6 p-6">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-2">
             <label
@@ -317,8 +319,11 @@ export function SettingsPageClient({ initialProfile }: SettingsPageClientProps) 
             </p>
           )}
         </div>
-      </form>
-    </section>
+        </form>
+      </section>
+
+      <MfaSettingsPanel initialEnabled={profile.mfaEnabled} accountEmail={profile.email} />
+    </div>
   );
 }
 

@@ -20,6 +20,7 @@ Keep the following API references handy when debugging login issues or player da
    - `JWT_SECRET`
    - `STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY`
    - Postmark transactional email secrets (`POSTMARK_SERVER_TOKEN`, `POSTMARK_FROM_EMAIL`, optional `POSTMARK_MESSAGE_STREAM`)
+   - MFA issuer & recovery policy (`MFA_ISSUER`, `MFA_RECOVERY_CODE_COUNT`, `MFA_RECOVERY_CODE_LENGTH`)
   - `SCREENSCRAPER_*` credentials (encrypted dev keys plus runtime secret)
   - `METRICS_TOKEN`
 4. Launch the infrastructure: `docker compose -f infra/docker-compose.yml up -d`.
@@ -76,3 +77,9 @@ Keep the following API references handy when debugging login issues or player da
     2. Update the backend deployment to read the new token (swap `POSTMARK_SERVER_TOKEN` to the staged value).
     3. Trigger a password reset to confirm delivery, then revoke the previous token in Postmark.
   - Update the `POSTMARK_FROM_EMAIL` sender signature only after verifying the new domain. Deploy the change and perform a live test before decommissioning the old sender.
+
+## 7. Account security & MFA onboarding
+
+- Set sensible defaults for `MFA_ISSUER`, `MFA_RECOVERY_CODE_COUNT`, and `MFA_RECOVERY_CODE_LENGTH` before inviting players. The defaults (`TREAZRISLAND`, `10`, `10`) mirror the production posture but can be customised per deployment.
+- Encourage the first administrator to visit **Settings → Multi-factor authentication** immediately after onboarding and to download the issued recovery codes. Pending secrets are wiped automatically if they aren&apos;t confirmed.
+- If a user loses access to their authenticator, generate a temporary recovery code via the database or disable MFA with an administrator session using the `/auth/mfa/disable` endpoint.

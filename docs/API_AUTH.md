@@ -132,15 +132,99 @@ The endpoint is idempotent; sending requests without a cookie still returns 204.
 
 ---
 
+## MFA enrollment & lifecycle
+
+### `POST /auth/mfa/setup`
+
+Creates a new pending TOTP secret for the authenticated user, returning everything needed to provision an authenticator app. Any previous, unconfirmed secrets are discarded automatically.
+
+- **Auth**: Requires a valid access token (use the `Authorization: Bearer` header).
+- **Body**: _None_.
+
+**Success (200)**
+
+```json
+{
+  "secretId": "mfa_123",
+  "secret": "JBSWY3DPEHPK3PXP",
+  "otpauthUri": "otpauth://totp/TREAZRISLAND:player%40example.com?secret=JBSWY3DPEHPK3PXP&issuer=TREAZRISLAND",
+  "recoveryCodes": [
+    "FJ6T-87KP-2Q4R",
+    "VMX9-Z2QK-Y7HT",
+    "..."
+  ]
+}
+```
+
+The backend hashes the recovery codes before persisting them, so the plaintext values are only visible in this response. Encourage players to download or print the codes immediately.
+
+**Errors**
+
+- `401`: Missing/invalid bearer token.
+- `500`: Unexpected hashing/persistence failure.
+
+### `POST /auth/mfa/confirm`
+
+Activates a previously generated secret by verifying a TOTP code from the authenticator app. When successful, older confirmed secrets are disabled.
+
+| Field      | Type   | Required | Notes |
+|------------|--------|----------|-------|
+| `secretId` | string | ✅        | Identifier returned by `/auth/mfa/setup`. |
+| `code`     | string | ✅        | 6-10 digit TOTP code. |
+
+**Success (200)**
+
+```json
+{ "message": "Multi-factor authentication enabled" }
+```
+
+**Errors**
+
+- `400`: Validation errors or an invalid TOTP code.
+- `401`: Missing/invalid bearer token.
+- `404`: The pending secret was not found (already confirmed or deleted).
+- `500`: Verification failed due to an internal error.
+
+### `POST /auth/mfa/disable`
+
+Disables MFA for the authenticated account after verifying either a current TOTP code **or** one of the recovery codes. Any unused recovery codes and pending secrets are cleaned up during the transaction.
+
+| Field          | Type   | Required | Notes |
+|----------------|--------|----------|-------|
+| `mfaCode`      | string | ⚠️        | Provide this **or** `recoveryCode`. 6-10 digits. |
+| `recoveryCode` | string | ⚠️        | Provide this **or** `mfaCode`. Full recovery code string. |
+
+**Success (200)**
+
+```json
+{ "message": "Multi-factor authentication disabled" }
+```
+
+**Errors**
+
+- `400`: Invalid payload or no active secret to disable.
+- `401`: Both credentials missing or invalid.
+- `500`: Unable to verify or persist the disable request.
+
+---
+
 ## MFA & Recovery Handling
 
-MFA verification occurs inside `/auth/login` once a user has an active secret. Keep these points in mind:
+MFA verification occurs inside `/auth/login` once a user has confirmed a secret via `/auth/mfa/confirm`. Keep these points in mind:
 
 - Provide either `mfaCode` **or** `recoveryCode`, never both.
 - Recovery codes are single-use. When accepted they are removed and rotated.
 - Failed challenges generate `mfa_failed` login audit entries for monitoring.
+- `/auth/mfa/setup` issues new secrets and recovery packs. The response is the only time plaintext codes are exposed.
+- `/auth/mfa/disable` requires either a fresh TOTP code or an unused recovery code.
 
-To seed MFA secrets, use the admin management flows exposed in the frontend; the API currently only verifies codes during login.
+### Environment variables
+
+| Key | Purpose |
+|-----|---------|
+| `MFA_ISSUER` | Issuer value embedded in the TOTP provisioning URI (`otpauth://`). Defaults to `TREAZRISLAND`. |
+| `MFA_RECOVERY_CODE_COUNT` | Number of recovery codes generated during setup (between 4 and 24). |
+| `MFA_RECOVERY_CODE_LENGTH` | Character length of each recovery code (between 6 and 32). |
 
 ---
 

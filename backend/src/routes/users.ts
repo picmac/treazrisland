@@ -202,7 +202,14 @@ export async function registerUserRoutes(app: FastifyInstance) {
         throw app.httpErrors.notFound("User not found");
       }
 
-      return { user: await serializeUserProfile(app, user) };
+      const [profile, activeMfa] = await Promise.all([
+        serializeUserProfile(app, user),
+        app.prisma.mfaSecret.findFirst({
+          where: { userId: user.id, disabledAt: null, confirmedAt: { not: null } }
+        })
+      ]);
+
+      return { user: { ...profile, mfaEnabled: Boolean(activeMfa) } };
     },
   );
 
@@ -402,7 +409,14 @@ export async function registerUserRoutes(app: FastifyInstance) {
         );
       }
 
-      return { user: await serializeUserProfile(app, updatedUser) };
+      const [profile, activeMfa] = await Promise.all([
+        serializeUserProfile(app, updatedUser),
+        app.prisma.mfaSecret.findFirst({
+          where: { userId: updatedUser.id, disabledAt: null, confirmedAt: { not: null } }
+        })
+      ]);
+
+      return { user: { ...profile, mfaEnabled: Boolean(activeMfa) } };
     },
   );
 }

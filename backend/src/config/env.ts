@@ -19,6 +19,23 @@ const envSchema = z.object({
   JWT_ACCESS_TTL: z.string().default("15m"),
   JWT_REFRESH_TTL: z.string().default("30d"),
   PASSWORD_RESET_TTL: z.string().default("1h"),
+  MFA_ISSUER: z
+    .string()
+    .default("TREAZRISLAND")
+    .transform((value) => value.trim())
+    .refine((value) => value.length > 0, {
+      message: "MFA_ISSUER cannot be empty",
+    }),
+  MFA_RECOVERY_CODE_COUNT: z
+    .string()
+    .regex(/^\d+$/)
+    .default("10")
+    .transform(Number),
+  MFA_RECOVERY_CODE_LENGTH: z
+    .string()
+    .regex(/^\d+$/)
+    .default("10")
+    .transform(Number),
   EMAIL_PROVIDER: z.enum(["postmark"]).default("postmark"),
   POSTMARK_SERVER_TOKEN: z
     .string()
@@ -273,6 +290,20 @@ if (
   throw new Error("USER_INVITE_EXPIRY_HOURS must be between 1 and 720 hours");
 }
 
+if (
+  parsed.data.MFA_RECOVERY_CODE_COUNT < 4 ||
+  parsed.data.MFA_RECOVERY_CODE_COUNT > 24
+) {
+  throw new Error("MFA_RECOVERY_CODE_COUNT must be between 4 and 24");
+}
+
+if (
+  parsed.data.MFA_RECOVERY_CODE_LENGTH < 6 ||
+  parsed.data.MFA_RECOVERY_CODE_LENGTH > 32
+) {
+  throw new Error("MFA_RECOVERY_CODE_LENGTH must be between 6 and 32 characters");
+}
+
 if (parsed.data.STORAGE_DRIVER === "s3") {
   const missing = [
     ["STORAGE_ENDPOINT", parsed.data.STORAGE_ENDPOINT],
@@ -324,6 +355,9 @@ export const env = {
   SCREENSCRAPER_ONLY_BETTER_MEDIA:
     parsed.data.SCREENSCRAPER_ONLY_BETTER_MEDIA.toLowerCase() === "true" ||
     parsed.data.SCREENSCRAPER_ONLY_BETTER_MEDIA === "1",
+  MFA_ISSUER: parsed.data.MFA_ISSUER,
+  MFA_RECOVERY_CODE_COUNT: parsed.data.MFA_RECOVERY_CODE_COUNT,
+  MFA_RECOVERY_CODE_LENGTH: parsed.data.MFA_RECOVERY_CODE_LENGTH,
   EMAIL_PROVIDER: parsed.data.EMAIL_PROVIDER,
   POSTMARK_SERVER_TOKEN: parsed.data.POSTMARK_SERVER_TOKEN!,
   POSTMARK_FROM_EMAIL: parsed.data.POSTMARK_FROM_EMAIL!,
