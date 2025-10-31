@@ -252,13 +252,16 @@ const applyOverrides = (
 
 const settingsPlugin = fp(async (app: FastifyInstance) => {
   let current = defaultSettings();
-  const prisma = (app as FastifyInstance & { prisma?: PrismaClient }).prisma;
-  const hasSystemSettingModel = Boolean(
-    prisma && "systemSetting" in prisma,
-  );
+  const getPrisma = () =>
+    (app as FastifyInstance & { prisma?: PrismaClient }).prisma;
+  const hasSystemSettingModel = (
+    client: PrismaClient | undefined,
+  ): client is PrismaClient & { systemSetting: PrismaClient["systemSetting"] } =>
+    Boolean(client && "systemSetting" in client);
 
   const load = async () => {
-    if (!prisma || !hasSystemSettingModel) {
+    const prisma = getPrisma();
+    if (!hasSystemSettingModel(prisma)) {
       current = defaultSettings();
       return current;
     }
@@ -325,7 +328,8 @@ const settingsPlugin = fp(async (app: FastifyInstance) => {
       }
       const schema = schemaByKey[key];
       const parsed = schema.parse(value);
-      if (!prisma || !hasSystemSettingModel) {
+      const prisma = getPrisma();
+      if (!hasSystemSettingModel(prisma)) {
         throw new Error("Settings persistence is unavailable without Prisma");
       }
 

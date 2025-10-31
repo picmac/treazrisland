@@ -2,17 +2,12 @@ import { createHash } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import type { FastifyBaseLogger } from "fastify";
 import { z } from "zod";
-import {
-  EnrichmentProvider,
-  EnrichmentStatus,
-  Prisma,
-  PrismaClient,
-  RomAssetSource,
-  RomAssetType,
-  type ScreenScraperSettings
-} from "@prisma/client";
+import prisma from "@prisma/client";
+import type { Prisma, PrismaClient, ScreenScraperSettings } from "@prisma/client";
 import { ScreenScraperConfig } from "../../config/screenscraper.js";
 import { ScreenScraperQueue } from "./queue.js";
+
+const { EnrichmentProvider, EnrichmentStatus, RomAssetSource, RomAssetType } = prisma;
 
 const localizedTextSchema = z.object({
   texte: z.string().optional(),

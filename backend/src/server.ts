@@ -95,15 +95,25 @@ export const buildServer = (
     },
   });
 
+  const registerCorePlugins = () => {
+    app.register(settingsPlugin);
+    app.register(observabilityPlugin);
+    app.register(authPlugin);
+    app.register(storagePlugin);
+    app.register(supportServices);
+  };
+
   if (registerPrisma) {
     app.register(prismaPlugin);
+    app.after((error) => {
+      if (error) {
+        throw error;
+      }
+      registerCorePlugins();
+    });
+  } else {
+    registerCorePlugins();
   }
-
-  app.register(settingsPlugin);
-  app.register(observabilityPlugin);
-  app.register(authPlugin);
-  app.register(storagePlugin);
-  app.register(supportServices);
 
   if (registerPrisma) {
     app.register(screenScraperPlugin);
