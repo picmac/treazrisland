@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
+import Image from "next/image";
+import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { ApiError } from "@/src/lib/api/client";
 import {
   confirmMfaSetup,
@@ -31,32 +32,6 @@ export function MfaSettingsPanel({ initialEnabled, accountEmail }: MfaSettingsPa
   const [status, setStatus] = useState<StatusMessage>(null);
   const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!setupBundle) {
-      setQrDataUrl(null);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    toDataURL(setupBundle.otpauthUri, { margin: 1, scale: 6 })
-      .then((dataUrl) => {
-        if (!cancelled) {
-          setQrDataUrl(dataUrl);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setQrDataUrl(null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [setupBundle]);
-
   const friendlyAccountLabel = useMemo(() => {
     if (setupBundle?.secret && accountEmail) {
       return accountEmail;
@@ -68,10 +43,17 @@ export function MfaSettingsPanel({ initialEnabled, accountEmail }: MfaSettingsPa
     setStatus(null);
     startTransition(async () => {
       try {
+        setQrDataUrl(null);
         const result = await startMfaSetup();
         setSetupBundle(result);
         setConfirmCode("");
         setIsEnabled(false);
+        try {
+          const dataUrl = await toDataURL(result.otpauthUri, { margin: 1, scale: 6 });
+          setQrDataUrl(dataUrl);
+        } catch {
+          setQrDataUrl(null);
+        }
       } catch (error) {
         if (error instanceof ApiError) {
           setStatus({ type: "error", text: `${error.status}: ${error.message}` });
@@ -103,6 +85,7 @@ export function MfaSettingsPanel({ initialEnabled, accountEmail }: MfaSettingsPa
         setStatus({ type: "success", text: "MFA enabled. Store your recovery codes in a safe place." });
         setIsEnabled(true);
         setSetupBundle(null);
+        setQrDataUrl(null);
         setConfirmCode("");
       } catch (error) {
         if (error instanceof ApiError) {
@@ -136,6 +119,7 @@ export function MfaSettingsPanel({ initialEnabled, accountEmail }: MfaSettingsPa
         setStatus({ type: "success", text: "MFA disabled. Consider re-enabling it soon." });
         setIsEnabled(false);
         setSetupBundle(null);
+        setQrDataUrl(null);
         setDisableForm({ mfaCode: "", recoveryCode: "" });
       } catch (error) {
         if (error instanceof ApiError) {
@@ -198,9 +182,12 @@ export function MfaSettingsPanel({ initialEnabled, accountEmail }: MfaSettingsPa
             </p>
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-6">
               {qrDataUrl ? (
-                <img
+                <Image
                   src={qrDataUrl}
                   alt="Authenticator QR code"
+                  width={128}
+                  height={128}
+                  unoptimized
                   className="h-32 w-32 rounded border border-lagoon bg-background p-2"
                 />
               ) : (
