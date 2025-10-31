@@ -19,13 +19,15 @@ Keep the following API references handy when debugging login issues or player da
 3. Update the following secrets in your secret manager and inject them at runtime:
    - `JWT_SECRET`
    - `STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY`
-   - Postmark transactional email secrets (`POSTMARK_SERVER_TOKEN`, `POSTMARK_FROM_EMAIL`, optional `POSTMARK_MESSAGE_STREAM`)
-   - MFA issuer & recovery policy (`MFA_ISSUER`, `MFA_RECOVERY_CODE_COUNT`, `MFA_RECOVERY_CODE_LENGTH`)
+  - Postmark transactional email secrets (`POSTMARK_SERVER_TOKEN`, `POSTMARK_FROM_EMAIL`, optional `POSTMARK_MESSAGE_STREAM`)
+  - MFA issuer & recovery policy (`MFA_ISSUER`, `MFA_RECOVERY_CODE_COUNT`, `MFA_RECOVERY_CODE_LENGTH`)
   - `SCREENSCRAPER_*` credentials (encrypted dev keys plus runtime secret)
   - `METRICS_TOKEN`
+  - Grafana admin credentials (`GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD` for production stacks)
 4. Launch the infrastructure: `docker compose -f infra/docker-compose.yml up -d`.
 5. Run database migrations: `docker compose exec backend npm run prisma:migrate -- --name init` (first boot only).
 6. Seed platform metadata: `docker compose exec backend npm run prisma:seed:platforms`.
+7. Copy `infra/monitoring/secrets/metrics_token.sample` to `infra/monitoring/secrets/metrics_token` and keep it in sync with the backend `METRICS_TOKEN` so Prometheus and Grafana can authenticate to `/metrics`.
 
 ## 2. Metadata Enrichment
 
@@ -47,14 +49,17 @@ Keep the following API references handy when debugging login issues or player da
 
 ## 4. Metrics & Health
 
-- Enable `/metrics` by setting `METRICS_ENABLED=true`, `METRICS_TOKEN=<random>`, and `METRICS_ALLOWED_CIDRS` to the Prometheus network CIDRs. Scrape from the bundled Prometheus instance or another internal collector that forwards the bearer token.
+- Enable `/metrics` by setting `METRICS_ENABLED=true`, `METRICS_TOKEN=<random>`, and `METRICS_ALLOWED_CIDRS` to the Prometheus network CIDRs. Scrape from the bundled Prometheus instance or another internal collector that forwards the bearer token. The Compose stacks automatically launch Prometheus, Alertmanager, Grafana, node-exporter, cAdvisor, postgres-exporter, and MinIO metrics.
 - Health checks:
   - Backend: `GET http://localhost:3001/health`
   - Frontend: `GET http://localhost:3000/api/health` (if exposed)
-- Suggested alerts:
+- Dashboards: Grafana provisions the JSON exports in `infra/monitoring/dashboards/` on start. Sign in with the admin credentials from your environment variables and verify the four core dashboards (Backend Reliability, Upload & Enrichment, Playback & Storage, Infrastructure Overview) are receiving data.
+- Suggested alerts (configured in `infra/monitoring/rules/`):
   - Upload failure rate > 5% over 10 minutes.
   - Playback audit failures > 0 for five consecutive minutes.
-  - Enrichment jobs pending > 20 for more than 15 minutes.
+  - Enrichment queue backlog sustained above 10 for 10 minutes.
+  - Backend event-loop lag above 500 ms for 5 minutes.
+  - Exporter or database/MinIO scrape failures for more than 2 minutes.
 
 ## 5. Release Day Checklist
 

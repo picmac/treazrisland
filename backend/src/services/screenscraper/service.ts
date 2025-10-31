@@ -200,6 +200,10 @@ export class ScreenScraperService {
   private readonly queue: ScreenScraperQueue;
   private readonly hashedPassword?: string;
   private readonly onJobStatusChange?: (status: EnrichmentJobMetricStatus) => void;
+  private readonly onJobDuration?: (
+    phase: "queue_wait" | "processing",
+    durationSeconds: number,
+  ) => void;
 
   constructor(deps: {
     prisma: PrismaClient;
@@ -207,11 +211,16 @@ export class ScreenScraperService {
     config: ScreenScraperConfig;
     onQueueDepthChange?: (depth: number) => void;
     onJobStatusChange?: (status: EnrichmentJobMetricStatus) => void;
+    onJobDuration?: (
+      phase: "queue_wait" | "processing",
+      durationSeconds: number,
+    ) => void;
   }) {
     this.prisma = deps.prisma;
     this.logger = deps.logger;
     this.config = deps.config;
     this.onJobStatusChange = deps.onJobStatusChange;
+    this.onJobDuration = deps.onJobDuration;
     this.queue = new ScreenScraperQueue({
       concurrency: this.config.concurrency,
       requestsPerMinute: this.config.requestsPerMinute,
@@ -429,34 +438,55 @@ export class ScreenScraperService {
   }
 
   private async processJob(job: JobWithRom, settings: EffectiveScreenScraperSettings): Promise<void> {
+    const startedAt = new Date();
     await this.prisma.romEnrichmentJob.update({
       where: { id: job.id },
       data: {
         status: EnrichmentStatus.RUNNING,
-        startedAt: new Date()
+        startedAt
       }
     });
 
+    if (job.createdAt) {
+      const waitSeconds = Math.max(
+        0,
+        (startedAt.getTime() - job.createdAt.getTime()) / 1000,
+      );
+      this.onJobDuration?.("queue_wait", waitSeconds);
+    }
+
     try {
       const providerRomId = await this.performEnrichment(job, settings);
+      const completedAt = new Date();
       await this.prisma.romEnrichmentJob.update({
         where: { id: job.id },
         data: {
           status: EnrichmentStatus.SUCCEEDED,
           providerRomId,
-          completedAt: new Date()
+          completedAt
         }
       });
+      const processingSeconds = Math.max(
+        0,
+        (completedAt.getTime() - startedAt.getTime()) / 1000,
+      );
+      this.onJobDuration?.("processing", processingSeconds);
       this.onJobStatusChange?.("succeeded");
     } catch (error) {
+      const completedAt = new Date();
       await this.prisma.romEnrichmentJob.update({
         where: { id: job.id },
         data: {
           status: EnrichmentStatus.FAILED,
           errorMessage: (error as Error).message,
-          completedAt: new Date()
+          completedAt
         }
       });
+      const processingSeconds = Math.max(
+        0,
+        (completedAt.getTime() - startedAt.getTime()) / 1000,
+      );
+      this.onJobDuration?.("processing", processingSeconds);
       this.onJobStatusChange?.("failed");
       throw error;
     }

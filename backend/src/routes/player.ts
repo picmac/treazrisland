@@ -107,6 +107,48 @@ type PlaybackAuditContext = {
   playStateId?: string | null;
 };
 
+function extractRouteLabel(request: FastifyRequest): string {
+  const routeOptions = request.routeOptions as { urlPattern?: string };
+  return (
+    request.routeOptions.url ??
+    routeOptions.urlPattern ??
+    request.raw.url ??
+    "unknown"
+  );
+}
+
+function normalizePlaybackReason(reason: string): string {
+  const normalized = reason
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return normalized.length > 0 ? normalized : "unknown";
+}
+
+function recordPlaybackError(
+  app: FastifyInstance,
+  request: FastifyRequest,
+  operation: string,
+  reason: string,
+  error: unknown,
+): void {
+  if (app.metrics.enabled) {
+    app.metrics.playerErrors.inc({
+      operation,
+      reason: normalizePlaybackReason(reason),
+    });
+  }
+
+  request.log.error(
+    {
+      err: error,
+      operation,
+      route: extractRouteLabel(request),
+    },
+    "Playback API storage error",
+  );
+}
+
 async function logPlaybackAudit(
   app: FastifyInstance,
   request: FastifyRequest,
@@ -115,9 +157,12 @@ async function logPlaybackAudit(
 ) {
   try {
     await app.prisma.romPlaybackAudit.create({ data });
+    const route = extractRouteLabel(request);
     app.metrics.playback.inc({
       action: data.action.toLowerCase(),
       status: "recorded",
+      route,
+      reason: "none",
     });
     request.log.info(
       {
@@ -132,9 +177,12 @@ async function logPlaybackAudit(
       "Playback event recorded",
     );
   } catch (err) {
+    const route = extractRouteLabel(request);
     app.metrics.playback.inc({
       action: data.action.toLowerCase(),
       status: "failed",
+      route,
+      reason: "audit_persist_failed",
     });
     app.log.warn(
       { err, action: data.action, context },
@@ -206,9 +254,23 @@ export async function registerPlayerRoutes(
         { romId: rom.id, romBinaryId: rom.binary.id },
       );
 
-      const signedUrl = await app.storage.getRomObjectSignedUrl(
-        rom.binary.storageKey,
-      );
+      let signedUrl;
+      try {
+        signedUrl = await app.storage.getRomObjectSignedUrl(
+          rom.binary.storageKey,
+        );
+      } catch (error) {
+        recordPlaybackError(
+          app,
+          request,
+          "rom_download",
+          "signed_url_failure",
+          error,
+        );
+        throw app.httpErrors.internalServerError(
+          "Failed to prepare ROM download",
+        );
+      }
       if (signedUrl) {
         return {
           type: "signed-url" as const,
@@ -219,9 +281,19 @@ export async function registerPlayerRoutes(
         };
       }
 
-      const object = await app.storage.getRomObjectStream(
-        rom.binary.storageKey,
-      );
+      let object;
+      try {
+        object = await app.storage.getRomObjectStream(rom.binary.storageKey);
+      } catch (error) {
+        recordPlaybackError(
+          app,
+          request,
+          "rom_download",
+          "stream_failure",
+          error,
+        );
+        throw app.httpErrors.internalServerError("Failed to stream ROM binary");
+      }
       reply.header(
         "content-type",
         rom.binary.archiveMimeType ??
@@ -470,9 +542,23 @@ export async function registerPlayerRoutes(
         { romId: playState.romId, playStateId: playState.id },
       );
 
-      const signedUrl = await app.storage.getAssetObjectSignedUrl(
-        playState.storageKey,
-      );
+      let signedUrl;
+      try {
+        signedUrl = await app.storage.getAssetObjectSignedUrl(
+          playState.storageKey,
+        );
+      } catch (error) {
+        recordPlaybackError(
+          app,
+          request,
+          "play_state_download",
+          "signed_url_failure",
+          error,
+        );
+        throw app.httpErrors.internalServerError(
+          "Failed to prepare play state download",
+        );
+      }
       if (signedUrl) {
         return {
           type: "signed-url" as const,
@@ -482,9 +568,19 @@ export async function registerPlayerRoutes(
         };
       }
 
-      const object = await app.storage.getAssetObjectStream(
-        playState.storageKey,
-      );
+      let object;
+      try {
+        object = await app.storage.getAssetObjectStream(playState.storageKey);
+      } catch (error) {
+        recordPlaybackError(
+          app,
+          request,
+          "play_state_download",
+          "stream_failure",
+          error,
+        );
+        throw app.httpErrors.internalServerError("Failed to stream play state");
+      }
       reply.header("content-type", "application/octet-stream");
       reply.header(
         "content-length",
@@ -536,6 +632,17 @@ export async function registerPlayerRoutes(
           sha256,
           contentType: "application/octet-stream",
         });
+      } catch (error) {
+        recordPlaybackError(
+          app,
+          request,
+          "play_state_upload",
+          "storage_write_failed",
+          error,
+        );
+        throw app.httpErrors.internalServerError(
+          "Failed to persist play state",
+        );
       } finally {
         await safeUnlink(tempPath);
       }
@@ -651,6 +758,17 @@ export async function registerPlayerRoutes(
               sha256,
               contentType: "application/octet-stream",
             },
+          );
+        } catch (error) {
+          recordPlaybackError(
+            app,
+            request,
+            "play_state_upload",
+            "storage_write_failed",
+            error,
+          );
+          throw app.httpErrors.internalServerError(
+            "Failed to persist play state",
           );
         } finally {
           await safeUnlink(tempPath);

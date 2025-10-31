@@ -153,6 +153,7 @@ export async function registerRomUploadRoutes(
     const stream = request.body as NodeJS.ReadableStream;
 
     const uploadedById = request.user?.sub;
+    const uploadStartedAt = process.hrtime.bigint();
 
     try {
       processed = await persistUploadStream(stream, safeFilename);
@@ -169,8 +170,11 @@ export async function registerRomUploadRoutes(
         );
         await safeUnlink(processed.filePath);
 
-        const labels = { kind: "rom", status: result.status };
-        app.metrics.uploads.inc(labels);
+        recordUploadOutcome(app, uploadStartedAt, {
+          kind: "rom",
+          status: result.status,
+          reason: result.status === "success" ? "none" : result.reason,
+        });
 
         if (result.status === "success") {
           request.log.info(
@@ -214,8 +218,11 @@ export async function registerRomUploadRoutes(
       );
       await safeUnlink(processed.filePath);
 
-      const labels = { kind: "bios", status: result.status };
-      app.metrics.uploads.inc(labels);
+      recordUploadOutcome(app, uploadStartedAt, {
+        kind: "bios",
+        status: result.status,
+        reason: result.status === "success" ? "none" : result.reason,
+      });
 
       if (result.status === "success") {
         request.log.info(
@@ -252,6 +259,14 @@ export async function registerRomUploadRoutes(
 
       const errorMessage =
         error instanceof Error ? error.message : "Upload failed";
+      const failureReason = deriveUploadFailureReason(error);
+
+      recordUploadOutcome(app, uploadStartedAt, {
+        kind: metadata.type,
+        status: "failed",
+        reason: failureReason,
+      });
+
       if (typeof (error as { statusCode?: number }).statusCode === "number") {
         throw error;
       }
@@ -265,8 +280,6 @@ export async function registerRomUploadRoutes(
         uploadedById,
         safeFilename,
       );
-
-      app.metrics.uploads.inc({ kind: metadata.type, status: "failed" });
 
       if (error instanceof z.ZodError) {
         throw app.httpErrors.badRequest(errorMessage);
@@ -696,4 +709,79 @@ function deriveRomTitle(metadata: UploadMetadata): string {
 
   const filename = sanitizeFilename(metadata.originalFilename);
   return filename.replace(/\.[^.]+$/, "");
+}
+
+type UploadOutcomeLabels = {
+  kind: "rom" | "bios";
+  status: string;
+  reason: string | undefined;
+};
+
+function normalizeUploadReason(reason: string | undefined): string {
+  if (!reason) {
+    return "unknown";
+  }
+
+  const normalized = reason
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  return normalized.length > 0 ? normalized : "unknown";
+}
+
+function recordUploadOutcome(
+  app: FastifyInstance,
+  startedAt: bigint,
+  labels: UploadOutcomeLabels,
+): void {
+  if (!app.metrics.enabled) {
+    return;
+  }
+
+  const normalizedReason = normalizeUploadReason(labels.reason);
+  app.metrics.uploads.inc({
+    kind: labels.kind,
+    status: labels.status,
+    reason: normalizedReason,
+  });
+
+  const durationSeconds =
+    Number(process.hrtime.bigint() - startedAt) / 1_000_000_000;
+  app.metrics.uploadDuration.observe(
+    { kind: labels.kind, status: labels.status },
+    durationSeconds,
+  );
+}
+
+function deriveUploadFailureReason(error: unknown): string {
+  if (error instanceof z.ZodError) {
+    return "validation_error";
+  }
+
+  const message =
+    error instanceof Error ? error.message.toLowerCase() : "unknown";
+
+  if (message.includes("maximum allowed size")) {
+    return "archive_too_large";
+  }
+  if (message.includes("binary payload is required")) {
+    return "missing_payload";
+  }
+  if (message.includes("upload metadata")) {
+    return "invalid_metadata";
+  }
+  if (message.includes("unknown platform")) {
+    return "unknown_platform";
+  }
+  if (message.includes("duplicate")) {
+    return "duplicate";
+  }
+  if ((error as { code?: string }).code === "EPIPE") {
+    return "stream_interrupted";
+  }
+
+  return "unexpected_error";
 }

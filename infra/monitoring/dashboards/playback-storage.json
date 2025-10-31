@@ -1,0 +1,179 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "iteration": 1,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "treaz-prom"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "events/min"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(treaz_playback_events_total{status=\"recorded\"}[5m])) by (action, route)",
+          "legendFormat": "{{action}} @ {{route}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Playback Interactions",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "treaz-prom"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "events/min"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(treaz_playback_events_total{status=\"failed\"}[5m])) by (action, reason, route)",
+          "legendFormat": "{{action}} {{reason}} @ {{route}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Playback Audit Failures",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "treaz-prom"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "events/min"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(treaz_player_errors_total[5m])) by (operation, reason)",
+          "legendFormat": "{{operation}} {{reason}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Playback API Errors",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "treaz-prom"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "treaz_process_event_loop_lag_seconds{stat=~\"p90|p99\"}",
+          "legendFormat": "{{stat}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Event Loop Lag",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "treazrisland"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "TREAZRISLAND - Playback & Storage",
+  "uid": "treaz-playback",
+  "version": 1
+}

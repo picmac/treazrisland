@@ -20,3 +20,20 @@ scrape_configs:
     authorization:
       type: Bearer
       credentials_file: /run/secrets/metrics_token
+  - job_name: treaz-node
+    static_configs:
+      - targets:
+          - node-exporter:9100
+  - job_name: treaz-cadvisor
+    static_configs:
+      - targets:
+          - cadvisor:8080
+  - job_name: treaz-postgres
+    static_configs:
+      - targets:
+          - postgres-exporter:9187
+  - job_name: treaz-minio
+    metrics_path: /minio/v2/metrics/cluster
+    static_configs:
+      - targets:
+          - minio:9000
