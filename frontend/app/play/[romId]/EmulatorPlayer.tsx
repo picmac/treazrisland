@@ -111,10 +111,146 @@ export default function EmulatorPlayer({
     const eventType = pressed ? "keydown" : "keyup";
     const event = new KeyboardEvent(eventType, {
       key,
+      code: key,
       bubbles: true
     });
     window.dispatchEvent(event);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.navigator === "undefined") {
+      return;
+    }
+
+    const { navigator } = window;
+    if (typeof navigator.getGamepads !== "function") {
+      return;
+    }
+
+    const gamepadMappings: Array<{ button: number; key: string }> = [
+      { button: 12, key: "ArrowUp" },
+      { button: 13, key: "ArrowDown" },
+      { button: 14, key: "ArrowLeft" },
+      { button: 15, key: "ArrowRight" },
+      { button: 0, key: "KeyX" },
+      { button: 1, key: "KeyZ" },
+      { button: 2, key: "KeyA" },
+      { button: 3, key: "KeyS" },
+      { button: 9, key: "Enter" },
+      { button: 8, key: "ShiftRight" }
+    ];
+
+    let isUnmounted = false;
+    let animationFrameId: number | null = null;
+    let loopActive = false;
+    const buttonStates = new Map<string, boolean>();
+
+    const releaseKeysForGamepad = (gamepadIndex: number | null) => {
+      for (const [stateKey, wasPressed] of buttonStates.entries()) {
+        const [indexPart, key] = stateKey.split(":", 2);
+        const index = Number.parseInt(indexPart, 10);
+        if (Number.isNaN(index)) {
+          continue;
+        }
+
+        if (gamepadIndex === null || index === gamepadIndex) {
+          if (wasPressed) {
+            emitVirtualKey(key, false);
+          }
+          buttonStates.delete(stateKey);
+        }
+      }
+    };
+
+    const pollGamepads = () => {
+      if (isUnmounted) {
+        return;
+      }
+
+      const connectedIndices = new Set<number>();
+      const gamepads = navigator.getGamepads?.() ?? [];
+
+      for (const gamepad of gamepads) {
+        if (!gamepad) {
+          continue;
+        }
+
+        connectedIndices.add(gamepad.index);
+
+        for (const mapping of gamepadMappings) {
+          const buttonStateKey = `${gamepad.index}:${mapping.key}`;
+          const button = gamepad.buttons?.[mapping.button];
+          const pressed = Boolean(button?.pressed);
+          const previouslyPressed = buttonStates.get(buttonStateKey) ?? false;
+
+          if (pressed !== previouslyPressed) {
+            emitVirtualKey(mapping.key, pressed);
+            buttonStates.set(buttonStateKey, pressed);
+          }
+        }
+      }
+
+      for (const [stateKey, wasPressed] of buttonStates.entries()) {
+        const [indexPart, key] = stateKey.split(":", 2);
+        const index = Number.parseInt(indexPart, 10);
+        if (!connectedIndices.has(index)) {
+          if (wasPressed) {
+            emitVirtualKey(key, false);
+          }
+          buttonStates.delete(stateKey);
+        }
+      }
+
+      if (connectedIndices.size === 0) {
+        loopActive = false;
+        animationFrameId = null;
+        return;
+      }
+
+      animationFrameId = window.requestAnimationFrame(pollGamepads);
+    };
+
+    const ensureLoop = () => {
+      if (loopActive) {
+        return;
+      }
+
+      loopActive = true;
+      animationFrameId = window.requestAnimationFrame(pollGamepads);
+    };
+
+    const handleGamepadConnected = () => {
+      ensureLoop();
+    };
+
+    const handleGamepadDisconnected = (event: GamepadEvent) => {
+      releaseKeysForGamepad(event.gamepad.index);
+    };
+
+    window.addEventListener("gamepadconnected", handleGamepadConnected);
+    window.addEventListener("gamepaddisconnected", handleGamepadDisconnected);
+
+    const hasConnectedGamepads = () => {
+      const gamepads = navigator.getGamepads?.() ?? [];
+      return gamepads.some((gamepad) => gamepad?.connected);
+    };
+
+    if (hasConnectedGamepads()) {
+      ensureLoop();
+    }
+
+    return () => {
+      isUnmounted = true;
+      loopActive = false;
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      window.removeEventListener("gamepadconnected", handleGamepadConnected);
+      window.removeEventListener("gamepaddisconnected", handleGamepadDisconnected);
+      releaseKeysForGamepad(null);
+    };
+  }, [emitVirtualKey]);
 
   useEffect(() => {
     let isCancelled = false;
