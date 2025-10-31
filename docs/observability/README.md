@@ -7,8 +7,18 @@ TREAZRISLAND emits structured JSON logs via Pino and exposes optional Prometheus
 - `rom.upload` / `bios.upload`: emitted on every archive processed (status `success`, `duplicate`, or `failed`). Includes audit ID, checksum, and platform metadata.
 - `rom.enrichment.enqueued`: logged whenever an enrichment job is submitted to ScreenScraper.
 - `player.activity`: recorded for ROM downloads, asset fetches, and save-state uploads/downloads. Labels include `action`, `romId`, `assetId`, and `playStateId`.
+- `security.csp-report`: emitted by the Next.js frontend when browsers POST CSP violation reports to `/app/api/csp-report`. Payload includes the blocked URI, violated directive, source file metadata, client IP (if forwarded headers are present), and the received timestamp. The handler forwards reports to a central observability endpoint when configured, otherwise it logs the sanitized payload locally.
 
 Logs redact `Authorization` headers, cookies, and password fields. Ship them to your centralized log store and retain at least 30 days for forensic analysis.
+
+### CSP report ingestion
+
+Browsers submit CSP violations to `POST /app/api/csp-report`. The handler accepts `application/json` and `application/csp-report` payloads, validates that required fields (such as `violated-directive` and `original-policy`) are present, normalizes the structure, and forwards the event to the observability pipeline.
+
+- Set `OBSERVABILITY_CSP_ENDPOINT` to the HTTPS URL of your log/metrics collector. The route sends a JSON body with the `security.csp-report` structure described above.
+- Optionally set `OBSERVABILITY_CSP_TOKEN` to include a `Bearer` token in the outbound request. Leave this unset to rely on network-level ACLs instead.
+
+When the endpoint is not configured (e.g., local development), the handler still logs the sanitized report via `console.info` so security engineers can tail the Next.js logs and investigate anomalies.
 
 ## Metrics
 
