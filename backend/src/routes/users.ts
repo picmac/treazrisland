@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import type { MultipartFile, MultipartValue } from "@fastify/multipart";
+import type { Multipart, MultipartFile } from "@fastify/multipart";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { env } from "../config/env.js";
@@ -125,7 +125,7 @@ async function buildAvatarMetadata(
 }
 
 async function parseMultipartPayload(
-  parts: AsyncIterableIterator<MultipartFile | MultipartValue<string>>,
+  parts: AsyncIterableIterator<Multipart>,
 ): Promise<{
   fields: z.infer<typeof formPatchSchema>;
   avatarFile: MultipartFile | null;
@@ -133,9 +133,7 @@ async function parseMultipartPayload(
   const fieldValues: Record<string, string> = {};
   let avatarFile: MultipartFile | null = null;
 
-  for await (const part of parts as AsyncIterable<
-    MultipartFile | MultipartValue<string>
-  >) {
+  for await (const part of parts) {
     if (part.type === "file") {
       if (part.fieldname === "avatar") {
         if (avatarFile) {
