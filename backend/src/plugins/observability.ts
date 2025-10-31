@@ -417,7 +417,10 @@ function createMetrics(): ObservabilityMetrics {
         processMemory.render(),
         eventLoopLag.render(),
         processHandles.render(),
-      ].join("\n"),
+      ]
+        .map((section) => section.trimEnd())
+        .join("\n")
+        .concat("\n"),
   };
 }
 

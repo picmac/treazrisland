@@ -63,6 +63,7 @@ describe("observability metrics formatting", () => {
       'treaz_http_request_duration_seconds_bucket{method="",route="",status_code="",le="+Inf"} 0',
     );
     expect(output).not.toContain("}{le=");
+    expect(output).not.toContain("\n\n# HELP");
   });
 
   it("renders populated histogram buckets with closing braces", () => {
