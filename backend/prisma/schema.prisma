@@ -182,6 +182,7 @@ model MfaSecret {
   createdAt  DateTime @default(now())
   rotatedAt  DateTime?
   disabledAt DateTime?
+  confirmedAt DateTime?
 
   @@index([userId])
 }

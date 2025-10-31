@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import argon2 from "argon2";
 
 const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -47,12 +47,72 @@ const generateTotpForCounter = (secret: Buffer, counter: number, digits: number)
   return String(code % mod).padStart(digits, "0");
 };
 
+const encodeBase32 = (input: Buffer): string => {
+  let buffer = 0;
+  let bits = 0;
+  let output = "";
+
+  for (const byte of input) {
+    buffer = (buffer << 8) | byte;
+    bits += 8;
+
+    while (bits >= 5) {
+      bits -= 5;
+      const index = (buffer >> bits) & 0x1f;
+      output += BASE32_ALPHABET[index];
+    }
+  }
+
+  if (bits > 0) {
+    const index = (buffer << (5 - bits)) & 0x1f;
+    output += BASE32_ALPHABET[index];
+  }
+
+  return output;
+};
+
+export interface BuildOtpAuthUriOptions {
+  issuer: string;
+  label: string;
+  secret: string;
+  digits?: number;
+  period?: number;
+}
+
 export interface MfaService {
   verifyTotp(secret: string, token: string): Promise<boolean>;
   findMatchingRecoveryCode(hashedCodes: string[], providedCode: string): Promise<number | null>;
+  generateSecret(byteLength?: number): string;
+  buildOtpAuthUri(options: BuildOtpAuthUriOptions): string;
 }
 
 export class BasicMfaService implements MfaService {
+  generateSecret(byteLength = 20): string {
+    if (!Number.isInteger(byteLength) || byteLength <= 0) {
+      throw new Error("byteLength must be a positive integer");
+    }
+
+    return encodeBase32(randomBytes(byteLength));
+  }
+
+  buildOtpAuthUri({
+    issuer,
+    label,
+    secret,
+    digits = 6,
+    period = 30
+  }: BuildOtpAuthUriOptions): string {
+    if (!issuer || !label || !secret) {
+      throw new Error("issuer, label, and secret are required to build an otpauth URI");
+    }
+
+    const safeIssuer = encodeURIComponent(issuer);
+    const safeLabel = encodeURIComponent(label);
+    const safeSecret = secret.replace(/\s+/g, "");
+
+    return `otpauth://totp/${safeIssuer}:${safeLabel}?secret=${safeSecret}&issuer=${safeIssuer}&digits=${digits}&period=${period}`;
+  }
+
   async verifyTotp(secret: string, token: string): Promise<boolean> {
     const normalizedToken = token.replace(/\s+/g, "");
     if (!/^\d{6,10}$/.test(normalizedToken)) {

@@ -17,6 +17,7 @@ export interface UserProfile {
   displayName: string | null;
   role: string;
   avatar: UserAvatarMetadata | null;
+  mfaEnabled: boolean;
 }
 
 export interface UserProfileResponse {

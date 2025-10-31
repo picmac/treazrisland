@@ -26,6 +26,9 @@ type PrismaMock = {
     findUnique: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
   };
+  mfaSecret: {
+    findFirst: ReturnType<typeof vi.fn>;
+  };
 };
 
 type StorageMock = {
@@ -52,6 +55,9 @@ describe("user profile routes", () => {
       user: {
         findUnique: vi.fn(),
         update: vi.fn(),
+      },
+      mfaSecret: {
+        findFirst: vi.fn(),
       },
     } satisfies PrismaMock;
 
@@ -121,6 +127,7 @@ describe("user profile routes", () => {
       avatarFileSize: null,
       avatarUpdatedAt: null,
     });
+    prisma.mfaSecret.findFirst.mockResolvedValueOnce(null);
 
     const token = app.jwt.sign({ sub: "user_1", role: "USER" });
     const response = await request(app)
@@ -136,6 +143,7 @@ describe("user profile routes", () => {
         displayName: "Pirate",
         role: "USER",
         avatar: null,
+        mfaEnabled: false,
       },
     });
     expect(prisma.user.findUnique).toHaveBeenCalledWith({
@@ -161,6 +169,14 @@ describe("user profile routes", () => {
       url: "https://cdn.example.com/avatar.png",
       expiresAt: new Date("2025-02-01T01:00:00Z"),
     });
+    prisma.mfaSecret.findFirst.mockResolvedValueOnce({
+      id: "secret-1",
+      userId: "user_1",
+      secret: "secret",
+      recoveryCodes: "",
+      confirmedAt: new Date(),
+      disabledAt: null,
+    });
 
     const token = app.jwt.sign({ sub: "user_1", role: "USER" });
     const response = await request(app)
@@ -176,6 +192,7 @@ describe("user profile routes", () => {
       url: "https://cdn.example.com/avatar.png",
       fallbackPath: `/users/me/avatar?v=${updatedAt.getTime()}`,
     });
+    expect(response.body.user.mfaEnabled).toBe(true);
   });
 
   it("updates nickname and display name", async () => {
@@ -201,6 +218,7 @@ describe("user profile routes", () => {
       avatarFileSize: null,
       avatarUpdatedAt: null,
     });
+    prisma.mfaSecret.findFirst.mockResolvedValueOnce(null);
 
     const token = app.jwt.sign({ sub: "user_1", role: "USER" });
     const response = await request(app)
@@ -218,6 +236,7 @@ describe("user profile routes", () => {
       select: expect.any(Object),
     });
     expect(response.body.user.nickname).toBe("captain");
+    expect(response.body.user.mfaEnabled).toBe(false);
     expect(storage.uploadUserAvatar).not.toHaveBeenCalled();
   });
 

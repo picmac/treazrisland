@@ -5,6 +5,12 @@ vi.mock("@/src/lib/api/user", () => ({
   updateUserProfile: vi.fn(),
 }));
 
+vi.mock("@/src/auth/mfa-settings", () => ({
+  MfaSettingsPanel: ({ initialEnabled }: { initialEnabled: boolean }) => (
+    <div data-testid="mfa-panel">{initialEnabled ? "mfa-on" : "mfa-off"}</div>
+  ),
+}));
+
 import type { UserProfile } from "@/src/lib/api/user";
 import { updateUserProfile } from "@/src/lib/api/user";
 import { ApiError } from "@/src/lib/api/client";
@@ -26,6 +32,7 @@ describe("SettingsPageClient", () => {
       signedUrlExpiresAt: null,
       fallbackPath: "/users/me/avatar?v=123",
     },
+    mfaEnabled: false,
   };
 
   it("submits profile changes", async () => {

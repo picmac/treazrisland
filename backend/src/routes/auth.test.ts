@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { createHash } from "node:crypto";
 import type { User, UserInvitation } from "@prisma/client";
 import argon2 from "argon2";
+import type { MfaService } from "../services/mfa/service.js";
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
@@ -15,6 +16,9 @@ process.env.STORAGE_BUCKET_ASSETS = "assets";
 process.env.STORAGE_BUCKET_ROMS = "roms";
 process.env.STORAGE_BUCKET_BIOS = "bios";
 process.env.ROM_UPLOAD_MAX_BYTES = `${1024 * 1024}`;
+process.env.MFA_ISSUER = "TREAZRISLAND";
+process.env.MFA_RECOVERY_CODE_COUNT = "4";
+process.env.MFA_RECOVERY_CODE_LENGTH = "8";
 
 vi.mock("argon2", () => {
   const hashMock = vi.fn().mockResolvedValue("hashed-password");
@@ -41,7 +45,13 @@ type PrismaMock = {
   refreshToken: { create: MockFn; findUnique: MockFn; update: MockFn; updateMany: MockFn };
   passwordResetToken: { create: MockFn; updateMany: MockFn; findUnique: MockFn; update: MockFn };
   loginAudit: { create: MockFn };
-  mfaSecret: { update: MockFn };
+  mfaSecret: {
+    create: MockFn;
+    deleteMany: MockFn;
+    findFirst: MockFn;
+    update: MockFn;
+    updateMany: MockFn;
+  };
   $transaction: MockFn;
 };
 
@@ -53,7 +63,13 @@ const createPrismaMock = (): PrismaMock => {
     refreshToken: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     passwordResetToken: { create: vi.fn(), updateMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     loginAudit: { create: vi.fn() },
-    mfaSecret: { update: vi.fn() },
+    mfaSecret: {
+      create: vi.fn(),
+      deleteMany: vi.fn(),
+      findFirst: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn()
+    },
     $transaction: vi.fn(async (callback: (client: PrismaMock) => Promise<any>) => callback(prisma as PrismaMock))
   } satisfies PrismaMock;
 
@@ -63,6 +79,7 @@ const createPrismaMock = (): PrismaMock => {
 describe("auth routes", () => {
   let app: FastifyInstance;
   let prisma: PrismaMock;
+  let mfaService: MfaService;
 
   beforeAll(async () => {
     ({ buildServer } = await import("../server.js"));
@@ -72,7 +89,14 @@ describe("auth routes", () => {
     prisma = createPrismaMock();
     app = buildServer({ registerPrisma: false });
     app.decorate("prisma", prisma);
+    mfaService = {
+      generateSecret: vi.fn().mockReturnValue("JBSWY3DPEHPK3PXP"),
+      buildOtpAuthUri: vi.fn().mockReturnValue("otpauth://totp/TREAZRISLAND:player?secret=JBSWY3DPEHPK3PXP"),
+      verifyTotp: vi.fn().mockResolvedValue(true),
+      findMatchingRecoveryCode: vi.fn().mockResolvedValue(null)
+    } satisfies MfaService;
     await app.ready();
+    app.mfaService = mfaService;
   });
 
   afterEach(async () => {
@@ -219,6 +243,121 @@ describe("auth routes", () => {
 
     expect(response.statusCode).toBe(400);
     expect(await response.json()).toEqual({ message: "Email does not match invitation" });
+  });
+
+  it("creates an MFA setup bundle", async () => {
+    prisma.user.findUnique.mockResolvedValueOnce({
+      id: "user-setup",
+      email: "player@example.com",
+      nickname: "player"
+    });
+    prisma.mfaSecret.deleteMany.mockResolvedValueOnce({ count: 0 });
+    prisma.mfaSecret.create.mockResolvedValueOnce({ id: "secret-setup" });
+
+    const token = app.jwt.sign({ sub: "user-setup", role: "USER" });
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/mfa/setup",
+      headers: { authorization: `Bearer ${token}` }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = await response.json();
+    expect(body.secretId).toBe("secret-setup");
+    expect(body.secret).toBe("JBSWY3DPEHPK3PXP");
+    expect(body.otpauthUri).toMatch(/^otpauth:\/\/totp\//);
+    expect(Array.isArray(body.recoveryCodes)).toBe(true);
+    expect(body.recoveryCodes).toHaveLength(4);
+
+    expect(prisma.mfaSecret.deleteMany).toHaveBeenCalledWith({
+      where: { userId: "user-setup", confirmedAt: null }
+    });
+    expect(prisma.mfaSecret.create).toHaveBeenCalledWith({
+      data: {
+        userId: "user-setup",
+        secret: "JBSWY3DPEHPK3PXP",
+        recoveryCodes: expect.stringContaining("hashed-password")
+      }
+    });
+    expect(mfaService.buildOtpAuthUri).toHaveBeenCalledWith({
+      issuer: "TREAZRISLAND",
+      label: "player@example.com",
+      secret: "JBSWY3DPEHPK3PXP"
+    });
+  });
+
+  it("confirms MFA setup", async () => {
+    prisma.mfaSecret.findFirst.mockResolvedValueOnce({
+      id: "secret-setup",
+      userId: "user-setup",
+      secret: "JBSWY3DPEHPK3PXP",
+      recoveryCodes: "",
+      confirmedAt: null,
+      disabledAt: null
+    });
+    prisma.mfaSecret.updateMany.mockResolvedValueOnce({ count: 1 });
+    prisma.mfaSecret.update.mockResolvedValueOnce({ id: "secret-setup" });
+
+    const token = app.jwt.sign({ sub: "user-setup", role: "USER" });
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/mfa/confirm",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { secretId: "secret-setup", code: "123456" }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(await response.json()).toEqual({
+      message: "Multi-factor authentication enabled"
+    });
+    expect(mfaService.verifyTotp).toHaveBeenCalledWith("JBSWY3DPEHPK3PXP", "123456");
+    expect(prisma.mfaSecret.updateMany).toHaveBeenCalledWith({
+      where: {
+        userId: "user-setup",
+        disabledAt: null,
+        confirmedAt: { not: null }
+      },
+      data: { disabledAt: expect.any(Date) }
+    });
+    expect(prisma.mfaSecret.update).toHaveBeenCalledWith({
+      where: { id: "secret-setup" },
+      data: expect.objectContaining({ confirmedAt: expect.any(Date) })
+    });
+  });
+
+  it("disables MFA with a valid code", async () => {
+    prisma.mfaSecret.findFirst.mockResolvedValueOnce({
+      id: "secret-active",
+      userId: "user-setup",
+      secret: "JBSWY3DPEHPK3PXP",
+      recoveryCodes: "hashed-one\nhashed-two",
+      confirmedAt: new Date("2025-01-01T00:00:00Z"),
+      disabledAt: null
+    });
+    prisma.mfaSecret.updateMany.mockResolvedValueOnce({ count: 1 });
+    prisma.mfaSecret.deleteMany.mockResolvedValueOnce({ count: 0 });
+
+    const token = app.jwt.sign({ sub: "user-setup", role: "USER" });
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/mfa/disable",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { mfaCode: "123456" }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(await response.json()).toEqual({
+      message: "Multi-factor authentication disabled"
+    });
+    expect(mfaService.verifyTotp).toHaveBeenCalledWith("JBSWY3DPEHPK3PXP", "123456");
+    expect(prisma.mfaSecret.update).not.toHaveBeenCalled();
+    expect(prisma.mfaSecret.updateMany).toHaveBeenCalledWith({
+      where: { userId: "user-setup", disabledAt: null },
+      data: { disabledAt: expect.any(Date) }
+    });
+    expect(prisma.mfaSecret.deleteMany).toHaveBeenCalledWith({
+      where: { userId: "user-setup", confirmedAt: null }
+    });
   });
 
   it("logs in and sets refresh cookie", async () => {
