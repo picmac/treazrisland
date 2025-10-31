@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   useEffect,
   useId,
@@ -35,7 +36,6 @@ export function SettingsPageClient({ initialProfile }: SettingsPageClientProps) 
     displayName: initialProfile.displayName ?? "",
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [removeAvatar, setRemoveAvatar] = useState(false);
   const [status, setStatus] = useState<StatusMessage | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -46,23 +46,52 @@ export function SettingsPageClient({ initialProfile }: SettingsPageClientProps) 
   const displayNameHelpId = `${displayNameFieldId}-help`;
 
   useEffect(() => {
-    setForm({
-      nickname: profile.nickname,
-      displayName: profile.displayName ?? "",
+    startTransition(() => {
+      setProfile((previous) => {
+        if (
+          previous.id === initialProfile.id &&
+          previous.nickname === initialProfile.nickname &&
+          previous.displayName === initialProfile.displayName &&
+          previous.avatar?.url === initialProfile.avatar?.url
+        ) {
+          return previous;
+        }
+        return initialProfile;
+      });
+      setForm((previous) => {
+        const nextFormState = {
+          nickname: initialProfile.nickname,
+          displayName: initialProfile.displayName ?? "",
+        };
+        if (
+          previous.nickname === nextFormState.nickname &&
+          previous.displayName === nextFormState.displayName
+        ) {
+          return previous;
+        }
+        return nextFormState;
+      });
     });
-  }, [profile]);
+  }, [
+    initialProfile,
+    startTransition,
+  ]);
+
+  const previewUrl = useMemo(() => {
+    if (!avatarFile) {
+      return null;
+    }
+    return URL.createObjectURL(avatarFile);
+  }, [avatarFile]);
 
   useEffect(() => {
-    if (!avatarFile) {
-      setPreviewUrl(null);
+    if (!previewUrl) {
       return;
     }
-    const url = URL.createObjectURL(avatarFile);
-    setPreviewUrl(url);
     return () => {
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(previewUrl);
     };
-  }, [avatarFile]);
+  }, [previewUrl]);
 
   const currentAvatarUrl = useMemo(() => {
     if (previewUrl) {
@@ -147,6 +176,10 @@ export function SettingsPageClient({ initialProfile }: SettingsPageClientProps) 
 
         const result = await updateUserProfile(payload);
         setProfile(result.user);
+        setForm({
+          nickname: result.user.nickname,
+          displayName: result.user.displayName ?? "",
+        });
         setAvatarFile(null);
         setRemoveAvatar(false);
         setStatus({
@@ -241,9 +274,12 @@ export function SettingsPageClient({ initialProfile }: SettingsPageClientProps) 
         <div className="grid gap-4 md:grid-cols-[auto,1fr]">
           <div className="flex flex-col items-center gap-3">
             {currentAvatarUrl ? (
-              <img
+              <Image
                 src={currentAvatarUrl}
                 alt="Current avatar"
+                width={128}
+                height={128}
+                unoptimized
                 className="h-32 w-32 rounded-full border-2 border-lagoon object-cover shadow-pixel"
               />
             ) : (

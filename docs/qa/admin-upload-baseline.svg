@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720">
   <rect width="100%" height="100%" fill="#0b101c" />
-  <text x="640" y="100" font-size="36" text-anchor="middle" fill="#ffa07a">ADMIN UPLOAD BASELINE</text>
+  <text x="640" y="100" font-size="36" text-anchor="middle" fill="#ffa07a">ADMIN UPLOAD BASELINE · REFRESHED 2025-02-24</text>
   <rect x="240" y="150" width="800" height="440" fill="#152338" stroke="#ffa07a" stroke-width="4" rx="24" />
   <text x="640" y="200" font-size="24" text-anchor="middle" fill="#ffffff">ROM &amp; BIOS Dropzone</text>
-  <text x="640" y="240" font-size="18" text-anchor="middle" fill="#c0d6ff">Include drop area, Browse Files button, and queue summary.</text>
-  <text x="640" y="280" font-size="18" text-anchor="middle" fill="#c0d6ff">Queue should display at least one pending archive with platform selector.</text>
-  <text x="640" y="320" font-size="18" text-anchor="middle" fill="#c0d6ff">Replace with real screenshot from `/admin/uploads`.</text>
+  <text x="640" y="240" font-size="18" text-anchor="middle" fill="#c0d6ff">Show “Drag archives here or Browse Files” panel with upload progress chips.</text>
+  <text x="640" y="280" font-size="18" text-anchor="middle" fill="#c0d6ff">Queue row example: Mega Man X.zip · SNES · status badge “Processing”.</text>
+  <text x="640" y="320" font-size="18" text-anchor="middle" fill="#c0d6ff">Right rail displays retention banner + “View upload history” PixelButton.</text>
 </svg>

@@ -47,7 +47,7 @@ Keep the following API references handy when debugging login issues or player da
 
 ## 4. Metrics & Health
 
-- Enable `/metrics` by setting `METRICS_ENABLED=true` and `METRICS_TOKEN=<random>`. Scrape from an internal Prometheus instance.
+- Enable `/metrics` by setting `METRICS_ENABLED=true`, `METRICS_TOKEN=<random>`, and `METRICS_ALLOWED_CIDRS` to the Prometheus network CIDRs. Scrape from the bundled Prometheus instance or another internal collector that forwards the bearer token.
 - Health checks:
   - Backend: `GET http://localhost:3001/health`
   - Frontend: `GET http://localhost:3000/api/health` (if exposed)

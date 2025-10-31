@@ -1,6 +1,6 @@
 # QA Baseline Gallery
 
-These placeholders describe the four smoke-test flows. Replace each SVG with a real screenshot or short clip captured from staging before a release.
+These annotated baselines describe the four smoke-test flows (refreshed 2025-02-24). Replace each SVG with a real screenshot or short clip captured from staging before a release.
 
 | Flow           | File                        | Notes                                                              |
 | -------------- | --------------------------- | ------------------------------------------------------------------ |

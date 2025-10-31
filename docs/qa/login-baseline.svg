@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720">
   <rect width="100%" height="100%" fill="#091018" />
-  <text x="640" y="120" font-size="36" text-anchor="middle" fill="#f8d57e">LOGIN BASELINE</text>
+  <text x="640" y="120" font-size="36" text-anchor="middle" fill="#f8d57e">LOGIN BASELINE · REFRESHED 2025-02-24</text>
   <rect x="360" y="180" width="560" height="320" fill="#121f33" stroke="#f8d57e" stroke-width="4" rx="20" />
   <text x="640" y="230" font-size="26" text-anchor="middle" fill="#ffffff">Welcome Back</text>
-  <text x="640" y="270" font-size="18" text-anchor="middle" fill="#c0d6ff">Capture with MFA prompt visible after a failed attempt.</text>
-  <text x="640" y="310" font-size="18" text-anchor="middle" fill="#c0d6ff">Fields: identifier, password, MFA code, recovery code.</text>
-  <text x="640" y="350" font-size="18" text-anchor="middle" fill="#c0d6ff">Replace with real screenshot from `/auth/login`.</text>
+  <text x="640" y="270" font-size="18" text-anchor="middle" fill="#c0d6ff">Capture includes identifier + password inputs with inline validation copy.</text>
+  <text x="640" y="310" font-size="18" text-anchor="middle" fill="#c0d6ff">MFA panel expanded after one failure, showing code + recovery fields and pixel-styled alert.</text>
+  <text x="640" y="350" font-size="18" text-anchor="middle" fill="#c0d6ff">Primary CTA: “Log In”, secondary link: “Forgot password?”. Footer shows build hash.</text>
 </svg>

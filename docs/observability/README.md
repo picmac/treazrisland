@@ -12,14 +12,15 @@ Logs redact `Authorization` headers, cookies, and password fields. Ship them to 
 
 ## Metrics
 
-Enable metrics by setting `METRICS_ENABLED=true` and optionally `METRICS_TOKEN` for bearer authentication. Scrape `/metrics` with Prometheus or any OpenMetrics-compatible collector.
+Enable metrics by setting `METRICS_ENABLED=true`, providing a `METRICS_TOKEN`, and restricting scrapes to trusted networks via `METRICS_ALLOWED_CIDRS`. Scrape `/metrics` with Prometheus or any OpenMetrics-compatible collector; the Docker Compose manifests wire Prometheus to pass the bearer token automatically.
 
-| Metric                                | Type      | Labels                           | Description                                     |
-| ------------------------------------- | --------- | -------------------------------- | ----------------------------------------------- |
+| Metric                                | Type      | Labels                           | Description |
+| ------------------------------------- | --------- | -------------------------------- | ----------- |
 | `treaz_upload_events_total`           | Counter   | `kind`, `status`                 | Counts ROM/BIOS uploads and duplicates/failures |
-| `treaz_enrichment_requests_total`     | Counter   | `status`                         | Tracks enrichment jobs enqueued                 |
-| `treaz_playback_events_total`         | Counter   | `action`, `status`               | Tracks player download/upload interactions      |
-| `treaz_http_request_duration_seconds` | Histogram | `method`, `route`, `status_code` | Backend request latency                         |
+| `treaz_enrichment_requests_total`     | Counter   | `status`                         | Tracks enrichment job lifecycle (scheduled/succeeded/failed) |
+| `treaz_playback_events_total`         | Counter   | `action`, `status`               | Tracks player download/upload interactions |
+| `treaz_http_request_duration_seconds` | Histogram | `method`, `route`, `status_code` | Backend request latency |
+| `treaz_enrichment_queue_depth`        | Gauge     | _none_                           | Current ScreenScraper job backlog |
 
 ## Health Checks
 
