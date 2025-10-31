@@ -356,7 +356,10 @@ async function handleMetricsRequest(
     return reply.status(403).send({ message: "Forbidden" });
   }
 
-  if (hasAllowedCidrs && !isAddressAllowed(request.ip, env.METRICS_ALLOWED_CIDRS)) {
+  if (
+    hasAllowedCidrs &&
+    !isAddressAllowed(request.ip, env.METRICS_ALLOWED_CIDRS)
+  ) {
     return reply.status(403).send({ message: "Forbidden" });
   }
 
