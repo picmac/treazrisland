@@ -71,6 +71,45 @@ services:
     command: npm run dev
     restart: unless-stopped
 
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: treazrisland-nginx
+    depends_on:
+      - frontend
+      - backend
+    environment:
+      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-treazrisland.localhost}
+      LETSENCRYPT_PRIMARY_DOMAIN: ${LETSENCRYPT_PRIMARY_DOMAIN:-treazrisland.localhost}
+      LETSENCRYPT_ADDITIONAL_DOMAINS: ${LETSENCRYPT_ADDITIONAL_DOMAINS:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/treazrisland.conf:/etc/nginx/templates/treazrisland.conf.template:ro
+      - certbot-www:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
+    command: >-
+      /bin/sh -c "envsubst '\$${NGINX_SERVER_NAME} \$${LETSENCRYPT_PRIMARY_DOMAIN}' < /etc/nginx/templates/treazrisland.conf.template > /etc/nginx/conf.d/treazrisland.conf && nginx -g 'daemon off;'"
+    restart: unless-stopped
+
+  certbot:
+    build:
+      context: ./certbot
+    container_name: treazrisland-certbot
+    depends_on:
+      - nginx
+    environment:
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@example.com}
+      LETSENCRYPT_PRIMARY_DOMAIN: ${LETSENCRYPT_PRIMARY_DOMAIN:-treazrisland.localhost}
+      LETSENCRYPT_ADDITIONAL_DOMAINS: ${LETSENCRYPT_ADDITIONAL_DOMAINS:-}
+      LETSENCRYPT_STAGING: ${LETSENCRYPT_STAGING:-true}
+      NGINX_CONTAINER_NAME: ${NGINX_CONTAINER_NAME:-treazrisland-nginx}
+    volumes:
+      - certbot-www:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   minio-data:
@@ -78,3 +117,5 @@ volumes:
   backend-dist:
   frontend-node-modules:
   frontend-next:
+  certbot-www:
+  letsencrypt:
