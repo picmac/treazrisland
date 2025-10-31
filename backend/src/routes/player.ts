@@ -4,13 +4,15 @@ import { createHash, randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import * as PrismaClientPackage from "@prisma/client";
-import { RomBinaryStatus, type PlayState, type Prisma } from "@prisma/client";
+import prisma from "@prisma/client";
+import type { PlayState, Prisma } from "@prisma/client";
 import {
   SUMMARY_ASSET_TYPES,
   assetSummarySelect,
   buildAssetSummary,
 } from "../utils/asset-summary.js";
+import { RomBinaryStatus } from "../utils/prisma-enums.js";
+const PrismaClientPackage = prisma;
 import { env } from "../config/env.js";
 import { safeUnlink } from "../services/storage/storage.js";
 

@@ -37,6 +37,11 @@ describe("onboarding routes", () => {
     refreshToken: {
       create: ReturnType<typeof vi.fn>;
     };
+    setupState: {
+      findUnique: ReturnType<typeof vi.fn>;
+      create: ReturnType<typeof vi.fn>;
+      upsert: ReturnType<typeof vi.fn>;
+    };
   };
 
   beforeEach(async () => {
@@ -47,14 +52,29 @@ describe("onboarding routes", () => {
     prisma = {
       user: {
         count: vi.fn(),
-        create: vi.fn()
+        create: vi.fn(),
       },
       refreshTokenFamily: {
-        create: vi.fn()
+        create: vi.fn(),
       },
       refreshToken: {
-        create: vi.fn()
-      }
+        create: vi.fn(),
+      },
+      setupState: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi
+          .fn()
+          .mockImplementation(async ({ data }) => ({
+            id: data.id,
+            setupComplete: data.setupComplete,
+            steps: data.steps,
+          })),
+        upsert: vi.fn().mockResolvedValue({
+          id: 1,
+          setupComplete: false,
+          steps: {},
+        }),
+      },
     } as unknown as PrismaMock & {
       user: {
         count: ReturnType<typeof vi.fn>;
@@ -65,6 +85,11 @@ describe("onboarding routes", () => {
       };
       refreshToken: {
         create: ReturnType<typeof vi.fn>;
+      };
+      setupState: {
+        findUnique: ReturnType<typeof vi.fn>;
+        create: ReturnType<typeof vi.fn>;
+        upsert: ReturnType<typeof vi.fn>;
       };
     };
 
@@ -86,7 +111,11 @@ describe("onboarding routes", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(await response.json()).toEqual({ needsSetup: true });
+    const body = await response.json();
+    expect(body.needsSetup).toBe(true);
+    expect(body.setupComplete).toBe(false);
+    expect(Array.isArray(body.pendingSteps)).toBe(true);
+    expect(body.steps["first-admin"].status).toBe("PENDING");
   });
 
   it("creates initial admin and issues tokens", async () => {
@@ -157,5 +186,6 @@ describe("onboarding routes", () => {
       })
     );
     expect(response.headers["set-cookie"]).toContain("HttpOnly");
+    expect(prisma.setupState.upsert).toHaveBeenCalled();
   });
 });

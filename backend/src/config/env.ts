@@ -2,8 +2,11 @@ import { config as loadEnv } from "dotenv";
 import { z } from "zod";
 import ms, { StringValue } from "ms";
 import ipaddr from "ipaddr.js";
+import { ensureBootstrapSecrets } from "./bootstrapSecrets.js";
 
 loadEnv();
+
+export const bootstrapSecrets = ensureBootstrapSecrets();
 
 const envSchema = z.object({
   NODE_ENV: z
@@ -40,7 +43,7 @@ const envSchema = z.object({
     .regex(/^\d+$/)
     .default("10")
     .transform(Number),
-  EMAIL_PROVIDER: z.enum(["postmark"]).default("postmark"),
+  EMAIL_PROVIDER: z.enum(["none", "postmark"]).default("none"),
   POSTMARK_SERVER_TOKEN: z
     .string()
     .optional()
@@ -124,11 +127,11 @@ const envSchema = z.object({
         ? true
         : value.toLowerCase() === "true" || value === "1",
     ),
-  STORAGE_BUCKET_ASSETS: z.string().min(1),
-  STORAGE_BUCKET_ROMS: z.string().min(1),
+  STORAGE_BUCKET_ASSETS: z.string().default("assets"),
+  STORAGE_BUCKET_ROMS: z.string().default("roms"),
   STORAGE_BUCKET_BIOS: z
     .string()
-    .optional()
+    .default("bios")
     .transform((value) =>
       value && value.trim().length > 0 ? value.trim() : undefined,
     ),

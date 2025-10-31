@@ -1,6 +1,7 @@
 import fp from "fastify-plugin";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { Role } from "@prisma/client";
+import type { Role as RoleValue } from "@prisma/client";
+import { Role } from "../utils/prisma-enums.js";
 
 export default fp(async (app) => {
   app.decorate(
@@ -16,7 +17,7 @@ export default fp(async (app) => {
 
   app.decorate(
     "requireRole",
-    (role: Role) =>
+    (role: RoleValue) =>
       async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
         await app.authenticate(request, reply);
         const userRole = request.user?.role;

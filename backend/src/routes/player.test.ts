@@ -5,7 +5,11 @@ import { promises as fs } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import type { PrismaClient } from "@prisma/client";
-import { RomAssetSource, RomAssetType, RomBinaryStatus } from "@prisma/client";
+import {
+  RomAssetSource,
+  RomAssetType,
+  RomBinaryStatus,
+} from "../utils/prisma-enums.js";
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";

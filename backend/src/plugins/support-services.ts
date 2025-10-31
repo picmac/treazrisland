@@ -10,6 +10,7 @@ declare module "fastify" {
 }
 
 export default fp(async (app) => {
-  app.decorate("emailService", createEmailService(app.log));
+  const emailSettings = app.settings.get().email;
+  app.decorate("emailService", createEmailService(app.log, emailSettings));
   app.decorate("mfaService", createMfaService());
 });

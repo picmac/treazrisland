@@ -1,5 +1,6 @@
-import { RomAssetType, type RomAsset } from "@prisma/client";
+import type { RomAsset } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
+import { RomAssetType } from "./prisma-enums.js";
 
 export const SUMMARY_ASSET_TYPES: RomAssetType[] = [
   RomAssetType.COVER,

@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
+import prisma from "@prisma/client";
+
+const { Prisma } = prisma;
 
 const favoriteParamsSchema = z.object({
   romId: z.string().trim().min(1, "romId is required")

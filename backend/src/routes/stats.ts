@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { RomBinaryStatus, RomUploadStatus } from "@prisma/client";
+import { RomBinaryStatus, RomUploadStatus } from "../utils/prisma-enums.js";
 
 function createStatsRateLimit(app: FastifyInstance) {
   return app.rateLimit({

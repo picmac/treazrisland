@@ -1,8 +1,8 @@
 import { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { Role } from "@prisma/client";
 import { createHash, randomBytes } from "node:crypto";
 import { env } from "../config/env.js";
+import { Role } from "../utils/prisma-enums.js";
 
 const createInvitationSchema = z.object({
   email: z.string().email().optional(),

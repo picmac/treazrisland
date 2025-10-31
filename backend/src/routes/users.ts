@@ -2,9 +2,12 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import Busboy from "busboy";
 import { PassThrough, Readable } from "node:stream";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
+import prisma from "@prisma/client";
+import type { Prisma as PrismaNamespace } from "@prisma/client";
 import { env } from "../config/env.js";
 import type { AvatarUploadResult } from "../services/storage/storage.js";
+
+const { Prisma } = prisma;
 
 const nicknameSchema = z
   .string()
@@ -65,7 +68,7 @@ const userProfileSelect = {
   avatarUpdatedAt: true,
 } as const;
 
-type SelectedUserProfile = Prisma.UserGetPayload<{
+type SelectedUserProfile = PrismaNamespace.UserGetPayload<{
   select: typeof userProfileSelect;
 }>;
 

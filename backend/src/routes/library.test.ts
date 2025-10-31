@@ -2,7 +2,11 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import type { FastifyInstance } from "fastify";
 import request from "supertest";
 import type { PrismaClient } from "@prisma/client";
-import { RomAssetSource, RomAssetType, EnrichmentProvider } from "@prisma/client";
+import {
+  EnrichmentProvider,
+  RomAssetSource,
+  RomAssetType,
+} from "../utils/prisma-enums.js";
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";

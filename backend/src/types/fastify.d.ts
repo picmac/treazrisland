@@ -5,6 +5,7 @@ import type { StorageService } from "../services/storage/storage.js";
 import type { EmailService } from "../services/email/service.js";
 import type { MfaService } from "../services/mfa/service.js";
 import type { ObservabilityMetrics } from "../plugins/observability.js";
+import type { SettingsManager } from "../plugins/settings.js";
 
 declare module "@fastify/jwt" {
   interface FastifyJWT {
@@ -31,6 +32,7 @@ declare module "fastify" {
     emailService: EmailService;
     mfaService: MfaService;
     metrics: ObservabilityMetrics;
+    settings: SettingsManager;
   }
 
   interface FastifyRequest {

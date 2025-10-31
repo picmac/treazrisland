@@ -2,15 +2,13 @@ import { createHash } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import type { FastifyBaseLogger } from "fastify";
 import { z } from "zod";
+import type { Prisma, PrismaClient, ScreenScraperSettings } from "@prisma/client";
 import {
   EnrichmentProvider,
   EnrichmentStatus,
-  Prisma,
-  PrismaClient,
   RomAssetSource,
   RomAssetType,
-  type ScreenScraperSettings
-} from "@prisma/client";
+} from "../../utils/prisma-enums.js";
 import { ScreenScraperConfig } from "../../config/screenscraper.js";
 import { ScreenScraperQueue } from "./queue.js";
 
