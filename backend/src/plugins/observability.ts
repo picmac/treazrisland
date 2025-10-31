@@ -2,7 +2,7 @@ import fp from "fastify-plugin";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { monitorEventLoopDelay } from "node:perf_hooks";
 import ipaddr from "ipaddr.js";
-import { env } from "../config/env.js";
+import type { MetricsSettings } from "./settings.js";
 
 type LabelSet = Record<string, string>;
 
@@ -284,8 +284,8 @@ class GaugeMetric implements MetricsGauge {
   }
 }
 
-function createMetrics(): ObservabilityMetrics {
-  if (!env.METRICS_ENABLED) {
+function createMetrics(settings: MetricsSettings): ObservabilityMetrics {
+  if (!settings.enabled) {
     return {
       enabled: false,
       uploads: noopCounter,
@@ -438,30 +438,28 @@ async function handleMetricsRequest(
   request: FastifyRequest,
   reply: FastifyReply,
   metrics: ObservabilityMetrics,
+  settings: MetricsSettings,
 ) {
   if (!metrics.enabled) {
     return reply.status(404).send({ message: "Metrics endpoint disabled" });
   }
 
-  const hasAllowedCidrs = env.METRICS_ALLOWED_CIDRS.length > 0;
-  const tokenConfigured = Boolean(env.METRICS_TOKEN);
+  const hasAllowedCidrs = settings.allowedCidrs.length > 0;
+  const tokenConfigured = Boolean(settings.token);
 
   if (!hasAllowedCidrs && !tokenConfigured) {
     return reply.status(403).send({ message: "Forbidden" });
   }
 
-  if (
-    hasAllowedCidrs &&
-    !isAddressAllowed(request.ip, env.METRICS_ALLOWED_CIDRS)
-  ) {
+  if (hasAllowedCidrs && !isAddressAllowed(request.ip, settings.allowedCidrs)) {
     return reply.status(403).send({ message: "Forbidden" });
   }
 
-  if (env.METRICS_TOKEN) {
+  if (settings.token) {
     const authHeader = request.headers["authorization"];
     if (
       typeof authHeader !== "string" ||
-      authHeader !== `Bearer ${env.METRICS_TOKEN}`
+      authHeader !== `Bearer ${settings.token}`
     ) {
       return reply.status(401).send({ message: "Unauthorized" });
     }
@@ -472,7 +470,8 @@ async function handleMetricsRequest(
 }
 
 export default fp(async (app: FastifyInstance) => {
-  const metrics = createMetrics();
+  const metricsSettings = app.settings.get().metrics;
+  const metrics = createMetrics(metricsSettings);
   app.decorate("metrics", metrics);
 
   if (metrics.enabled) {
@@ -562,6 +561,7 @@ export default fp(async (app: FastifyInstance) => {
   }
 
   app.get("/metrics", async (request, reply) => {
-    await handleMetricsRequest(request, reply, metrics);
+    const currentSettings = app.settings.get().metrics;
+    await handleMetricsRequest(request, reply, metrics, currentSettings);
   });
 });

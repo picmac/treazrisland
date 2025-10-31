@@ -1,5 +1,6 @@
 import type { FastifyBaseLogger } from "fastify";
 import { ServerClient } from "postmark";
+import type { EmailSettings } from "../../plugins/settings.js";
 import { env } from "../../config/env.js";
 
 export interface PasswordResetPayload {
@@ -158,18 +159,51 @@ class PostmarkEmailService implements EmailService {
   }
 }
 
-export const createEmailService = (logger: FastifyBaseLogger): EmailService => {
-  if (env.EMAIL_PROVIDER !== "postmark") {
-    throw new Error(`Unsupported email provider: ${env.EMAIL_PROVIDER}`);
+const resolveEmailSettings = (settings?: EmailSettings): EmailSettings => {
+  if (settings) {
+    return settings;
   }
 
-  const client = new ServerClient(env.POSTMARK_SERVER_TOKEN);
+  if (env.EMAIL_PROVIDER === "postmark") {
+    return {
+      provider: "postmark",
+      postmark: {
+        serverToken: env.POSTMARK_SERVER_TOKEN!,
+        fromEmail: env.POSTMARK_FROM_EMAIL!,
+        messageStream: env.POSTMARK_MESSAGE_STREAM ?? undefined,
+      },
+    };
+  }
+
+  return { provider: "none" };
+};
+
+export const createEmailService = (
+  logger: FastifyBaseLogger,
+  settings?: EmailSettings,
+): EmailService => {
+  const effectiveSettings = resolveEmailSettings(settings);
+
+  if (
+    effectiveSettings.provider !== "postmark" ||
+    !effectiveSettings.postmark
+  ) {
+    return {
+      async sendPasswordReset() {
+        throw new EmailDeliveryError(
+          "Email provider is not configured for password resets",
+        );
+      },
+    };
+  }
+
+  const client = new ServerClient(effectiveSettings.postmark.serverToken);
   const serviceLogger = logger.child({ service: "email", provider: "postmark" });
 
   return new PostmarkEmailService(
     client,
     serviceLogger,
-    env.POSTMARK_FROM_EMAIL,
-    env.POSTMARK_MESSAGE_STREAM
+    effectiveSettings.postmark.fromEmail,
+    effectiveSettings.postmark.messageStream,
   );
 };

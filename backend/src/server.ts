@@ -4,7 +4,7 @@ import rateLimit from "@fastify/rate-limit";
 import sensible from "@fastify/sensible";
 import underPressure from "@fastify/under-pressure";
 import jwt from "@fastify/jwt";
-import { env } from "./config/env.js";
+import { env, bootstrapSecrets } from "./config/env.js";
 import prismaPlugin from "./plugins/prisma.js";
 import authPlugin from "./plugins/auth.js";
 import storagePlugin from "./plugins/storage.js";
@@ -23,6 +23,11 @@ import { registerStatsRoutes } from "./routes/stats.js";
 import { registerUserRoutes } from "./routes/users.js";
 import supportServices from "./plugins/support-services.js";
 import observabilityPlugin from "./plugins/observability.js";
+import settingsPlugin from "./plugins/settings.js";
+import {
+  fetchSetupState,
+  ONBOARDING_STEP_KEYS,
+} from "./services/setup/state.js";
 
 type BuildServerOptions = {
   registerPrisma?: boolean;
@@ -90,6 +95,7 @@ export const buildServer = (
     },
   });
 
+  app.register(settingsPlugin);
   app.register(observabilityPlugin);
   app.register(authPlugin);
   app.register(storagePlugin);
@@ -97,6 +103,9 @@ export const buildServer = (
 
   if (registerPrisma) {
     app.register(prismaPlugin);
+  }
+
+  if (registerPrisma) {
     app.register(screenScraperPlugin);
   }
 
@@ -118,6 +127,33 @@ export const buildServer = (
   });
 
   app.get("/health", async () => ({ status: "ok" }));
+
+  app.get("/health/setup", async () => {
+    const secrets = {
+      configRoot: bootstrapSecrets.configRoot,
+      secretsFile: bootstrapSecrets.secretsFile,
+      generated: bootstrapSecrets.didGenerate,
+    };
+
+    if (!registerPrisma || !app.hasDecorator("prisma")) {
+      return {
+        secrets,
+        setupComplete: false,
+        pendingSteps: ONBOARDING_STEP_KEYS,
+      };
+    }
+
+    const state = await fetchSetupState(app.prisma);
+    const pending = Object.entries(state.steps)
+      .filter(([, step]) => step.status === "PENDING")
+      .map(([key]) => key);
+
+    return {
+      secrets,
+      setupComplete: state.setupComplete,
+      pendingSteps: pending,
+    };
+  });
 
   return app;
 };

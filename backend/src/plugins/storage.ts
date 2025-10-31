@@ -1,27 +1,27 @@
 import fp from "fastify-plugin";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { env } from "../config/env.js";
 import { StorageService } from "../services/storage/storage.js";
 
 export default fp(async (app) => {
-  const driver = env.STORAGE_DRIVER;
+  const storageSettings = app.settings.get().storage;
+  const driver = storageSettings.driver;
   const common = {
-    assetBucket: env.STORAGE_BUCKET_ASSETS,
-    romBucket: env.STORAGE_BUCKET_ROMS,
-    biosBucket: env.STORAGE_BUCKET_BIOS,
-    forcePathStyle: env.STORAGE_FORCE_PATH_STYLE
+    assetBucket: storageSettings.bucketAssets,
+    romBucket: storageSettings.bucketRoms,
+    biosBucket: storageSettings.bucketBios,
+    forcePathStyle: storageSettings.s3?.forcePathStyle ?? true
   } as const;
 
   if (driver === "filesystem") {
-    const localRoot = env.STORAGE_LOCAL_ROOT ?? join(process.cwd(), "var", "storage");
+    const localRoot = storageSettings.localRoot ?? join(process.cwd(), "var", "storage");
     await mkdir(localRoot, { recursive: true });
 
     const storage = new StorageService({
       ...common,
       driver: "filesystem",
       localRoot,
-      signedUrlTTLSeconds: env.STORAGE_SIGNED_URL_TTL_SECONDS
+      signedUrlTTLSeconds: storageSettings.signedUrlTTLSeconds
     });
 
     if (app.hasDecorator("storage")) {
@@ -35,14 +35,20 @@ export default fp(async (app) => {
     return;
   }
 
+  const s3 = storageSettings.s3;
+  if (!s3) {
+    throw new Error("S3 storage selected but configuration is missing");
+  }
+
   const storage = new StorageService({
     ...common,
     driver: "s3",
-    endpoint: env.STORAGE_ENDPOINT!,
-    region: env.STORAGE_REGION!,
-    accessKey: env.STORAGE_ACCESS_KEY!,
-    secretKey: env.STORAGE_SECRET_KEY!,
-    signedUrlTTLSeconds: env.STORAGE_SIGNED_URL_TTL_SECONDS
+    endpoint: s3.endpoint,
+    region: s3.region,
+    accessKey: s3.accessKey,
+    secretKey: s3.secretKey,
+    forcePathStyle: s3.forcePathStyle ?? true,
+    signedUrlTTLSeconds: storageSettings.signedUrlTTLSeconds
   });
 
   if (app.hasDecorator("storage")) {

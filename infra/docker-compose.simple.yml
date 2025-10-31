@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: treazrisland
+      POSTGRES_USER: treazrisland
+      POSTGRES_PASSWORD: treazrisland
+    volumes:
+      - treaz-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "treazrisland", "-U", "treazrisland"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/treazrisland/backend:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://treazrisland:treazrisland@postgres:5432/treazrisland?schema=public
+      TREAZ_CONFIG_ROOT: /var/treaz/config
+    volumes:
+      - treaz-config:/var/treaz/config
+      - treaz-storage:/var/treaz/storage
+    ports:
+      - "3001:3001"
+
+  frontend:
+    image: ghcr.io/treazrisland/frontend:latest
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://backend:3001
+    ports:
+      - "3000:3000"
+
+  minio:
+    image: minio/minio:RELEASE.2024-05-28T17-19-04Z
+    command: server /data
+    restart: unless-stopped
+    profiles: [object-storage]
+    environment:
+      MINIO_ROOT_USER: treaz-admin
+      MINIO_ROOT_PASSWORD: treaz-secret
+    volumes:
+      - treaz-objects:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+volumes:
+  treaz-postgres:
+  treaz-config:
+  treaz-storage:
+  treaz-objects:

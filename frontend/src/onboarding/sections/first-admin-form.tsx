@@ -1,6 +1,5 @@
 'use client';
 
-import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import type { ChangeEvent, FormEvent } from "react";
 import { useState, useTransition } from "react";
@@ -24,7 +23,6 @@ export function FirstAdminForm() {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
-  const playRoute: Route = "/play";
   const { setSession } = useSession();
 
   const handleChange = (field: keyof FormState) => (event: ChangeEvent<HTMLInputElement>) => {
@@ -51,7 +49,6 @@ export function FirstAdminForm() {
           accessToken: payload.accessToken,
           refreshExpiresAt: payload.refreshExpiresAt
         });
-        router.push(playRoute);
         router.refresh();
       } catch (err) {
         if (err instanceof ApiError) {

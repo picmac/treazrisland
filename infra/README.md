@@ -19,6 +19,20 @@ Home for Docker Compose definitions, deployment manifests, and helper scripts th
 
 All services live in [`docker-compose.yml`](./docker-compose.yml). Production overrides are stored in [`docker-compose.prod.yml`](./docker-compose.prod.yml).
 
+## Minimal Docker Hub stack
+
+Operators who just want the core experience can use [`docker-compose.simple.yml`](./docker-compose.simple.yml). It launches the
+prebuilt backend and frontend images along with PostgreSQL, mounting writable volumes for configuration secrets and library
+storage. Secrets such as `JWT_SECRET` and the MFA encryption key are generated automatically on first boot and stored under the
+`treaz-config` volume.
+
+```bash
+docker compose -f infra/docker-compose.simple.yml up -d
+```
+
+The file also includes an optional MinIO service (`--profile object-storage`) when you prefer S3-compatible buckets over the
+default filesystem storage.
+
 ## Configuration files
 
 Each application consumes a package-scoped environment template:

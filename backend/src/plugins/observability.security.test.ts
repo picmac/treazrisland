@@ -91,6 +91,8 @@ describe("/metrics endpoint hardening", () => {
       env.METRICS_ALLOWED_CIDRS.splice(0, env.METRICS_ALLOWED_CIDRS.length);
       env.METRICS_TOKEN = undefined;
 
+      await app.settings.reload();
+
       const response = await app.inject({
         method: "GET",
         url: "/metrics",
@@ -106,6 +108,8 @@ describe("/metrics endpoint hardening", () => {
         ...originalAllowedCidrs,
       );
       env.METRICS_TOKEN = originalToken;
+
+      await app.settings.reload();
     }
   });
 });
