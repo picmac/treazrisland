@@ -40,14 +40,19 @@ export default fp(async (app) => {
     throw new Error("S3 storage selected but configuration is missing");
   }
 
+  const { endpoint, region, accessKey, secretKey, forcePathStyle } = s3;
+  if (!endpoint || !region || !accessKey || !secretKey) {
+    throw new Error("S3 storage configuration is incomplete");
+  }
+
   const storage = new StorageService({
     ...common,
     driver: "s3",
-    endpoint: s3.endpoint,
-    region: s3.region,
-    accessKey: s3.accessKey,
-    secretKey: s3.secretKey,
-    forcePathStyle: s3.forcePathStyle ?? true,
+    endpoint,
+    region,
+    accessKey,
+    secretKey,
+    forcePathStyle: forcePathStyle ?? true,
     signedUrlTTLSeconds: storageSettings.signedUrlTTLSeconds
   });
 

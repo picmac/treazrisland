@@ -2,7 +2,9 @@ import type { RomAsset } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import { RomAssetType } from "./prisma-enums.js";
 
-export const SUMMARY_ASSET_TYPES: RomAssetType[] = [
+type RomAssetTypeValue = (typeof RomAssetType)[keyof typeof RomAssetType];
+
+export const SUMMARY_ASSET_TYPES: RomAssetTypeValue[] = [
   RomAssetType.COVER,
   RomAssetType.SCREENSHOT,
   RomAssetType.VIDEO,

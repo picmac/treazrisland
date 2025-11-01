@@ -1,9 +1,10 @@
 import fp from "fastify-plugin";
 import { PrismaClient } from "@prisma/client";
+import type { ExtendedPrismaClient } from "../types/prisma-extensions.js";
 
 declare module "fastify" {
   interface FastifyInstance {
-    prisma: PrismaClient;
+    prisma: ExtendedPrismaClient;
   }
 }
 
@@ -54,7 +55,7 @@ export default fp(async (app) => {
     },
   });
 
-  app.decorate("prisma", prisma as PrismaClient);
+  app.decorate("prisma", prisma as ExtendedPrismaClient);
 
   app.addHook("onClose", async () => {
     await basePrisma.$disconnect();

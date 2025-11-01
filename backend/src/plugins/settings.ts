@@ -3,7 +3,7 @@ import fp from "fastify-plugin";
 import { z } from "zod";
 import { env } from "../config/env.js";
 import type { FastifyInstance } from "fastify";
-import type { PrismaClient } from "@prisma/client";
+import type { ExtendedPrismaClient } from "../types/prisma-extensions.js";
 
 export const systemProfileSchema = z.object({
   instanceName: z.string().min(1),
@@ -158,7 +158,13 @@ const defaultSettings = (): ResolvedSystemSettings => ({
   personalization: {},
 });
 
-type SettingsUpdatePayload = Partial<ResolvedSystemSettings>;
+type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends Record<string, unknown>
+    ? DeepPartial<T[K]>
+    : T[K];
+};
+
+type SettingsUpdatePayload = DeepPartial<ResolvedSystemSettings>;
 
 type SettingKey =
   | "system.profile"
@@ -253,11 +259,20 @@ const applyOverrides = (
 const settingsPlugin = fp(async (app: FastifyInstance) => {
   let current = defaultSettings();
   const getPrisma = () =>
-    (app as FastifyInstance & { prisma?: PrismaClient }).prisma;
+    (app as FastifyInstance & { prisma?: Partial<ExtendedPrismaClient> }).prisma;
+
   const hasSystemSettingModel = (
-    client: PrismaClient | undefined,
-  ): client is PrismaClient & { systemSetting: PrismaClient["systemSetting"] } =>
-    Boolean(client && "systemSetting" in client);
+    client: Partial<ExtendedPrismaClient> | undefined,
+  ): client is ExtendedPrismaClient => {
+    const delegate = client?.systemSetting;
+    if (!delegate) {
+      return false;
+    }
+    return (
+      typeof delegate.findMany === "function" &&
+      typeof delegate.upsert === "function"
+    );
+  };
 
   const load = async () => {
     const prisma = getPrisma();
@@ -315,6 +330,11 @@ const settingsPlugin = fp(async (app: FastifyInstance) => {
     payload: SettingsUpdatePayload,
     actorId?: string,
   ): Promise<void> => {
+    const prisma = getPrisma();
+    if (!hasSystemSettingModel(prisma)) {
+      throw new Error("Prisma client not available for saving settings");
+    }
+
     const writes: Promise<unknown>[] = [];
 
     for (const [property, value] of Object.entries(payload) as [
@@ -332,11 +352,6 @@ const settingsPlugin = fp(async (app: FastifyInstance) => {
       }
       const schema = schemaByKey[key];
       const parsed = schema.parse(value);
-      const prisma = getPrisma();
-      if (!hasSystemSettingModel(prisma)) {
-        throw new Error("Settings persistence is unavailable without Prisma");
-      }
-
       writes.push(
         prisma.systemSetting.upsert({
           where: { key },

@@ -8,6 +8,9 @@ import {
 } from "../utils/asset-summary.js";
 import { EnrichmentProvider, RomAssetType } from "../utils/prisma-enums.js";
 
+type RomAssetTypeValue = (typeof RomAssetType)[keyof typeof RomAssetType];
+const ROM_ASSET_TYPE_VALUES = Object.values(RomAssetType) as string[];
+
 const metadataSelect = {
   id: true,
   source: true,
@@ -148,8 +151,8 @@ const listRomsQuerySchema = z.object({
       }
       const normalized = value
         .map((candidate) => candidate.toUpperCase())
-        .filter((candidate): candidate is RomAssetType =>
-          (Object.values(RomAssetType) as string[]).includes(candidate)
+        .filter((candidate): candidate is RomAssetTypeValue =>
+          ROM_ASSET_TYPE_VALUES.includes(candidate)
         );
       return normalized.length > 0 ? normalized : undefined;
     })
@@ -175,8 +178,8 @@ const listRomAssetsQuerySchema = z.object({
       }
       const valid = value
         .map((candidate) => candidate.toUpperCase())
-        .filter((candidate): candidate is RomAssetType =>
-          (Object.values(RomAssetType) as string[]).includes(candidate)
+        .filter((candidate): candidate is RomAssetTypeValue =>
+          ROM_ASSET_TYPE_VALUES.includes(candidate)
         );
       return valid.length > 0 ? valid : undefined;
     }),

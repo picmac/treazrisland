@@ -6,6 +6,8 @@ import prisma from "@prisma/client";
 import type { Prisma as PrismaNamespace } from "@prisma/client";
 import { LoginAuditEvent } from "../utils/prisma-enums.js";
 
+type LoginAuditEventValue = (typeof LoginAuditEvent)[keyof typeof LoginAuditEvent];
+
 const { Prisma } = prisma;
 import {
   issueSessionTokens,
@@ -83,7 +85,12 @@ const mfaDisableSchema = z
 const recordLoginAudit = async (
   app: FastifyInstance,
   request: FastifyRequest,
-  data: { userId?: string; emailAttempted?: string; event: LoginAuditEvent; reason?: string }
+  data: {
+    userId?: string;
+    emailAttempted?: string;
+    event: LoginAuditEventValue;
+    reason?: string;
+  }
 ) => {
   try {
     await app.prisma.loginAudit.create({
