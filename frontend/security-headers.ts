@@ -1,5 +1,3 @@
-import { URL } from "node:url";
-
 export type ContentSecurityPolicyOptions = {
   nonce?: string;
   mediaCdn?: string | null;
