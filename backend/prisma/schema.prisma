@@ -98,6 +98,7 @@ model User {
 model UserInvitation {
   id          String   @id @default(cuid())
   tokenHash   String   @unique
+  tokenDigest String
   role        Role     @default(USER)
   email       String?
   expiresAt   DateTime

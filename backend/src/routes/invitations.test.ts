@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import type { PrismaClient, Role, UserInvitation } from "@prisma/client";
+import argon2 from "argon2";
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
@@ -99,6 +100,7 @@ describe("invitation routes", () => {
       return {
         id: "invite_1",
         tokenHash: data.tokenHash,
+        tokenDigest: data.tokenDigest,
         role: data.role,
         email: data.email,
         expiresAt: data.expiresAt,
@@ -127,12 +129,15 @@ describe("invitation routes", () => {
     expect(expiresAt).toBeGreaterThan(before);
     expect(expiresAt - before).toBeLessThanOrEqual(12 * 60 * 60 * 1000 + 1000);
 
+    expect(argon2Mock.hash).toHaveBeenCalled();
+
     expect(prisma.userInvitation.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           email: "test@example.com",
           role: "USER",
-          createdById: "admin-1"
+          createdById: "admin-1",
+          tokenDigest: "argon2-digest"
         })
       })
     );
@@ -192,3 +197,14 @@ describe("invitation routes", () => {
     expect(response.statusCode).toBe(403);
   });
 });
+vi.mock("argon2", () => {
+  const hashMock = vi.fn().mockResolvedValue("argon2-digest");
+  return {
+    __esModule: true,
+    default: {
+      hash: hashMock
+    }
+  };
+});
+
+const argon2Mock = vi.mocked(argon2, true);

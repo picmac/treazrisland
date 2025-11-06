@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       supertest: resolve(__dirname, "src/test/supertestShim.ts"),
+      "supertest-real": resolve(__dirname, "node_modules/supertest/index.js"),
       postmark: resolve(__dirname, "src/test/postmarkStub.ts")
     }
   },

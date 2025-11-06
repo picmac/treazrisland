@@ -5,6 +5,7 @@ import argon2 from "argon2";
 import prisma from "@prisma/client";
 import type { Prisma as PrismaNamespace } from "@prisma/client";
 import { LoginAuditEvent } from "../utils/prisma-enums.js";
+import { passwordSchema } from "../utils/passwordPolicy.js";
 
 type LoginAuditEventValue = (typeof LoginAuditEvent)[keyof typeof LoginAuditEvent];
 
@@ -27,12 +28,6 @@ import {
 const invitationTokenSchema = z.object({
   token: z.string().min(1)
 });
-
-const passwordSchema = z
-  .string()
-  .min(8)
-  .regex(/[A-Z]/, "Password must include an uppercase letter")
-  .regex(/[0-9]/, "Password must include a digit");
 
 const signupSchema = z.object({
   token: z.string().min(1),
@@ -156,6 +151,23 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       return reply.status(404).send({ message: "Invitation not found or expired" });
     }
 
+    if (!invitation.tokenDigest?.startsWith("$argon2")) {
+      request.log.warn({ invitationId: invitation.id }, "Invitation missing argon2 digest");
+      return reply.status(404).send({ message: "Invitation not found or expired" });
+    }
+
+    let tokenValid = false;
+    try {
+      tokenValid = await argon2.verify(invitation.tokenDigest, token);
+    } catch (error) {
+      request.log.error({ err: error, invitationId: invitation.id }, "Failed to verify invitation token");
+      return reply.status(500).send({ message: "Unable to verify invitation token" });
+    }
+
+    if (!tokenValid) {
+      return reply.status(404).send({ message: "Invitation not found or expired" });
+    }
+
     return reply.send({
       invitation: {
         role: invitation.role,
@@ -164,7 +176,17 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post("/auth/signup", async (request, reply) => {
+  app.post(
+    "/auth/signup",
+    {
+      config: {
+        rateLimit: {
+          max: env.RATE_LIMIT_AUTH_POINTS,
+          timeWindow: env.RATE_LIMIT_AUTH_DURATION * 1000
+        }
+      }
+    },
+    async (request, reply) => {
     const parsed = signupSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -183,6 +205,23 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         });
 
         if (!invitation || invitation.redeemedAt || invitation.expiresAt <= new Date()) {
+          throw new Error("INVALID_INVITATION");
+        }
+
+        if (!invitation.tokenDigest?.startsWith("$argon2")) {
+          request.log.warn({ invitationId: invitation.id }, "Invitation missing argon2 digest during signup");
+          throw new Error("INVALID_INVITATION");
+        }
+
+        let tokenValid = false;
+        try {
+          tokenValid = await argon2.verify(invitation.tokenDigest, token);
+        } catch (error) {
+          request.log.error({ err: error, invitationId: invitation.id }, "Failed to verify invitation during signup");
+          throw new Error("TOKEN_VERIFY_FAILED");
+        }
+
+        if (!tokenValid) {
           throw new Error("INVALID_INVITATION");
         }
 
@@ -254,6 +293,8 @@ export async function registerAuthRoutes(app: FastifyInstance) {
             return reply.status(400).send({ message: "Email is required to redeem this invitation" });
           case "EMAIL_MISMATCH":
             return reply.status(400).send({ message: "Email does not match invitation" });
+          case "TOKEN_VERIFY_FAILED":
+            return reply.status(500).send({ message: "Unable to verify invitation token" });
           default:
             break;
         }
@@ -705,66 +746,88 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     }
   );
 
-  app.post("/auth/refresh", async (request, reply) => {
-    const refreshToken = readRefreshTokenFromRequest(request);
-    if (!refreshToken) {
-      return reply.status(401).send({ message: "Refresh token missing" });
-    }
-
-    try {
-      const result = await rotateRefreshToken(app, refreshToken);
-      setRefreshCookie(reply, result.refreshToken, result.refreshExpiresAt);
-
-      return reply.send({
-        user: result.user,
-        accessToken: result.accessToken,
-        refreshExpiresAt: result.refreshExpiresAt.toISOString()
-      });
-    } catch (error) {
-      if (error instanceof RefreshTokenError) {
-        clearRefreshCookie(reply);
-        return reply.status(401).send({ message: "Refresh token invalid" });
+  app.post(
+    "/auth/refresh",
+    {
+      config: {
+        rateLimit: {
+          max: env.RATE_LIMIT_AUTH_POINTS,
+          timeWindow: env.RATE_LIMIT_AUTH_DURATION * 1000
+        }
+      }
+    },
+    async (request, reply) => {
+      const refreshToken = readRefreshTokenFromRequest(request);
+      if (!refreshToken) {
+        return reply.status(401).send({ message: "Refresh token missing" });
       }
 
-      request.log.error({ err: error }, "Unexpected error while rotating refresh token");
-      return reply.status(500).send({ message: "Unable to refresh session" });
-    }
-  });
+      try {
+        const result = await rotateRefreshToken(app, refreshToken);
+        setRefreshCookie(reply, result.refreshToken, result.refreshExpiresAt);
 
-  app.post("/auth/logout", async (request, reply) => {
-    const refreshToken = readRefreshTokenFromRequest(request);
-    clearRefreshCookie(reply);
-
-    if (!refreshToken) {
-      return reply.status(204).send();
-    }
-
-    try {
-      const hashed = hashToken(refreshToken);
-      const tokenRecord = await app.prisma.refreshToken.findUnique({
-        where: { tokenHash: hashed },
-        select: {
-          id: true,
-          familyId: true,
-          userId: true
+        return reply.send({
+          user: result.user,
+          accessToken: result.accessToken,
+          refreshExpiresAt: result.refreshExpiresAt.toISOString()
+        });
+      } catch (error) {
+        if (error instanceof RefreshTokenError) {
+          clearRefreshCookie(reply);
+          return reply.status(401).send({ message: "Refresh token invalid" });
         }
-      });
 
-      if (!tokenRecord) {
+        request.log.error({ err: error }, "Unexpected error while rotating refresh token");
+        return reply.status(500).send({ message: "Unable to refresh session" });
+      }
+    }
+  );
+
+  app.post(
+    "/auth/logout",
+    {
+      config: {
+        rateLimit: {
+          max: env.RATE_LIMIT_AUTH_POINTS,
+          timeWindow: env.RATE_LIMIT_AUTH_DURATION * 1000
+        }
+      }
+    },
+    async (request, reply) => {
+      const refreshToken = readRefreshTokenFromRequest(request);
+      clearRefreshCookie(reply);
+
+      if (!refreshToken) {
         return reply.status(204).send();
       }
 
-      await revokeRefreshFamily(app, tokenRecord.familyId, "logout");
-      await recordLoginAudit(app, request, {
-        userId: tokenRecord.userId,
-        event: LoginAuditEvent.LOGOUT
-      });
-    } catch (error) {
-      request.log.error({ err: error }, "Failed to revoke refresh family on logout");
-    }
+      try {
+        const hashed = hashToken(refreshToken);
+        const tokenRecord = await app.prisma.refreshToken.findUnique({
+          where: { tokenHash: hashed },
+          select: {
+            id: true,
+            familyId: true,
+            userId: true
+          }
+        });
 
-    return reply.status(204).send();
-  });
+        if (!tokenRecord) {
+          return reply.status(204).send();
+        }
+
+        await revokeRefreshFamily(app, tokenRecord.familyId, "logout");
+        await recordLoginAudit(app, request, {
+          userId: tokenRecord.userId,
+          event: LoginAuditEvent.LOGOUT
+        });
+      } catch (error) {
+        request.log.error({ err: error }, "Failed to revoke refresh family on logout");
+      }
+
+      return reply.status(204).send();
+    }
+  );
 
   app.post("/auth/password/reset/request", async (request, reply) => {
     const parsed = passwordResetRequestSchema.safeParse(request.body);

@@ -3,9 +3,13 @@ import request from "supertest";
 import type { FastifyInstance } from "fastify";
 import type { Prisma } from "@prisma/client";
 import prisma from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { Readable } from "node:stream";
 
 const { Prisma: PrismaNamespace } = prisma;
+
+(PrismaNamespace as unknown as { PrismaClientKnownRequestError: typeof PrismaClientKnownRequestError }).PrismaClientKnownRequestError =
+  PrismaClientKnownRequestError;
 
 function createPrismaKnownRequestError(
   code: string,

@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import type { User, UserInvitation } from "@prisma/client";
 import argon2 from "argon2";
 import type { MfaService } from "../services/mfa/service.js";
+import { createPrismaMock, type PrismaMock } from "../test/prismaMock.js";
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
@@ -36,46 +37,6 @@ vi.mock("argon2", () => {
 const argon2Mock = vi.mocked(argon2, true);
 
 let buildServer: typeof import("../server.js").buildServer;
-
-type MockFn = ReturnType<typeof vi.fn>;
-
-type PrismaMock = {
-  userInvitation: { findUnique: MockFn; update: MockFn; create: MockFn };
-  user: { create: MockFn; findFirst: MockFn; findUnique: MockFn; update: MockFn };
-  refreshTokenFamily: { create: MockFn; findMany: MockFn; updateMany: MockFn };
-  refreshToken: { create: MockFn; findUnique: MockFn; update: MockFn; updateMany: MockFn };
-  passwordResetToken: { create: MockFn; updateMany: MockFn; findUnique: MockFn; update: MockFn };
-  loginAudit: { create: MockFn };
-  mfaSecret: {
-    create: MockFn;
-    deleteMany: MockFn;
-    findFirst: MockFn;
-    update: MockFn;
-    updateMany: MockFn;
-  };
-  $transaction: MockFn;
-};
-
-const createPrismaMock = (): PrismaMock => {
-  const prisma = {
-    userInvitation: { findUnique: vi.fn(), update: vi.fn(), create: vi.fn() },
-    user: { create: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
-    refreshTokenFamily: { create: vi.fn(), findMany: vi.fn(), updateMany: vi.fn() },
-    refreshToken: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
-    passwordResetToken: { create: vi.fn(), updateMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
-    loginAudit: { create: vi.fn() },
-    mfaSecret: {
-      create: vi.fn(),
-      deleteMany: vi.fn(),
-      findFirst: vi.fn(),
-      update: vi.fn(),
-      updateMany: vi.fn()
-    },
-    $transaction: vi.fn(async (callback: (client: PrismaMock) => Promise<any>) => callback(prisma as PrismaMock))
-  } satisfies PrismaMock;
-
-  return prisma as PrismaMock;
-};
 
 describe("auth routes", () => {
   let app: FastifyInstance;
@@ -128,6 +89,7 @@ describe("auth routes", () => {
     prisma.userInvitation.findUnique.mockResolvedValueOnce({
       id: "invite1",
       tokenHash: hashToken(token),
+      tokenDigest: "$argon2id$v=19$m=65536,t=3,p=4$mock$hash",
       role: "USER",
       email: "guest@example.com",
       expiresAt: new Date(Date.now() + 60_000),
@@ -159,6 +121,7 @@ describe("auth routes", () => {
     prisma.userInvitation.findUnique.mockResolvedValueOnce({
       id: "invite2",
       tokenHash: hashToken(token),
+      tokenDigest: "$argon2id$v=19$m=65536,t=3,p=4$mock$hash",
       role: "USER",
       email: "newplayer@example.com",
       expiresAt: new Date(now.getTime() + 60_000),
@@ -226,6 +189,7 @@ describe("auth routes", () => {
     prisma.userInvitation.findUnique.mockResolvedValueOnce({
       id: "invite3",
       tokenHash: hashToken(token),
+      tokenDigest: "$argon2id$v=19$m=65536,t=3,p=4$mock$hash",
       role: "USER",
       email: "locked@example.com",
       expiresAt: new Date(Date.now() + 60_000),

@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import argon2 from "argon2";
+import { env } from "../config/env.js";
 import { issueSessionTokens } from "../utils/tokens.js";
 import { setRefreshCookie } from "../utils/cookies.js";
 import {
@@ -17,15 +18,12 @@ import {
   screenscraperSchema,
   personalizationSchema,
 } from "../plugins/settings.js";
+import { passwordSchema } from "../utils/passwordPolicy.js";
 
 const adminPayloadSchema = z.object({
   email: z.string().email(),
   nickname: z.string().min(3).max(32),
-  password: z
-    .string()
-    .min(8)
-    .regex(/[A-Z]/, "Password must include an uppercase letter")
-    .regex(/[0-9]/, "Password must include a digit"),
+  password: passwordSchema,
 });
 
 const stepUpdateSchema = z.object({
@@ -65,7 +63,17 @@ export async function registerOnboardingRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post("/onboarding/admin", async (request, reply) => {
+  app.post(
+    "/onboarding/admin",
+    {
+      config: {
+        rateLimit: {
+          max: env.RATE_LIMIT_AUTH_POINTS,
+          timeWindow: env.RATE_LIMIT_AUTH_DURATION * 1000,
+        },
+      },
+    },
+    async (request, reply) => {
     const validation = adminPayloadSchema.safeParse(request.body);
     if (!validation.success) {
       return reply.status(400).send({
@@ -121,7 +129,8 @@ export async function registerOnboardingRoutes(app: FastifyInstance) {
       accessToken,
       refreshExpiresAt: refreshExpiresAt.toISOString(),
     });
-  });
+    },
+  );
 
   app.patch(
     "/onboarding/steps/:stepKey",

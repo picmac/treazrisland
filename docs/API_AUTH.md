@@ -15,7 +15,7 @@ Redeems an invitation token and creates a new user.
 | `token`       | string   | ✅        | Raw invitation token from the invite email. |
 | `email`       | string   | ⚠️        | Required when the invitation is email-less. Must match the invitation email when present. |
 | `nickname`    | string   | ✅        | 3-32 characters. Used for login when email is absent. |
-| `password`    | string   | ✅        | Minimum 8 chars, must include ≥1 uppercase letter and ≥1 digit. |
+| `password`    | string   | ✅        | Minimum 8 chars, must include ≥1 uppercase letter, ≥1 lowercase letter, and ≥1 digit. |
 | `displayName` | string   | ❌        | Optional profile label (1-64 chars). Defaults to the nickname. |
 
 **Success (201)**

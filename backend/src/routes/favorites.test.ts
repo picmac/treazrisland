@@ -3,8 +3,12 @@ import request from "supertest";
 import type { FastifyInstance } from "fastify";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import prisma from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 const { Prisma } = prisma;
+
+(Prisma as unknown as { PrismaClientKnownRequestError: typeof PrismaClientKnownRequestError }).PrismaClientKnownRequestError =
+  PrismaClientKnownRequestError;
 
 function createPrismaKnownRequestError(
   code: string,
