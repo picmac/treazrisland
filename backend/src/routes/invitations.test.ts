@@ -1,6 +1,19 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import type { PrismaClient, Role, UserInvitation } from "@prisma/client";
+import argon2 from "argon2";
+
+vi.mock("argon2", () => {
+  const hashMock = vi.fn().mockImplementation(async (value: string) => `hashed-${value}`);
+  return {
+    __esModule: true,
+    default: {
+      hash: hashMock
+    }
+  };
+});
+
+const argon2Mock = vi.mocked(argon2, true);
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
@@ -99,6 +112,7 @@ describe("invitation routes", () => {
       return {
         id: "invite_1",
         tokenHash: data.tokenHash,
+        tokenFingerprint: data.tokenFingerprint,
         role: data.role,
         email: data.email,
         expiresAt: data.expiresAt,
@@ -115,6 +129,9 @@ describe("invitation routes", () => {
     const body = await response.json();
 
     expect(typeof body.token).toBe("string");
+    expect(argon2Mock.hash).toHaveBeenCalledWith(body.token, {
+      type: argon2.argon2id
+    });
     expect(body.invitation).toMatchObject({
       id: "invite_1",
       role: "USER",
@@ -132,7 +149,9 @@ describe("invitation routes", () => {
         data: expect.objectContaining({
           email: "test@example.com",
           role: "USER",
-          createdById: "admin-1"
+          createdById: "admin-1",
+          tokenFingerprint: expect.any(String),
+          tokenHash: expect.any(String)
         })
       })
     );
@@ -145,6 +164,7 @@ describe("invitation routes", () => {
       {
         id: "invite_1",
         tokenHash: "hash",
+        tokenFingerprint: "fingerprint",
         role: "USER",
         email: "guest@example.com",
         expiresAt: new Date("2025-01-02T00:00:00Z"),
