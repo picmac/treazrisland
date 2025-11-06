@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
+    "prebuild": "npm run prisma:generate",
     "build": "tsc -p tsconfig.build.json",
     "lint": "npm run format:check",
     "format:check": "prettier --check \"src/config/env.ts\" \"src/routes/admin/romUploads.ts\" \"src/routes/player.ts\" \"src/routes/screenscraper.ts\" \"src/server.ts\" \"src/types/fastify.d.ts\" \"src/plugins/observability.ts\"",

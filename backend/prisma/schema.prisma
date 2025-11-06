@@ -93,6 +93,7 @@ model User {
   favorites      UserRomFavorite[]
   createdCollections RomCollection[] @relation("CollectionCreators")
   createdTopLists    RomTopList[]    @relation("TopListCreators")
+  systemSettingsUpdated SystemSetting[] @relation("SystemSettingsUpdatedBy")
 }
 
 model UserInvitation {
@@ -525,7 +526,7 @@ model SystemSetting {
   key         String   @unique
   value       Json
   updatedById String?
-  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedBy   User?    @relation("SystemSettingsUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
