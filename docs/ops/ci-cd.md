@@ -72,7 +72,7 @@ chmod 600 /opt/treazrisland/app/infra/monitoring/secrets/metrics_token
 ## 3. Know the deployment assets
 
 - `infra/docker-compose.prod.yml` defines the production stack: Postgres, MinIO, backend, frontend, and the full observability suite (Prometheus, Alertmanager, Grafana, node-exporter, cAdvisor, postgres-exporter). It references the env files and secrets prepared above.
-- `scripts/deploy/deploy-local.sh` executes the deployment end-to-end: fetches `origin/main`, rebuilds Docker images with `--pull`, applies the compose stack, runs Prisma migrations, and optionally seeds platform data when `TREAZ_RUN_PLATFORM_SEED=true`.
+- `scripts/deploy/deploy-local.sh` executes the deployment end-to-end: fetches `origin/main`, rebuilds Docker images with `--pull`, applies the compose stack, runs Prisma migrations, and optionally seeds platform data when `TREAZ_RUN_PLATFORM_SEED=true`. The script maintains a manifest of health probes for the external services (`postgres`, `minio`, `backend`, `frontend`) and executes them with configurable retries/backoff. Use `TREAZ_HEALTH_MAX_ATTEMPTS` and `TREAZ_HEALTH_BACKOFF_SECONDS` to adjust the retry window when running on slower hardware.
 - `scripts/ci/run-tests.sh` mirrors the CI workflow locally (`npm ci`, `npm run lint`, `npm test -- --run`, `npm run build` for both backend and frontend).
 - `.github/workflows/ci.yml` ties everything together: the `lint-test-build` matrix runs on GitHub-hosted runners for every push/PR targeting `main` or `develop`; the `deploy` job triggers only for pushes to `main` after the matrix succeeds.
 
@@ -117,6 +117,8 @@ TREAZ_COMPOSE_PROJECT_NAME=treazrisland \
 scripts/deploy/deploy-local.sh
 ```
 
+> ⚠️ The script resets unhealthy stacks with `docker compose down -v` when `TREAZ_RESET_ON_FAILURE` (default `true`) is set, which erases Postgres and MinIO volumes. Override `TREAZ_RESET_ON_FAILURE=false` for investigative runs where you need to preserve data.
+
 The first execution will build all images. If you are bootstrapping a fresh database, rerun with `TREAZ_RUN_PLATFORM_SEED=true` after the stack is healthy.
 
 ## 6. Wire secrets into the runner environment
@@ -158,6 +160,7 @@ scripts/deploy/deploy-local.sh
 
 - Override the compose file by setting `COMPOSE_FILE=/path/to/override.yml` before calling the script if you need to test alternative manifests.
 - Seed reference platform data once per environment with `TREAZ_RUN_PLATFORM_SEED=true`.
+- Health checks fail fast when `postgres`, `minio`, `backend`, or `frontend` stay unhealthy. By default (`TREAZ_RESET_ON_FAILURE=true`) the script performs a full reset with `docker compose down -v` and one additional retry, which wipes Postgres/MinIO volumes. Set `TREAZ_RESET_ON_FAILURE=false` if you cannot afford the wipe and will handle remediation manually.
 
 ## 9. Monitoring and troubleshooting
 
