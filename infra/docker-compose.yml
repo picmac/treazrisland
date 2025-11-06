@@ -78,8 +78,8 @@ services:
 
   backend:
     build:
-      context: ..
-      dockerfile: backend/Dockerfile
+      context: ../backend
+      dockerfile: Dockerfile
       target: development
     container_name: treazrisland-backend
     env_file:
@@ -113,8 +113,8 @@ services:
 
   backend-migrate:
     build:
-      context: ..
-      dockerfile: backend/Dockerfile
+      context: ../backend
+      dockerfile: Dockerfile
       target: development
     container_name: treazrisland-backend-migrate
     env_file:
@@ -135,8 +135,8 @@ services:
 
   frontend:
     build:
-      context: ..
-      dockerfile: frontend/Dockerfile
+      context: ../frontend
+      dockerfile: Dockerfile
       target: development
     container_name: treazrisland-frontend
     env_file:

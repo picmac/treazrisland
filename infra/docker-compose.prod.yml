@@ -56,8 +56,8 @@ services:
 
   backend:
     build:
-      context: ..
-      dockerfile: backend/Dockerfile
+      context: ../backend
+      dockerfile: Dockerfile
       target: production
     container_name: treazrisland-prod-backend
     env_file:
@@ -79,8 +79,8 @@ services:
 
   frontend:
     build:
-      context: ..
-      dockerfile: frontend/Dockerfile
+      context: ../frontend
+      dockerfile: Dockerfile
       target: production
     container_name: treazrisland-prod-frontend
     env_file:
