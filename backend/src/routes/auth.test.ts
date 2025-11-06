@@ -1,4 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import request from "supertest";
 import type { FastifyInstance } from "fastify";
 import { createHash } from "node:crypto";
 import type { User, UserInvitation } from "@prisma/client";
@@ -22,8 +23,10 @@ process.env.MFA_RECOVERY_CODE_COUNT = "4";
 process.env.MFA_RECOVERY_CODE_LENGTH = "8";
 
 vi.mock("argon2", () => {
-  const hashMock = vi.fn().mockResolvedValue("hashed-password");
-  const verifyMock = vi.fn().mockResolvedValue(true);
+  const hashMock = vi.fn().mockImplementation(async (value: string) => `hashed-${value}`);
+  const verifyMock = vi
+    .fn()
+    .mockImplementation(async (hash: string, value: string) => hash === `hashed-${value}`);
   return {
     __esModule: true,
     default: {
@@ -109,25 +112,27 @@ describe("auth routes", () => {
     vi.clearAllMocks();
   });
 
-  const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
+  const fingerprintToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
   it("returns 404 for invalid invitation preview", async () => {
     prisma.userInvitation.findUnique.mockResolvedValueOnce(null);
 
-    const response = await app.inject({
-      method: "POST",
-      url: "/auth/invitations/preview",
-      payload: { token: "invalid" }
-    });
+    const response = await request(app)
+      .post("/auth/invitations/preview")
+      .send({ token: "invalid" });
 
-    expect(response.statusCode).toBe(404);
+    expect(response.status).toBe(404);
+    expect(prisma.userInvitation.findUnique).toHaveBeenCalledWith({
+      where: { tokenFingerprint: fingerprintToken("invalid") }
+    });
   });
 
   it("returns invitation details for valid preview", async () => {
     const token = "valid-token";
     prisma.userInvitation.findUnique.mockResolvedValueOnce({
       id: "invite1",
-      tokenHash: hashToken(token),
+      tokenHash: `hashed-${token}`,
+      tokenFingerprint: fingerprintToken(token),
       role: "USER",
       email: "guest@example.com",
       expiresAt: new Date(Date.now() + 60_000),
@@ -137,19 +142,18 @@ describe("auth routes", () => {
       createdById: "admin-1"
     } as UserInvitation);
 
-    const response = await app.inject({
-      method: "POST",
-      url: "/auth/invitations/preview",
-      payload: { token }
-    });
+    const response = await request(app)
+      .post("/auth/invitations/preview")
+      .send({ token });
 
-    expect(response.statusCode).toBe(200);
-    expect(await response.json()).toEqual({
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
       invitation: {
         role: "USER",
         email: "guest@example.com"
       }
     });
+    expect(argon2Mock.verify).toHaveBeenCalledWith(`hashed-${token}`, token);
   });
 
   it("creates a user from invitation during signup", async () => {
@@ -158,7 +162,8 @@ describe("auth routes", () => {
 
     prisma.userInvitation.findUnique.mockResolvedValueOnce({
       id: "invite2",
-      tokenHash: hashToken(token),
+      tokenHash: `hashed-${token}`,
+      tokenFingerprint: fingerprintToken(token),
       role: "USER",
       email: "newplayer@example.com",
       expiresAt: new Date(now.getTime() + 60_000),
@@ -192,19 +197,17 @@ describe("auth routes", () => {
       revokedReason: null
     });
 
-    const response = await app.inject({
-      method: "POST",
-      url: "/auth/signup",
-      payload: {
+    const response = await request(app)
+      .post("/auth/signup")
+      .send({
         token,
         nickname: "pixelpirate",
         password: "Secret123",
         email: "newplayer@example.com"
-      }
-    });
+      });
 
-    expect(response.statusCode).toBe(201);
-    const body = await response.json();
+    expect(response.status).toBe(201);
+    const body = response.body;
     expect(body.user).toMatchObject({
       id: "user-1",
       email: "newplayer@example.com",
@@ -215,17 +218,22 @@ describe("auth routes", () => {
     expect(body.refreshToken).toBeUndefined();
     expect(response.headers["set-cookie"]).toContain("HttpOnly");
 
-    expect(prisma.userInvitation.update).toHaveBeenCalled();
+    expect(prisma.userInvitation.update).toHaveBeenCalledWith({
+      where: { id: "invite2" },
+      data: { redeemedAt: expect.any(Date) }
+    });
     expect(prisma.refreshTokenFamily.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: { userId: "user-1" } })
     );
+    expect(argon2Mock.verify).toHaveBeenCalledWith(`hashed-${token}`, token);
   });
 
   it("rejects signup when email mismatches invitation", async () => {
     const token = "wrong-email";
     prisma.userInvitation.findUnique.mockResolvedValueOnce({
       id: "invite3",
-      tokenHash: hashToken(token),
+      tokenHash: `hashed-${token}`,
+      tokenFingerprint: fingerprintToken(token),
       role: "USER",
       email: "locked@example.com",
       expiresAt: new Date(Date.now() + 60_000),
@@ -235,19 +243,17 @@ describe("auth routes", () => {
       createdById: "admin-3"
     } as UserInvitation);
 
-    const response = await app.inject({
-      method: "POST",
-      url: "/auth/signup",
-      payload: {
+    const response = await request(app)
+      .post("/auth/signup")
+      .send({
         token,
         nickname: "voyager",
         password: "Secret123",
         email: "different@example.com"
-      }
-    });
+      });
 
-    expect(response.statusCode).toBe(400);
-    expect(await response.json()).toEqual({ message: "Email does not match invitation" });
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ message: "Email does not match invitation" });
   });
 
   it("creates an MFA setup bundle", async () => {
@@ -260,14 +266,12 @@ describe("auth routes", () => {
     prisma.mfaSecret.create.mockResolvedValueOnce({ id: "secret-setup" });
 
     const token = app.jwt.sign({ sub: "user-setup", role: "USER" });
-    const response = await app.inject({
-      method: "POST",
-      url: "/auth/mfa/setup",
-      headers: { authorization: `Bearer ${token}` }
-    });
+    const response = await request(app)
+      .post("/auth/mfa/setup")
+      .set("Authorization", `Bearer ${token}`);
 
-    expect(response.statusCode).toBe(200);
-    const body = await response.json();
+    expect(response.status).toBe(200);
+    const body = response.body;
     expect(body.secretId).toBe("secret-setup");
     expect(body.secret).toBe("JBSWY3DPEHPK3PXP");
     expect(body.otpauthUri).toMatch(/^otpauth:\/\/totp\//);
@@ -281,7 +285,7 @@ describe("auth routes", () => {
       data: {
         userId: "user-setup",
         secret: "encrypted-JBSWY3DPEHPK3PXP",
-        recoveryCodes: expect.stringContaining("hashed-password")
+        recoveryCodes: expect.stringContaining("hashed-")
       }
     });
     expect(mfaService.encryptSecret).toHaveBeenCalledWith("JBSWY3DPEHPK3PXP");
@@ -305,15 +309,13 @@ describe("auth routes", () => {
     prisma.mfaSecret.update.mockResolvedValueOnce({ id: "secret-setup" });
 
     const token = app.jwt.sign({ sub: "user-setup", role: "USER" });
-    const response = await app.inject({
-      method: "POST",
-      url: "/auth/mfa/confirm",
-      headers: { authorization: `Bearer ${token}` },
-      payload: { secretId: "secret-setup", code: "123456" }
-    });
+    const response = await request(app)
+      .post("/auth/mfa/confirm")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ secretId: "secret-setup", code: "123456" });
 
-    expect(response.statusCode).toBe(200);
-    expect(await response.json()).toEqual({
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
       message: "Multi-factor authentication enabled"
     });
     expect(mfaService.decryptSecret).toHaveBeenCalledWith(
@@ -350,14 +352,12 @@ describe("auth routes", () => {
       .mockReturnValue({ secret: "JBSWY3DPEHPK3PXP", needsRotation: true });
 
     const token = app.jwt.sign({ sub: "user-setup", role: "USER" });
-    const response = await app.inject({
-      method: "POST",
-      url: "/auth/mfa/confirm",
-      headers: { authorization: `Bearer ${token}` },
-      payload: { secretId: "legacy-secret", code: "123456" }
-    });
+    const response = await request(app)
+      .post("/auth/mfa/confirm")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ secretId: "legacy-secret", code: "123456" });
 
-    expect(response.statusCode).toBe(200);
+    expect(response.status).toBe(200);
     expect(mfaService.encryptSecret).toHaveBeenCalledWith("JBSWY3DPEHPK3PXP");
     expect(prisma.mfaSecret.update).toHaveBeenCalledWith({
       where: { id: "legacy-secret" },
@@ -381,15 +381,13 @@ describe("auth routes", () => {
     prisma.mfaSecret.deleteMany.mockResolvedValueOnce({ count: 0 });
 
     const token = app.jwt.sign({ sub: "user-setup", role: "USER" });
-    const response = await app.inject({
-      method: "POST",
-      url: "/auth/mfa/disable",
-      headers: { authorization: `Bearer ${token}` },
-      payload: { mfaCode: "123456" }
-    });
+    const response = await request(app)
+      .post("/auth/mfa/disable")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ mfaCode: "123456" });
 
-    expect(response.statusCode).toBe(200);
-    expect(await response.json()).toEqual({
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
       message: "Multi-factor authentication disabled"
     });
     expect(mfaService.decryptSecret).toHaveBeenCalledWith(
@@ -412,7 +410,7 @@ describe("auth routes", () => {
       id: "user-2",
       email: "player@example.com",
       nickname: "player",
-      passwordHash: "hashed-password",
+      passwordHash: "hashed-Secret123",
       role: "USER",
       createdAt: now,
       updatedAt: now,
@@ -431,17 +429,15 @@ describe("auth routes", () => {
       revokedReason: null
     });
 
-    const response = await app.inject({
-      method: "POST",
-      url: "/auth/login",
-      payload: {
+    const response = await request(app)
+      .post("/auth/login")
+      .send({
         identifier: "player@example.com",
         password: "Secret123"
-      }
-    });
+      });
 
-    expect(response.statusCode).toBe(200);
-    const body = await response.json();
+    expect(response.status).toBe(200);
+    const body = response.body;
     expect(body.user).toMatchObject({ id: "user-2", email: "player@example.com" });
     expect(typeof body.accessToken).toBe("string");
     expect(response.headers["set-cookie"]).toContain("HttpOnly");
@@ -459,16 +455,14 @@ describe("auth routes", () => {
     });
     argon2Mock.verify.mockResolvedValueOnce(false);
 
-    const response = await app.inject({
-      method: "POST",
-      url: "/auth/login",
-      payload: {
+    const response = await request(app)
+      .post("/auth/login")
+      .send({
         identifier: "player@example.com",
         password: "BadSecret"
-      }
-    });
+      });
 
-    expect(response.statusCode).toBe(401);
+    expect(response.status).toBe(401);
     expect(prisma.loginAudit.create).toHaveBeenCalled();
   });
 
@@ -478,7 +472,7 @@ describe("auth routes", () => {
       id: "token-old",
       userId: "user-4",
       familyId: "family-4",
-      tokenHash: hashToken("refresh-token"),
+      tokenHash: fingerprintToken("refresh-token"),
       createdAt: now,
       expiresAt: new Date(now.getTime() + 60_000),
       revokedAt: null,
@@ -498,16 +492,12 @@ describe("auth routes", () => {
       revokedReason: null
     });
 
-    const response = await app.inject({
-      method: "POST",
-      url: "/auth/refresh",
-      headers: {
-        cookie: "treaz_refresh=refresh-token"
-      }
-    });
+    const response = await request(app)
+      .post("/auth/refresh")
+      .set("Cookie", "treaz_refresh=refresh-token");
 
-    expect(response.statusCode).toBe(200);
-    const body = await response.json();
+    expect(response.status).toBe(200);
+    const body = response.body;
     expect(body.user).toMatchObject({ id: "user-4" });
     expect(response.headers["set-cookie"]).toContain("treaz_refresh=");
   });
@@ -519,16 +509,19 @@ describe("auth routes", () => {
       familyId: "family-5"
     });
 
-    const response = await app.inject({
-      method: "POST",
-      url: "/auth/logout",
-      headers: {
-        cookie: "treaz_refresh=logout-token"
-      }
-    });
+    const response = await request(app)
+      .post("/auth/logout")
+      .set("Cookie", "treaz_refresh=logout-token");
 
-    expect(response.statusCode).toBe(204);
-    expect(response.headers["set-cookie"]).toContain("Max-Age=0");
+    expect(response.status).toBe(204);
+    const logoutCookies = response.headers["set-cookie"];
+    if (Array.isArray(logoutCookies)) {
+      expect(logoutCookies.some((entry) => entry.includes("Max-Age=0"))).toBe(true);
+    } else if (typeof logoutCookies === "string") {
+      expect(logoutCookies).toContain("Max-Age=0");
+    } else {
+      throw new Error("Expected logout to set cookie header");
+    }
     expect(prisma.refreshTokenFamily.updateMany).toHaveBeenCalled();
     expect(prisma.refreshToken.updateMany).toHaveBeenCalled();
   });

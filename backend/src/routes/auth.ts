@@ -135,95 +135,140 @@ const generateRecoveryCodes = (count: number, length: number): string[] => {
 };
 
 export async function registerAuthRoutes(app: FastifyInstance) {
-  app.post("/auth/invitations/preview", async (request, reply) => {
-    const parsed = invitationTokenSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.status(400).send({
-        message: "Invalid payload",
-        errors: parsed.error.flatten().fieldErrors
-      });
-    }
-
-    const { token } = parsed.data;
-    const tokenHash = createHash("sha256").update(token).digest("hex");
-    const invitation = await app.prisma.userInvitation.findUnique({
-      where: { tokenHash }
-    });
-
-    if (!invitation || invitation.redeemedAt || invitation.expiresAt <= new Date()) {
-      return reply.status(404).send({ message: "Invitation not found or expired" });
-    }
-
-    return reply.send({
-      invitation: {
-        role: invitation.role,
-        email: invitation.email
+  app.post(
+    "/auth/invitations/preview",
+    {
+      config: {
+        rateLimit: {
+          max: env.RATE_LIMIT_AUTH_POINTS,
+          timeWindow: env.RATE_LIMIT_AUTH_DURATION * 1000
+        }
       }
-    });
-  });
+    },
+    async (request, reply) => {
+      const parsed = invitationTokenSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          message: "Invalid payload",
+          errors: parsed.error.flatten().fieldErrors
+        });
+      }
 
-  app.post("/auth/signup", async (request, reply) => {
-    const parsed = signupSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.status(400).send({
-        message: "Invalid payload",
-        errors: parsed.error.flatten().fieldErrors
+      const { token } = parsed.data;
+      const tokenFingerprint = createHash("sha256").update(token).digest("hex");
+      const invitation = await app.prisma.userInvitation.findUnique({
+        where: { tokenFingerprint }
+      });
+
+      if (!invitation || invitation.redeemedAt || invitation.expiresAt <= new Date()) {
+        return reply.status(404).send({ message: "Invitation not found or expired" });
+      }
+
+      let matches = false;
+      try {
+        matches = await argon2.verify(invitation.tokenHash, token);
+      } catch (error) {
+        request.log.error({ err: error, invitationId: invitation.id }, "Failed to verify invitation token");
+        return reply.status(500).send({ message: "Unable to validate invitation" });
+      }
+
+      if (!matches) {
+        return reply.status(404).send({ message: "Invitation not found or expired" });
+      }
+
+      return reply.send({
+        invitation: {
+          role: invitation.role,
+          email: invitation.email
+        }
       });
     }
+  );
 
-    const { token, email, nickname, password, displayName } = parsed.data;
-    const tokenHash = createHash("sha256").update(token).digest("hex");
-
-    try {
-      const result = await app.prisma.$transaction(async (tx) => {
-        const invitation = await tx.userInvitation.findUnique({
-          where: { tokenHash }
-        });
-
-        if (!invitation || invitation.redeemedAt || invitation.expiresAt <= new Date()) {
-          throw new Error("INVALID_INVITATION");
+  app.post(
+    "/auth/signup",
+    {
+      config: {
+        rateLimit: {
+          max: env.RATE_LIMIT_AUTH_POINTS,
+          timeWindow: env.RATE_LIMIT_AUTH_DURATION * 1000
         }
-
-        const invitationEmail = invitation.email?.toLowerCase() ?? null;
-        const providedEmail = email?.toLowerCase() ?? null;
-
-        let resolvedEmail: string | null = null;
-
-        if (invitationEmail) {
-          if (providedEmail && providedEmail !== invitationEmail) {
-            throw new Error("EMAIL_MISMATCH");
-          }
-          resolvedEmail = invitationEmail;
-        } else {
-          if (!providedEmail) {
-            throw new Error("EMAIL_REQUIRED");
-          }
-          resolvedEmail = providedEmail;
-        }
-
-        const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
-
-        const user = await tx.user.create({
-          data: {
-            email: resolvedEmail,
-            nickname,
-            displayName: displayName ?? nickname,
-            passwordHash,
-            role: invitation.role
-          }
+      }
+    },
+    async (request, reply) => {
+      const parsed = signupSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          message: "Invalid payload",
+          errors: parsed.error.flatten().fieldErrors
         });
+      }
 
-        await tx.userInvitation.update({
-          where: { id: invitation.id },
-          data: {
-            redeemedAt: new Date()
+      const { token, email, nickname, password, displayName } = parsed.data;
+      const tokenFingerprint = createHash("sha256").update(token).digest("hex");
+
+      try {
+        const result = await app.prisma.$transaction(async (tx) => {
+          const invitation = await tx.userInvitation.findUnique({
+            where: { tokenFingerprint }
+          });
+
+          if (!invitation || invitation.redeemedAt || invitation.expiresAt <= new Date()) {
+            throw new Error("INVALID_INVITATION");
           }
+
+          let matches = false;
+          try {
+            matches = await argon2.verify(invitation.tokenHash, token);
+          } catch (error) {
+            request.log.error({ err: error, invitationId: invitation.id }, "Failed to verify invitation during signup");
+            throw new Error("INVITATION_VERIFICATION_FAILED");
+          }
+
+          if (!matches) {
+            throw new Error("INVALID_INVITATION");
+          }
+
+          const invitationEmail = invitation.email?.toLowerCase() ?? null;
+          const providedEmail = email?.toLowerCase() ?? null;
+
+          let resolvedEmail: string | null = null;
+
+          if (invitationEmail) {
+            if (providedEmail && providedEmail !== invitationEmail) {
+              throw new Error("EMAIL_MISMATCH");
+            }
+            resolvedEmail = invitationEmail;
+          } else {
+            if (!providedEmail) {
+              throw new Error("EMAIL_REQUIRED");
+            }
+            resolvedEmail = providedEmail;
+          }
+
+          const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
+
+          const user = await tx.user.create({
+            data: {
+              email: resolvedEmail,
+              nickname,
+              displayName: displayName ?? nickname,
+              passwordHash,
+              role: invitation.role
+            }
+          });
+
+          await tx.userInvitation.update({
+            where: { id: invitation.id },
+            data: {
+              redeemedAt: new Date()
+            }
+          });
+
+          const tokens = await issueSessionTokens(app, user.id, user.role, { tx });
+
+          return { user, tokens };
         });
-
-        const tokens = await issueSessionTokens(app, user.id, user.role, { tx });
-
-        return { user, tokens };
-      });
 
       setRefreshCookie(reply, result.tokens.refreshToken, result.tokens.refreshExpiresAt);
 
@@ -252,6 +297,8 @@ export async function registerAuthRoutes(app: FastifyInstance) {
             return reply.status(400).send({ message: "Email is required to redeem this invitation" });
           case "EMAIL_MISMATCH":
             return reply.status(400).send({ message: "Email does not match invitation" });
+          case "INVITATION_VERIFICATION_FAILED":
+            return reply.status(500).send({ message: "Unexpected error during signup" });
           default:
             break;
         }
@@ -264,7 +311,8 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       request.log.error({ err: error }, "Failed to complete signup");
       return reply.status(500).send({ message: "Unexpected error during signup" });
     }
-  });
+  }
+  );
 
   app.post(
     "/auth/mfa/setup",
@@ -703,11 +751,21 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     }
   );
 
-  app.post("/auth/refresh", async (request, reply) => {
-    const refreshToken = readRefreshTokenFromRequest(request);
-    if (!refreshToken) {
-      return reply.status(401).send({ message: "Refresh token missing" });
-    }
+  app.post(
+    "/auth/refresh",
+    {
+      config: {
+        rateLimit: {
+          max: env.RATE_LIMIT_AUTH_POINTS,
+          timeWindow: env.RATE_LIMIT_AUTH_DURATION * 1000
+        }
+      }
+    },
+    async (request, reply) => {
+      const refreshToken = readRefreshTokenFromRequest(request);
+      if (!refreshToken) {
+        return reply.status(401).send({ message: "Refresh token missing" });
+      }
 
     try {
       const result = await rotateRefreshToken(app, refreshToken);
@@ -727,7 +785,8 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       request.log.error({ err: error }, "Unexpected error while rotating refresh token");
       return reply.status(500).send({ message: "Unable to refresh session" });
     }
-  });
+    }
+  );
 
   app.post("/auth/logout", async (request, reply) => {
     const refreshToken = readRefreshTokenFromRequest(request);
@@ -764,14 +823,24 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     return reply.status(204).send();
   });
 
-  app.post("/auth/password/reset/request", async (request, reply) => {
-    const parsed = passwordResetRequestSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.status(400).send({
-        message: "Invalid payload",
-        errors: parsed.error.flatten().fieldErrors
-      });
-    }
+  app.post(
+    "/auth/password/reset/request",
+    {
+      config: {
+        rateLimit: {
+          max: env.RATE_LIMIT_AUTH_POINTS,
+          timeWindow: env.RATE_LIMIT_AUTH_DURATION * 1000
+        }
+      }
+    },
+    async (request, reply) => {
+      const parsed = passwordResetRequestSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          message: "Invalid payload",
+          errors: parsed.error.flatten().fieldErrors
+        });
+      }
 
     const email = parsed.data.email.toLowerCase();
     const user = await app.prisma.user.findUnique({
@@ -812,76 +881,88 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     }
 
     return reply.send({ message: "If the account exists we sent reset instructions." });
-  });
+  }
+  );
 
-  app.post("/auth/password/reset/confirm", async (request, reply) => {
-    const parsed = passwordResetConfirmSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.status(400).send({
-        message: "Invalid payload",
-        errors: parsed.error.flatten().fieldErrors
+  app.post(
+    "/auth/password/reset/confirm",
+    {
+      config: {
+        rateLimit: {
+          max: env.RATE_LIMIT_AUTH_POINTS,
+          timeWindow: env.RATE_LIMIT_AUTH_DURATION * 1000
+        }
+      }
+    },
+    async (request, reply) => {
+      const parsed = passwordResetConfirmSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          message: "Invalid payload",
+          errors: parsed.error.flatten().fieldErrors
+        });
+      }
+
+      const { token, password } = parsed.data;
+      const tokenHash = createHash("sha256").update(token).digest("hex");
+
+      const resetRecord = await app.prisma.passwordResetToken.findUnique({
+        where: { tokenHash },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              nickname: true,
+              role: true,
+              passwordHash: true
+            }
+          }
+        }
       });
-    }
 
-    const { token, password } = parsed.data;
-    const tokenHash = createHash("sha256").update(token).digest("hex");
+      if (!resetRecord || resetRecord.redeemedAt || resetRecord.expiresAt <= new Date()) {
+        return reply.status(400).send({ message: "Reset token is invalid or expired" });
+      }
 
-    const resetRecord = await app.prisma.passwordResetToken.findUnique({
-      where: { tokenHash },
-      include: {
-        user: {
+      const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
+
+      const { updatedUser, tokens } = await app.prisma.$transaction(async (tx) => {
+        const updatedUser = await tx.user.update({
+          where: { id: resetRecord.userId },
+          data: { passwordHash },
           select: {
             id: true,
             email: true,
             nickname: true,
-            role: true,
-            passwordHash: true
+            role: true
           }
-        }
-      }
-    });
+        });
 
-    if (!resetRecord || resetRecord.redeemedAt || resetRecord.expiresAt <= new Date()) {
-      return reply.status(400).send({ message: "Reset token is invalid or expired" });
+        await tx.passwordResetToken.update({
+          where: { id: resetRecord.id },
+          data: { redeemedAt: new Date() }
+        });
+
+        await revokeUserRefreshFamilies(app, resetRecord.userId, "password_reset", tx);
+
+        const tokens = await issueSessionTokens(app, updatedUser.id, updatedUser.role, { tx });
+
+        return { updatedUser, tokens };
+      });
+
+      setRefreshCookie(reply, tokens.refreshToken, tokens.refreshExpiresAt);
+
+      await recordLoginAudit(app, request, {
+        userId: updatedUser.id,
+        event: LoginAuditEvent.PASSWORD_RESET
+      });
+
+      return reply.send({
+        user: updatedUser,
+        accessToken: tokens.accessToken,
+        refreshExpiresAt: tokens.refreshExpiresAt.toISOString()
+      });
     }
-
-    const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
-
-    const { updatedUser, tokens } = await app.prisma.$transaction(async (tx) => {
-      const updatedUser = await tx.user.update({
-        where: { id: resetRecord.userId },
-        data: { passwordHash },
-        select: {
-          id: true,
-          email: true,
-          nickname: true,
-          role: true
-        }
-      });
-
-      await tx.passwordResetToken.update({
-        where: { id: resetRecord.id },
-        data: { redeemedAt: new Date() }
-      });
-
-      await revokeUserRefreshFamilies(app, resetRecord.userId, "password_reset", tx);
-
-      const tokens = await issueSessionTokens(app, updatedUser.id, updatedUser.role, { tx });
-
-      return { updatedUser, tokens };
-    });
-
-    setRefreshCookie(reply, tokens.refreshToken, tokens.refreshExpiresAt);
-
-    await recordLoginAudit(app, request, {
-      userId: updatedUser.id,
-      event: LoginAuditEvent.PASSWORD_RESET
-    });
-
-    return reply.send({
-      user: updatedUser,
-      accessToken: tokens.accessToken,
-      refreshExpiresAt: tokens.refreshExpiresAt.toISOString()
-    });
-  });
+  );
 }

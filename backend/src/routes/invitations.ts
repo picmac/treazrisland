@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { createHash, randomBytes } from "node:crypto";
+import argon2 from "argon2";
 import { env } from "../config/env.js";
 import { Role } from "../utils/prisma-enums.js";
 
@@ -74,11 +75,22 @@ export async function registerInvitationRoutes(app: FastifyInstance) {
       }
 
       const token = randomBytes(32).toString("hex");
-      const tokenHash = createHash("sha256").update(token).digest("hex");
+      const tokenFingerprint = createHash("sha256").update(token).digest("hex");
+
+      let tokenHash: string;
+      try {
+        tokenHash = await argon2.hash(token, { type: argon2.argon2id });
+      } catch (error) {
+        request.log.error({ err: error }, "Failed to hash invitation token");
+        return reply.status(500).send({
+          message: "Failed to generate invitation token"
+        });
+      }
 
       const invitation = await app.prisma.userInvitation.create({
         data: {
           tokenHash,
+          tokenFingerprint,
           role: payload.role,
           email: payload.email?.toLowerCase() ?? null,
           expiresAt,
