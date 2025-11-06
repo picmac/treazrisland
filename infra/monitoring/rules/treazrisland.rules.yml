@@ -68,7 +68,7 @@ groups:
           severity: critical
           service: monitoring
         annotations:
-          summary: {{ $labels.job }} exporter is unreachable
+          summary: "{{ $labels.job }} exporter is unreachable"
           description: >-
             Prometheus has been unable to scrape the {{ $labels.job }} exporter for 5 minutes. Check container health
             or network connectivity for the monitoring stack.

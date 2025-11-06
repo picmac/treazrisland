@@ -1,4 +1,5 @@
 import fp from "fastify-plugin";
+import type { FastifyInstance } from "fastify";
 import { PrismaClient } from "@prisma/client";
 import type { ExtendedPrismaClient } from "../types/prisma-extensions.js";
 
@@ -9,6 +10,18 @@ declare module "fastify" {
 }
 
 export default fp(async (app) => {
+  const getMetrics = () =>
+    (app as FastifyInstance & {
+      metrics?: {
+        enabled: boolean;
+        prismaQueryDuration: {
+          observe: (
+            labels: { model: string | null; action: string; outcome: string },
+            value: number,
+          ) => void;
+        };
+      };
+    }).metrics;
   const basePrisma = new PrismaClient();
   await basePrisma.$connect();
 
@@ -20,10 +33,11 @@ export default fp(async (app) => {
 
           try {
             const result = await query(args);
-            if (app.metrics.enabled) {
+            const metrics = getMetrics();
+            if (metrics?.enabled) {
               const durationSeconds =
                 Number(process.hrtime.bigint() - start) / 1_000_000_000;
-              app.metrics.prismaQueryDuration.observe(
+              metrics.prismaQueryDuration.observe(
                 {
                   model: model ?? "raw",
                   action: operation,
@@ -35,10 +49,11 @@ export default fp(async (app) => {
 
             return result;
           } catch (error) {
-            if (app.metrics.enabled) {
+            const metrics = getMetrics();
+            if (metrics?.enabled) {
               const durationSeconds =
                 Number(process.hrtime.bigint() - start) / 1_000_000_000;
-              app.metrics.prismaQueryDuration.observe(
+              metrics.prismaQueryDuration.observe(
                 {
                   model: model ?? "raw",
                   action: operation,

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { env } from "../config/env.js";
 import type { FastifyInstance } from "fastify";
 import type { ExtendedPrismaClient } from "../types/prisma-extensions.js";
+import type { Prisma } from "@prisma/client";
 
 export const systemProfileSchema = z.object({
   instanceName: z.string().min(1),
@@ -281,7 +282,25 @@ const settingsPlugin = fp(async (app: FastifyInstance) => {
       return current;
     }
 
-    const rows = await prisma.systemSetting.findMany();
+    let rows;
+    try {
+      rows = await prisma.systemSetting.findMany();
+    } catch (error) {
+      const prismaError = error as Partial<Prisma.PrismaClientKnownRequestError>;
+      if (prismaError?.code === "P2021") {
+        app.log.warn(
+          {
+            event: "settings.prisma.missing_table",
+            message:
+              "System settings table is unavailable; falling back to defaults",
+          },
+          "Skipping system settings overrides until migrations are applied",
+        );
+        current = defaultSettings();
+        return current;
+      }
+      throw error;
+    }
     const overrides: Partial<
       Record<keyof ResolvedSystemSettings, Record<string, unknown>>
     > = {};

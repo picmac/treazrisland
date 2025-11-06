@@ -60,25 +60,28 @@ Ensure your host `.env`, `backend/.env`, and `frontend/.env.local` files mirror 
 
 ## Production-style stack
 
-`docker-compose.prod.yml` mirrors the service list but targets the production stages of each Dockerfile, removes source mounts, and adds health checks. It expects you to export the following before running Compose:
+`docker-compose.prod.yml` mirrors the service list but targets the production stages of each Dockerfile, removes source mounts, and adds health checks. The production-style workflow now relies on a single environment file that both services share:
+
+1. Copy [`infra/compose.env.sample`](./compose.env.sample) to `compose.env` and rotate the placeholder secrets.
+2. Export the path once so helper scripts and Docker Compose can consume it:
 
 ```bash
-export TREAZ_BACKEND_ENV_FILE=/path/to/backend.env
-export TREAZ_FRONTEND_ENV_FILE=/path/to/frontend.env
-export POSTGRES_PASSWORD=super-secret
-export MINIO_ROOT_USER=treaz-admin
-export MINIO_ROOT_PASSWORD=super-secret
+export TREAZ_ENV_FILE=/absolute/path/to/compose.env
 ```
 
-For quick local smoke tests you can copy [`infra/backend.env.sample`](./backend.env.sample) to `backend.env`, adjust any secrets, and export `TREAZ_BACKEND_ENV_FILE=/absolute/path/to/backend.env` before bringing up the stack. The sample populates `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` so MinIO can boot without manually exporting those variables. Never reuse the sample credentials in shared or production environments.
+3. (Optional) Override any values inline before launching the stack, for example to rotate the database password:
 
-Then deploy with:
+```bash
+export POSTGRES_PASSWORD="$(openssl rand -base64 24)"
+```
+
+With the environment prepared, bring the stack online:
 
 ```bash
 docker compose -f infra/docker-compose.prod.yml up -d
 ```
 
-The referenced `backend.env` and `frontend.env` files should contain the same keys documented in `.env.example`, scoped to each service.
+The single `compose.env` file carries every variable documented in `.env.example`, covering backend, frontend, and infra secrets. `TREAZ_BACKEND_ENV_FILE` and `TREAZ_FRONTEND_ENV_FILE` are no longer required unless you want to split credentials again for a custom deployment.
 
 ## Secrets management
 

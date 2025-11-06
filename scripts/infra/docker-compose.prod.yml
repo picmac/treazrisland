@@ -33,11 +33,7 @@ services:
       - "9000:9000"
       - "9001:9001"
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -fsS http://localhost:9000/minio/health/ready || exit 1",
-        ]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -60,8 +56,8 @@ services:
 
   backend:
     build:
-      context: ../backend
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: backend/Dockerfile
       target: production
     container_name: treazrisland-prod-backend
     env_file:
@@ -84,8 +80,8 @@ services:
 
   frontend:
     build:
-      context: ../frontend
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: frontend/Dockerfile
       target: production
     container_name: treazrisland-prod-frontend
     env_file:
@@ -198,4 +194,4 @@ networks:
 
 secrets:
   metrics_token:
-    file: ${METRICS_TOKEN_FILE:-./monitoring/secrets/metrics_token.sample}
+    file: ./monitoring/secrets/metrics_token

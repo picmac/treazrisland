@@ -5,13 +5,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 COMPOSE_FILE="${COMPOSE_FILE:-${REPO_ROOT}/infra/docker-compose.prod.yml}"
 PROJECT_NAME="${TREAZ_COMPOSE_PROJECT_NAME:-treazrisland}"
-BACKEND_ENV_FILE="${TREAZ_BACKEND_ENV_FILE:-/opt/treazrisland/config/backend.env}"
-FRONTEND_ENV_FILE="${TREAZ_FRONTEND_ENV_FILE:-/opt/treazrisland/config/frontend.env}"
-COMPOSE_ENV_FILE="${TREAZ_COMPOSE_ENV_FILE:-/opt/treazrisland/config/compose.env}"
+CENTRAL_ENV_FILE="${TREAZ_ENV_FILE:-/opt/treazrisland/config/compose.env}"
+COMPOSE_ENV_FILE="${TREAZ_COMPOSE_ENV_FILE:-${CENTRAL_ENV_FILE}}"
+BACKEND_ENV_FILE="${TREAZ_BACKEND_ENV_FILE:-${CENTRAL_ENV_FILE}}"
+FRONTEND_ENV_FILE="${TREAZ_FRONTEND_ENV_FILE:-${CENTRAL_ENV_FILE}}"
 SEED_PLATFORMS="${TREAZ_RUN_PLATFORM_SEED:-false}"
 RESET_ON_FAILURE="${TREAZ_RESET_ON_FAILURE:-true}"
 HEALTH_MAX_ATTEMPTS="${TREAZ_HEALTH_MAX_ATTEMPTS:-12}"
 HEALTH_BACKOFF_SECONDS="${TREAZ_HEALTH_BACKOFF_SECONDS:-5}"
+SYNC_WITH_ORIGIN="${TREAZ_SYNC_WITH_ORIGIN:-false}"
+DOCKER_CONFIG_DIR="${TREAZ_DOCKER_CONFIG:-${REPO_ROOT}/.docker}"
 
 HEALTHCHECK_ORDER=(
   postgres
@@ -21,6 +24,18 @@ HEALTHCHECK_ORDER=(
 )
 
 PROBE_FAILURES=()
+
+require_docker() {
+  if ! command -v docker >/dev/null 2>&1; then
+    log "Docker CLI not found. Install Docker or set TREAZ_USE_HOST_RUNTIME to run without containers (not yet implemented)."
+    exit 1
+  fi
+
+  if ! docker info >/dev/null 2>&1; then
+    log "Docker daemon is not reachable (is it running, and do you have permission to access /var/run/docker.sock?)"
+    exit 1
+  fi
+}
 
 bring_up_stack() {
   docker compose -f "${COMPOSE_FILE}" up -d --remove-orphans
@@ -168,7 +183,7 @@ run_all_probes() {
 log() {
   local message="$1"
   if command -v logger >/dev/null 2>&1; then
-    logger "TREAZRISLAND deploy: ${message}"
+    logger "TREAZRISLAND deploy: ${message}" || true
   fi
   printf '[deploy] %s\n' "${message}"
 }
@@ -183,17 +198,28 @@ require_file() {
 }
 
 log "Preparing environment"
-require_file "${BACKEND_ENV_FILE}" "backend env file"
-require_file "${FRONTEND_ENV_FILE}" "frontend env file"
+require_file "${CENTRAL_ENV_FILE}" "central environment file"
+
+if [[ "${BACKEND_ENV_FILE}" != "${CENTRAL_ENV_FILE}" ]]; then
+  require_file "${BACKEND_ENV_FILE}" "backend env file"
+else
+  log "Backend env file not provided; using central environment exports"
+fi
+
+if [[ "${FRONTEND_ENV_FILE}" != "${CENTRAL_ENV_FILE}" ]]; then
+  require_file "${FRONTEND_ENV_FILE}" "frontend env file"
+else
+  log "Frontend env file not provided; using central environment exports"
+fi
 
 if [[ -f "${COMPOSE_ENV_FILE}" ]]; then
-  log "Loading compose environment overrides from ${COMPOSE_ENV_FILE}"
+  log "Loading environment exports from ${COMPOSE_ENV_FILE}"
   set -a
   # shellcheck disable=SC1090
   source "${COMPOSE_ENV_FILE}"
   set +a
 else
-  log "No compose environment file found at ${COMPOSE_ENV_FILE}; relying on host environment"
+  log "No environment file found at ${COMPOSE_ENV_FILE}; relying on host environment"
 fi
 
 export TREAZ_BACKEND_ENV_FILE="${BACKEND_ENV_FILE}"
@@ -202,10 +228,41 @@ export COMPOSE_PROJECT_NAME="${PROJECT_NAME}"
 
 cd "${REPO_ROOT}"
 
-log "Synchronising repository state with origin/main"
-git fetch --prune
-git checkout main
-git reset --hard origin/main
+if [[ -n "${DOCKER_CONFIG_DIR}" ]]; then
+  mkdir -p "${DOCKER_CONFIG_DIR}"
+  export DOCKER_CONFIG="${DOCKER_CONFIG_DIR}"
+  log "Using docker config directory at ${DOCKER_CONFIG_DIR}"
+fi
+
+if [[ "$(to_lower "${SYNC_WITH_ORIGIN}")" == "true" ]]; then
+  log "Synchronising repository state with origin/main"
+  if ! git fetch --prune; then
+    log "Failed to fetch origin/main; continuing with existing checkout"
+  else
+    current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || printf 'HEAD')"
+    if git show-ref --verify --quiet refs/heads/main; then
+      if ! git checkout main; then
+        log "Failed to checkout main; continuing on ${current_branch}"
+      fi
+    fi
+    if git rev-parse --verify --quiet origin/main >/dev/null 2>&1; then
+      if ! git reset --hard origin/main; then
+        log "Failed to reset main to origin/main; continuing with local state"
+      fi
+    else
+      log "origin/main not available locally; skipping reset"
+    fi
+    if [[ "${current_branch}" != "main" ]]; then
+      if ! git checkout "${current_branch}" >/dev/null 2>&1; then
+        log "Warning: failed to restore branch ${current_branch}; remaining on $(git rev-parse --abbrev-ref HEAD)"
+      fi
+    fi
+  fi
+else
+  log "Skipping repository synchronisation; using current checkout (set TREAZ_SYNC_WITH_ORIGIN=true to enable)"
+fi
+
+require_docker
 
 log "Building production images"
 docker compose -f "${COMPOSE_FILE}" build --pull
