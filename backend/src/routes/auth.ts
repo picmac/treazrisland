@@ -151,17 +151,20 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       return reply.status(404).send({ message: "Invitation not found or expired" });
     }
 
-    if (!invitation.tokenDigest?.startsWith("$argon2")) {
-      request.log.warn({ invitationId: invitation.id }, "Invitation missing argon2 digest");
-      return reply.status(404).send({ message: "Invitation not found or expired" });
-    }
-
     let tokenValid = false;
-    try {
-      tokenValid = await argon2.verify(invitation.tokenDigest, token);
-    } catch (error) {
-      request.log.error({ err: error, invitationId: invitation.id }, "Failed to verify invitation token");
-      return reply.status(500).send({ message: "Unable to verify invitation token" });
+    if (invitation.tokenDigest?.startsWith("$argon2")) {
+      try {
+        tokenValid = await argon2.verify(invitation.tokenDigest, token);
+      } catch (error) {
+        request.log.error({ err: error, invitationId: invitation.id }, "Failed to verify invitation token");
+        return reply.status(500).send({ message: "Unable to verify invitation token" });
+      }
+    } else {
+      request.log.warn(
+        { invitationId: invitation.id },
+        "Invitation missing argon2 digest; falling back to SHA-256 token hash"
+      );
+      tokenValid = invitation.tokenHash === tokenHash;
     }
 
     if (!tokenValid) {
@@ -208,17 +211,20 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           throw new Error("INVALID_INVITATION");
         }
 
-        if (!invitation.tokenDigest?.startsWith("$argon2")) {
-          request.log.warn({ invitationId: invitation.id }, "Invitation missing argon2 digest during signup");
-          throw new Error("INVALID_INVITATION");
-        }
-
         let tokenValid = false;
-        try {
-          tokenValid = await argon2.verify(invitation.tokenDigest, token);
-        } catch (error) {
-          request.log.error({ err: error, invitationId: invitation.id }, "Failed to verify invitation during signup");
-          throw new Error("TOKEN_VERIFY_FAILED");
+        if (invitation.tokenDigest?.startsWith("$argon2")) {
+          try {
+            tokenValid = await argon2.verify(invitation.tokenDigest, token);
+          } catch (error) {
+            request.log.error({ err: error, invitationId: invitation.id }, "Failed to verify invitation during signup");
+            throw new Error("TOKEN_VERIFY_FAILED");
+          }
+        } else {
+          request.log.warn(
+            { invitationId: invitation.id },
+            "Invitation missing argon2 digest during signup; falling back to SHA-256 token hash"
+          );
+          tokenValid = invitation.tokenHash === tokenHash;
         }
 
         if (!tokenValid) {
