@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyBaseLogger, FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { createHash, randomBytes } from "node:crypto";
 import argon2 from "argon2";
@@ -132,6 +132,46 @@ const generateRecoveryCodes = (count: number, length: number): string[] => {
 };
 
 export async function registerAuthRoutes(app: FastifyInstance) {
+  const verifyInvitationToken = async (
+    invitation: Pick<PrismaNamespace.UserInvitation, "id" | "tokenHash" | "tokenDigest">,
+    {
+      token,
+      tokenHash,
+      log,
+      context
+    }: {
+      token: string;
+      tokenHash: string;
+      log: FastifyBaseLogger;
+      context: "preview" | "signup";
+    }
+  ): Promise<{ valid: boolean; error?: "VERIFY_FAILED" }> => {
+    const messages = {
+      preview: {
+        error: "Failed to verify invitation token",
+        fallback: "Invitation missing argon2 digest; falling back to SHA-256 token hash"
+      },
+      signup: {
+        error: "Failed to verify invitation during signup",
+        fallback:
+          "Invitation missing argon2 digest during signup; falling back to SHA-256 token hash"
+      }
+    } as const;
+
+    if (invitation.tokenDigest?.startsWith("$argon2")) {
+      try {
+        const verified = await argon2.verify(invitation.tokenDigest, token);
+        return { valid: verified };
+      } catch (error) {
+        log.error({ err: error, invitationId: invitation.id }, messages[context].error);
+        return { valid: false, error: "VERIFY_FAILED" };
+      }
+    }
+
+    log.warn({ invitationId: invitation.id }, messages[context].fallback);
+    return { valid: invitation.tokenHash === tokenHash };
+  };
+
   app.post("/auth/invitations/preview", async (request, reply) => {
     const parsed = invitationTokenSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -151,23 +191,18 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       return reply.status(404).send({ message: "Invitation not found or expired" });
     }
 
-    let tokenValid = false;
-    if (invitation.tokenDigest?.startsWith("$argon2")) {
-      try {
-        tokenValid = await argon2.verify(invitation.tokenDigest, token);
-      } catch (error) {
-        request.log.error({ err: error, invitationId: invitation.id }, "Failed to verify invitation token");
-        return reply.status(500).send({ message: "Unable to verify invitation token" });
-      }
-    } else {
-      request.log.warn(
-        { invitationId: invitation.id },
-        "Invitation missing argon2 digest; falling back to SHA-256 token hash"
-      );
-      tokenValid = invitation.tokenHash === tokenHash;
+    const verification = await verifyInvitationToken(invitation, {
+      token,
+      tokenHash,
+      log: request.log,
+      context: "preview"
+    });
+
+    if (verification.error === "VERIFY_FAILED") {
+      return reply.status(500).send({ message: "Unable to verify invitation token" });
     }
 
-    if (!tokenValid) {
+    if (!verification.valid) {
       return reply.status(404).send({ message: "Invitation not found or expired" });
     }
 
@@ -211,23 +246,18 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           throw new Error("INVALID_INVITATION");
         }
 
-        let tokenValid = false;
-        if (invitation.tokenDigest?.startsWith("$argon2")) {
-          try {
-            tokenValid = await argon2.verify(invitation.tokenDigest, token);
-          } catch (error) {
-            request.log.error({ err: error, invitationId: invitation.id }, "Failed to verify invitation during signup");
-            throw new Error("TOKEN_VERIFY_FAILED");
-          }
-        } else {
-          request.log.warn(
-            { invitationId: invitation.id },
-            "Invitation missing argon2 digest during signup; falling back to SHA-256 token hash"
-          );
-          tokenValid = invitation.tokenHash === tokenHash;
+        const verification = await verifyInvitationToken(invitation, {
+          token,
+          tokenHash,
+          log: request.log,
+          context: "signup"
+        });
+
+        if (verification.error === "VERIFY_FAILED") {
+          throw new Error("TOKEN_VERIFY_FAILED");
         }
 
-        if (!tokenValid) {
+        if (!verification.valid) {
           throw new Error("INVALID_INVITATION");
         }
 
