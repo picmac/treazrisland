@@ -1,8 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import prisma from "@prisma/client";
-
-const { Prisma } = prisma;
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 const favoriteParamsSchema = z.object({
   romId: z.string().trim().min(1, "romId is required")
@@ -59,7 +57,7 @@ export async function registerFavoriteRoutes(app: FastifyInstance) {
           }
         });
       } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error instanceof PrismaClientKnownRequestError) {
           if (error.code === "P2002") {
             return reply.status(204).send();
           }

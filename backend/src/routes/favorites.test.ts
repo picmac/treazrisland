@@ -2,25 +2,17 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import request from "supertest";
 import type { FastifyInstance } from "fastify";
 import type { Prisma, PrismaClient } from "@prisma/client";
-import prisma from "@prisma/client";
-
-const { Prisma } = prisma;
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 function createPrismaKnownRequestError(
   code: string,
   message: string,
   meta?: Prisma.PrismaClientKnownRequestError["meta"]
 ): Prisma.PrismaClientKnownRequestError {
-  const error = Object.create(
-    Prisma.PrismaClientKnownRequestError.prototype
-  ) as Prisma.PrismaClientKnownRequestError;
-
-  return Object.assign(error, {
+  return new PrismaClientKnownRequestError(message, {
     code,
     clientVersion: "test",
-    meta,
-    message,
-    name: "PrismaClientKnownRequestError"
+    meta
   });
 }
 

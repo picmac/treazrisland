@@ -2,13 +2,11 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { createHash, randomBytes } from "node:crypto";
 import argon2 from "argon2";
-import prisma from "@prisma/client";
 import type { Prisma as PrismaNamespace } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { LoginAuditEvent } from "../utils/prisma-enums.js";
 
 type LoginAuditEventValue = (typeof LoginAuditEvent)[keyof typeof LoginAuditEvent];
-
-const { Prisma } = prisma;
 import {
   issueSessionTokens,
   rotateRefreshToken,
@@ -259,7 +257,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         }
       }
 
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      if (error instanceof PrismaClientKnownRequestError && error.code === "P2002") {
         return reply.status(409).send({ message: "Email or nickname already in use" });
       }
 
