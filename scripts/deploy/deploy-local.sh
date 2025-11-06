@@ -110,19 +110,30 @@ reset_probe_failures() {
 
 run_probe() {
   local service_name="$1"
-  local command_template="$2"
   local attempt=1
   local attempts="${HEALTH_MAX_ATTEMPTS}"
   local backoff="${HEALTH_BACKOFF_SECONDS}"
 
   while (( attempt <= attempts )); do
-    if eval "${command_template}"; then
-      log "Health check for ${service_name} succeeded on attempt ${attempt}/${attempts}"
-      return 0
+    local command
+    local had_command=true
+
+    if ! command=$(get_healthcheck_command "${service_name}"); then
+      had_command=false
+    fi
+
+    if [[ "${had_command}" == "true" ]]; then
+      if eval "${command}"; then
+        log "Health check for ${service_name} succeeded on attempt ${attempt}/${attempts}"
+        return 0
+      fi
+      log "Health check for ${service_name} failed (attempt ${attempt}/${attempts})"
+    else
+      log "Failed to construct health check command for ${service_name} (attempt ${attempt}/${attempts})"
     fi
 
     if (( attempt < attempts )); then
-      log "Health check for ${service_name} failed (attempt ${attempt}/${attempts}); retrying in ${backoff}s"
+      log "Retrying ${service_name} health check in ${backoff}s"
       if (( backoff > 0 )); then
         sleep "${backoff}"
       fi
@@ -140,14 +151,7 @@ run_all_probes() {
   reset_probe_failures
   local service
   for service in "${HEALTHCHECK_ORDER[@]}"; do
-    local command
-    if ! command=$(get_healthcheck_command "${service}"); then
-      log "Failed to construct health check command for ${service}; marking as failed"
-      PROBE_FAILURES+=("${service}")
-      continue
-    fi
-
-    if ! run_probe "${service}" "${command}"; then
+    if ! run_probe "${service}"; then
       PROBE_FAILURES+=("${service}")
     fi
   done
