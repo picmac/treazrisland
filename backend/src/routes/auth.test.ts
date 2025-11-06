@@ -1,6 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { createHash } from "node:crypto";
 import type { User, UserInvitation } from "@prisma/client";
 import argon2 from "argon2";
 import type { MfaService } from "../services/mfa/service.js";
@@ -37,6 +36,7 @@ vi.mock("argon2", () => {
 const argon2Mock = vi.mocked(argon2, true);
 
 let buildServer: typeof import("../server.js").buildServer;
+let hashToken: typeof import("../utils/tokens.js").hashToken;
 
 describe("auth routes", () => {
   let app: FastifyInstance;
@@ -45,6 +45,7 @@ describe("auth routes", () => {
 
   beforeAll(async () => {
     ({ buildServer } = await import("../server.js"));
+    ({ hashToken } = await import("../utils/tokens.js"));
   });
 
   beforeEach(async () => {
@@ -69,8 +70,6 @@ describe("auth routes", () => {
     await app.close();
     vi.clearAllMocks();
   });
-
-  const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
   it("returns 404 for invalid invitation preview", async () => {
     prisma.userInvitation.findUnique.mockResolvedValueOnce(null);
