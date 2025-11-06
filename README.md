@@ -27,21 +27,7 @@ Review the [Product Requirements Document](./TREAZRISLAND_PRD.md) and the [Threa
    cp .env.example .env
    ```
 
-2. Provide the backend with environment variables by copying (or symlinking) the same file into the package directory:
-
-   ```bash
-   cp .env backend/.env
-   ```
-
-3. Create the frontend environment file using only the `NEXT_PUBLIC_*` keys:
-
-   ```bash
-   grep '^NEXT_' .env > frontend/.env.local
-   ```
-
-   Adjust `NEXT_PUBLIC_API_BASE_URL` if your backend runs on a non-default host/port.
-
-4. Replace all placeholder secrets before exposing the stack to real users. The most important keys are summarised below:
+2. Replace all placeholder secrets before exposing the stack to real users. The most important keys are summarised below:
 
 | Area | Keys | Notes |
 | ---- | ---- | ----- |
@@ -51,7 +37,7 @@ Review the [Product Requirements Document](./TREAZRISLAND_PRD.md) and the [Threa
 | ScreenScraper | `SCREENSCRAPER_*` | Store plaintext credentials in a secret manager. Use `npm run screenscraper:encrypt` (in `backend/`) to produce the encrypted developer ID/password and commit only the encrypted values. |
 | Observability | `LOG_LEVEL`, `METRICS_ENABLED`, `METRICS_TOKEN` | Enable metrics and set a token when scraping `/metrics` from Prometheus. |
 
-Backend configuration is validated on boot by [`backend/src/config/env.ts`](./backend/src/config/env.ts). The process exits with a detailed error message if any required key is missing or malformed.
+Backend configuration is validated on boot by [`backend/src/config/env.ts`](./backend/src/config/env.ts). The process exits with a detailed error message if any required key is missing or malformed. Both the Fastify backend and Next.js frontend automatically load the repository-level `.env`, so you only maintain a single file during development.
 
 ## Local development workflow
 
@@ -91,7 +77,7 @@ Backend configuration is validated on boot by [`backend/src/config/env.ts`](./ba
    docker compose -f infra/docker-compose.yml up --build
    ```
 
-   This command builds the Dockerfiles, injects the package-specific `.env.docker` files, and launches all services together.
+   This command builds the Dockerfiles, reads the shared `.env`, and launches all services together.
 
 ## Quality gates
 

@@ -10,11 +10,7 @@ Fastify + Prisma service powering authentication, library management, emulator s
 
 ## Environment setup
 
-1. Copy the repository-level environment file into this package so `dotenv` can load it:
-
-   ```bash
-   cp ../.env .env
-   ```
+1. Ensure the repository-level `.env` file is populated (copy `.env.example` at the repo root).
 
 2. Edit the following sections before running the server:
 
@@ -24,7 +20,7 @@ Fastify + Prisma service powering authentication, library management, emulator s
    - **Storage**: choose between `STORAGE_DRIVER=filesystem` (requires `STORAGE_LOCAL_ROOT`) or `STORAGE_DRIVER=s3` (requires the MinIO/S3 settings from `.env.example`).
    - **ScreenScraper**: either populate `SCREENSCRAPER_USERNAME`/`SCREENSCRAPER_PASSWORD` directly for local experiments or use encrypted developer credentials (`npm run screenscraper:encrypt`).
 
-The configuration contract is enforced by [`src/config/env.ts`](./src/config/env.ts); the process stops on invalid settings with a descriptive error.
+The configuration contract is enforced by [`src/config/env.ts`](./src/config/env.ts); the process stops on invalid settings with a descriptive error. The loader automatically reads the repository-level `.env`, so you only need to maintain one file during development. Override the path via `TREAZ_ENV_FILE=/absolute/path/to/env` when necessary.
 
 ## Database lifecycle
 

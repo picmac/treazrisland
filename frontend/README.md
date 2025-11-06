@@ -9,13 +9,7 @@ Next.js 19 App Router client that renders the SNES-inspired experience described
 
 ## Environment setup
 
-1. Ensure the repository-level `.env` file has the `NEXT_PUBLIC_*` keys populated. Copy them into the Next.js local environment file:
-
-   ```bash
-   cp ../.env .env.local
-   # or only export the public keys
-   grep '^NEXT_' ../.env > .env.local
-   ```
+1. Ensure the repository-level `.env` file has the `NEXT_PUBLIC_*` keys populated (copy `.env.example` at the repo root if you haven't already).
 
 2. Adjust the following keys when required:
 
@@ -23,7 +17,7 @@ Next.js 19 App Router client that renders the SNES-inspired experience described
    - `NEXT_PUBLIC_PIXEL_THEME`: selects the pixel-art theme tokens. Keep `monkey-island` for the canonical SNES look.
    - `NEXT_PUBLIC_MEDIA_CDN`: optional absolute URL for serving artwork/ROM assets (defaults to the MinIO bucket from Docker Compose).
 
-Next.js automatically reloads when `.env.local` changes during development.
+The Next.js config automatically loads the repository-level `.env`, so no additional files are required for development overrides. Local `.env` files inside `frontend/` remain optional if you prefer per-package overrides.
 
 ## Running the app
 

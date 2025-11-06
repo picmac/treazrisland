@@ -41,8 +41,8 @@ mkdir -p /opt/treazrisland/config
 sudo chown treaz:treaz /opt/treazrisland/config
 ```
 
-- `/opt/treazrisland/config/backend.env` — populate **every** variable listed in `backend/.env.example`: database connection string, JWT secrets, email provider credentials, MinIO/S3 config, ScreenScraper credentials, logging sinks, etc.
-- `/opt/treazrisland/config/frontend.env` — mirror `frontend/.env.example`: API base URL, auth endpoints, public analytics keys, feature flags.
+- `/opt/treazrisland/config/backend.env` — populate **every** variable listed in the repository-level `.env.example`: database connection string, JWT secrets, email provider credentials, MinIO/S3 config, ScreenScraper credentials, logging sinks, etc.
+- `/opt/treazrisland/config/frontend.env` — mirror the same `.env.example`: API base URL, auth endpoints, public analytics keys, feature flags.
 - `/opt/treazrisland/config/compose.env` — values parsed by Docker Compose before containers start. At a minimum configure:
   ```env
   POSTGRES_DB=treazrisland

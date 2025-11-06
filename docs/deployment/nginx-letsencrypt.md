@@ -30,7 +30,7 @@ Populate the following keys (see `.env.example` for defaults) in an `.env` file 
 ## One-time bootstrap
 
 1. Copy `.env.example` to `.env` and customise the values above.
-2. Ensure the frontend and backend `.env.docker` files are configured for production URLs (not localhost) if serving real traffic.
+2. Update the application URLs inside `.env` (for example, set `NEXT_PUBLIC_API_BASE_URL` to the public hostname and point `STORAGE_ENDPOINT` at your object storage endpoint) before serving real traffic.
 3. Start the stack and tail the logs:
    ```bash
    docker compose --project-directory infra up -d postgres minio

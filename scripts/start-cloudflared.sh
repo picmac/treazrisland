@@ -18,7 +18,6 @@ main() {
 
   set -a
   load_env_file "${REPO_ROOT}/.env"
-  load_env_file "${REPO_ROOT}/.env.local"
   set +a
 
   if [[ -z "${CLOUDFLARE_TUNNEL_TOKEN:-}" ]]; then

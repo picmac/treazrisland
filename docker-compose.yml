@@ -62,7 +62,7 @@ services:
       target: development
     container_name: treazrisland-backend-migrate
     env_file:
-      - backend/.env.docker
+      - ./.env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-treazrisland}:${POSTGRES_PASSWORD:-treazrisland}@db:5432/${POSTGRES_DB:-treazrisland}?schema=public
     depends_on:
@@ -81,7 +81,7 @@ services:
       target: development
     container_name: treazrisland-backend
     env_file:
-      - backend/.env.docker
+      - ./.env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-treazrisland}:${POSTGRES_PASSWORD:-treazrisland}@db:5432/${POSTGRES_DB:-treazrisland}?schema=public
       STORAGE_ENDPOINT: http://minio:9000
@@ -113,7 +113,7 @@ services:
       target: development
     container_name: treazrisland-frontend
     env_file:
-      - frontend/.env.docker
+      - ./.env
     depends_on:
       backend:
         condition: service_healthy
@@ -123,6 +123,9 @@ services:
       - ./frontend:/app
       - frontend-node-modules:/app/node_modules
       - frontend-next:/app/.next
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://backend:3001
+      NEXT_PUBLIC_MEDIA_CDN: http://minio:9000/${STORAGE_BUCKET_ASSETS:-treaz-assets}
     command: npm run dev
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]

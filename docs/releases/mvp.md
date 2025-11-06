@@ -12,7 +12,7 @@
 
 ## Breaking Changes
 
-- Environment variables are now sourced from `.env.docker` when using Docker Compose. Existing `.env` files should be reconciled with the new templates.
+- Environment variables are now sourced from the shared `.env` file for both host and Docker workflows. Existing deployments should reconcile their secrets with the consolidated template.
 - Metrics scraping requires a bearer token via `METRICS_TOKEN`.
 
 ## Manual Steps

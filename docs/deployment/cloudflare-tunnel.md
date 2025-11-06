@@ -36,7 +36,7 @@ Update the hostnames if your domain differs. Additional services can be appended
 
 1. Ensure Docker is running and that the local `frontend` and `backend` services are healthy (`docker compose up frontend backend`).
 2. Populate `CLOUDFLARE_TUNNEL_TOKEN` in `.env` (or export it in your shell).
-3. Run `scripts/start-cloudflared.sh`. The script sources `.env`/`.env.local` automatically and invokes `docker compose --profile cloudflared up cloudflared`.
+3. Run `scripts/start-cloudflared.sh`. The script sources `.env` automatically and invokes `docker compose --profile cloudflared up cloudflared`.
 4. When the container reports `Connection established`, the public hostnames should proxy to your local services.
 
 Stop the tunnel with `Ctrl+C` or `docker compose --profile cloudflared down`.

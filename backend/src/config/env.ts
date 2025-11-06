@@ -1,10 +1,27 @@
 import { config as loadEnv } from "dotenv";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { z } from "zod";
 import ms, { StringValue } from "ms";
 import ipaddr from "ipaddr.js";
 import { ensureBootstrapSecrets } from "./bootstrapSecrets.js";
 
-loadEnv();
+const candidateEnvPaths = [
+  process.env.TREAZ_ENV_FILE
+    ? resolve(process.cwd(), process.env.TREAZ_ENV_FILE)
+    : undefined,
+  resolve(process.cwd(), "../.env"),
+  resolve(process.cwd(), ".env"),
+].filter((value): value is string => Boolean(value));
+
+const loadedEnvFiles = new Set<string>();
+
+for (const envPath of candidateEnvPaths) {
+  if (!loadedEnvFiles.has(envPath) && existsSync(envPath)) {
+    loadEnv({ path: envPath });
+    loadedEnvFiles.add(envPath);
+  }
+}
 
 export const bootstrapSecrets = ensureBootstrapSecrets();
 

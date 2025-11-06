@@ -4,7 +4,7 @@ This guide enumerates the operational controls required before promoting a TREAZ
 
 ## Authentication & Rate Limiting
 
-- [x] `JWT_SECRET` rotated before each major release and stored in a secrets manager (Vault, SSM, Doppler). Never reuse the default values from `.env.example` or `.env.docker`. _(Rotated 2025-02-12 by Security/Ops; stored in Vault `secret/data/treaz/prod/backend#JWT_SECRET`; process documented in [Operator Runbook §1](../operators/runbook.md#1-bootstrap-the-stack).)_
+- [x] `JWT_SECRET` rotated before each major release and stored in a secrets manager (Vault, SSM, Doppler). Never reuse the default values from `.env.example`. _(Rotated 2025-02-12 by Security/Ops; stored in Vault `secret/data/treaz/prod/backend#JWT_SECRET`; process documented in [Operator Runbook §1](../operators/runbook.md#1-bootstrap-the-stack).)_
 - [x] Default rate limits (`RATE_LIMIT_*`) tuned for expected traffic. Admin auth endpoints must stay at `≤5` requests/minute to prevent credential stuffing. _(Validated 2025-02-22 during the auth drill documented in `docs/security/reports/2025-02-22-rate-limit-drill.md` and reinforced 2025-02-24 via new Vitest coverage in `backend/src/routes/auth.security.test.ts`; see `docs/security/reports/2025-02-24-auth-hardening.md`. **SEC-45** closed.)_
 - [x] `/auth/login`, `/auth/refresh`, and `/admin/*` routes exercised with lockout scenarios to ensure structured logs capture IP, user agent, and status. _(Simulated 2025-02-22 in the manual drill captured in `docs/security/reports/2025-02-22-rate-limit-drill.md` and re-run with Vitest injection tests on 2025-02-24; audit results archived in `docs/security/reports/2025-02-24-auth-hardening.md`. **SEC-46** closed.)_
 

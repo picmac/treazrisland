@@ -9,7 +9,7 @@ Keep the following API references handy when debugging login issues or player da
 
 ## 1. Bootstrap the Stack
 
-1. Copy `.env.example` to `.env` for local testing, or use `.env.docker` templates for Compose deployments. Refer to [Local Stack Playbook](./local-stack.md) for the list of secrets that must be replaced in shared environments.
+1. Copy `.env.example` to `.env` for local testing. The same file now powers Compose deployments—refer to [Local Stack Playbook](./local-stack.md) for the list of secrets that must be replaced in shared environments.
 2. Install JavaScript dependencies on the host **before** starting Docker Compose so the bind-mounted `node_modules/` folders exist:
    ```bash
    (cd backend && npm install)
