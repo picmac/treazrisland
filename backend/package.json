@@ -13,8 +13,9 @@
     "format:check": "prettier --check \"src/config/env.ts\" \"src/routes/admin/romUploads.ts\" \"src/routes/player.ts\" \"src/routes/screenscraper.ts\" \"src/server.ts\" \"src/types/fastify.d.ts\" \"src/plugins/observability.ts\"",
     "format:write": "prettier --write \"src/config/env.ts\" \"src/routes/admin/romUploads.ts\" \"src/routes/player.ts\" \"src/routes/screenscraper.ts\" \"src/server.ts\" \"src/types/fastify.d.ts\" \"src/plugins/observability.ts\"",
     "test": "vitest",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev && tsx prisma/migrate-reencrypt-mfa-secrets.ts",
+    "prisma:generate": "node ./scripts/run-prisma-with-env.mjs generate",
+    "prisma:migrate": "node ./scripts/run-prisma-with-env.mjs migrate dev && tsx prisma/migrate-reencrypt-mfa-secrets.ts",
+    "prisma:migrate:deploy": "node ./scripts/run-prisma-with-env.mjs migrate deploy",
     "screenscraper:encrypt": "tsx scripts/encrypt-screenscraper-secret.ts",
     "prisma:seed:platforms": "tsx prisma/seed-platforms.ts",
     "retention:prune": "tsx scripts/retention/prune-rom-upload-audit.ts"

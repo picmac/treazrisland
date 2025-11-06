@@ -27,11 +27,15 @@ The configuration contract is enforced by [`src/config/env.ts`](./src/config/env
 Prisma migrations live under `prisma/migrations/`. Keep the schema in sync with:
 
 ```bash
-npm run prisma:migrate      # prisma migrate dev
-npx prisma migrate deploy   # apply migrations in CI/production
-npm run prisma:generate     # regenerate the Prisma client
+npm run prisma:migrate           # prisma migrate dev
+npm run prisma:migrate:deploy    # apply migrations in CI/production
+npm run prisma:generate          # regenerate the Prisma client
 npm run prisma:seed:platforms
 ```
+
+All Prisma helpers automatically read the repository-level `.env`, so the CLI
+has access to `DATABASE_URL` and other required secrets without duplicating
+configuration files.
 
 `npm run prisma:seed:platforms` loads the canonical platform catalogue required by the frontend to render browse views.
 
