@@ -114,6 +114,38 @@ describe("auth routes", () => {
     });
   });
 
+  it("falls back to legacy token hashes when invitation lacks an argon2 digest", async () => {
+    const token = "legacy-token";
+    const expiresAt = new Date(Date.now() + 60_000);
+    prisma.userInvitation.findUnique.mockResolvedValueOnce({
+      id: "invite-legacy-preview",
+      tokenHash: hashToken(token),
+      tokenDigest: "",
+      role: "USER",
+      email: "legacy@example.com",
+      expiresAt,
+      redeemedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdById: "admin-legacy"
+    } as UserInvitation);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/invitations/preview",
+      payload: { token }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(await response.json()).toEqual({
+      invitation: {
+        role: "USER",
+        email: "legacy@example.com"
+      }
+    });
+    expect(argon2Mock.verify).not.toHaveBeenCalled();
+  });
+
   it("creates a user from invitation during signup", async () => {
     const token = "signup-token";
     const now = new Date();
@@ -182,6 +214,69 @@ describe("auth routes", () => {
     expect(prisma.refreshTokenFamily.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: { userId: "user-1" } })
     );
+  });
+
+  it("redeems legacy invitations without an argon2 digest during signup", async () => {
+    const token = "legacy-signup-token";
+    const now = new Date();
+
+    prisma.userInvitation.findUnique.mockResolvedValueOnce({
+      id: "invite-legacy-signup",
+      tokenHash: hashToken(token),
+      tokenDigest: "",
+      role: "USER",
+      email: "legacy-player@example.com",
+      expiresAt: new Date(now.getTime() + 60_000),
+      redeemedAt: null,
+      createdAt: now,
+      updatedAt: now,
+      createdById: "admin-legacy"
+    } as UserInvitation);
+
+    prisma.user.create.mockResolvedValueOnce({
+      id: "user-legacy",
+      email: "legacy-player@example.com",
+      nickname: "retrohero",
+      displayName: "retrohero",
+      role: "USER",
+      passwordHash: "hashed-password",
+      createdAt: now,
+      updatedAt: now
+    } as User);
+
+    prisma.userInvitation.update.mockResolvedValueOnce({} as UserInvitation);
+    prisma.refreshTokenFamily.create.mockResolvedValueOnce({ id: "family-legacy" });
+    prisma.refreshToken.create.mockResolvedValueOnce({
+      id: "token-legacy",
+      tokenHash: "hash",
+      userId: "user-legacy",
+      familyId: "family-legacy",
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + 1000),
+      revokedAt: null,
+      revokedReason: null
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/signup",
+      payload: {
+        token,
+        nickname: "retrohero",
+        password: "Secret123",
+        email: "legacy-player@example.com"
+      }
+    });
+
+    expect(response.statusCode).toBe(201);
+    const body = await response.json();
+    expect(body.user).toMatchObject({
+      id: "user-legacy",
+      email: "legacy-player@example.com",
+      nickname: "retrohero",
+      role: "USER"
+    });
+    expect(argon2Mock.verify).not.toHaveBeenCalled();
   });
 
   it("rejects signup when email mismatches invitation", async () => {
