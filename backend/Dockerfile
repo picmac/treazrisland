@@ -24,7 +24,8 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 COPY prisma ./prisma
-RUN npm run prisma:generate
+ARG PRISMA_GENERATE_DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/treazrisland"
+RUN DATABASE_URL="$PRISMA_GENERATE_DATABASE_URL" npm run prisma:generate
 COPY --from=build /app/dist ./dist
 ENV PORT=3001
 EXPOSE 3001
