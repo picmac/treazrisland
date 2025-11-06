@@ -13,13 +13,6 @@ RESET_ON_FAILURE="${TREAZ_RESET_ON_FAILURE:-true}"
 HEALTH_MAX_ATTEMPTS="${TREAZ_HEALTH_MAX_ATTEMPTS:-12}"
 HEALTH_BACKOFF_SECONDS="${TREAZ_HEALTH_BACKOFF_SECONDS:-5}"
 
-declare -A HEALTHCHECK_COMMANDS=(
-  [postgres]='docker compose -f "${COMPOSE_FILE}" exec -T postgres pg_isready -U "${POSTGRES_USER:-treazrisland}"'
-  [minio]='curl -fsS http://localhost:9000/minio/health/ready >/dev/null'
-  [backend]='curl -fsS http://localhost:3001/health >/dev/null'
-  [frontend]='curl -fsS http://localhost:3000/ >/dev/null'
-)
-
 HEALTHCHECK_ORDER=(
   postgres
   minio
@@ -28,6 +21,72 @@ HEALTHCHECK_ORDER=(
 )
 
 PROBE_FAILURES=()
+
+resolve_service_port() {
+  local service="$1"
+  local container_port="$2"
+  local port_output
+
+  if ! port_output=$(docker compose -f "${COMPOSE_FILE}" port "${service}" "${container_port}" 2>/dev/null | head -n1); then
+    return 1
+  fi
+
+  if [[ -z "${port_output}" ]]; then
+    return 1
+  fi
+
+  printf '%s' "${port_output##*:}"
+}
+
+resolve_service_http_url() {
+  local service="$1"
+  local container_port="$2"
+  local path="$3"
+  local port
+
+  if ! port=$(resolve_service_port "${service}" "${container_port}"); then
+    return 1
+  fi
+
+  printf 'http://127.0.0.1:%s%s' "${port}" "${path}"
+}
+
+get_healthcheck_command() {
+  local service="$1"
+  local command
+
+  case "${service}" in
+    postgres)
+      printf -v command 'docker compose -f %q exec -T postgres pg_isready -U %q' "${COMPOSE_FILE}" "${POSTGRES_USER:-treazrisland}"
+      ;;
+    minio)
+      local minio_url
+      if ! minio_url=$(resolve_service_http_url "minio" 9000 "/minio/health/ready"); then
+        return 1
+      fi
+      printf -v command 'curl -fsS %q >/dev/null' "${minio_url}"
+      ;;
+    backend)
+      local backend_url
+      if ! backend_url=$(resolve_service_http_url "backend" 3001 "/health"); then
+        return 1
+      fi
+      printf -v command 'curl -fsS %q >/dev/null' "${backend_url}"
+      ;;
+    frontend)
+      local frontend_url
+      if ! frontend_url=$(resolve_service_http_url "frontend" 3000 "/"); then
+        return 1
+      fi
+      printf -v command 'curl -fsS %q >/dev/null' "${frontend_url}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  printf '%s' "${command}"
+}
 
 to_lower() {
   local value="$1"
@@ -70,9 +129,10 @@ run_all_probes() {
   reset_probe_failures
   local service
   for service in "${HEALTHCHECK_ORDER[@]}"; do
-    local command="${HEALTHCHECK_COMMANDS[${service}]}"
-    if [[ -z "${command}" ]]; then
-      log "No health check command registered for ${service}; skipping"
+    local command
+    if ! command=$(get_healthcheck_command "${service}"); then
+      log "Failed to construct health check command for ${service}; marking as failed"
+      PROBE_FAILURES+=("${service}")
       continue
     fi
 
