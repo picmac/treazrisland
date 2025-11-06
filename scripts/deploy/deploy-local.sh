@@ -9,6 +9,86 @@ BACKEND_ENV_FILE="${TREAZ_BACKEND_ENV_FILE:-/opt/treazrisland/config/backend.env
 FRONTEND_ENV_FILE="${TREAZ_FRONTEND_ENV_FILE:-/opt/treazrisland/config/frontend.env}"
 COMPOSE_ENV_FILE="${TREAZ_COMPOSE_ENV_FILE:-/opt/treazrisland/config/compose.env}"
 SEED_PLATFORMS="${TREAZ_RUN_PLATFORM_SEED:-false}"
+RESET_ON_FAILURE="${TREAZ_RESET_ON_FAILURE:-true}"
+HEALTH_MAX_ATTEMPTS="${TREAZ_HEALTH_MAX_ATTEMPTS:-12}"
+HEALTH_BACKOFF_SECONDS="${TREAZ_HEALTH_BACKOFF_SECONDS:-5}"
+
+declare -A HEALTHCHECK_COMMANDS=(
+  [postgres]='docker compose -f "${COMPOSE_FILE}" exec -T postgres pg_isready -U "${POSTGRES_USER:-treazrisland}"'
+  [minio]='curl -fsS http://localhost:9000/minio/health/ready >/dev/null'
+  [backend]='curl -fsS http://localhost:3001/health >/dev/null'
+  [frontend]='curl -fsS http://localhost:3000/ >/dev/null'
+)
+
+HEALTHCHECK_ORDER=(
+  postgres
+  minio
+  backend
+  frontend
+)
+
+PROBE_FAILURES=()
+
+to_lower() {
+  local value="$1"
+  printf '%s' "${value,,}"
+}
+
+reset_probe_failures() {
+  PROBE_FAILURES=()
+}
+
+run_probe() {
+  local service_name="$1"
+  local command_template="$2"
+  local attempt=1
+  local attempts="${HEALTH_MAX_ATTEMPTS}"
+  local backoff="${HEALTH_BACKOFF_SECONDS}"
+
+  while (( attempt <= attempts )); do
+    if eval "${command_template}"; then
+      log "Health check for ${service_name} succeeded on attempt ${attempt}/${attempts}"
+      return 0
+    fi
+
+    if (( attempt < attempts )); then
+      log "Health check for ${service_name} failed (attempt ${attempt}/${attempts}); retrying in ${backoff}s"
+      if (( backoff > 0 )); then
+        sleep "${backoff}"
+      fi
+    else
+      log "Health check for ${service_name} exhausted ${attempts} attempts"
+    fi
+
+    ((attempt++))
+  done
+
+  return 1
+}
+
+run_all_probes() {
+  reset_probe_failures
+  local service
+  for service in "${HEALTHCHECK_ORDER[@]}"; do
+    local command="${HEALTHCHECK_COMMANDS[${service}]}"
+    if [[ -z "${command}" ]]; then
+      log "No health check command registered for ${service}; skipping"
+      continue
+    fi
+
+    if ! run_probe "${service}" "${command}"; then
+      PROBE_FAILURES+=("${service}")
+    fi
+  done
+
+  if (( ${#PROBE_FAILURES[@]} > 0 )); then
+    log "Health checks failed for: ${PROBE_FAILURES[*]}"
+    return 1
+  fi
+
+  log "All health checks passed"
+  return 0
+}
 
 log() {
   local message="$1"
@@ -57,6 +137,24 @@ docker compose -f "${COMPOSE_FILE}" build --pull
 
 log "Applying stack changes"
 docker compose -f "${COMPOSE_FILE}" up -d --remove-orphans
+
+log "Verifying service health"
+if ! run_all_probes; then
+  if [[ "$(to_lower "${RESET_ON_FAILURE}")" == "true" ]]; then
+    log "Health checks failed; resetting stack (containers and volumes will be recreated)"
+    docker compose -f "${COMPOSE_FILE}" down -v
+    docker compose -f "${COMPOSE_FILE}" up -d --remove-orphans
+    log "Re-running service health checks after reset"
+    if ! run_all_probes; then
+      log "Health checks failed after stack reset for: ${PROBE_FAILURES[*]}"
+      log "Skipping migrations because required services are unhealthy"
+      exit 1
+    fi
+  else
+    log "Health checks failed and TREAZ_RESET_ON_FAILURE is disabled; skipping migrations"
+    exit 1
+  fi
+fi
 
 log "Running database migrations"
 docker compose -f "${COMPOSE_FILE}" exec backend npx prisma migrate deploy
