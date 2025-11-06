@@ -1,0 +1,140 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: treazrisland-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-treazrisland}
+      POSTGRES_USER: ${POSTGRES_USER:-treazrisland}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-treazrisland}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB:-treazrisland} -U $${POSTGRES_USER:-treazrisland}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  minio:
+    image: minio/minio:RELEASE.2024-05-28T17-19-04Z
+    container_name: treazrisland-minio
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-treaz-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-treaz-secret}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  minio-setup:
+    image: minio/mc:RELEASE.2024-05-28T18-11-17Z
+    container_name: treazrisland-minio-setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-treaz-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-treaz-secret}
+      STORAGE_BUCKET_ASSETS: ${STORAGE_BUCKET_ASSETS:-treaz-assets}
+      STORAGE_BUCKET_ROMS: ${STORAGE_BUCKET_ROMS:-treaz-roms}
+      STORAGE_BUCKET_BIOS: ${STORAGE_BUCKET_BIOS:-treaz-bios}
+    volumes:
+      - ./infra/minio/bootstrap.sh:/bootstrap/bootstrap.sh:ro
+      - ./infra/minio/policies:/bootstrap/policies:ro
+      - ./infra/minio/lifecycle:/bootstrap/lifecycle:ro
+    entrypoint: ["/bin/sh", "/bootstrap/bootstrap.sh"]
+    restart: "no"
+
+  backend-migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: development
+    container_name: treazrisland-backend-migrate
+    env_file:
+      - backend/.env.docker
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-treazrisland}:${POSTGRES_PASSWORD:-treazrisland}@db:5432/${POSTGRES_DB:-treazrisland}?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+      minio-setup:
+        condition: service_completed_successfully
+    command: >-
+      sh -c "npx prisma migrate deploy && npm run prisma:seed:platforms"
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: development
+    container_name: treazrisland-backend
+    env_file:
+      - backend/.env.docker
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-treazrisland}:${POSTGRES_PASSWORD:-treazrisland}@db:5432/${POSTGRES_DB:-treazrisland}?schema=public
+      STORAGE_ENDPOINT: http://minio:9000
+    depends_on:
+      db:
+        condition: service_healthy
+      minio-setup:
+        condition: service_completed_successfully
+      backend-migrate:
+        condition: service_completed_successfully
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - backend-node-modules:/app/node_modules
+      - backend-dist:/app/dist
+    command: npm run dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: development
+    container_name: treazrisland-frontend
+    env_file:
+      - frontend/.env.docker
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+      - frontend-next:/app/.next
+    command: npm run dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+volumes:
+  db-data:
+  minio-data:
+  backend-node-modules:
+  backend-dist:
+  frontend-node-modules:
+  frontend-next:
