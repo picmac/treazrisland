@@ -70,6 +70,8 @@ export MINIO_ROOT_USER=treaz-admin
 export MINIO_ROOT_PASSWORD=super-secret
 ```
 
+For quick local smoke tests you can copy [`infra/backend.env.sample`](./backend.env.sample) to `backend.env`, adjust any secrets, and export `TREAZ_BACKEND_ENV_FILE=/absolute/path/to/backend.env` before bringing up the stack. The sample populates `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` so MinIO can boot without manually exporting those variables. Never reuse the sample credentials in shared or production environments.
+
 Then deploy with:
 
 ```bash
