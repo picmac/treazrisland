@@ -48,7 +48,7 @@ Compose automatically provisions Grafana using the JSON dashboards stored under 
 
 To make these dashboards live:
 
-1. Copy `infra/monitoring/secrets/metrics_token.sample` to `infra/monitoring/secrets/metrics_token` and match it to the backend `METRICS_TOKEN`.
+1. Export `METRICS_TOKEN_FILE=/path/to/metrics_token` before Compose starts **or** copy `infra/monitoring/secrets/metrics_token.sample` to `infra/monitoring/secrets/metrics_token` and match it to the backend `METRICS_TOKEN`. The sample now contains a placeholder to keep ephemeral stacks online, but production must provide the real token.
 2. Export Grafana admin credentials (`GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`) before running the production Compose stack, or rely on the development defaults (`admin`/`admin`).
 3. Ensure MinIO sets `MINIO_PROMETHEUS_AUTH_TYPE=public` (already baked into the Compose manifests) so Prometheus can scrape `/minio/v2/metrics/cluster`.
 

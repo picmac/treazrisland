@@ -311,4 +311,4 @@ networks:
 
 secrets:
   metrics_token:
-    file: ./monitoring/secrets/metrics_token
+    file: ${METRICS_TOKEN_FILE:-./monitoring/secrets/metrics_token.sample}

@@ -31,7 +31,7 @@ Keep the following API references handy when debugging login issues or player da
    scripts/smoke/local-stack.sh
    ```
    These commands validate service readiness, confirm seed data exists, and ensure MinIO buckets were created.
-7. Copy `infra/monitoring/secrets/metrics_token.sample` to `infra/monitoring/secrets/metrics_token` and keep it in sync with the backend `METRICS_TOKEN` so Prometheus and Grafana can authenticate to `/metrics`.
+7. Either export `METRICS_TOKEN_FILE=/path/to/metrics_token` before starting Compose or copy `infra/monitoring/secrets/metrics_token.sample` to `infra/monitoring/secrets/metrics_token` and keep it in sync with the backend `METRICS_TOKEN` so Prometheus and Grafana can authenticate to `/metrics`. The sample ships with a placeholder token to keep CI and ad-hoc environments bootable.
 
 ## 2. Metadata Enrichment
 
