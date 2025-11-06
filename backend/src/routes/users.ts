@@ -2,12 +2,10 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import Busboy from "busboy";
 import { PassThrough, Readable } from "node:stream";
 import { z } from "zod";
-import prisma from "@prisma/client";
 import type { Prisma as PrismaNamespace } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { env } from "../config/env.js";
 import type { AvatarUploadResult } from "../services/storage/storage.js";
-
-const { Prisma } = prisma;
 
 const nicknameSchema = z
   .string()
@@ -256,10 +254,7 @@ async function parseMultipartPayload(
 }
 
 function normalizePrismaError(error: unknown, app: FastifyInstance): never {
-  if (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P2002"
-  ) {
+  if (error instanceof PrismaClientKnownRequestError && error.code === "P2002") {
     throw app.httpErrors.conflict("Nickname is already in use");
   }
 
