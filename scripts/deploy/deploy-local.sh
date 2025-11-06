@@ -22,6 +22,17 @@ HEALTHCHECK_ORDER=(
 
 PROBE_FAILURES=()
 
+bring_up_stack() {
+  docker compose -f "${COMPOSE_FILE}" up -d --remove-orphans
+}
+
+reset_stack() {
+  log "Health checks failed; resetting stack (containers and volumes will be recreated)"
+  docker compose -f "${COMPOSE_FILE}" down -v
+  log "Recreating services after reset"
+  bring_up_stack
+}
+
 resolve_service_port() {
   local service="$1"
   local container_port="$2"
@@ -196,14 +207,12 @@ log "Building production images"
 docker compose -f "${COMPOSE_FILE}" build --pull
 
 log "Applying stack changes"
-docker compose -f "${COMPOSE_FILE}" up -d --remove-orphans
+bring_up_stack
 
 log "Verifying service health"
 if ! run_all_probes; then
   if [[ "$(to_lower "${RESET_ON_FAILURE}")" == "true" ]]; then
-    log "Health checks failed; resetting stack (containers and volumes will be recreated)"
-    docker compose -f "${COMPOSE_FILE}" down -v
-    docker compose -f "${COMPOSE_FILE}" up -d --remove-orphans
+    reset_stack
     log "Re-running service health checks after reset"
     if ! run_all_probes; then
       log "Health checks failed after stack reset for: ${PROBE_FAILURES[*]}"
