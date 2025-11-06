@@ -2,9 +2,9 @@
 
 FROM node:24-bullseye AS base
 WORKDIR /app
-ENV NODE_ENV=production
 
 FROM base AS deps
+ENV NODE_ENV=development
 COPY package.json package-lock.json ./
 RUN npm ci
 
@@ -20,6 +20,7 @@ COPY . .
 RUN npm run build
 
 FROM base AS production
+ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
