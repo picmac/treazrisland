@@ -9,7 +9,7 @@ Keep the following API references handy when debugging login issues or player da
 
 ## 1. Bootstrap the Stack
 
-1. Copy `.env.example` to `.env` for local testing, or use `.env.docker` templates for Compose deployments.
+1. Copy `.env.example` to `.env` for local testing, or use `.env.docker` templates for Compose deployments. Refer to [Local Stack Playbook](./local-stack.md) for the list of secrets that must be replaced in shared environments.
 2. Install JavaScript dependencies on the host **before** starting Docker Compose so the bind-mounted `node_modules/` folders exist:
    ```bash
    (cd backend && npm install)
@@ -24,9 +24,13 @@ Keep the following API references handy when debugging login issues or player da
   - `SCREENSCRAPER_*` credentials (encrypted dev keys plus runtime secret)
   - `METRICS_TOKEN`
   - Grafana admin credentials (`GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD` for production stacks)
-4. Launch the infrastructure: `docker compose -f infra/docker-compose.yml up -d`.
-5. Run database migrations: `docker compose exec backend npm run prisma:migrate -- --name init` (first boot only).
-6. Seed platform metadata: `docker compose exec backend npm run prisma:seed:platforms`.
+4. Launch the developer stack: `docker compose up --build`. The root Compose file automatically runs Prisma migrations, seeds the platform catalog, and provisions MinIO buckets.
+5. Run the bundled health sweep once the containers are up:
+   ```bash
+   scripts/health/check-stack.sh
+   scripts/smoke/local-stack.sh
+   ```
+   These commands validate service readiness, confirm seed data exists, and ensure MinIO buckets were created.
 7. Copy `infra/monitoring/secrets/metrics_token.sample` to `infra/monitoring/secrets/metrics_token` and keep it in sync with the backend `METRICS_TOKEN` so Prometheus and Grafana can authenticate to `/metrics`.
 
 ## 2. Metadata Enrichment
@@ -52,7 +56,7 @@ Keep the following API references handy when debugging login issues or player da
 - Enable `/metrics` by setting `METRICS_ENABLED=true`, `METRICS_TOKEN=<random>`, and `METRICS_ALLOWED_CIDRS` to the Prometheus network CIDRs. Scrape from the bundled Prometheus instance or another internal collector that forwards the bearer token. The Compose stacks automatically launch Prometheus, Alertmanager, Grafana, node-exporter, cAdvisor, postgres-exporter, and MinIO metrics.
 - Health checks:
   - Backend: `GET http://localhost:3001/health`
-  - Frontend: `GET http://localhost:3000/api/health` (if exposed)
+  - Frontend: `GET http://localhost:3000`
 - Dashboards: Grafana provisions the JSON exports in `infra/monitoring/dashboards/` on start. Sign in with the admin credentials from your environment variables and verify the four core dashboards (Backend Reliability, Upload & Enrichment, Playback & Storage, Infrastructure Overview) are receiving data.
 - Suggested alerts (configured in `infra/monitoring/rules/`):
   - Upload failure rate > 5% over 10 minutes.

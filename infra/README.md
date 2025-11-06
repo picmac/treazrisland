@@ -44,7 +44,7 @@ Edit these files (or provide overrides) before running Compose. Secrets—such a
 
 ## Local development stack
 
-Build and start the full stack:
+Build and start the full stack (migrations, MinIO buckets, and platform seeds run automatically):
 
 ```bash
 docker compose -f infra/docker-compose.yml up --build
@@ -56,7 +56,7 @@ To iterate on code without rebuilding containers, launch only the dependencies a
 docker compose -f infra/docker-compose.yml up postgres minio
 ```
 
-Ensure your host `.env`, `backend/.env`, and `frontend/.env.local` files mirror the Docker defaults so the services share the same credentials.
+Ensure your host `.env`, `backend/.env`, and `frontend/.env.local` files mirror the Docker defaults so the services share the same credentials. Use `scripts/health/check-stack.sh` or `scripts/smoke/local-stack.sh` (with `STACK_FILE=infra/docker-compose.yml DB_SERVICE=postgres`) to verify the stack after Compose finishes booting.
 
 ## Production-style stack
 
