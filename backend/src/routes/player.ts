@@ -143,12 +143,16 @@ function parseAllowedOrigins(raw: string): Set<string> {
   return origins;
 }
 
-function normalizeOriginHeader(value?: string): string | null {
+function normalizeOriginHeader(value?: string | string[]): string | null {
   if (!value) {
     return null;
   }
+  const candidate = Array.isArray(value) ? value[0] : value;
+  if (!candidate) {
+    return null;
+  }
   try {
-    return new URL(value).origin;
+    return new URL(candidate).origin;
   } catch {
     return null;
   }
