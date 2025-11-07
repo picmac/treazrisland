@@ -196,7 +196,9 @@ async function logPlaybackAudit(
 async function removePlayState(
   app: FastifyInstance,
   playState: Pick<PlayState, "id" | "storageKey">,
+  options: { deleteRecord?: boolean } = {},
 ) {
+  const deleteRecord = options.deleteRecord ?? true;
   try {
     await app.storage.deleteAssetObject(playState.storageKey);
   } catch (err) {
@@ -206,13 +208,15 @@ async function removePlayState(
     );
   }
 
-  try {
-    await app.prisma.playState.delete({ where: { id: playState.id } });
-  } catch (err) {
-    app.log.warn(
-      { err, playStateId: playState.id },
-      "Failed to delete play-state record",
-    );
+  if (deleteRecord) {
+    try {
+      await app.prisma.playState.delete({ where: { id: playState.id } });
+    } catch (err) {
+      app.log.warn(
+        { err, playStateId: playState.id },
+        "Failed to delete play-state record",
+      );
+    }
   }
 }
 
@@ -659,36 +663,76 @@ export async function registerPlayerRoutes(
         }
       }
 
-      const playState = await app.prisma.playState.create({
-        data: {
-          id: playStateId,
-          userId: request.user.sub,
-          romId: rom.id,
-          storageKey,
-          label: body.label,
-          slot: body.slot,
-          size: buffer.byteLength,
-          checksumSha256: sha256,
-        },
-      });
+      const { createdPlayState, evictedStates } = await app.prisma.$transaction(
+        async (tx) => {
+          const created = await tx.playState.create({
+            data: {
+              id: playStateId,
+              userId: request.user.sub,
+              romId: rom.id,
+              storageKey,
+              label: body.label,
+              slot: body.slot,
+              size: buffer.byteLength,
+              checksumSha256: sha256,
+            },
+          });
 
-      const statesForUser = await app.prisma.playState.findMany({
-        where: { userId: request.user.sub, romId: rom.id },
-        orderBy: { updatedAt: "asc" },
-        select: { id: true, storageKey: true },
-      });
+          const statesForUser = await tx.playState.findMany({
+            where: { userId: request.user.sub, romId: rom.id },
+            orderBy: { updatedAt: "asc" },
+            select: { id: true, storageKey: true },
+          });
 
-      if (statesForUser.length > env.PLAY_STATE_MAX_PER_ROM) {
-        const overflow = statesForUser.slice(
-          0,
-          statesForUser.length - env.PLAY_STATE_MAX_PER_ROM,
-        );
-        for (const state of overflow) {
-          if (state.id === playState.id) {
-            continue;
+          const overflow =
+            statesForUser.length > env.PLAY_STATE_MAX_PER_ROM
+              ? statesForUser.slice(
+                  0,
+                  statesForUser.length - env.PLAY_STATE_MAX_PER_ROM,
+                )
+              : [];
+          const overflowIds = overflow
+            .map((state) => state.id)
+            .filter((id) => id !== created.id);
+          if (overflowIds.length > 0) {
+            await tx.playState.deleteMany({
+              where: { id: { in: overflowIds } },
+            });
           }
-          await removePlayState(app, state);
+
+          return {
+            createdPlayState: created,
+            evictedStates: overflow.filter((state) => state.id !== created.id),
+          };
+        },
+      );
+
+      if (evictedStates.length > 0) {
+        for (const state of evictedStates) {
+          await removePlayState(app, state, { deleteRecord: false });
         }
+
+        if (app.metrics.enabled) {
+          const route = extractRouteLabel(request);
+          app.metrics.playback.inc(
+            {
+              action: RUNTIME_PLAYBACK_ACTIONS.PLAY_STATE_UPLOAD.toLowerCase(),
+              status: "evicted",
+              route,
+              reason: "per_rom_limit",
+            },
+            evictedStates.length,
+          );
+        }
+
+        request.log.info(
+          {
+            event: "player.limit_enforced",
+            romId: rom.id,
+            evictedPlayStates: evictedStates.map((state) => state.id),
+          },
+          "Enforced per-ROM play state limit",
+        );
       }
 
       await logPlaybackAudit(
@@ -696,17 +740,17 @@ export async function registerPlayerRoutes(
         request,
         {
           action: RUNTIME_PLAYBACK_ACTIONS.PLAY_STATE_UPLOAD,
-          rom: { connect: { id: playState.romId } },
-          playState: { connect: { id: playState.id } },
+          rom: { connect: { id: createdPlayState.romId } },
+          playState: { connect: { id: createdPlayState.id } },
           user: { connect: { id: request.user.sub } },
           ipAddress: request.ip,
           userAgent: request.headers["user-agent"] ?? null,
         },
-        { romId: playState.romId, playStateId: playState.id },
+        { romId: createdPlayState.romId, playStateId: createdPlayState.id },
       );
 
       reply.code(201);
-      return serializePlayState(playState);
+      return serializePlayState(createdPlayState);
     },
   );
 

@@ -4,9 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadEmulatorBundle } from "@/lib/emulator/loadBundle";
 import { getPlatformConfig, type EmulatorPlatformConfig } from "@/lib/emulator/platforms";
 import MobileControls from "@/components/MobileControls";
-import { createPlayState, listPlayStates, type PlayState } from "@/src/lib/api/player";
-
-const ROM_ENDPOINT = "/api/player/roms";
+import {
+  createPlayState,
+  listPlayStates,
+  requestRomBinary,
+  type PlayState,
+} from "@lib/api/player";
 
 const FALLBACK_PLATFORM_CONFIG: EmulatorPlatformConfig =
   getPlatformConfig("snes") ?? {
@@ -37,41 +40,6 @@ type EmulatorLaunchConfig = {
   customOptions?: Record<string, unknown>;
 };
 
-type SignedUrlPayload = {
-  type: "signed-url";
-  url: string;
-};
-
-async function fetchRomBinary(romId: string, authToken?: string) {
-  const response = await fetch(`${ROM_ENDPOINT}/${encodeURIComponent(romId)}/binary`, {
-    headers: {
-      Accept: "application/octet-stream",
-      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
-    },
-    credentials: "include"
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ROM: ${response.status}`);
-  }
-
-  const contentType = response.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) {
-    const payload: unknown = await response.json();
-    if (isSignedUrlPayload(payload)) {
-      const signedResponse = await fetch(payload.url);
-      if (!signedResponse.ok) {
-        throw new Error(`Failed to fetch ROM from signed URL: ${signedResponse.status}`);
-      }
-      return await signedResponse.arrayBuffer();
-    }
-    throw new Error("Unexpected response while fetching ROM binary");
-  }
-
-  const buffer = await response.arrayBuffer();
-  return buffer;
-}
-
 export default function EmulatorPlayer({
   romId,
   romName,
@@ -83,6 +51,7 @@ export default function EmulatorPlayer({
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [, setPlayStates] = useState<PlayState[]>([]);
+  const objectUrlRef = useRef<string | null>(null);
   const platformConfig = useMemo(() => getPlatformConfig(platform), [platform]);
   const activePlatformConfig = platformConfig ?? FALLBACK_PLATFORM_CONFIG;
   const { defaultCore, preferredCores, systemId } = activePlatformConfig;
@@ -271,7 +240,7 @@ export default function EmulatorPlayer({
       try {
         await loadEmulatorBundle();
         const [romBinary, loadedStates] = await Promise.all([
-          fetchRomBinary(romId, authToken),
+          requestRomBinary(romId, authToken ? { authToken } : undefined),
           listPlayStates(romId).catch((err) => {
             console.error("Failed to load play states", err);
             return [] as PlayState[];
@@ -282,8 +251,21 @@ export default function EmulatorPlayer({
         }
 
         setPlayStates(loadedStates);
-        const romBlob = new Blob([romBinary], { type: "application/octet-stream" });
-        const romUrl = URL.createObjectURL(romBlob);
+        if (objectUrlRef.current) {
+          URL.revokeObjectURL(objectUrlRef.current);
+          objectUrlRef.current = null;
+        }
+        let romUrl = romBinary.type === "signed-url" ? romBinary.url : null;
+        if (romBinary.type === "inline") {
+          const romBlob = new Blob([romBinary.data], {
+            type: romBinary.contentType ?? "application/octet-stream"
+          });
+          romUrl = URL.createObjectURL(romBlob);
+          objectUrlRef.current = romUrl;
+        }
+        if (!romUrl) {
+          throw new Error("ROM source could not be prepared");
+        }
         const initialStateUrl = loadedStates[0]?.downloadUrl
           ? `/api${loadedStates[0].downloadUrl}`
           : null;
@@ -315,6 +297,10 @@ export default function EmulatorPlayer({
 
     return () => {
       isCancelled = true;
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
     };
   }, [authToken, defaultCore, handleSaveState, platform, platformConfig, preferredCores, romId, romName, systemId]);
 
@@ -335,13 +321,4 @@ export default function EmulatorPlayer({
       <MobileControls onVirtualKey={emitVirtualKey} />
     </div>
   );
-}
-
-function isSignedUrlPayload(payload: unknown): payload is SignedUrlPayload {
-  if (payload && typeof payload === "object") {
-    const candidate = payload as Record<string, unknown>;
-    return candidate.type === "signed-url" && typeof candidate.url === "string";
-  }
-
-  return false;
 }
