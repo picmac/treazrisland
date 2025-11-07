@@ -5,8 +5,11 @@ const start = async () => {
   const app = buildServer();
 
   try {
-    await app.listen({ port: env.PORT, host: "0.0.0.0" });
-    app.log.info(`Server listening on port ${env.PORT}`);
+    await app.listen({ port: env.PORT, host: env.LISTEN_HOST });
+    const hostForLog = env.LISTEN_HOST.includes(":")
+      ? `[${env.LISTEN_HOST}]`
+      : env.LISTEN_HOST;
+    app.log.info(`Server listening on http://${hostForLog}:${env.PORT}`);
   } catch (err) {
     app.log.error(err);
     process.exit(1);
