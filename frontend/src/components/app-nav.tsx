@@ -72,28 +72,32 @@ export function AppNav() {
           Self-hosted retro gaming vault · SNES-inspired interface
         </p>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {NAV_ITEMS.map((item) => {
-          const active = isActivePath(pathname, item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={clsx(
-                "group flex flex-col rounded-pixel border px-3 py-2 text-left text-xs uppercase tracking-widest transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lagoon focus-visible:ring-offset-2 focus-visible:ring-offset-night",
-                active
-                  ? "border-lagoon bg-lagoon/20 text-lagoon"
-                  : "border-ink/40 bg-night/70 text-parchment/70 hover:border-lagoon hover:text-parchment"
-              )}
-            >
-              <span className="text-[0.7rem] font-semibold">{item.label}</span>
-              <span className="text-[0.6rem] font-normal uppercase tracking-[0.3em] text-parchment/40 group-hover:text-parchment/60">
-                {item.description}
-              </span>
-            </Link>
-          );
-        })}
-      </div>
+      <nav aria-label="Primary">
+        <ul className="flex flex-wrap gap-2">
+          {NAV_ITEMS.map((item) => {
+            const active = isActivePath(pathname, item.href);
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={clsx(
+                    "group flex flex-col rounded-pixel border px-3 py-2 text-left text-xs uppercase tracking-widest transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lagoon focus-visible:ring-offset-2 focus-visible:ring-offset-night",
+                    active
+                      ? "border-lagoon bg-lagoon/20 text-lagoon shadow-inner-pixel"
+                      : "border-ink/40 bg-night/70 text-parchment/70 hover:border-lagoon hover:text-parchment"
+                  )}
+                >
+                  <span className="text-[0.7rem] font-semibold">{item.label}</span>
+                  <span className="text-[0.6rem] font-normal uppercase tracking-[0.3em] text-parchment/40 group-hover:text-parchment/60">
+                    {item.description}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
       <div className="pointer-events-none absolute inset-0 -z-10 rounded-pixel border border-ink/60" aria-hidden />
     </PixelFrame>
   );
