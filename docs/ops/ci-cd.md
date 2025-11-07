@@ -189,9 +189,10 @@ helper already listens on every interface and falls back to the detected LAN IP 
 
 **B. Use the Docker deployment workflow without TLS**
 
-1. Ensure the compose env file referenced by `TREAZ_ENV_FILE` contains `TREAZ_TLS_MODE=http` and
-   `TREAZ_DEV_HTTP_AUTOCONFIG=true` (default). Set `TREAZ_DEV_LAN_HOST=192.168.50.10` when autodetection should be
-   bypassed.
+1. Ensure the compose env file referenced by `TREAZ_ENV_FILE` keeps `TREAZ_DEV_HTTP_AUTOCONFIG=true`
+   (default). Set `TREAZ_DEV_LAN_HOST=192.168.50.10` when autodetection should be bypassed. If the file still uses
+   the stock `localhost` values, the deployment script will temporarily downgrade `TREAZ_TLS_MODE` to `http` so the
+   frontend serves HTTP-only headers.
 2. Run the deployment script as usual:
 
    ```bash
@@ -202,8 +203,9 @@ helper already listens on every interface and falls back to the detected LAN IP 
 
 During the run the script creates a temporary env file that rewrites `NEXT_PUBLIC_API_BASE_URL`,
 `CORS_ALLOWED_ORIGINS`, and `NEXT_PUBLIC_MEDIA_CDN` to the LAN host whenever they were still pointing at
-`localhost`. Once Docker Compose starts, the frontend becomes reachable at `http://<runner-ip>:3000/` without
-manually calling `scripts/dev-http.sh`.
+`localhost`, and forces `TREAZ_TLS_MODE=http` in that temporary file. Once Docker Compose starts, the frontend
+becomes reachable at `http://<runner-ip>:3000/` without manually calling `scripts/dev-http.sh` or editing headers
+after the fact.
 
 - **Service checks:** Hit `http://localhost:3000` (frontend), `http://localhost:3001/health` (backend), `http://localhost:9090/-/ready` (Prometheus), and `http://localhost:3002` (Grafana) from the host.
 - **Metrics token issues:** Ensure `infra/monitoring/secrets/metrics_token` exists, has correct permissions, and matches Prometheus’ expectations.

@@ -58,7 +58,7 @@ Backend configuration is validated on boot by [`backend/src/config/env.ts`](./ba
   - Point `NEXT_PUBLIC_API_BASE_URL` and `CORS_ALLOWED_ORIGINS` at your `https://` hostname.
   - Update `STORAGE_ENDPOINT` to an HTTPS object-store endpoint (or unset it if your S3-compatible provider enforces TLS automatically).
   - Restart the frontend dev server or rebuild the production bundle so the new security headers take effect.
-- Leave `TREAZ_DEV_HTTP_AUTOCONFIG=true` (the default) when you opt into HTTP. The helper scripts reuse that flag to rewrite `NEXT_PUBLIC_API_BASE_URL`, `CORS_ALLOWED_ORIGINS`, and `NEXT_PUBLIC_MEDIA_CDN` to a LAN-friendly host when they still point at `localhost`.
+- Leave `TREAZ_DEV_HTTP_AUTOCONFIG=true` (the default) when you opt into HTTP. The helper scripts reuse that flag to rewrite `NEXT_PUBLIC_API_BASE_URL`, `CORS_ALLOWED_ORIGINS`, and `NEXT_PUBLIC_MEDIA_CDN` to a LAN-friendly host when they still point at `localhost`, and they also flip `TREAZ_TLS_MODE` to `http` so browsers do not enforce HTTPS-only headers once those overrides are applied.
 - Keep the backend and frontend `.env` files in sync (symlinks or shared `TREAZ_ENV_FILE`) so these values propagate through Docker Compose and helper scripts.
 
 ## Local development workflow
@@ -94,7 +94,8 @@ helper scripts rewrite the public URLs automatically.
 On a self-hosted GitHub Actions runner you can skip the helper entirely when using Docker builds: set
 `TREAZ_TLS_MODE=http` and (optionally) `TREAZ_DEV_LAN_HOST` in the env file that `TREAZ_ENV_FILE` points to, then run
 `scripts/deploy/deploy-local.sh`. The script writes a temporary env file with LAN-aware overrides before calling
-`docker compose`, so the resulting frontend is reachable at `http://<runner-ip>:3000/` as soon as the workflow finishes.
+`docker compose`, downgrades `TREAZ_TLS_MODE` to `http` when the defaults still point at `localhost`, and the resulting
+frontend is reachable at `http://<runner-ip>:3000/` as soon as the workflow finishes without extra manual steps.
 
 1. **Start shared services**
 

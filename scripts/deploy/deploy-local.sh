@@ -433,32 +433,40 @@ apply_http_overrides() {
   local new_cors_origin="http://${formatted_host}:${frontend_port}"
   local new_media_cdn="http://${formatted_host}:9000/treaz-assets"
 
-  local updated_any="false"
+  local updated_keys=()
 
   if [[ -z "${NEXT_PUBLIC_API_BASE_URL:-}" || "${NEXT_PUBLIC_API_BASE_URL}" == "http://localhost:${backend_port}" || "${NEXT_PUBLIC_API_BASE_URL}" == "http://127.0.0.1:${backend_port}" ]]; then
     NEXT_PUBLIC_API_BASE_URL="${new_api_base}"
     export NEXT_PUBLIC_API_BASE_URL
-    updated_any="true"
+    updated_keys+=("NEXT_PUBLIC_API_BASE_URL")
     log "Setting NEXT_PUBLIC_API_BASE_URL to ${NEXT_PUBLIC_API_BASE_URL} for LAN access"
   fi
 
   if [[ -z "${CORS_ALLOWED_ORIGINS:-}" || "${CORS_ALLOWED_ORIGINS}" == "http://localhost:${frontend_port}" || "${CORS_ALLOWED_ORIGINS}" == "http://127.0.0.1:${frontend_port}" ]]; then
     CORS_ALLOWED_ORIGINS="${new_cors_origin}"
     export CORS_ALLOWED_ORIGINS
-    updated_any="true"
+    updated_keys+=("CORS_ALLOWED_ORIGINS")
     log "Setting CORS_ALLOWED_ORIGINS to ${CORS_ALLOWED_ORIGINS} for LAN access"
   fi
 
   if [[ -z "${NEXT_PUBLIC_MEDIA_CDN:-}" || "${NEXT_PUBLIC_MEDIA_CDN}" == "http://localhost:9000/treaz-assets" || "${NEXT_PUBLIC_MEDIA_CDN}" == "http://127.0.0.1:9000/treaz-assets" ]]; then
     NEXT_PUBLIC_MEDIA_CDN="${new_media_cdn}"
     export NEXT_PUBLIC_MEDIA_CDN
-    updated_any="true"
+    updated_keys+=("NEXT_PUBLIC_MEDIA_CDN")
     log "Setting NEXT_PUBLIC_MEDIA_CDN to ${NEXT_PUBLIC_MEDIA_CDN} for LAN access"
   fi
 
-  if [[ "${updated_any}" != "true" ]]; then
-    log "HTTP autoconfig detected custom base URLs; leaving existing values in place"
+  if (( ${#updated_keys[@]} == 0 )); then
+    log "HTTP autoconfig detected custom overrides; leaving existing values in place"
     return
+  fi
+
+  local normalized_tls="$(to_lower "${TREAZ_TLS_MODE:-https}")"
+  if [[ "${normalized_tls}" != "http" ]]; then
+    TREAZ_TLS_MODE=http
+    export TREAZ_TLS_MODE
+    updated_keys+=("TREAZ_TLS_MODE")
+    log "Setting TREAZ_TLS_MODE to http so browsers do not force HTTPS during LAN testing"
   fi
 
   if [[ ! -f "${ENV_FILE}" ]]; then
@@ -478,15 +486,13 @@ apply_http_overrides() {
     return
   fi
 
-  if ! upsert_env_value "${TEMP_HTTP_ENV_FILE}" "NEXT_PUBLIC_API_BASE_URL" "${NEXT_PUBLIC_API_BASE_URL}"; then
-    log "Unable to persist NEXT_PUBLIC_API_BASE_URL override"
-  fi
-  if ! upsert_env_value "${TEMP_HTTP_ENV_FILE}" "CORS_ALLOWED_ORIGINS" "${CORS_ALLOWED_ORIGINS}"; then
-    log "Unable to persist CORS_ALLOWED_ORIGINS override"
-  fi
-  if ! upsert_env_value "${TEMP_HTTP_ENV_FILE}" "NEXT_PUBLIC_MEDIA_CDN" "${NEXT_PUBLIC_MEDIA_CDN}"; then
-    log "Unable to persist NEXT_PUBLIC_MEDIA_CDN override"
-  fi
+  local key
+  for key in "${updated_keys[@]}"; do
+    local value="${!key}"
+    if ! upsert_env_value "${TEMP_HTTP_ENV_FILE}" "${key}" "${value}"; then
+      log "Unable to persist ${key} override"
+    fi
+  done
 
   ENV_FILE="${TEMP_HTTP_ENV_FILE}"
   log "Wrote HTTP overrides to ${ENV_FILE} so LAN clients can reach the stack"
