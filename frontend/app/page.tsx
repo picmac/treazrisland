@@ -34,6 +34,12 @@ export default function HomePage() {
           >
             View collections
           </Link>
+          <Link
+            href="/favorites"
+            className="inline-block rounded-pixel border border-kelp/70 bg-night/70 px-4 py-2 font-semibold text-parchment shadow-pixel transition hover:border-lagoon hover:text-lagoon"
+          >
+            Starred adventures
+          </Link>
         </div>
       </section>
 
