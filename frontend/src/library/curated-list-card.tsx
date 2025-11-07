@@ -17,6 +17,7 @@ export type CuratedListCardProps = {
   } | null;
   footer?: ReactNode;
   className?: string;
+  children?: ReactNode;
 };
 
 export function CuratedListCard({
@@ -26,7 +27,8 @@ export function CuratedListCard({
   meta,
   highlight,
   footer,
-  className
+  className,
+  children
 }: CuratedListCardProps) {
   return (
     <Link
@@ -48,7 +50,12 @@ export function CuratedListCard({
       {description ? (
         <p className="mt-3 text-sm leading-relaxed text-parchment/75">{description}</p>
       ) : null}
-      {footer ? <div className="mt-4 text-xs text-parchment/60">{footer}</div> : null}
+      {children ? (
+        <div className="mt-4 space-y-2 text-sm leading-relaxed text-parchment/70">{children}</div>
+      ) : null}
+      {footer ? (
+        <div className={clsx("text-xs text-parchment/60", children ? "mt-3" : "mt-4")}>{footer}</div>
+      ) : null}
     </Link>
   );
 }

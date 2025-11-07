@@ -165,28 +165,46 @@ export function PlatformLibraryPage() {
       )}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {visiblePlatforms.map((platform) => (
-          <Link
-            key={platform.id}
-            href={`/platforms/${platform.slug}`}
-            className="group rounded-pixel border border-ink/40 bg-night/70 p-4 transition hover:border-lagoon hover:bg-night/80"
-          >
-            <div className="flex items-center justify-between text-xs uppercase tracking-widest text-parchment/60">
-              <span>{platform.shortName ?? platform.slug.toUpperCase()}</span>
-              <span>{platform.romCount} ROMs</span>
-            </div>
-            <h2 className="mt-2 text-lg font-semibold text-parchment group-hover:text-lagoon">
-              {platform.name}
-            </h2>
-            {platform.featuredRom ? (
-              <p className="mt-2 text-sm text-parchment/70">
-                Latest arrival: <span className="text-parchment">{platform.featuredRom.title}</span>
-              </p>
-            ) : (
-              <p className="mt-2 text-sm text-parchment/50">No ROMs uploaded yet.</p>
-            )}
-          </Link>
-        ))}
+        {visiblePlatforms.map((platform) => {
+          const cover = platform.featuredRom?.assetSummary.cover;
+          const coverUrl = cover?.externalUrl ?? null;
+          const coverAlt = platform.featuredRom
+            ? `${platform.featuredRom.title} cover art`
+            : `${platform.name} cover art`;
+
+          return (
+            <Link
+              key={platform.id}
+              href={`/platforms/${platform.slug}`}
+              className="group rounded-pixel border border-ink/40 bg-night/70 p-4 transition hover:border-lagoon hover:bg-night/80"
+            >
+              <div className="flex items-center justify-between text-xs uppercase tracking-widest text-parchment/60">
+                <span>{platform.shortName ?? platform.slug.toUpperCase()}</span>
+                <span>{platform.romCount} ROMs</span>
+              </div>
+              <h2 className="mt-2 text-lg font-semibold text-parchment group-hover:text-lagoon">
+                {platform.name}
+              </h2>
+              {coverUrl ? (
+                <div className="mt-3 overflow-hidden rounded-pixel border border-ink/40 bg-night/60">
+                  <img
+                    src={coverUrl}
+                    alt={coverAlt}
+                    loading="lazy"
+                    className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </div>
+              ) : null}
+              {platform.featuredRom ? (
+                <p className="mt-2 text-sm text-parchment/70">
+                  Latest arrival: <span className="text-parchment">{platform.featuredRom.title}</span>
+                </p>
+              ) : (
+                <p className="mt-2 text-sm text-parchment/50">No ROMs uploaded yet.</p>
+              )}
+            </Link>
+          );
+        })}
       </section>
 
       {state === "loaded" && visiblePlatforms.length === 0 && (

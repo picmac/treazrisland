@@ -17,6 +17,7 @@
     "prisma:migrate": "prisma migrate dev && tsx prisma/migrate-reencrypt-mfa-secrets.ts",
     "screenscraper:encrypt": "tsx scripts/encrypt-screenscraper-secret.ts",
     "prisma:seed:platforms": "tsx prisma/seed-platforms.ts",
+    "prisma:seed:roms": "tsx prisma/seed-roms.ts",
     "retention:prune": "tsx scripts/retention/prune-rom-upload-audit.ts"
   },
   "dependencies": {

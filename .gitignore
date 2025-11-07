@@ -19,6 +19,9 @@ frontend/test-results/
 # Playwright artifacts
 test-results/
 
+# Backend runtime data
+backend/var/
+
 # OS
 .DS_Store
 .docker/
