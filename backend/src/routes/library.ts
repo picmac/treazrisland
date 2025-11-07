@@ -6,7 +6,12 @@ import {
   assetSummarySelect,
   buildAssetSummary,
 } from "../utils/asset-summary.js";
-import { EnrichmentProvider, RomAssetType } from "../utils/prisma-enums.js";
+import {
+  CreativeAssetStatus,
+  CreativeAssetUsageKind,
+  EnrichmentProvider,
+  RomAssetType
+} from "../utils/prisma-enums.js";
 
 type RomAssetTypeValue = (typeof RomAssetType)[keyof typeof RomAssetType];
 const ROM_ASSET_TYPE_VALUES = Object.values(RomAssetType) as string[];
@@ -24,6 +29,21 @@ const metadataSelect = {
   createdAt: true
 } satisfies Prisma.RomMetadataSelect;
 
+const heroArtAssetSelect = {
+  id: true,
+  slug: true,
+  title: true,
+  status: true,
+  kind: true,
+  storageKey: true,
+  mimeType: true,
+  width: true,
+  height: true,
+  fileSize: true,
+  checksumSha256: true,
+  updatedAt: true,
+} satisfies Prisma.CreativeAssetSelect;
+
 const platformSummaryInclude = {
   _count: { select: { roms: true } },
   roms: {
@@ -40,11 +60,44 @@ const platformSummaryInclude = {
         select: assetSummarySelect
       }
     }
+  },
+  creativeAssetUsages: {
+    where: {
+      kind: CreativeAssetUsageKind.PLATFORM_HERO,
+      asset: { status: CreativeAssetStatus.ACTIVE }
+    },
+    orderBy: { createdAt: "desc" },
+    take: 1,
+    include: {
+      asset: { select: heroArtAssetSelect }
+    }
   }
 } satisfies Prisma.PlatformInclude;
 
+type PlatformSummaryPlatform = Prisma.PlatformGetPayload<{
+  include: typeof platformSummaryInclude;
+}>;
+
+type PlatformHeroArt = {
+  assetId: string;
+  slug: string;
+  kind: string;
+  status: string;
+  storageKey: string;
+  mimeType: string | null;
+  width: number | null;
+  height: number | null;
+  fileSize: number;
+  checksumSha256: string;
+  signedUrl: string | null;
+  signedUrlExpiresAt: string | null;
+  updatedAt: string;
+  notes: string | null;
+};
+
 function toPlatformSummary(
-  platform: Prisma.PlatformGetPayload<{ include: typeof platformSummaryInclude }>
+  platform: PlatformSummaryPlatform,
+  heroArt: PlatformHeroArt | null
 ) {
   const featuredRom = platform.roms[0];
   return {
@@ -54,6 +107,7 @@ function toPlatformSummary(
     shortName: platform.shortName,
     screenscraperId: platform.screenscraperId,
     romCount: platform._count.roms,
+    heroArt,
     featuredRom: featuredRom
       ? {
           id: featuredRom.id,
@@ -63,6 +117,58 @@ function toPlatformSummary(
         }
       : null
   };
+}
+
+async function resolvePlatformHeroArt(
+  app: FastifyInstance,
+  platforms: PlatformSummaryPlatform[],
+): Promise<Map<string, PlatformHeroArt | null>> {
+  const heroArtMap = new Map<string, PlatformHeroArt | null>();
+
+  await Promise.all(
+    platforms.map(async (platform) => {
+      const usage = platform.creativeAssetUsages[0];
+      if (!usage || !usage.asset) {
+        heroArtMap.set(platform.id, null);
+        return;
+      }
+
+      let signed: { url: string; expiresAt: Date } | null = null;
+      try {
+        signed = await app.storage.getAssetObjectSignedUrl(
+          usage.asset.storageKey,
+        );
+      } catch (error) {
+        app.log.warn(
+          {
+            event: "library.heroArt.signedUrl.failed",
+            assetId: usage.asset.id,
+            error: error instanceof Error ? error.message : error,
+          },
+          "Failed to generate signed URL for creative asset hero art",
+        );
+      }
+
+      heroArtMap.set(platform.id, {
+        assetId: usage.asset.id,
+        slug: usage.asset.slug,
+        kind: usage.asset.kind,
+        status: usage.asset.status,
+        storageKey: usage.asset.storageKey,
+        mimeType: usage.asset.mimeType,
+        width: usage.asset.width,
+        height: usage.asset.height,
+        fileSize: usage.asset.fileSize,
+        checksumSha256: usage.asset.checksumSha256,
+        signedUrl: signed?.url ?? null,
+        signedUrlExpiresAt: signed?.expiresAt.toISOString() ?? null,
+        updatedAt: usage.asset.updatedAt.toISOString(),
+        notes: usage.notes ?? null,
+      });
+    }),
+  );
+
+  return heroArtMap;
 }
 
 const listPlatformsQuerySchema = z.object({
@@ -223,8 +329,12 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
         include: platformSummaryInclude
       });
 
+      const heroArtMap = await resolvePlatformHeroArt(app, platforms);
+
       return {
-        platforms: platforms.map(toPlatformSummary)
+        platforms: platforms.map((platform) =>
+          toPlatformSummary(platform, heroArtMap.get(platform.id) ?? null)
+        )
       };
     }
   );
@@ -246,7 +356,14 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
         throw app.httpErrors.notFound("Platform not found");
       }
 
-      return { platform: toPlatformSummary(platform) };
+      const heroArtMap = await resolvePlatformHeroArt(app, [platform]);
+
+      return {
+        platform: toPlatformSummary(
+          platform,
+          heroArtMap.get(platform.id) ?? null
+        )
+      };
     }
   );
 

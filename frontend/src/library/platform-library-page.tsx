@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { listPlatforms, type PlatformSummary } from "@lib/api/library";
+import { resolveAssetUrl } from "@lib/media";
 import { PixelFrame } from "@/src/components/pixel-frame";
 import {
   LibraryFilterControls,
@@ -167,13 +168,28 @@ export function PlatformLibraryPage() {
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {visiblePlatforms.map((platform) => {
+          const heroArt = platform.heroArt;
+          const heroUrl = resolveAssetUrl(heroArt?.storageKey ?? null, heroArt?.signedUrl ?? null);
           const cover = platform.featuredRom?.assetSummary.cover;
-          const coverUrl = cover?.externalUrl ?? null;
-          const coverAlt = platform.featuredRom
-            ? `${platform.featuredRom.title} cover art`
-            : `${platform.name} cover art`;
-          const coverWidth = cover?.width && cover.width > 0 ? cover.width : 640;
-          const coverHeight = cover?.height && cover.height > 0 ? cover.height : 480;
+          const fallbackCoverUrl = cover?.externalUrl ?? null;
+          const coverUrl = heroUrl ?? fallbackCoverUrl;
+          const coverAlt = heroArt
+            ? `${platform.name} curated hero art`
+            : platform.featuredRom
+              ? `${platform.featuredRom.title} cover art`
+              : `${platform.name} cover art`;
+          const coverWidth =
+            heroArt?.width && heroArt.width > 0
+              ? heroArt.width
+              : cover?.width && cover.width > 0
+                ? cover.width
+                : 640;
+          const coverHeight =
+            heroArt?.height && heroArt.height > 0
+              ? heroArt.height
+              : cover?.height && cover.height > 0
+                ? cover.height
+                : 480;
 
           return (
             <Link
@@ -188,6 +204,16 @@ export function PlatformLibraryPage() {
               <h2 className="mt-2 text-lg font-semibold text-parchment group-hover:text-lagoon">
                 {platform.name}
               </h2>
+              {heroArt ? (
+                <p className="mt-2 text-[0.65rem] uppercase tracking-[0.35em] text-lagoon/80">
+                  Curated hero art
+                  {heroArt.notes ? (
+                    <span className="ml-2 text-[0.6rem] normal-case tracking-normal text-parchment/70">
+                      {heroArt.notes}
+                    </span>
+                  ) : null}
+                </p>
+              ) : null}
               {coverUrl ? (
                 <div className="mt-3 overflow-hidden rounded-pixel border border-ink/40 bg-night/60">
                   <Image

@@ -7,6 +7,23 @@ export type AssetSummary = {
   manuals: RomAssetSummary[];
 };
 
+export type HeroArtSummary = {
+  assetId: string;
+  slug: string;
+  kind: string;
+  status: string;
+  storageKey: string;
+  mimeType: string | null;
+  width: number | null;
+  height: number | null;
+  fileSize: number;
+  checksumSha256: string;
+  signedUrl: string | null;
+  signedUrlExpiresAt: string | null;
+  updatedAt: string;
+  notes: string | null;
+};
+
 export type RomAssetSummary = {
   id: string;
   type: string;
@@ -31,6 +48,7 @@ export type PlatformSummary = {
   shortName: string | null;
   screenscraperId: number | null;
   romCount: number;
+  heroArt: HeroArtSummary | null;
   featuredRom: {
     id: string;
     title: string;

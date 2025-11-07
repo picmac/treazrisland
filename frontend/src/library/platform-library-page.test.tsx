@@ -10,6 +10,7 @@ const { PlatformLibraryPage } = await import("./platform-library-page");
 
 describe("PlatformLibraryPage", () => {
   beforeEach(() => {
+    process.env.NEXT_PUBLIC_MEDIA_CDN = "https://cdn.test";
     vi.mocked(listPlatforms).mockReset();
     vi.mocked(listPlatforms).mockResolvedValue({
       platforms: [
@@ -20,6 +21,7 @@ describe("PlatformLibraryPage", () => {
           shortName: "SNES",
           screenscraperId: 1,
           romCount: 2,
+          heroArt: null,
           featuredRom: {
             id: "rom_1",
             title: "Chrono Trigger",
@@ -34,6 +36,7 @@ describe("PlatformLibraryPage", () => {
           shortName: "MD",
           screenscraperId: 2,
           romCount: 1,
+          heroArt: null,
           featuredRom: {
             id: "rom_2",
             title: "Sonic",
@@ -75,5 +78,52 @@ describe("PlatformLibraryPage", () => {
 
     const cards = screen.getAllByRole("link", { name: /ROMs/ });
     expect(cards[0]).toHaveTextContent(/Super Nintendo/);
+  });
+
+  it("prioritises curated hero art when present", async () => {
+    const now = new Date().toISOString();
+    vi.mocked(listPlatforms).mockResolvedValueOnce({
+      platforms: [
+        {
+          id: "platform_snes",
+          name: "Super Nintendo",
+          slug: "snes",
+          shortName: "SNES",
+          screenscraperId: 1,
+          romCount: 1,
+          heroArt: {
+            assetId: "asset_1",
+            slug: "snes-hero",
+            kind: "HERO",
+            status: "ACTIVE",
+            storageKey: "creative-assets/snes/hero.png",
+            mimeType: "image/png",
+            width: 800,
+            height: 450,
+            fileSize: 2048,
+            checksumSha256: "abcdef",
+            signedUrl: null,
+            signedUrlExpiresAt: null,
+            updatedAt: now,
+            notes: "Curated cover"
+          },
+          featuredRom: {
+            id: "rom_1",
+            title: "Chrono Trigger",
+            updatedAt: now,
+            assetSummary: { screenshots: [], videos: [], manuals: [] }
+          }
+        }
+      ]
+    });
+
+    render(<PlatformLibraryPage />);
+
+    await waitFor(() => expect(listPlatforms).toHaveBeenCalled());
+
+    expect(screen.getByText(/Curated hero art/i)).toBeInTheDocument();
+    expect(
+      screen.getByAltText(/Super Nintendo curated hero art/i)
+    ).toBeInTheDocument();
   });
 });
