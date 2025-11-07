@@ -3,6 +3,13 @@ export type ContentSecurityPolicyOptions = {
   mediaCdn?: string | null;
 };
 
+function isTlsEnabled(): boolean {
+  const rawTlsMode = process.env.TREAZ_TLS_MODE?.toLowerCase();
+  return (
+    rawTlsMode === "https" || rawTlsMode === "true" || rawTlsMode === "1"
+  );
+}
+
 function normalizeOrigin(value?: string | null): string | null {
   if (!value) {
     return null;
@@ -27,6 +34,7 @@ function serializeDirective(name: string, sources: Iterable<string>): string {
 }
 
 export function createContentSecurityPolicy(options: ContentSecurityPolicyOptions = {}): string {
+  const tlsEnabled = isTlsEnabled();
   const { nonce, mediaCdn = process.env.NEXT_PUBLIC_MEDIA_CDN ?? null } = options;
   const mediaCdnOrigin = normalizeOrigin(mediaCdn);
 
@@ -68,22 +76,22 @@ export function createContentSecurityPolicy(options: ContentSecurityPolicyOption
     "object-src 'none'",
     "manifest-src 'self'",
     "child-src 'self' blob:",
-    "report-uri /api/csp-report",
-    "upgrade-insecure-requests"
+    "report-uri /api/csp-report"
   ];
+
+  if (tlsEnabled) {
+    directives.push("upgrade-insecure-requests");
+  }
 
   return directives.join("; ");
 }
 
 export function buildSecurityHeaders(options?: ContentSecurityPolicyOptions) {
-  return [
+  const tlsEnabled = isTlsEnabled();
+  const headers = [
     {
       key: "Content-Security-Policy",
       value: createContentSecurityPolicy(options)
-    },
-    {
-      key: "Strict-Transport-Security",
-      value: "max-age=63072000; includeSubDomains; preload"
     },
     {
       key: "X-Content-Type-Options",
@@ -98,4 +106,13 @@ export function buildSecurityHeaders(options?: ContentSecurityPolicyOptions) {
       value: "strict-origin-when-cross-origin"
     }
   ];
+
+  if (tlsEnabled) {
+    headers.splice(1, 0, {
+      key: "Strict-Transport-Security",
+      value: "max-age=63072000; includeSubDomains; preload"
+    });
+  }
+
+  return headers;
 }

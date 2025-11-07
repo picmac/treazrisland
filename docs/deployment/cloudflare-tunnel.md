@@ -32,6 +32,16 @@ The repository provides `infra/cloudflared/config.yml` with sample ingress mappi
 
 Update the hostnames if your domain differs. Additional services can be appended by adding new `ingress` entries.
 
+### TLS-aware environment variables
+
+Even though `cloudflared` connects to the local services over HTTP, visitors reach the tunnel using HTTPS. Update the shared
+`.env` file accordingly before exposing the stack:
+
+- Set `TREAZ_TLS_MODE=https` so the frontend emits HSTS/`upgrade-insecure-requests` headers.
+- Replace `NEXT_PUBLIC_API_BASE_URL` and `CORS_ALLOWED_ORIGINS` with the public `https://` hostnames served by your tunnel.
+- If MinIO or another object store is reachable over HTTPS, point `STORAGE_ENDPOINT` at that URL (otherwise leave the local HTTP
+  endpoint for development).
+
 ## 4. Start the tunnel in development
 
 1. Ensure Docker is running and that the local `frontend` and `backend` services are healthy (`docker compose up frontend backend`).
