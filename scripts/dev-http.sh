@@ -29,17 +29,53 @@ set +a
 
 export TREAZ_TLS_MODE=http
 
+detect_lan_ip() {
+  if command -v ip >/dev/null 2>&1; then
+    ip route get 1 2>/dev/null | awk '{for (i = 1; i <= NF; i++) if ($i == "src") { print $(i + 1); exit }}'
+  elif command -v hostname >/dev/null 2>&1; then
+    hostname -I 2>/dev/null | awk '{print $1}'
+  fi
+}
+
 BACKEND_PORT_VALUE="${PORT:-${BACKEND_PORT:-3001}}"
 FRONTEND_PORT_VALUE="${FRONTEND_PORT:-3000}"
-BACKEND_HOST="${DEV_HTTP_BACKEND_HOST:-localhost}"
-FRONTEND_HOST="${DEV_HTTP_FRONTEND_HOST:-localhost}"
+DEFAULT_LISTEN_HOST="${LISTEN_HOST:-0.0.0.0}"
+BACKEND_BIND_ADDRESS="${DEV_HTTP_BACKEND_BIND_ADDRESS:-${DEFAULT_LISTEN_HOST}}"
+FRONTEND_BIND_ADDRESS="${DEV_HTTP_FRONTEND_BIND_ADDRESS:-127.0.0.1}"
+LAN_IP="$(detect_lan_ip)"
 
-if [[ -z "${NEXT_PUBLIC_API_BASE_URL:-}" ]]; then
+if [[ -n "${DEV_HTTP_BACKEND_HOST:-}" ]]; then
+  BACKEND_HOST="${DEV_HTTP_BACKEND_HOST}"
+elif [[ "${BACKEND_BIND_ADDRESS}" == "0.0.0.0" || "${BACKEND_BIND_ADDRESS}" == "::" ]]; then
+  BACKEND_HOST="${LAN_IP:-localhost}"
+else
+  BACKEND_HOST="${BACKEND_BIND_ADDRESS}"
+fi
+
+if [[ -n "${DEV_HTTP_FRONTEND_HOST:-}" ]]; then
+  FRONTEND_HOST="${DEV_HTTP_FRONTEND_HOST}"
+elif [[ "${FRONTEND_BIND_ADDRESS}" == "0.0.0.0" || "${FRONTEND_BIND_ADDRESS}" == "::" ]]; then
+  FRONTEND_HOST="${LAN_IP:-localhost}"
+else
+  FRONTEND_HOST="${FRONTEND_BIND_ADDRESS}"
+fi
+
+export LISTEN_HOST="${BACKEND_BIND_ADDRESS}"
+
+if [[ -z "${NEXT_PUBLIC_API_BASE_URL:-}" || "${NEXT_PUBLIC_API_BASE_URL}" == "http://localhost:${BACKEND_PORT_VALUE}" ]]; then
   export NEXT_PUBLIC_API_BASE_URL="http://${BACKEND_HOST}:${BACKEND_PORT_VALUE}"
 fi
 
-if [[ -z "${STORAGE_ENDPOINT:-}" ]]; then
+if [[ -z "${STORAGE_ENDPOINT:-}" || "${STORAGE_ENDPOINT}" == "http://localhost:9000" ]]; then
   export STORAGE_ENDPOINT="http://${BACKEND_HOST}:9000"
+fi
+
+if [[ -z "${CORS_ALLOWED_ORIGINS:-}" || "${CORS_ALLOWED_ORIGINS}" == "http://localhost:${FRONTEND_PORT_VALUE}" ]]; then
+  export CORS_ALLOWED_ORIGINS="http://${FRONTEND_HOST}:${FRONTEND_PORT_VALUE}"
+fi
+
+if [[ -z "${NEXT_PUBLIC_MEDIA_CDN:-}" || "${NEXT_PUBLIC_MEDIA_CDN}" == "http://localhost:9000/treaz-assets" ]]; then
+  export NEXT_PUBLIC_MEDIA_CDN="http://${BACKEND_HOST}:9000/treaz-assets"
 fi
 
 backend_pid=""
@@ -81,7 +117,7 @@ start_backend() {
   echo "[dev-http] Starting backend on http://${BACKEND_HOST}:${BACKEND_PORT_VALUE} (env: ${ENV_FILE})"
   (
     cd "${BACKEND_DIR}" || exit 1
-    PORT="${BACKEND_PORT_VALUE}" npm run dev
+    LISTEN_HOST="${BACKEND_BIND_ADDRESS}" PORT="${BACKEND_PORT_VALUE}" npm run dev
   ) &
   backend_pid=$!
 }
@@ -90,7 +126,7 @@ start_frontend() {
   echo "[dev-http] Starting frontend on http://${FRONTEND_HOST}:${FRONTEND_PORT_VALUE}"
   (
     cd "${FRONTEND_DIR}" || exit 1
-    PORT="${FRONTEND_PORT_VALUE}" npm run dev
+    PORT="${FRONTEND_PORT_VALUE}" npm run dev -- --hostname "${FRONTEND_BIND_ADDRESS}"
   ) &
   frontend_pid=$!
 }
@@ -98,10 +134,11 @@ start_frontend() {
 print_summary() {
   cat <<SUMMARY
 [dev-http] Stack is booting with HTTP defaults:
-  • Frontend:  http://${FRONTEND_HOST}:${FRONTEND_PORT_VALUE}
-  • Backend:   http://${BACKEND_HOST}:${BACKEND_PORT_VALUE}
+  • Frontend:  http://${FRONTEND_HOST}:${FRONTEND_PORT_VALUE} (binds ${FRONTEND_BIND_ADDRESS})
+  • Backend:   http://${BACKEND_HOST}:${BACKEND_PORT_VALUE} (binds ${BACKEND_BIND_ADDRESS})
   • Storage:   ${STORAGE_ENDPOINT}
   • API base:  ${NEXT_PUBLIC_API_BASE_URL}
+  • CORS:      ${CORS_ALLOWED_ORIGINS}
   • TLS mode:  ${TREAZ_TLS_MODE}
 Press Ctrl+C to stop both processes.
 SUMMARY

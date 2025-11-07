@@ -71,6 +71,43 @@ You can launch both apps with the HTTP defaults in a single terminal via:
 The helper loads `.env.http` (or `.env`) and starts the backend on `http://localhost:3001` and the frontend on
 `http://localhost:3000`, printing the URLs for quick access.
 
+### Testing on another device or self-hosted runner
+
+When you need to reach the dev stack from a phone or another machine on your LAN, expose both servers by
+configuring the helper with bind addresses and advertised hosts:
+
+1. Copy `.env.example` to `.env.http` (or reuse your main `.env`) and keep `TREAZ_TLS_MODE=http`.
+2. Export LAN-specific overrides before launching the helper. The bind addresses control which interfaces the
+   servers listen on; the host values tell generated URLs (CORS, API base URL, storage endpoint) which IP/hostname
+   to advertise.
+
+   ```bash
+   export DEV_HTTP_BACKEND_BIND_ADDRESS=0.0.0.0
+   export DEV_HTTP_FRONTEND_BIND_ADDRESS=0.0.0.0
+   export DEV_HTTP_BACKEND_HOST=192.168.50.10
+   export DEV_HTTP_FRONTEND_HOST=192.168.50.10
+   ```
+
+3. Start the stack with `./scripts/dev-http.sh`. The script automatically updates `LISTEN_HOST`, `CORS_ALLOWED_ORIGINS`,
+   `NEXT_PUBLIC_API_BASE_URL`, and `STORAGE_ENDPOINT` when they are not already defined.
+
+On a self-hosted GitHub Actions runner, point `TREAZ_HTTP_ENV_FILE` at a checked-in or secure `.env.http` copy and run
+the same command under the runner account:
+
+```bash
+sudo -u treaz \
+  TREAZ_HTTP_ENV_FILE=/opt/treazrisland/config/dev-http.env \
+  DEV_HTTP_BACKEND_BIND_ADDRESS=0.0.0.0 \
+  DEV_HTTP_FRONTEND_BIND_ADDRESS=0.0.0.0 \
+  DEV_HTTP_BACKEND_HOST=192.168.50.10 \
+  DEV_HTTP_FRONTEND_HOST=192.168.50.10 \
+  /opt/treazrisland/app/scripts/dev-http.sh
+```
+
+Replace `192.168.50.10` with the runner's LAN IP so mobile devices can connect without modifying the application code.
+If you omit the host overrides, the helper falls back to the runner's primary LAN address when it can detect one, but setting
+them explicitly keeps the URLs predictable.
+
 1. **Start shared services**
 
    ```bash

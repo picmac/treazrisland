@@ -158,6 +158,36 @@ scripts/deploy/deploy-local.sh
   docker compose -f infra/docker-compose.prod.yml logs grafana
   ```
 - **Database migrations:** `docker compose -f infra/docker-compose.prod.yml exec backend npx prisma migrate status`.
+
+## 10. Launching a LAN-only dev stack on the runner
+
+Air-gapped environments often need a TLS-free dev stack that mobile devices on the same network can reach. The
+`scripts/dev-http.sh` helper now understands bind-address overrides so you can run both apps directly on the
+self-hosted runner without touching the production compose files:
+
+1. Copy `/opt/treazrisland/app/.env.example` to `/opt/treazrisland/config/dev-http.env` and keep
+   `TREAZ_TLS_MODE=http`.
+2. Export the LAN overrides before starting the helper. Replace `192.168.50.10` with the runner's IP on your
+   trusted network.
+
+   ```bash
+   export TREAZ_HTTP_ENV_FILE=/opt/treazrisland/config/dev-http.env
+   export DEV_HTTP_BACKEND_BIND_ADDRESS=0.0.0.0
+   export DEV_HTTP_FRONTEND_BIND_ADDRESS=0.0.0.0
+   export DEV_HTTP_BACKEND_HOST=192.168.50.10
+   export DEV_HTTP_FRONTEND_HOST=192.168.50.10
+   ```
+
+3. Launch the helper under the runner account:
+
+   ```bash
+   sudo -u treaz /opt/treazrisland/app/scripts/dev-http.sh
+   ```
+
+The script sets `LISTEN_HOST`, `CORS_ALLOWED_ORIGINS`, `NEXT_PUBLIC_API_BASE_URL`, and `STORAGE_ENDPOINT` when
+those variables are absent, which keeps the backend/frontend handshake aligned for HTTP-only development.
+If you skip the host overrides, the helper attempts to advertise the runner's primary LAN IP automatically, but explicit values
+avoid surprises when multiple interfaces exist.
 - **Service checks:** Hit `http://localhost:3000` (frontend), `http://localhost:3001/health` (backend), `http://localhost:9090/-/ready` (Prometheus), and `http://localhost:3002` (Grafana) from the host.
 - **Metrics token issues:** Ensure `infra/monitoring/secrets/metrics_token` exists, has correct permissions, and matches Prometheus’ expectations.
 
