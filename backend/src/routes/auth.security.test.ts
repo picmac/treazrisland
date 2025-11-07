@@ -1,5 +1,8 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
+import request from "supertest";
+import argon2 from "argon2";
+import type { MfaService } from "../services/mfa/service.js";
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
@@ -20,16 +23,40 @@ process.env.MFA_RECOVERY_CODE_LENGTH = "8";
 process.env.RATE_LIMIT_AUTH_POINTS = "3";
 process.env.RATE_LIMIT_AUTH_DURATION = "60";
 
+vi.mock("argon2", () => {
+  const hashMock = vi.fn(async (value: string) => `hashed-${value}`);
+  const verifyMock = vi.fn(async () => false);
+  return {
+    __esModule: true,
+    default: {
+      hash: hashMock,
+      verify: verifyMock,
+    },
+  } satisfies typeof import("argon2");
+});
+
+const argon2Mock = vi.mocked(argon2, true);
+
 let buildServer: typeof import("../server.js").buildServer;
 
 type PrismaMock = {
-  user: { findFirst: ReturnType<typeof vi.fn> };
+  user: { findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
   loginAudit: { create: ReturnType<typeof vi.fn> };
+  mfaSecret: {
+    deleteMany: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+  };
+  $transaction: ReturnType<typeof vi.fn>;
 };
 
 const createPrismaMock = (): PrismaMock => ({
-  user: { findFirst: vi.fn() },
+  user: { findFirst: vi.fn(), findUnique: vi.fn() },
   loginAudit: { create: vi.fn().mockResolvedValue({}) },
+  mfaSecret: {
+    deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    create: vi.fn(),
+  },
+  $transaction: vi.fn(),
 });
 
 const credentialPayload = {
@@ -48,10 +75,33 @@ describe("authentication hardening scenarios", () => {
   beforeEach(async () => {
     prisma = createPrismaMock();
     prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.mfaSecret.create.mockResolvedValue({ id: "secret-123" });
+    prisma.$transaction.mockImplementation(async (callback: (client: PrismaMock) => Promise<unknown>) =>
+      callback({
+        mfaSecret: prisma.mfaSecret,
+      } as unknown as PrismaMock),
+    );
 
     app = buildServer({ registerPrisma: false });
     app.decorate("prisma", prisma);
     await app.ready();
+
+    const mfaService: MfaService = {
+      generateSecret: vi.fn().mockReturnValue("JBSWY3DPEHPK3PXP"),
+      buildOtpAuthUri: vi
+        .fn()
+        .mockImplementation(({ issuer, label, secret }) =>
+          `otpauth://totp/${issuer}:${label}?secret=${secret}`,
+        ),
+      verifyTotp: vi.fn(),
+      findMatchingRecoveryCode: vi.fn(),
+      encryptSecret: vi.fn((value: string) => `encrypted-${value}`),
+      decryptSecret: vi
+        .fn()
+        .mockReturnValue({ secret: "JBSWY3DPEHPK3PXP", needsRotation: false }),
+    };
+    app.mfaService = mfaService;
   });
 
   afterEach(async () => {
@@ -105,5 +155,53 @@ describe("authentication hardening scenarios", () => {
         }),
       });
     }
+  });
+
+  it("prepares encrypted secrets and hashed recovery codes during MFA enrollment", async () => {
+    prisma.user.findUnique.mockResolvedValueOnce({
+      id: "user-123",
+      email: "player@example.com",
+      nickname: "pixelpirate",
+    });
+
+    const token = app.jwt.sign({ sub: "user-123", role: "USER" });
+
+    const response = await request(app)
+      .post("/auth/mfa/setup")
+      .set("authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.secretId).toBe("secret-123");
+    expect(response.body.secret).toBe("JBSWY3DPEHPK3PXP");
+    expect(response.body.otpauthUri).toBe(
+      "otpauth://totp/TREAZRISLAND:player@example.com?secret=JBSWY3DPEHPK3PXP",
+    );
+    expect(Array.isArray(response.body.recoveryCodes)).toBe(true);
+    const expectedCount = Number(process.env.MFA_RECOVERY_CODE_COUNT ?? "0");
+    expect(response.body.recoveryCodes).toHaveLength(expectedCount);
+
+    const hashedValues = (response.body.recoveryCodes as string[]).map(
+      (code: string) => `hashed-${code}`,
+    );
+    expect(argon2Mock.hash).toHaveBeenCalledTimes(expectedCount);
+    expect(prisma.mfaSecret.deleteMany).toHaveBeenCalledWith({
+      where: { userId: "user-123", confirmedAt: null },
+    });
+    expect(prisma.mfaSecret.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: "user-123",
+        secret: "encrypted-JBSWY3DPEHPK3PXP",
+        recoveryCodes: hashedValues.join("\n"),
+      }),
+    });
+  });
+
+  it("rejects MFA enrollment attempts without an authenticated principal", async () => {
+    const response = await request(app)
+      .post("/auth/mfa/setup")
+      .set("authorization", "Bearer orphan");
+
+    expect(response.status).toBe(401);
+    expect(prisma.mfaSecret.create).not.toHaveBeenCalled();
   });
 });

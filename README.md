@@ -47,14 +47,14 @@ Review the [Product Requirements Document](./TREAZRISLAND_PRD.md) and the [Threa
 | Storage | `STORAGE_DRIVER`, `STORAGE_*` | Set `STORAGE_DRIVER=filesystem` for a simple local path (`STORAGE_LOCAL_ROOT`). For MinIO/S3, fill `ENDPOINT`, `REGION`, `ACCESS_KEY`, `SECRET_KEY`, and bucket names. |
 | ScreenScraper | `SCREENSCRAPER_*` | Store plaintext credentials in a secret manager. Use `npm run screenscraper:encrypt` (in `backend/`) to produce the encrypted developer ID/password and commit only the encrypted values. |
 | Observability | `LOG_LEVEL`, `METRICS_ENABLED`, `METRICS_TOKEN` | Enable metrics and set a token when scraping `/metrics` from Prometheus. |
-| Frontend security | `TREAZ_TLS_MODE` | Leave as `http` locally. Switch to `https` to emit HSTS/`upgrade-insecure-requests` once a reverse proxy terminates TLS. |
+| Frontend security | `TREAZ_TLS_MODE` | Defaults to `https` so HSTS/`upgrade-insecure-requests` stay enabled. Override to `http` only for localhost development without TLS. |
 
 Backend configuration is validated on boot by [`backend/src/config/env.ts`](./backend/src/config/env.ts). The process exits with a detailed error message if any required key is missing or malformed.
 
 ### HTTP defaults and opting into TLS
 
-- The repository ships with `TREAZ_TLS_MODE=http`, which tells the Next.js security middleware to skip HSTS and `upgrade-insecure-requests` so browsers happily talk to `http://localhost` during development.
-- When you're ready to front the stack with TLS, switch `TREAZ_TLS_MODE=https` and update the public URLs:
+- The repository now defaults to `TREAZ_TLS_MODE=https`, keeping HSTS and `upgrade-insecure-requests` active so production browsers refuse insecure downgrades.
+- For purely local development you can set `TREAZ_TLS_MODE=http` (see `scripts/dev-http.sh`) to disable the HTTPS-only headers while working on `http://localhost`.
   - Point `NEXT_PUBLIC_API_BASE_URL` and `CORS_ALLOWED_ORIGINS` at your `https://` hostname.
   - Update `STORAGE_ENDPOINT` to an HTTPS object-store endpoint (or unset it if your S3-compatible provider enforces TLS automatically).
   - Restart the frontend dev server or rebuild the production bundle so the new security headers take effect.

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import nextConfig from "@/next.config";
 import {
@@ -50,6 +50,23 @@ describe("createContentSecurityPolicy", () => {
     expect(csp).toContain("https://cdn.treazris.land");
     expect(csp).toContain("upgrade-insecure-requests");
   });
+
+  test("enables strict directives by default when TLS mode is unset", () => {
+    delete process.env.TREAZ_TLS_MODE;
+
+    const csp = createContentSecurityPolicy();
+
+    expect(csp).toContain("upgrade-insecure-requests");
+  });
+
+  test("throws in production when TREAZ_TLS_MODE is invalid", () => {
+    process.env.TREAZ_TLS_MODE = "bogus";
+    process.env.NODE_ENV = "production";
+
+    expect(() => createContentSecurityPolicy()).toThrow(
+      /Unsupported TREAZ_TLS_MODE value/, 
+    );
+  });
 });
 
 describe("buildSecurityHeaders", () => {
@@ -79,6 +96,24 @@ describe("buildSecurityHeaders", () => {
 
     const headerKeys = headers.map((header) => header.key);
     expect(headerKeys).not.toContain("Strict-Transport-Security");
+  });
+
+  test("logs a warning and falls back to HTTPS headers for invalid mode in non-production", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    process.env.TREAZ_TLS_MODE = "invalid";
+    process.env.NODE_ENV = "test";
+
+    const headers = buildSecurityHeaders();
+
+    expect(headers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "Strict-Transport-Security" })
+      ])
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Unsupported TREAZ_TLS_MODE value"),
+    );
+    warnSpy.mockRestore();
   });
 });
 
