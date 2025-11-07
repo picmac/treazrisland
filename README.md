@@ -47,14 +47,15 @@ Review the [Product Requirements Document](./TREAZRISLAND_PRD.md) and the [Threa
 | Storage | `STORAGE_DRIVER`, `STORAGE_*` | Set `STORAGE_DRIVER=filesystem` for a simple local path (`STORAGE_LOCAL_ROOT`). For MinIO/S3, fill `ENDPOINT`, `REGION`, `ACCESS_KEY`, `SECRET_KEY`, and bucket names. |
 | ScreenScraper | `SCREENSCRAPER_*` | Store plaintext credentials in a secret manager. Use `npm run screenscraper:encrypt` (in `backend/`) to produce the encrypted developer ID/password and commit only the encrypted values. |
 | Observability | `LOG_LEVEL`, `METRICS_ENABLED`, `METRICS_TOKEN` | Enable metrics and set a token when scraping `/metrics` from Prometheus. |
-| Frontend security | `TREAZ_TLS_MODE` | Defaults to `https` so HSTS/`upgrade-insecure-requests` stay enabled. Override to `http` only for localhost development without TLS. |
+| Frontend security | `TREAZ_TLS_MODE` | Environment templates default to `https` to keep HSTS/`upgrade-insecure-requests` enabled. The GitHub runner helpers and Docker entrypoint override to `http` automatically for LAN-only builds. |
 
 Backend configuration is validated on boot by [`backend/src/config/env.ts`](./backend/src/config/env.ts). The process exits with a detailed error message if any required key is missing or malformed.
 
 ### HTTP defaults and opting into TLS
 
-- The repository now defaults to `TREAZ_TLS_MODE=https`, keeping HSTS and `upgrade-insecure-requests` active so production browsers refuse insecure downgrades.
-- For purely local development you can set `TREAZ_TLS_MODE=http` (see `scripts/dev-http.sh`) to disable the HTTPS-only headers while working on `http://localhost`.
+- `.env.example` keeps `TREAZ_TLS_MODE=https` so strict HTTPS headers remain the baseline for production deployments.
+- The `frontend/scripts/start-http.mjs` helper (used by `npm start`, `npm run start:lan`, and the Docker entrypoint) forces `TREAZ_TLS_MODE=http` when it detects GitHub Actions. Self-hosted runners that promote builds therefore ship LAN-friendly HTTP headers automatically. Export `TREAZ_TLS_MODE=https` before invoking the helper if your preview environment terminates TLS upstream.
+- For manual local development you can also set `TREAZ_TLS_MODE=http` (see `scripts/dev-http.sh`) to disable the HTTPS-only headers while working on `http://localhost` or a private LAN host.
   - Point `NEXT_PUBLIC_API_BASE_URL` and `CORS_ALLOWED_ORIGINS` at your `https://` hostname.
   - Update `STORAGE_ENDPOINT` to an HTTPS object-store endpoint (or unset it if your S3-compatible provider enforces TLS automatically).
   - Restart the frontend dev server or rebuild the production bundle so the new security headers take effect.
@@ -107,6 +108,28 @@ sudo -u treaz \
 Replace `192.168.50.10` with the runner's LAN IP so mobile devices can connect without modifying the application code.
 If you omit the host overrides, the helper falls back to the runner's primary LAN address when it can detect one, but setting
 them explicitly keeps the URLs predictable.
+
+When you promote a build (`npm run build && npm run start`) on an air-gapped server without TLS termination, the new
+frontend script forces HTTP automatically, even if `.env` still contains `TREAZ_TLS_MODE=https`:
+
+```bash
+cd frontend
+npm run start:lan -- --port 3000
+```
+
+The helper sets `TREAZ_TLS_MODE=http` automatically (unless you explicitly re-export `https`) while keeping the listener bound to
+`0.0.0.0` so phones and tablets on your LAN can load the app over plain HTTP.
+
+For container-based previews (including GitHub Actions runners that publish a Docker image), the production image now ships
+with the same helper as its default entrypoint. Build the image and expose it on your LAN with:
+
+```bash
+docker build -t treazrisland/frontend ./frontend
+docker run --rm -p 3000:3000 treazrisland/frontend
+```
+
+Override `TREAZ_TLS_MODE` at runtime (`http` for LAN testing, `https` for hardened deployments) and the helper applies the
+correct security headers while binding to `0.0.0.0` for you.
 
 1. **Start shared services**
 

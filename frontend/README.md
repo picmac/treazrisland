@@ -42,8 +42,19 @@ For production builds:
 
 ```bash
 npm run build
-npm start               # serves the compiled output
+npm start               # serves the compiled output (forces TREAZ_TLS_MODE=http on GitHub Actions)
+# or
+npm run start:lan        # binds 0.0.0.0 and forces TREAZ_TLS_MODE=http everywhere
 ```
+
+The published Docker image uses the same helper, so you can run LAN-friendly previews with:
+
+```bash
+docker build -t treazrisland/frontend .
+docker run --rm -p 3000:3000 treazrisland/frontend
+```
+
+Export `TREAZ_TLS_MODE=https` before running the container when deploying behind a TLS terminator so the security headers switch back to strict HTTPS mode.
 
 ## EmulatorJS vendor workflow
 
