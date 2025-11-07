@@ -35,7 +35,8 @@ Review the [Product Requirements Document](./TREAZRISLAND_PRD.md) and the [Threa
    ```
 
    The frontend reads only `NEXT_PUBLIC_*` variables; adjust `NEXT_PUBLIC_API_BASE_URL` if your backend runs on a non-default
-   host/port.
+   host/port. `NEXT_PUBLIC_API_BASE_URL` and `STORAGE_ENDPOINT` default to `http://localhost` so the stack works without TLS in
+   development.
 
 3. Replace all placeholder secrets before exposing the stack to real users. The most important keys are summarised below:
 
@@ -46,10 +47,29 @@ Review the [Product Requirements Document](./TREAZRISLAND_PRD.md) and the [Threa
 | Storage | `STORAGE_DRIVER`, `STORAGE_*` | Set `STORAGE_DRIVER=filesystem` for a simple local path (`STORAGE_LOCAL_ROOT`). For MinIO/S3, fill `ENDPOINT`, `REGION`, `ACCESS_KEY`, `SECRET_KEY`, and bucket names. |
 | ScreenScraper | `SCREENSCRAPER_*` | Store plaintext credentials in a secret manager. Use `npm run screenscraper:encrypt` (in `backend/`) to produce the encrypted developer ID/password and commit only the encrypted values. |
 | Observability | `LOG_LEVEL`, `METRICS_ENABLED`, `METRICS_TOKEN` | Enable metrics and set a token when scraping `/metrics` from Prometheus. |
+| Frontend security | `TREAZ_TLS_MODE` | Leave as `http` locally. Switch to `https` to emit HSTS/`upgrade-insecure-requests` once a reverse proxy terminates TLS. |
 
 Backend configuration is validated on boot by [`backend/src/config/env.ts`](./backend/src/config/env.ts). The process exits with a detailed error message if any required key is missing or malformed.
 
+### HTTP defaults and opting into TLS
+
+- The repository ships with `TREAZ_TLS_MODE=http`, which tells the Next.js security middleware to skip HSTS and `upgrade-insecure-requests` so browsers happily talk to `http://localhost` during development.
+- When you're ready to front the stack with TLS, switch `TREAZ_TLS_MODE=https` and update the public URLs:
+  - Point `NEXT_PUBLIC_API_BASE_URL` and `CORS_ALLOWED_ORIGINS` at your `https://` hostname.
+  - Update `STORAGE_ENDPOINT` to an HTTPS object-store endpoint (or unset it if your S3-compatible provider enforces TLS automatically).
+  - Restart the frontend dev server or rebuild the production bundle so the new security headers take effect.
+- Keep the backend and frontend `.env` files in sync (symlinks or shared `TREAZ_ENV_FILE`) so these values propagate through Docker Compose and helper scripts.
+
 ## Local development workflow
+
+You can launch both apps with the HTTP defaults in a single terminal via:
+
+```bash
+./scripts/dev-http.sh
+```
+
+The helper loads `.env.http` (or `.env`) and starts the backend on `http://localhost:3001` and the frontend on
+`http://localhost:3000`, printing the URLs for quick access.
 
 1. **Start shared services**
 

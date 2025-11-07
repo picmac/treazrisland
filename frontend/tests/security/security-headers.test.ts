@@ -18,6 +18,7 @@ afterEach(() => {
 
 describe("createContentSecurityPolicy", () => {
   test("includes baseline directives", () => {
+    process.env.TREAZ_TLS_MODE = "http";
     const csp = createContentSecurityPolicy();
     const scriptDirective = csp
       .split("; ")
@@ -26,6 +27,7 @@ describe("createContentSecurityPolicy", () => {
     expect(csp).toContain("default-src 'self'");
     expect(csp).toContain("report-uri /api/csp-report");
     expect(scriptDirective).toBe("script-src 'self' https: blob: 'unsafe-inline'");
+    expect(csp).not.toContain("upgrade-insecure-requests");
   });
 
   test("adds nonce directives when provided", () => {
@@ -41,15 +43,19 @@ describe("createContentSecurityPolicy", () => {
 
   test("whitelists the media CDN origin when present", () => {
     process.env.NEXT_PUBLIC_MEDIA_CDN = "https://cdn.treazris.land/static";
+    process.env.TREAZ_TLS_MODE = "https";
 
     const csp = createContentSecurityPolicy();
 
     expect(csp).toContain("https://cdn.treazris.land");
+    expect(csp).toContain("upgrade-insecure-requests");
   });
 });
 
 describe("buildSecurityHeaders", () => {
-  test("returns the required security headers", () => {
+  test("returns TLS headers when enabled", () => {
+    process.env.TREAZ_TLS_MODE = "https";
+
     const headers = buildSecurityHeaders();
 
     expect(headers).toEqual(
@@ -65,10 +71,21 @@ describe("buildSecurityHeaders", () => {
       ])
     );
   });
+
+  test("omits TLS-only headers when disabled", () => {
+    process.env.TREAZ_TLS_MODE = "http";
+
+    const headers = buildSecurityHeaders();
+
+    const headerKeys = headers.map((header) => header.key);
+    expect(headerKeys).not.toContain("Strict-Transport-Security");
+  });
 });
 
 describe("next.config headers integration", () => {
   test("applies the security headers to all routes", async () => {
+    process.env.TREAZ_TLS_MODE = "https";
+
     const headerConfig = await nextConfig.headers?.();
 
     expect(headerConfig).toEqual(
@@ -83,6 +100,20 @@ describe("next.config headers integration", () => {
             expect.objectContaining({ key: "Referrer-Policy" })
           ])
         })
+      ])
+    );
+  });
+
+  test("omits Strict-Transport-Security when TLS mode is http", async () => {
+    process.env.TREAZ_TLS_MODE = "http";
+
+    const headerConfig = await nextConfig.headers?.();
+    const headerEntry = headerConfig?.find((entry) => entry.source === "/(.*)");
+
+    expect(headerEntry).toBeDefined();
+    expect(headerEntry?.headers).toEqual(
+      expect.not.arrayContaining([
+        expect.objectContaining({ key: "Strict-Transport-Security" })
       ])
     );
   });
