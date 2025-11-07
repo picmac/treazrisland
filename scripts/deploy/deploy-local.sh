@@ -399,10 +399,9 @@ PY
 }
 
 should_autoconfig_http_stack() {
-  local tls_mode="$(to_lower "${TREAZ_TLS_MODE:-https}")"
   local autoconfig="$(to_lower "${TREAZ_DEV_HTTP_AUTOCONFIG:-true}")"
 
-  [[ "${tls_mode}" == "http" && "${autoconfig}" == "true" ]]
+  [[ "${autoconfig}" == "true" ]]
 }
 
 apply_http_overrides() {
