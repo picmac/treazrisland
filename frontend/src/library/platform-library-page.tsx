@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { listPlatforms, type PlatformSummary } from "@lib/api/library";
 import { PixelFrame } from "@/src/components/pixel-frame";
@@ -171,6 +172,8 @@ export function PlatformLibraryPage() {
           const coverAlt = platform.featuredRom
             ? `${platform.featuredRom.title} cover art`
             : `${platform.name} cover art`;
+          const coverWidth = cover?.width && cover.width > 0 ? cover.width : 640;
+          const coverHeight = cover?.height && cover.height > 0 ? cover.height : 480;
 
           return (
             <Link
@@ -187,11 +190,13 @@ export function PlatformLibraryPage() {
               </h2>
               {coverUrl ? (
                 <div className="mt-3 overflow-hidden rounded-pixel border border-ink/40 bg-night/60">
-                  <img
+                  <Image
                     src={coverUrl}
                     alt={coverAlt}
-                    loading="lazy"
+                    width={coverWidth}
+                    height={coverHeight}
                     className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    sizes="(max-width: 768px) 100vw, 33vw"
                   />
                 </div>
               ) : null}
