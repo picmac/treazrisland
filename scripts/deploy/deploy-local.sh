@@ -180,6 +180,39 @@ run_all_probes() {
   return 0
 }
 
+ensure_database_url() {
+  if [[ -z "${DATABASE_URL:-}" ]]; then
+    if [[ -n "${POSTGRES_USER:-}" && -n "${POSTGRES_PASSWORD:-}" && -n "${POSTGRES_DB:-}" ]]; then
+      export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public"
+      log "DATABASE_URL not provided; defaulting to postgres service host"
+      return 0
+    else
+      log "DATABASE_URL not provided and could not be inferred; set it explicitly or provide Postgres credentials"
+      return 1
+    fi
+  fi
+
+  local normalized="${DATABASE_URL}"
+  local rewrote=false
+
+  if [[ "${normalized}" == *"@localhost:"* ]]; then
+    normalized="${normalized//@localhost:/@postgres:}"
+    rewrote=true
+  fi
+
+  if [[ "${normalized}" == *"@127.0.0.1:"* ]]; then
+    normalized="${normalized//@127.0.0.1:/@postgres:}"
+    rewrote=true
+  fi
+
+  if [[ "${rewrote}" == "true" ]]; then
+    export DATABASE_URL="${normalized}"
+    log "DATABASE_URL pointed at localhost; rewriting to docker postgres service host"
+  fi
+
+  return 0
+}
+
 log() {
   local message="$1"
   if command -v logger >/dev/null 2>&1; then
@@ -220,6 +253,11 @@ if [[ -f "${COMPOSE_ENV_FILE}" ]]; then
   set +a
 else
   log "No environment file found at ${COMPOSE_ENV_FILE}; relying on host environment"
+fi
+
+if ! ensure_database_url; then
+  log "Unable to determine DATABASE_URL; aborting deployment"
+  exit 1
 fi
 
 export TREAZ_BACKEND_ENV_FILE="${BACKEND_ENV_FILE}"
