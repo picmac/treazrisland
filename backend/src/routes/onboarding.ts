@@ -3,6 +3,7 @@ import { z } from "zod";
 import argon2 from "argon2";
 import { issueSessionTokens } from "../utils/tokens.js";
 import { setRefreshCookie } from "../utils/cookies.js";
+import { env } from "../config/env.js";
 import {
   fetchSetupState,
   updateSetupStep,
@@ -65,12 +66,22 @@ export async function registerOnboardingRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post("/onboarding/admin", async (request, reply) => {
-    const validation = adminPayloadSchema.safeParse(request.body);
-    if (!validation.success) {
-      return reply.status(400).send({
-        message: "Invalid payload",
-        errors: validation.error.flatten().fieldErrors,
+  app.post(
+    "/onboarding/admin",
+    {
+      config: {
+        rateLimit: {
+          max: env.RATE_LIMIT_AUTH_POINTS,
+          timeWindow: env.RATE_LIMIT_AUTH_DURATION * 1000,
+        },
+      },
+    },
+    async (request, reply) => {
+      const validation = adminPayloadSchema.safeParse(request.body);
+      if (!validation.success) {
+        return reply.status(400).send({
+          message: "Invalid payload",
+          errors: validation.error.flatten().fieldErrors,
       });
     }
 
@@ -111,17 +122,18 @@ export async function registerOnboardingRoutes(app: FastifyInstance) {
       "Initial admin account created via onboarding",
     );
 
-    return reply.status(201).send({
-      user: {
-        id: adminUser.id,
-        email: adminUser.email,
-        nickname: adminUser.nickname,
-        role: adminUser.role,
-      },
-      accessToken,
-      refreshExpiresAt: refreshExpiresAt.toISOString(),
-    });
-  });
+      return reply.status(201).send({
+        user: {
+          id: adminUser.id,
+          email: adminUser.email,
+          nickname: adminUser.nickname,
+          role: adminUser.role,
+        },
+        accessToken,
+        refreshExpiresAt: refreshExpiresAt.toISOString(),
+      });
+    },
+  );
 
   app.patch(
     "/onboarding/steps/:stepKey",
@@ -129,6 +141,12 @@ export async function registerOnboardingRoutes(app: FastifyInstance) {
       preHandler: async (request, reply) => {
         await app.authenticate(request, reply);
         await app.requireAdmin(request, reply);
+      },
+      config: {
+        rateLimit: {
+          max: env.RATE_LIMIT_AUTH_POINTS,
+          timeWindow: env.RATE_LIMIT_AUTH_DURATION * 1000,
+        },
       },
     },
     async (request, reply) => {
