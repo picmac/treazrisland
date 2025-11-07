@@ -24,6 +24,16 @@ const REQUIRED_ENV: Record<string, string> = {
   POSTMARK_MESSAGE_STREAM: "outbound",
 };
 
+function seedRequiredEnv(overrides: Record<string, string> = {}) {
+  for (const [key, value] of Object.entries(REQUIRED_ENV)) {
+    process.env[key] = value;
+  }
+
+  for (const [key, value] of Object.entries(overrides)) {
+    process.env[key] = value;
+  }
+}
+
 function restoreEnv(snapshot: EnvSnapshot) {
   for (const key of Object.keys(process.env)) {
     if (!(key in snapshot)) {
@@ -47,9 +57,7 @@ describe("env metrics safeguards", () => {
     vi.resetModules();
     snapshot = { ...process.env };
 
-    for (const [key, value] of Object.entries(REQUIRED_ENV)) {
-      process.env[key] = value;
-    }
+    seedRequiredEnv();
 
     delete process.env.METRICS_ENABLED;
     delete process.env.METRICS_TOKEN;
@@ -88,5 +96,46 @@ describe("env metrics safeguards", () => {
     expect(module.env.METRICS_ENABLED).toBe(true);
     expect(module.env.METRICS_ALLOWED_CIDRS).toEqual(["10.10.0.0/16"]);
     expect(module.env.METRICS_TOKEN).toBeUndefined();
+  });
+});
+
+describe("env TLS mode validation", () => {
+  let snapshot: EnvSnapshot;
+
+  beforeEach(() => {
+    vi.resetModules();
+    snapshot = { ...process.env };
+
+    seedRequiredEnv();
+    delete process.env.TREAZ_TLS_MODE;
+  });
+
+  afterEach(() => {
+    vi.resetModules();
+    restoreEnv(snapshot);
+  });
+
+  it("defaults to https when TREAZ_TLS_MODE is unset", async () => {
+    const module = await import("./env.js");
+
+    expect(module.env.TREAZ_TLS_MODE).toBe("https");
+    expect(module.env.TLS_ENABLED).toBe(true);
+  });
+
+  it("normalises http aliases", async () => {
+    process.env.TREAZ_TLS_MODE = "off";
+
+    const module = await import("./env.js");
+
+    expect(module.env.TREAZ_TLS_MODE).toBe("http");
+    expect(module.env.TLS_ENABLED).toBe(false);
+  });
+
+  it("rejects unsupported TLS modes", async () => {
+    process.env.TREAZ_TLS_MODE = "maybe";
+
+    await expect(import("./env.js")).rejects.toThrow(
+      /TREAZ_TLS_MODE must be one of/,
+    );
   });
 });

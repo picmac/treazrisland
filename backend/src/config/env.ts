@@ -8,6 +8,9 @@ loadEnv();
 
 export const bootstrapSecrets = ensureBootstrapSecrets();
 
+const TLS_ENABLED_VALUES = new Set(["https", "true", "1", "on"]);
+const TLS_DISABLED_VALUES = new Set(["http", "false", "0", "off"]);
+
 function isValidIp(value: string): boolean {
   try {
     ipaddr.parse(value);
@@ -17,11 +20,34 @@ function isValidIp(value: string): boolean {
   }
 }
 
+function normalizeTlsMode(value?: string | null): "https" | "http" {
+  if (!value || value.trim().length === 0) {
+    return "https";
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (TLS_ENABLED_VALUES.has(normalized)) {
+    return "https";
+  }
+
+  if (TLS_DISABLED_VALUES.has(normalized)) {
+    return "http";
+  }
+
+  throw new Error(
+    "TREAZ_TLS_MODE must be one of https, http, true, false, 1, 0, on, off",
+  );
+}
+
 const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
   PORT: z.string().regex(/^\d+$/).default("3001").transform(Number),
+  TREAZ_TLS_MODE: z
+    .string()
+    .optional()
+    .transform((value) => normalizeTlsMode(value)),
   LISTEN_HOST: z
     .string()
     .default("0.0.0.0")
@@ -297,6 +323,7 @@ const passwordResetMs = ms(parsed.data.PASSWORD_RESET_TTL as StringValue);
 const signedUrlTtlMs = parsed.data.STORAGE_SIGNED_URL_TTL
   ? ms(parsed.data.STORAGE_SIGNED_URL_TTL as StringValue)
   : undefined;
+const tlsEnabled = parsed.data.TREAZ_TLS_MODE === "https";
 if (typeof accessMs !== "number" || accessMs <= 0) {
   throw new Error("JWT_ACCESS_TTL must be a positive duration string");
 }
@@ -400,6 +427,8 @@ export const env = {
   LOG_LEVEL:
     parsed.data.LOG_LEVEL ??
     (parsed.data.NODE_ENV === "production" ? "info" : "debug"),
+  TREAZ_TLS_MODE: parsed.data.TREAZ_TLS_MODE,
+  TLS_ENABLED: tlsEnabled,
   JWT_ACCESS_TTL_MS: accessMs,
   JWT_REFRESH_TTL_MS: refreshMs,
   PASSWORD_RESET_TTL_MS: passwordResetMs,
