@@ -93,12 +93,22 @@ const assetUploadMetadataSchema = z
       .max(120, "contentType must be at most 120 characters")
       .optional(),
     width: z
-      .number({ invalid_type_error: "width must be a number" })
+      .number({
+        errorMap: (issue, ctx) =>
+          issue.code === z.ZodIssueCode.invalid_type
+            ? { message: "width must be a number" }
+            : { message: ctx.defaultError }
+      })
       .int("width must be an integer")
       .positive("width must be greater than zero")
       .optional(),
     height: z
-      .number({ invalid_type_error: "height must be a number" })
+      .number({
+        errorMap: (issue, ctx) =>
+          issue.code === z.ZodIssueCode.invalid_type
+            ? { message: "height must be a number" }
+            : { message: ctx.defaultError }
+      })
       .int("height must be an integer")
       .positive("height must be greater than zero")
       .optional(),
@@ -160,12 +170,22 @@ const assetFileUpdateSchema = z.object({
     .max(120, "contentType must be at most 120 characters")
     .optional(),
   width: z
-    .number({ invalid_type_error: "width must be a number" })
+    .number({
+      errorMap: (issue, ctx) =>
+        issue.code === z.ZodIssueCode.invalid_type
+          ? { message: "width must be a number" }
+          : { message: ctx.defaultError }
+    })
     .int("width must be an integer")
     .positive("width must be greater than zero")
     .optional(),
   height: z
-    .number({ invalid_type_error: "height must be a number" })
+    .number({
+      errorMap: (issue, ctx) =>
+        issue.code === z.ZodIssueCode.invalid_type
+          ? { message: "height must be a number" }
+          : { message: ctx.defaultError }
+    })
     .int("height must be an integer")
     .positive("height must be greater than zero")
     .optional()
