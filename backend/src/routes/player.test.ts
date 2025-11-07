@@ -41,8 +41,10 @@ type PrismaMock = {
     update: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
     findFirst: ReturnType<typeof vi.fn>;
+    deleteMany: ReturnType<typeof vi.fn>;
   };
   romPlaybackAudit: { create: ReturnType<typeof vi.fn> };
+  $transaction: ReturnType<typeof vi.fn>;
 };
 
 describe("player routes", () => {
@@ -56,9 +58,11 @@ describe("player routes", () => {
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
-      findFirst: vi.fn()
+      findFirst: vi.fn(),
+      deleteMany: vi.fn()
     },
-    romPlaybackAudit: { create: vi.fn() }
+    romPlaybackAudit: { create: vi.fn() },
+    $transaction: vi.fn()
   };
 
   beforeAll(async () => {
@@ -73,6 +77,18 @@ describe("player routes", () => {
     vi.clearAllMocks();
     app = buildServer({ registerPrisma: false });
     prismaMock.playState.findMany.mockResolvedValue([]);
+    prismaMock.playState.deleteMany.mockResolvedValue({ count: 0 });
+    prismaMock.$transaction.mockImplementation(async (callback) =>
+      callback(
+        {
+          playState: {
+            create: prismaMock.playState.create,
+            findMany: prismaMock.playState.findMany,
+            deleteMany: prismaMock.playState.deleteMany,
+          },
+        } as unknown as PrismaClient,
+      ),
+    );
     app.decorate("prisma", prismaMock as unknown as PrismaClient);
     await app.register(async (instance) => {
       await registerPlayerRoutes(instance);
@@ -195,6 +211,75 @@ describe("player routes", () => {
         cover: expect.objectContaining({ id: "asset-1" })
       }
     });
+  });
+
+  it("enforces per-ROM play state limits and records eviction metrics", async () => {
+    const token = app.jwt.sign({ sub: "user-1", role: "USER" });
+    prismaMock.rom.findUnique.mockResolvedValue({ id: "rom-1" });
+    prismaMock.romPlaybackAudit.create.mockResolvedValue({});
+
+    const createdAt = new Date();
+    const createdState = {
+      id: "state-new",
+      userId: "user-1",
+      romId: "rom-1",
+      storageKey: "play-states/user-1/rom-1/state-new.bin",
+      label: null,
+      slot: null,
+      size: 16,
+      checksumSha256: "checksum",
+      createdAt,
+      updatedAt: createdAt,
+    };
+
+    const existingStates = [
+      { id: "state-old-1", storageKey: "play-states/user-1/rom-1/state-old-1.bin" },
+      { id: "state-old-2", storageKey: "play-states/user-1/rom-1/state-old-2.bin" },
+      { id: "state-old-3", storageKey: "play-states/user-1/rom-1/state-old-3.bin" },
+    ];
+
+    const transactionCreate = vi.fn().mockResolvedValue(createdState);
+    const transactionFindMany = vi
+      .fn()
+      .mockResolvedValue([...existingStates, createdState]);
+    const transactionDeleteMany = vi.fn().mockResolvedValue({ count: 1 });
+
+    prismaMock.$transaction.mockImplementationOnce(async (callback) =>
+      callback(
+        {
+          playState: {
+            create: transactionCreate,
+            findMany: transactionFindMany,
+            deleteMany: transactionDeleteMany,
+          },
+        } as unknown as PrismaClient,
+      ),
+    );
+
+    const playbackInc = vi.fn();
+    app.metrics.enabled = true;
+    app.metrics.playback = { inc: playbackInc } as unknown as typeof app.metrics.playback;
+
+    await request(app)
+      .post("/player/play-states")
+      .set("authorization", `Bearer ${token}`)
+      .send({ romId: "rom-1", data: Buffer.from([1, 2, 3, 4]).toString("base64") })
+      .expect(201);
+
+    expect(transactionCreate).toHaveBeenCalled();
+    expect(transactionFindMany).toHaveBeenCalled();
+    expect(transactionDeleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ["state-old-1"] } },
+    });
+
+    expect(playbackInc).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "play_state_upload",
+        status: "evicted",
+        reason: "per_rom_limit",
+      }),
+      1,
+    );
   });
 
   it("increments the rate limit metric when requests exceed the threshold", async () => {
