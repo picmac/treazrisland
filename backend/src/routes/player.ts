@@ -119,6 +119,17 @@ function extractRouteLabel(request: FastifyRequest): string {
   );
 }
 
+function getHeaderValue(
+  headers: FastifyRequest["headers"],
+  name: string,
+): string | undefined {
+  const value = headers[name];
+  if (Array.isArray(value)) {
+    return value.find((entry) => typeof entry === "string");
+  }
+  return typeof value === "string" ? value : undefined;
+}
+
 function normalizePlaybackReason(reason: string): string {
   const normalized = reason
     .toLowerCase()
@@ -255,7 +266,7 @@ export async function registerPlayerRoutes(
             ? { connect: { id: request.user.sub } }
             : undefined,
           ipAddress: request.ip,
-          userAgent: request.headers["user-agent"] ?? null,
+          userAgent: getHeaderValue(request.headers, "user-agent") ?? null,
         },
         { romId: rom.id, romBinaryId: rom.binary.id },
       );
@@ -354,7 +365,7 @@ export async function registerPlayerRoutes(
               ? { connect: { id: request.user.sub } }
               : undefined,
             ipAddress: request.ip,
-            userAgent: request.headers["user-agent"] ?? null,
+            userAgent: getHeaderValue(request.headers, "user-agent") ?? null,
           },
           { romId: asset.romId ?? null, assetId: asset.id },
         );
@@ -376,7 +387,7 @@ export async function registerPlayerRoutes(
             ? { connect: { id: request.user.sub } }
             : undefined,
           ipAddress: request.ip,
-          userAgent: request.headers["user-agent"] ?? null,
+          userAgent: getHeaderValue(request.headers, "user-agent") ?? null,
         },
         { romId: asset.romId ?? null, assetId: asset.id },
       );
@@ -543,7 +554,7 @@ export async function registerPlayerRoutes(
           playState: { connect: { id: playState.id } },
           user: { connect: { id: request.user.sub } },
           ipAddress: request.ip,
-          userAgent: request.headers["user-agent"] ?? null,
+          userAgent: getHeaderValue(request.headers, "user-agent") ?? null,
         },
         { romId: playState.romId, playStateId: playState.id },
       );
@@ -744,7 +755,7 @@ export async function registerPlayerRoutes(
           playState: { connect: { id: createdPlayState.id } },
           user: { connect: { id: request.user.sub } },
           ipAddress: request.ip,
-          userAgent: request.headers["user-agent"] ?? null,
+          userAgent: getHeaderValue(request.headers, "user-agent") ?? null,
         },
         { romId: createdPlayState.romId, playStateId: createdPlayState.id },
       );
@@ -853,7 +864,7 @@ export async function registerPlayerRoutes(
             playState: { connect: { id: updated.id } },
             user: { connect: { id: request.user.sub } },
             ipAddress: request.ip,
-            userAgent: request.headers["user-agent"] ?? null,
+            userAgent: getHeaderValue(request.headers, "user-agent") ?? null,
           },
           { romId: updated.romId, playStateId: updated.id },
         );
