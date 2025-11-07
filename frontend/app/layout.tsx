@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { AuthProvider } from "@/src/auth/session-provider";
+import { AppShell } from "@/src/components/app-shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,11 +16,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="bg-background text-foreground">
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <body className="min-h-screen bg-background font-sans antialiased text-foreground">
         <AuthProvider>
-          <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-6">
-            {children}
-          </div>
+          <AppShell>{children}</AppShell>
         </AuthProvider>
       </body>
     </html>
