@@ -8,11 +8,34 @@ loadEnv();
 
 export const bootstrapSecrets = ensureBootstrapSecrets();
 
+function isValidIp(value: string): boolean {
+  try {
+    ipaddr.parse(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
   PORT: z.string().regex(/^\d+$/).default("3001").transform(Number),
+  LISTEN_HOST: z
+    .string()
+    .default("0.0.0.0")
+    .transform((value) => value.trim())
+    .refine(
+      (value) =>
+        value === "0.0.0.0" ||
+        value === "::" ||
+        value === "localhost" ||
+        isValidIp(value),
+      {
+        message: "LISTEN_HOST must be 0.0.0.0, ::, localhost, or a valid IP",
+      },
+    ),
   LOG_LEVEL: z
     .string()
     .optional()
