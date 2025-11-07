@@ -16,8 +16,9 @@ shipping new features. Use it as a pre-flight checklist for reviews and release 
 1. **Authentication & Authorization**
    - [x] JWT secrets rotated, stored in secret manager. _(Rotated 2025-02-12; stored in Vault `secret/data/treaz/prod/backend#JWT_SECRET`; process in [Operator Runbook §1](../operators/runbook.md#1-bootstrap-the-stack) — mirrors hardening control.)_
    - [x] Role guards enforced on admin and upload routes. _(Fastify `requireAdmin` hook applied in `backend/src/routes/admin/index.ts`, ensuring uploads/admin APIs require `ADMIN` JWT.)_
-   - [x] Auth rate limits rehearsed and logged. _(Manual k6 drill captured 2025-02-22 in `docs/security/reports/2025-02-22-rate-limit-drill.md` with complementary Vitest assertions tracked in `docs/security/reports/2025-02-24-auth-hardening.md`. Aligns with hardening checklist item **SEC-45**.)_
-   - [ ] MFA enrollment path tested after auth changes. _(Pending – Owner: QA (Inez Morales); bundled with lockout rehearsal in **SEC-46**, due 2025-02-28.)_
+ - [x] Auth rate limits rehearsed and logged. _(Manual k6 drill captured 2025-02-22 in `docs/security/reports/2025-02-22-rate-limit-drill.md` with complementary Vitest assertions tracked in `docs/security/reports/2025-02-24-auth-hardening.md`. Aligns with hardening checklist item **SEC-45**.)_
+  - [x] Initial admin bootstrap is single-use and rate limited. _(Fastify onboarding route `/onboarding/admin` rejects once a user exists, enforces `RATE_LIMIT_AUTH_*` thresholds, and records status in `SetupState`; regression coverage in `backend/src/routes/onboarding.test.ts`.)_
+  - [ ] MFA enrollment path tested after auth changes. _(Pending – Owner: QA (Inez Morales); bundled with lockout rehearsal in **SEC-46**, due 2025-02-28.)_
 
 2. **Data Protection**
    - [ ] Object storage buckets scoped with least privilege credentials. _(Pending – Owner: Security (Marta Chen); scope review and IAM audit logging tracked via **SEC-48**, due 2025-03-20.)_
@@ -52,5 +53,6 @@ See `docs/security/hardening-checklist.md` for **SEC-45** through **SEC-53**. Ne
 - **SEC-54** – Stage CSP/Helmet enforcement and validation (Owner: Mika Ito, due 2025-03-07).
 - **SEC-55** – Lock down WebSocket origin checks (Owner: Diego Flores, due 2025-03-07).
 - **SEC-56** – Centralized log shipping & retention policy (Owner: Nora Blake, due 2025-03-04).
+- **SEC-59** – Review onboarding/admin bootstrap assumptions whenever `RATE_LIMIT_AUTH_*` thresholds shift to keep brute-force window <60s (Owner: Backend (Diego Flores), due 2025-03-14).
 - **SEC-57** – Add automated dependency vulnerability scans (Owner: Omar Reed, due 2025-03-06).
 - **SEC-58** – Monthly Docker base image refresh automation (Owner: Zoe Hart, due 2025-03-10).
