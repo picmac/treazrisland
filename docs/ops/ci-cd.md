@@ -110,9 +110,7 @@ Run the following as the runner user to ensure the service account can control D
 docker info
 cd /opt/treazrisland/app
 chmod +x scripts/deploy/deploy-local.sh
-TREAZ_BACKEND_ENV_FILE=/opt/treazrisland/config/backend.env \
-TREAZ_FRONTEND_ENV_FILE=/opt/treazrisland/config/frontend.env \
-TREAZ_COMPOSE_ENV_FILE=/opt/treazrisland/config/compose.env \
+TREAZ_ENV_FILE=/opt/treazrisland/config/compose.env \
 TREAZ_COMPOSE_PROJECT_NAME=treazrisland \
 scripts/deploy/deploy-local.sh
 ```
@@ -123,11 +121,11 @@ The first execution will build all images. If you are bootstrapping a fresh data
 
 ## 6. Wire secrets into the runner environment
 
-The GitHub workflow passes `TREAZ_BACKEND_ENV_FILE`, `TREAZ_FRONTEND_ENV_FILE`, `TREAZ_COMPOSE_ENV_FILE`, and `TREAZ_COMPOSE_PROJECT_NAME` to the deployment script. Double-check that:
+The GitHub workflow passes `TREAZ_ENV_FILE` and `TREAZ_COMPOSE_PROJECT_NAME` to the deployment script. Double-check that:
 
-- Those files exist and are readable by the runner service.
+- The referenced env file exists and is readable by the runner service.
 - Sensitive environment editing happens with shell history disabled (`HISTCONTROL=ignorespace` or editing via `nano`/`vim`).
-- Additional secrets referenced by `backend.env`/`frontend.env` (ScreenScraper keys, Postmark tokens, OAuth secrets) are set and rotate per security policy.
+- Additional secrets referenced by the env file (ScreenScraper keys, Postmark tokens, OAuth secrets) are set and rotate per security policy.
 
 ## 7. Understand the GitHub Actions workflow
 
@@ -151,9 +149,7 @@ Manual redeployments (e.g., after rotating secrets or updating Docker images) sh
 
 ```bash
 cd /opt/treazrisland/app
-TREAZ_BACKEND_ENV_FILE=/opt/treazrisland/config/backend.env \
-TREAZ_FRONTEND_ENV_FILE=/opt/treazrisland/config/frontend.env \
-TREAZ_COMPOSE_ENV_FILE=/opt/treazrisland/config/compose.env \
+TREAZ_ENV_FILE=/opt/treazrisland/config/compose.env \
 TREAZ_COMPOSE_PROJECT_NAME=treazrisland \
 scripts/deploy/deploy-local.sh
 ```

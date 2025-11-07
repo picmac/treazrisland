@@ -16,13 +16,14 @@ load_env_file() {
 main() {
   cd "${REPO_ROOT}" || exit 1
 
+  local env_file="${TREAZ_ENV_FILE:-${REPO_ROOT}/.env}"
+
   set -a
-  load_env_file "${REPO_ROOT}/.env"
-  load_env_file "${REPO_ROOT}/.env.local"
+  load_env_file "${env_file}"
   set +a
 
   if [[ -z "${CLOUDFLARE_TUNNEL_TOKEN:-}" ]]; then
-    echo "[cloudflared] CLOUDFLARE_TUNNEL_TOKEN is not set. Export it or add it to .env before starting the tunnel." >&2
+    echo "[cloudflared] CLOUDFLARE_TUNNEL_TOKEN is not set. Export it or add it to ${env_file} before starting the tunnel." >&2
     exit 1
   fi
 

@@ -5,10 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 COMPOSE_FILE="${COMPOSE_FILE:-${REPO_ROOT}/infra/docker-compose.prod.yml}"
 PROJECT_NAME="${TREAZ_COMPOSE_PROJECT_NAME:-treazrisland}"
-CENTRAL_ENV_FILE="${TREAZ_ENV_FILE:-/opt/treazrisland/config/compose.env}"
-COMPOSE_ENV_FILE="${TREAZ_COMPOSE_ENV_FILE:-${CENTRAL_ENV_FILE}}"
-BACKEND_ENV_FILE="${TREAZ_BACKEND_ENV_FILE:-${CENTRAL_ENV_FILE}}"
-FRONTEND_ENV_FILE="${TREAZ_FRONTEND_ENV_FILE:-${CENTRAL_ENV_FILE}}"
+ENV_FILE="${TREAZ_ENV_FILE:-/opt/treazrisland/config/compose.env}"
 SEED_PLATFORMS="${TREAZ_RUN_PLATFORM_SEED:-false}"
 RESET_ON_FAILURE="${TREAZ_RESET_ON_FAILURE:-true}"
 HEALTH_MAX_ATTEMPTS="${TREAZ_HEALTH_MAX_ATTEMPTS:-12}"
@@ -216,8 +213,13 @@ ensure_database_url() {
 sync_database_url_env_files() {
   local value="$1"
   local python_cmd="python3"
+  local file="${ENV_FILE}"
 
   if [[ -z "${value}" ]]; then
+    return 0
+  fi
+
+  if [[ -z "${file}" || ! -f "${file}" ]]; then
     return 0
   fi
 
@@ -230,38 +232,13 @@ sync_database_url_env_files() {
     fi
   fi
 
-  local files=()
-
-  if [[ -f "${COMPOSE_ENV_FILE}" ]]; then
-    files+=("${COMPOSE_ENV_FILE}")
-  fi
-
-  if [[ -f "${BACKEND_ENV_FILE}" ]]; then
-    local already_listed=false
-    for candidate in "${files[@]}"; do
-      if [[ "${candidate}" == "${BACKEND_ENV_FILE}" ]]; then
-        already_listed=true
-        break
-      fi
-    done
-    if [[ "${already_listed}" == "false" ]]; then
-      files+=("${BACKEND_ENV_FILE}")
-    fi
-  fi
-
-  if (( ${#files[@]} == 0 )); then
+  if [[ ! -w "${file}" ]]; then
+    log "Cannot update DATABASE_URL in ${file}; file is not writable"
     return 0
   fi
 
-  local file
-  for file in "${files[@]}"; do
-    if [[ ! -w "${file}" ]]; then
-      log "Cannot update DATABASE_URL in ${file}; file is not writable"
-      continue
-    fi
-
-    local update_result
-    if ! update_result=$("${python_cmd}" - "${file}" "${value}" <<'PY'
+  local update_result
+  if ! update_result=$("${python_cmd}" - "${file}" "${value}" <<'PY'
 import sys
 from pathlib import Path
 
@@ -311,14 +288,13 @@ if changed:
 print("changed" if changed else "unchanged")
 PY
 ); then
-      log "Failed to update DATABASE_URL in ${file}"
-      continue
-    fi
+    log "Failed to update DATABASE_URL in ${file}"
+    return 0
+  fi
 
-    if [[ "${update_result}" == "changed" ]]; then
-      log "Updated DATABASE_URL in ${file} to use postgres service host"
-    fi
-  done
+  if [[ "${update_result}" == "changed" ]]; then
+    log "Updated DATABASE_URL in ${file} to use postgres service host"
+  fi
 }
 
 log() {
@@ -339,28 +315,16 @@ require_file() {
 }
 
 log "Preparing environment"
-require_file "${CENTRAL_ENV_FILE}" "central environment file"
+require_file "${ENV_FILE}" "environment file"
 
-if [[ "${BACKEND_ENV_FILE}" != "${CENTRAL_ENV_FILE}" ]]; then
-  require_file "${BACKEND_ENV_FILE}" "backend env file"
-else
-  log "Backend env file not provided; using central environment exports"
-fi
-
-if [[ "${FRONTEND_ENV_FILE}" != "${CENTRAL_ENV_FILE}" ]]; then
-  require_file "${FRONTEND_ENV_FILE}" "frontend env file"
-else
-  log "Frontend env file not provided; using central environment exports"
-fi
-
-if [[ -f "${COMPOSE_ENV_FILE}" ]]; then
-  log "Loading environment exports from ${COMPOSE_ENV_FILE}"
+if [[ -f "${ENV_FILE}" ]]; then
+  log "Loading environment exports from ${ENV_FILE}"
   set -a
   # shellcheck disable=SC1090
-  source "${COMPOSE_ENV_FILE}"
+  source "${ENV_FILE}"
   set +a
 else
-  log "No environment file found at ${COMPOSE_ENV_FILE}; relying on host environment"
+  log "No environment file found at ${ENV_FILE}; relying on host environment"
 fi
 
 if ! ensure_database_url; then
@@ -370,8 +334,7 @@ fi
 
 sync_database_url_env_files "${DATABASE_URL}"
 
-export TREAZ_BACKEND_ENV_FILE="${BACKEND_ENV_FILE}"
-export TREAZ_FRONTEND_ENV_FILE="${FRONTEND_ENV_FILE}"
+export TREAZ_ENV_FILE="${ENV_FILE}"
 export COMPOSE_PROJECT_NAME="${PROJECT_NAME}"
 
 cd "${REPO_ROOT}"
