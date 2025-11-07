@@ -94,20 +94,14 @@ const assetUploadMetadataSchema = z
       .optional(),
     width: z
       .number({
-        errorMap: (issue, ctx) =>
-          issue.code === z.ZodIssueCode.invalid_type
-            ? { message: "width must be a number" }
-            : { message: ctx.defaultError }
+        error: "width must be a number"
       })
       .int("width must be an integer")
       .positive("width must be greater than zero")
       .optional(),
     height: z
       .number({
-        errorMap: (issue, ctx) =>
-          issue.code === z.ZodIssueCode.invalid_type
-            ? { message: "height must be a number" }
-            : { message: ctx.defaultError }
+        error: "height must be a number"
       })
       .int("height must be an integer")
       .positive("height must be greater than zero")
@@ -171,20 +165,14 @@ const assetFileUpdateSchema = z.object({
     .optional(),
   width: z
     .number({
-      errorMap: (issue, ctx) =>
-        issue.code === z.ZodIssueCode.invalid_type
-          ? { message: "width must be a number" }
-          : { message: ctx.defaultError }
+      error: "width must be a number"
     })
     .int("width must be an integer")
     .positive("width must be greater than zero")
     .optional(),
   height: z
     .number({
-      errorMap: (issue, ctx) =>
-        issue.code === z.ZodIssueCode.invalid_type
-          ? { message: "height must be a number" }
-          : { message: ctx.defaultError }
+      error: "height must be a number"
     })
     .int("height must be an integer")
     .positive("height must be greater than zero")
