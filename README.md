@@ -54,10 +54,11 @@ Backend configuration is validated on boot by [`backend/src/config/env.ts`](./ba
 ### HTTP defaults and opting into TLS
 
 - The repository now defaults to `TREAZ_TLS_MODE=https`, keeping HSTS and `upgrade-insecure-requests` active so production browsers refuse insecure downgrades.
-- For purely local development you can set `TREAZ_TLS_MODE=http` (see `scripts/dev-http.sh`) to disable the HTTPS-only headers while working on `http://localhost`.
+- For purely local development you can set `TREAZ_TLS_MODE=http` (see `scripts/dev-http.sh`) to disable the HTTPS-only headers while working on `http://localhost` or LAN-only stacks.
   - Point `NEXT_PUBLIC_API_BASE_URL` and `CORS_ALLOWED_ORIGINS` at your `https://` hostname.
   - Update `STORAGE_ENDPOINT` to an HTTPS object-store endpoint (or unset it if your S3-compatible provider enforces TLS automatically).
   - Restart the frontend dev server or rebuild the production bundle so the new security headers take effect.
+- Leave `TREAZ_DEV_HTTP_AUTOCONFIG=true` (the default) when you opt into HTTP. The helper scripts reuse that flag to rewrite `NEXT_PUBLIC_API_BASE_URL`, `CORS_ALLOWED_ORIGINS`, and `NEXT_PUBLIC_MEDIA_CDN` to a LAN-friendly host when they still point at `localhost`.
 - Keep the backend and frontend `.env` files in sync (symlinks or shared `TREAZ_ENV_FILE`) so these values propagate through Docker Compose and helper scripts.
 
 ## Local development workflow
@@ -73,42 +74,27 @@ detected URLs for quick access (falling back to `localhost` when no LAN IP can b
 
 ### Testing on another device or self-hosted runner
 
-When you need to reach the dev stack from a phone or another machine on your LAN, the helper now binds both
-servers to `0.0.0.0` by default and advertises the detected LAN IP when possible. If your host has multiple
-interfaces or the autodetection is wrong, override the bind addresses and the advertised hosts explicitly:
+When you need to reach the dev stack from a phone or another machine on your LAN, the helper binds both
+servers to `0.0.0.0` by default and advertises the detected LAN IP when possible. For deterministic URLs set
+`TREAZ_DEV_LAN_HOST` in your `.env.http` (or main `.env`) and leave `TREAZ_DEV_HTTP_AUTOCONFIG=true` so both
+helper scripts rewrite the public URLs automatically.
 
 1. Copy `.env.example` to `.env.http` (or reuse your main `.env`) and keep `TREAZ_TLS_MODE=http`.
-2. (Optional) Export LAN-specific overrides before launching the helper. The bind addresses control which interfaces the
-   servers listen on; the host values tell generated URLs (CORS, API base URL, storage endpoint) which IP/hostname
-   to advertise.
-
+2. (Optional) Pin the LAN identity with environment variables:
    ```bash
+   export TREAZ_DEV_LAN_HOST=192.168.50.10
    export DEV_HTTP_BACKEND_BIND_ADDRESS=0.0.0.0
    export DEV_HTTP_FRONTEND_BIND_ADDRESS=0.0.0.0
-   export DEV_HTTP_BACKEND_HOST=192.168.50.10
-   export DEV_HTTP_FRONTEND_HOST=192.168.50.10
    ```
-
+   `TREAZ_DEV_LAN_HOST` feeds both `scripts/dev-http.sh` and the Docker deployment script. The `DEV_HTTP_*` variables
+   are only necessary when you need to bind to a specific interface instead of every address.
 3. Start the stack with `./scripts/dev-http.sh`. The script automatically updates `LISTEN_HOST`, `CORS_ALLOWED_ORIGINS`,
-   `NEXT_PUBLIC_API_BASE_URL`, and `STORAGE_ENDPOINT` when they are not already defined.
+   `NEXT_PUBLIC_API_BASE_URL`, and storage/CDN URLs when they are still pointing at `localhost`.
 
-On a self-hosted GitHub Actions runner, point `TREAZ_HTTP_ENV_FILE` at a checked-in or secure `.env.http` copy and run
-the same command under the runner account:
-
-```bash
-sudo -u treaz \
-  TREAZ_HTTP_ENV_FILE=/opt/treazrisland/config/dev-http.env \
-  DEV_HTTP_BACKEND_BIND_ADDRESS=0.0.0.0 \
-  DEV_HTTP_FRONTEND_BIND_ADDRESS=0.0.0.0 \
-  DEV_HTTP_BACKEND_HOST=192.168.50.10 \
-  DEV_HTTP_FRONTEND_HOST=192.168.50.10 \
-  /opt/treazrisland/app/scripts/dev-http.sh
-```
-
-Replace `192.168.50.10` with the runner's LAN IP so mobile devices can connect without modifying the application code.
-If you omit the bind overrides the helper still listens on all interfaces, and if you omit the host overrides it falls back to
-the runner's primary LAN address when it can detect one. Setting them explicitly keeps the URLs predictable when multiple
-interfaces exist.
+On a self-hosted GitHub Actions runner you can skip the helper entirely when using Docker builds: set
+`TREAZ_TLS_MODE=http` and (optionally) `TREAZ_DEV_LAN_HOST` in the env file that `TREAZ_ENV_FILE` points to, then run
+`scripts/deploy/deploy-local.sh`. The script writes a temporary env file with LAN-aware overrides before calling
+`docker compose`, so the resulting frontend is reachable at `http://<runner-ip>:3000/` as soon as the workflow finishes.
 
 1. **Start shared services**
 

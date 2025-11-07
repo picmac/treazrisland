@@ -37,6 +37,15 @@ detect_lan_ip() {
   fi
 }
 
+format_host_for_url() {
+  local host="$1"
+  if [[ "${host}" == *:* && "${host}" != "["* ]]; then
+    printf '[%s]' "${host}"
+  else
+    printf '%s' "${host}"
+  fi
+}
+
 BACKEND_PORT_VALUE="${PORT:-${BACKEND_PORT:-3001}}"
 FRONTEND_PORT_VALUE="${FRONTEND_PORT:-3000}"
 DEFAULT_LISTEN_HOST="${LISTEN_HOST:-0.0.0.0}"
@@ -46,6 +55,10 @@ BACKEND_BIND_ADDRESS="${DEV_HTTP_BACKEND_BIND_ADDRESS:-${DEFAULT_LISTEN_HOST}}"
 # down by exporting DEV_HTTP_FRONTEND_BIND_ADDRESS=127.0.0.1 explicitly.
 FRONTEND_BIND_ADDRESS="${DEV_HTTP_FRONTEND_BIND_ADDRESS:-${DEFAULT_LISTEN_HOST}}"
 LAN_IP="$(detect_lan_ip)"
+
+if [[ -n "${TREAZ_DEV_LAN_HOST:-}" ]]; then
+  LAN_IP="${TREAZ_DEV_LAN_HOST}"
+fi
 
 if [[ -n "${DEV_HTTP_BACKEND_HOST:-}" ]]; then
   BACKEND_HOST="${DEV_HTTP_BACKEND_HOST}"
@@ -64,21 +77,23 @@ else
 fi
 
 export LISTEN_HOST="${BACKEND_BIND_ADDRESS}"
+BACKEND_URL_HOST="$(format_host_for_url "${BACKEND_HOST}")"
+FRONTEND_URL_HOST="$(format_host_for_url "${FRONTEND_HOST}")"
 
 if [[ -z "${NEXT_PUBLIC_API_BASE_URL:-}" || "${NEXT_PUBLIC_API_BASE_URL}" == "http://localhost:${BACKEND_PORT_VALUE}" ]]; then
-  export NEXT_PUBLIC_API_BASE_URL="http://${BACKEND_HOST}:${BACKEND_PORT_VALUE}"
+  export NEXT_PUBLIC_API_BASE_URL="http://${BACKEND_URL_HOST}:${BACKEND_PORT_VALUE}"
 fi
 
 if [[ -z "${STORAGE_ENDPOINT:-}" || "${STORAGE_ENDPOINT}" == "http://localhost:9000" ]]; then
-  export STORAGE_ENDPOINT="http://${BACKEND_HOST}:9000"
+  export STORAGE_ENDPOINT="http://${BACKEND_URL_HOST}:9000"
 fi
 
 if [[ -z "${CORS_ALLOWED_ORIGINS:-}" || "${CORS_ALLOWED_ORIGINS}" == "http://localhost:${FRONTEND_PORT_VALUE}" ]]; then
-  export CORS_ALLOWED_ORIGINS="http://${FRONTEND_HOST}:${FRONTEND_PORT_VALUE}"
+  export CORS_ALLOWED_ORIGINS="http://${FRONTEND_URL_HOST}:${FRONTEND_PORT_VALUE}"
 fi
 
 if [[ -z "${NEXT_PUBLIC_MEDIA_CDN:-}" || "${NEXT_PUBLIC_MEDIA_CDN}" == "http://localhost:9000/treaz-assets" ]]; then
-  export NEXT_PUBLIC_MEDIA_CDN="http://${BACKEND_HOST}:9000/treaz-assets"
+  export NEXT_PUBLIC_MEDIA_CDN="http://${BACKEND_URL_HOST}:9000/treaz-assets"
 fi
 
 backend_pid=""

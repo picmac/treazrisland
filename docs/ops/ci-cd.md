@@ -161,22 +161,20 @@ scripts/deploy/deploy-local.sh
 
 ## 10. Launching a LAN-only dev stack on the runner
 
-Air-gapped environments often need a TLS-free dev stack that mobile devices on the same network can reach. The
-`scripts/dev-http.sh` helper now binds both apps to `0.0.0.0` automatically, but you can still override the bind
-addresses when you need to target a specific interface. This lets you run both apps directly on the self-hosted
-runner without touching the production compose files:
+Air-gapped environments often need a TLS-free dev stack that mobile devices on the same network can reach. Two
+options exist depending on whether you want to run the apps directly or through Docker:
 
-1. Copy `/opt/treazrisland/app/.env.example` to `/opt/treazrisland/config/dev-http.env` and keep
-   `TREAZ_TLS_MODE=http`.
-2. (Optional) Export LAN overrides before starting the helper. Replace `192.168.50.10` with the runner's IP on your
-   trusted network when you want deterministic URLs.
+**A. Run the dev servers directly with `scripts/dev-http.sh`**
+
+1. Copy `/opt/treazrisland/app/.env.example` to `/opt/treazrisland/config/dev-http.env`, set `TREAZ_TLS_MODE=http`,
+   and leave `TREAZ_DEV_HTTP_AUTOCONFIG=true`.
+2. (Optional) Pin the advertised LAN hostname/IP so URLs stay stable:
 
    ```bash
    export TREAZ_HTTP_ENV_FILE=/opt/treazrisland/config/dev-http.env
+   export TREAZ_DEV_LAN_HOST=192.168.50.10
    export DEV_HTTP_BACKEND_BIND_ADDRESS=0.0.0.0
    export DEV_HTTP_FRONTEND_BIND_ADDRESS=0.0.0.0
-   export DEV_HTTP_BACKEND_HOST=192.168.50.10
-   export DEV_HTTP_FRONTEND_HOST=192.168.50.10
    ```
 
 3. Launch the helper under the runner account:
@@ -185,10 +183,28 @@ runner without touching the production compose files:
    sudo -u treaz /opt/treazrisland/app/scripts/dev-http.sh
    ```
 
-The script sets `LISTEN_HOST`, `CORS_ALLOWED_ORIGINS`, `NEXT_PUBLIC_API_BASE_URL`, and `STORAGE_ENDPOINT` when
-those variables are absent, which keeps the backend/frontend handshake aligned for HTTP-only development.
-Skipping the bind overrides still leaves the servers listening on all interfaces, and skipping the host overrides lets the
-helper advertise the runner's detected LAN IP. Explicit values avoid surprises when multiple interfaces exist.
+The helper rewrites `LISTEN_HOST`, `CORS_ALLOWED_ORIGINS`, `NEXT_PUBLIC_API_BASE_URL`, and CDN URLs when they
+still point at `localhost`, so the frontend immediately targets the LAN origin. Bind overrides remain optional; the
+helper already listens on every interface and falls back to the detected LAN IP when available.
+
+**B. Use the Docker deployment workflow without TLS**
+
+1. Ensure the compose env file referenced by `TREAZ_ENV_FILE` contains `TREAZ_TLS_MODE=http` and
+   `TREAZ_DEV_HTTP_AUTOCONFIG=true` (default). Set `TREAZ_DEV_LAN_HOST=192.168.50.10` when autodetection should be
+   bypassed.
+2. Run the deployment script as usual:
+
+   ```bash
+   TREAZ_ENV_FILE=/opt/treazrisland/config/treaz.env \
+   TREAZ_COMPOSE_PROJECT_NAME=treazrisland \
+   scripts/deploy/deploy-local.sh
+   ```
+
+During the run the script creates a temporary env file that rewrites `NEXT_PUBLIC_API_BASE_URL`,
+`CORS_ALLOWED_ORIGINS`, and `NEXT_PUBLIC_MEDIA_CDN` to the LAN host whenever they were still pointing at
+`localhost`. Once Docker Compose starts, the frontend becomes reachable at `http://<runner-ip>:3000/` without
+manually calling `scripts/dev-http.sh`.
+
 - **Service checks:** Hit `http://localhost:3000` (frontend), `http://localhost:3001/health` (backend), `http://localhost:9090/-/ready` (Prometheus), and `http://localhost:3002` (Grafana) from the host.
 - **Metrics token issues:** Ensure `infra/monitoring/secrets/metrics_token` exists, has correct permissions, and matches Prometheus’ expectations.
 

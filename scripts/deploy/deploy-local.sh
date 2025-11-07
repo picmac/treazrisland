@@ -12,6 +12,7 @@ HEALTH_MAX_ATTEMPTS="${TREAZ_HEALTH_MAX_ATTEMPTS:-12}"
 HEALTH_BACKOFF_SECONDS="${TREAZ_HEALTH_BACKOFF_SECONDS:-5}"
 SYNC_WITH_ORIGIN="${TREAZ_SYNC_WITH_ORIGIN:-false}"
 DOCKER_CONFIG_DIR="${TREAZ_DOCKER_CONFIG:-${REPO_ROOT}/.docker}"
+TEMP_HTTP_ENV_FILE=""
 
 HEALTHCHECK_ORDER=(
   postgres
@@ -21,6 +22,14 @@ HEALTHCHECK_ORDER=(
 )
 
 PROBE_FAILURES=()
+
+cleanup_temp_env_file() {
+  if [[ -n "${TEMP_HTTP_ENV_FILE}" && -f "${TEMP_HTTP_ENV_FILE}" ]]; then
+    rm -f "${TEMP_HTTP_ENV_FILE}" || true
+  fi
+}
+
+trap cleanup_temp_env_file EXIT
 
 require_docker() {
   if ! command -v docker >/dev/null 2>&1; then
@@ -305,6 +314,184 @@ log() {
   printf '[deploy] %s\n' "${message}"
 }
 
+detect_lan_ip() {
+  if command -v ip >/dev/null 2>&1; then
+    ip route get 1 2>/dev/null | awk '{for (i = 1; i <= NF; i++) if ($i == "src") { print $(i + 1); exit }}'
+  elif command -v hostname >/dev/null 2>&1; then
+    hostname -I 2>/dev/null | awk '{print $1}'
+  fi
+}
+
+format_host_for_url() {
+  local host="$1"
+  if [[ "${host}" == *:* && "${host}" != "["* ]]; then
+    printf '[%s]' "${host}"
+  else
+    printf '%s' "${host}"
+  fi
+}
+
+upsert_env_value() {
+  local file_path="$1"
+  local key="$2"
+  local value="$3"
+  local python_cmd="python3"
+
+  if [[ -z "${file_path}" || -z "${key}" ]]; then
+    return 1
+  fi
+
+  if [[ ! -f "${file_path}" ]]; then
+    printf '%s\n' "${key}=${value}" >"${file_path}"
+    return 0
+  fi
+
+  if ! command -v "${python_cmd}" >/dev/null 2>&1; then
+    if command -v python >/dev/null 2>&1; then
+      python_cmd="python"
+    else
+      log "Python interpreter not found; cannot update ${key} in ${file_path}"
+      return 1
+    fi
+  fi
+
+  "${python_cmd}" - "$file_path" "$key" "$value" <<'PY' || return 1
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+key = sys.argv[2]
+value = sys.argv[3]
+
+try:
+    original = path.read_text(encoding="utf-8")
+except FileNotFoundError:
+    original = ""
+
+lines = original.splitlines()
+new_lines = []
+found = False
+
+desired = f"{key}={value}"
+
+for raw_line in lines:
+    stripped = raw_line.strip()
+    if not stripped or stripped.startswith("#") or "=" not in raw_line:
+        new_lines.append(raw_line.rstrip("\n"))
+        continue
+
+    current_key, _ = raw_line.split("=", 1)
+    if current_key.strip() == key:
+        if stripped != desired:
+            new_lines.append(desired)
+        else:
+            new_lines.append(raw_line.rstrip("\n"))
+        found = True
+        continue
+
+    new_lines.append(raw_line.rstrip("\n"))
+
+if not found:
+    new_lines.append(desired)
+
+Path(path).write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+PY
+}
+
+should_autoconfig_http_stack() {
+  local tls_mode="$(to_lower "${TREAZ_TLS_MODE:-https}")"
+  local autoconfig="$(to_lower "${TREAZ_DEV_HTTP_AUTOCONFIG:-true}")"
+
+  [[ "${tls_mode}" == "http" && "${autoconfig}" == "true" ]]
+}
+
+apply_http_overrides() {
+  if ! should_autoconfig_http_stack; then
+    return
+  fi
+
+  local preferred_host="${TREAZ_DEV_LAN_HOST:-}";
+  local detected_host=""
+
+  if [[ -z "${preferred_host}" ]]; then
+    detected_host="$(detect_lan_ip)"
+  fi
+
+  local lan_host="${preferred_host:-${detected_host}}"
+
+  if [[ -z "${lan_host}" ]]; then
+    log "HTTP autoconfig enabled but no LAN host detected; skipping base URL overrides"
+    return
+  fi
+
+  local backend_port="${PORT:-3001}"
+  local frontend_port="${FRONTEND_PORT:-3000}"
+  local formatted_host
+  formatted_host="$(format_host_for_url "${lan_host}")"
+
+  local new_api_base="http://${formatted_host}:${backend_port}"
+  local new_cors_origin="http://${formatted_host}:${frontend_port}"
+  local new_media_cdn="http://${formatted_host}:9000/treaz-assets"
+
+  local updated_any="false"
+
+  if [[ -z "${NEXT_PUBLIC_API_BASE_URL:-}" || "${NEXT_PUBLIC_API_BASE_URL}" == "http://localhost:${backend_port}" || "${NEXT_PUBLIC_API_BASE_URL}" == "http://127.0.0.1:${backend_port}" ]]; then
+    NEXT_PUBLIC_API_BASE_URL="${new_api_base}"
+    export NEXT_PUBLIC_API_BASE_URL
+    updated_any="true"
+    log "Setting NEXT_PUBLIC_API_BASE_URL to ${NEXT_PUBLIC_API_BASE_URL} for LAN access"
+  fi
+
+  if [[ -z "${CORS_ALLOWED_ORIGINS:-}" || "${CORS_ALLOWED_ORIGINS}" == "http://localhost:${frontend_port}" || "${CORS_ALLOWED_ORIGINS}" == "http://127.0.0.1:${frontend_port}" ]]; then
+    CORS_ALLOWED_ORIGINS="${new_cors_origin}"
+    export CORS_ALLOWED_ORIGINS
+    updated_any="true"
+    log "Setting CORS_ALLOWED_ORIGINS to ${CORS_ALLOWED_ORIGINS} for LAN access"
+  fi
+
+  if [[ -z "${NEXT_PUBLIC_MEDIA_CDN:-}" || "${NEXT_PUBLIC_MEDIA_CDN}" == "http://localhost:9000/treaz-assets" || "${NEXT_PUBLIC_MEDIA_CDN}" == "http://127.0.0.1:9000/treaz-assets" ]]; then
+    NEXT_PUBLIC_MEDIA_CDN="${new_media_cdn}"
+    export NEXT_PUBLIC_MEDIA_CDN
+    updated_any="true"
+    log "Setting NEXT_PUBLIC_MEDIA_CDN to ${NEXT_PUBLIC_MEDIA_CDN} for LAN access"
+  fi
+
+  if [[ "${updated_any}" != "true" ]]; then
+    log "HTTP autoconfig detected custom base URLs; leaving existing values in place"
+    return
+  fi
+
+  if [[ ! -f "${ENV_FILE}" ]]; then
+    log "Environment file ${ENV_FILE} missing; skipping HTTP override persistence"
+    return
+  fi
+
+  local temp_file
+  if ! temp_file="$(mktemp)"; then
+    log "Failed to create temporary file for HTTP overrides"
+    return
+  fi
+
+  TEMP_HTTP_ENV_FILE="${temp_file}"
+  if ! cp "${ENV_FILE}" "${TEMP_HTTP_ENV_FILE}"; then
+    log "Failed to copy ${ENV_FILE} for HTTP overrides"
+    return
+  fi
+
+  if ! upsert_env_value "${TEMP_HTTP_ENV_FILE}" "NEXT_PUBLIC_API_BASE_URL" "${NEXT_PUBLIC_API_BASE_URL}"; then
+    log "Unable to persist NEXT_PUBLIC_API_BASE_URL override"
+  fi
+  if ! upsert_env_value "${TEMP_HTTP_ENV_FILE}" "CORS_ALLOWED_ORIGINS" "${CORS_ALLOWED_ORIGINS}"; then
+    log "Unable to persist CORS_ALLOWED_ORIGINS override"
+  fi
+  if ! upsert_env_value "${TEMP_HTTP_ENV_FILE}" "NEXT_PUBLIC_MEDIA_CDN" "${NEXT_PUBLIC_MEDIA_CDN}"; then
+    log "Unable to persist NEXT_PUBLIC_MEDIA_CDN override"
+  fi
+
+  ENV_FILE="${TEMP_HTTP_ENV_FILE}"
+  log "Wrote HTTP overrides to ${ENV_FILE} so LAN clients can reach the stack"
+}
+
 require_file() {
   local path="$1"
   local description="$2"
@@ -333,6 +520,8 @@ if ! ensure_database_url; then
 fi
 
 sync_database_url_env_files "${DATABASE_URL}"
+
+apply_http_overrides
 
 export TREAZ_ENV_FILE="${ENV_FILE}"
 export COMPOSE_PROJECT_NAME="${PROJECT_NAME}"
