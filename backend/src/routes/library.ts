@@ -261,7 +261,21 @@ const listRomsQuerySchema = z.object({
           ROM_ASSET_TYPE_VALUES.includes(candidate)
         );
       return normalized.length > 0 ? normalized : undefined;
-    })
+    }),
+  favoritesOnly: z
+    .preprocess((value) => {
+      if (typeof value === "string") {
+        if (value.length === 0) {
+          return undefined;
+        }
+        return value === "true" || value === "1";
+      }
+      if (typeof value === "boolean") {
+        return value;
+      }
+      return undefined;
+    }, z.boolean().optional())
+    .transform((value) => value ?? false)
 });
 
 const listRomAssetsQuerySchema = z.object({
@@ -384,7 +398,8 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
         page,
         pageSize,
         includeHistory,
-        assetTypes
+        assetTypes,
+        favoritesOnly
       } = parsed;
 
       const sortFieldMap: Record<string, "title" | "releaseYear" | "publisher" | "createdAt"> = {
@@ -435,6 +450,10 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
       }
       if (year) {
         where.releaseYear = year;
+      }
+
+      if (favoritesOnly) {
+        where.favorites = { some: { userId: request.user.sub } };
       }
 
       const orderBy: Prisma.RomOrderByWithRelationInput[] = [];

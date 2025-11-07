@@ -360,6 +360,24 @@ describe("library routes", () => {
     );
   });
 
+  it("filters rom listing to the caller's favorites when requested", async () => {
+    prismaMock.rom.count.mockResolvedValueOnce(0);
+    prismaMock.rom.findMany.mockResolvedValueOnce([]);
+
+    const token = app.jwt.sign({ sub: "user_fav", role: "USER" });
+    await request(app)
+      .get("/roms?favoritesOnly=true")
+      .set("authorization", `Bearer ${token}`);
+
+    expect(prismaMock.rom.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          favorites: { some: { userId: "user_fav" } }
+        })
+      })
+    );
+  });
+
   it("allows requesting metadata history and custom asset types", async () => {
     const first = new Date("2024-01-01T00:00:00Z");
     const second = new Date("2023-01-01T00:00:00Z");

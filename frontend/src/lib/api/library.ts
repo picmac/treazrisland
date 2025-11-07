@@ -185,6 +185,7 @@ export type ListRomsParams = {
   pageSize?: number;
   includeHistory?: boolean;
   assetTypes?: string[];
+  favoritesOnly?: boolean;
 };
 
 export async function listRoms(params: ListRomsParams = {}): Promise<RomListResponse> {
@@ -218,6 +219,9 @@ export async function listRoms(params: ListRomsParams = {}): Promise<RomListResp
   }
   if (params.assetTypes && params.assetTypes.length > 0) {
     query.set("assetTypes", params.assetTypes.join(","));
+  }
+  if (params.favoritesOnly) {
+    query.set("favoritesOnly", "true");
   }
   const suffix = query.toString();
   const path = suffix.length > 0 ? `/roms?${suffix}` : "/roms";
