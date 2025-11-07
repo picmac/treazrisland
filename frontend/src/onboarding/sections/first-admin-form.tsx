@@ -18,6 +18,43 @@ const initialState: FormState = {
   password: ""
 };
 
+type ApiErrorBody = { message?: string; errors?: Record<string, string[] | undefined> };
+
+function formatApiErrorMessage(error: ApiError): string {
+  if (error.body && typeof error.body === "object") {
+    const body = error.body as ApiErrorBody;
+    if (body.errors) {
+      for (const [field, messages] of Object.entries(body.errors)) {
+        if (messages && messages.length > 0) {
+          return `${formatFieldLabel(field)}: ${messages[0]}`;
+        }
+      }
+    }
+    if (typeof body.message === "string" && body.message.length > 0) {
+      return body.message;
+    }
+  }
+  return error.message;
+}
+
+function formatFieldLabel(field: string): string {
+  const normalized = field
+    .split(/[.:]/)
+    .filter(Boolean)
+    .map((segment) =>
+      segment
+        .replace(/_/g, " ")
+        .replace(/([a-z])([A-Z])/g, "$1 $2")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .join(" ");
+  if (!normalized) {
+    return "Field";
+  }
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
 export function FirstAdminForm() {
   const [form, setForm] = useState<FormState>(initialState);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +89,7 @@ export function FirstAdminForm() {
         router.refresh();
       } catch (err) {
         if (err instanceof ApiError) {
-          setError(`${err.status}: ${err.message}`);
+          setError(`${err.status}: ${formatApiErrorMessage(err)}`);
         } else if (err instanceof Error) {
           setError(err.message);
         } else {

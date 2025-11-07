@@ -18,6 +18,43 @@ const STEP_ORDER: OnboardingStepKey[] = [
   "personalization",
 ];
 
+type ApiErrorBody = { message?: string; errors?: Record<string, string[] | undefined> };
+
+const formatFieldLabel = (field: string): string => {
+  const normalized = field
+    .split(/[.:]/)
+    .filter(Boolean)
+    .map((segment) =>
+      segment
+        .replace(/_/g, " ")
+        .replace(/([a-z])([A-Z])/g, "$1 $2")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .join(" ");
+  if (!normalized) {
+    return "Field";
+  }
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
+const formatApiErrorMessage = (error: ApiError): string => {
+  if (error.body && typeof error.body === "object") {
+    const body = error.body as ApiErrorBody;
+    if (body.errors) {
+      for (const [field, messages] of Object.entries(body.errors)) {
+        if (messages && messages.length > 0) {
+          return `${formatFieldLabel(field)}: ${messages[0]}`;
+        }
+      }
+    }
+    if (typeof body.message === "string" && body.message.length > 0) {
+      return body.message;
+    }
+  }
+  return error.message;
+};
+
 type StorageDriver = "filesystem" | "s3";
 
 type SettingsUpdatePayload = {
@@ -149,7 +186,7 @@ export function SetupWizard({ initialStatus }: SetupWizardProps) {
         if (!cancelled) {
           setSubmissionError(
             error instanceof ApiError
-              ? `${error.status}: ${error.message}`
+              ? `${error.status}: ${formatApiErrorMessage(error)}`
               : "Unable to load current settings",
           );
         }
@@ -237,7 +274,7 @@ export function SetupWizard({ initialStatus }: SetupWizardProps) {
       } catch (error) {
         setSubmissionError(
           error instanceof ApiError
-            ? `${error.status}: ${error.message}`
+            ? `${error.status}: ${formatApiErrorMessage(error)}`
             : error instanceof Error
             ? error.message
             : "Failed to update setup step",
