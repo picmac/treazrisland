@@ -35,12 +35,7 @@ default filesystem storage.
 
 ## Configuration files
 
-Each application consumes a package-scoped environment template:
-
-- [`backend/.env.docker`](../backend/.env.docker)
-- [`frontend/.env.docker`](../frontend/.env.docker)
-
-Edit these files (or provide overrides) before running Compose. Secrets—such as database passwords or ScreenScraper credentials—must be injected via environment variables or Docker secrets; never commit plaintext secrets to the repository. For Prometheus bearer authentication, either export `METRICS_TOKEN_FILE=/absolute/path/to/metrics_token` before launching Compose or copy `infra/monitoring/secrets/metrics_token.sample` to `infra/monitoring/secrets/metrics_token` and paste the same value used for `METRICS_TOKEN` in the backend environment file. The tracked sample contains a placeholder so CI can boot, but production stacks **must** override it. When running the production stack export `GRAFANA_ADMIN_USER`/`GRAFANA_ADMIN_PASSWORD` so Grafana rotates its default credentials on boot.
+All runtime services now share the canonical variables defined in the repository root [`/.env.example`](../.env.example). Copy that file to a private location (for example `.env` or `infra/compose.env`) and override any secrets before running Compose. Secrets—such as database passwords or ScreenScraper credentials—must be injected via environment variables or Docker secrets; never commit plaintext secrets to the repository. For Prometheus bearer authentication, either export `METRICS_TOKEN_FILE=/absolute/path/to/metrics_token` before launching Compose or copy `infra/monitoring/secrets/metrics_token.sample` to `infra/monitoring/secrets/metrics_token` and paste the same value used for `METRICS_TOKEN` in the backend environment file. The tracked sample contains a placeholder so CI can boot, but production stacks **must** override it. When running the production stack export `GRAFANA_ADMIN_USER`/`GRAFANA_ADMIN_PASSWORD` so Grafana rotates its default credentials on boot.
 
 ## Local development stack
 
@@ -62,7 +57,7 @@ Ensure your host `.env`, `backend/.env`, and `frontend/.env.local` files mirror 
 
 `docker-compose.prod.yml` mirrors the service list but targets the production stages of each Dockerfile, removes source mounts, and adds health checks. The production-style workflow now relies on a single environment file that both services share:
 
-1. Copy [`infra/compose.env.sample`](./compose.env.sample) to `compose.env` and rotate the placeholder secrets.
+1. Copy [`/.env.example`](../.env.example) to `compose.env` (or another filename of your choice) and rotate the placeholder secrets.
 2. Export the path once so helper scripts and Docker Compose can consume it:
 
 ```bash

@@ -83,7 +83,7 @@ services:
       target: development
     container_name: treazrisland-backend
     env_file:
-      - ../backend/.env.docker
+      - ../.env.example
     environment:
       DATABASE_URL: postgresql://treazrisland:treazrisland@postgres:5432/treazrisland?schema=public
       STORAGE_ENDPOINT: http://minio:9000
@@ -120,7 +120,7 @@ services:
       target: development
     container_name: treazrisland-backend-migrate
     env_file:
-      - ../backend/.env.docker
+      - ../.env.example
     environment:
       DATABASE_URL: postgresql://treazrisland:treazrisland@postgres:5432/treazrisland?schema=public
       STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-treaz-admin}
@@ -144,7 +144,7 @@ services:
       target: development
     container_name: treazrisland-frontend
     env_file:
-      - ../frontend/.env.docker
+      - ../.env.example
     depends_on:
       backend:
         condition: service_healthy
