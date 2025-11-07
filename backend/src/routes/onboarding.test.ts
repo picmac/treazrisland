@@ -1,13 +1,20 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import request from "supertest";
 import type { FastifyInstance } from "fastify";
-import type { PrismaClient } from "@prisma/client";
+import type { Role } from "@prisma/client";
+import type { SettingsManager, ResolvedSystemSettings } from "../plugins/settings.js";
 
 vi.mock("argon2", () => {
-  const hashMock = vi.fn().mockResolvedValue("hashed-password");
+  const hashMock = vi.fn().mockImplementation(async (value: string) => `hashed-${value}`);
+  const verifyMock = vi
+    .fn()
+    .mockImplementation(async (hash: string, value: string) => hash === `hashed-${value}`);
   return {
+    __esModule: true,
     default: {
-      hash: hashMock
-    }
+      hash: hashMock,
+      verify: verifyMock,
+    },
   };
 });
 
@@ -25,76 +32,240 @@ process.env.ROM_UPLOAD_MAX_BYTES = process.env.ROM_UPLOAD_MAX_BYTES ?? `${1024 *
 
 let buildServer: typeof import("../server.js").buildServer;
 
-type PrismaMock = Pick<PrismaClient, "user" | "refreshToken" | "refreshTokenFamily">;
+type MockFn = ReturnType<typeof vi.fn>;
 
-describe("onboarding routes", () => {
-  let app: FastifyInstance;
-  let prisma: PrismaMock & {
-    user: {
-      count: ReturnType<typeof vi.fn>;
-      create: ReturnType<typeof vi.fn>;
-    };
-    refreshToken: {
-      create: ReturnType<typeof vi.fn>;
-    };
-    setupState: {
-      findUnique: ReturnType<typeof vi.fn>;
-      create: ReturnType<typeof vi.fn>;
-      upsert: ReturnType<typeof vi.fn>;
-    };
+type SetupStateRow = {
+  id: number;
+  setupComplete: boolean;
+  steps: Record<string, unknown>;
+};
+
+type PrismaMock = {
+  user: {
+    count: MockFn;
+    create: MockFn;
+    findFirst: MockFn;
   };
+  refreshTokenFamily: {
+    create: MockFn;
+  };
+  refreshToken: {
+    create: MockFn;
+  };
+  setupState: {
+    findUnique: MockFn;
+    create: MockFn;
+    upsert: MockFn;
+  };
+  loginAudit: {
+    create: MockFn;
+  };
+  mfaSecret: {
+    update: MockFn;
+  };
+};
 
-  beforeEach(async () => {
-    vi.resetModules();
-    ({ buildServer } = await import("../server.js"));
-    app = buildServer({ registerPrisma: false });
+const createPrismaMock = () => {
+  let storedSetupState: SetupStateRow | null = null;
+  let refreshFamilyCounter = 0;
+  let refreshTokenCounter = 0;
 
-    prisma = {
-      user: {
-        count: vi.fn(),
-        create: vi.fn(),
-      },
-      refreshTokenFamily: {
-        create: vi.fn(),
-      },
-      refreshToken: {
-        create: vi.fn(),
-      },
-      setupState: {
-        findUnique: vi.fn().mockResolvedValue(null),
-        create: vi
-          .fn()
-          .mockImplementation(async ({ data }) => ({
+  const prisma: PrismaMock = {
+    user: {
+      count: vi.fn(),
+      create: vi.fn(),
+      findFirst: vi.fn(),
+    },
+    refreshTokenFamily: {
+      create: vi.fn(),
+    },
+    refreshToken: {
+      create: vi.fn(),
+    },
+    setupState: {
+      findUnique: vi.fn().mockImplementation(async () => storedSetupState),
+      create: vi
+        .fn()
+        .mockImplementation(async ({ data }: { data: SetupStateRow }) => {
+          storedSetupState = {
             id: data.id,
             setupComplete: data.setupComplete,
             steps: data.steps,
-          })),
-        upsert: vi.fn().mockResolvedValue({
-          id: 1,
-          setupComplete: false,
-          steps: {},
+          };
+          return storedSetupState;
         }),
+      upsert: vi
+        .fn()
+        .mockImplementation(
+          async ({
+            create,
+            update,
+          }: {
+            create: SetupStateRow;
+            update: { setupComplete?: boolean; steps?: Record<string, unknown> };
+          }) => {
+            if (!storedSetupState) {
+              storedSetupState = {
+                id: create.id,
+                setupComplete: create.setupComplete,
+                steps: create.steps,
+              };
+            } else {
+              storedSetupState = {
+                id: storedSetupState.id,
+                setupComplete:
+                  typeof update.setupComplete === "boolean"
+                    ? update.setupComplete
+                    : storedSetupState.setupComplete,
+                steps: update.steps ?? storedSetupState.steps,
+              };
+            }
+            return storedSetupState;
+          },
+        ),
+    },
+    loginAudit: {
+      create: vi.fn().mockResolvedValue(undefined),
+    },
+    mfaSecret: {
+      update: vi.fn(),
+    },
+  } satisfies PrismaMock;
+
+  prisma.refreshTokenFamily.create.mockImplementation(async ({ data }: { data: { userId: string } }) => ({
+    id: `family_${data.userId}_${refreshFamilyCounter += 1}`,
+    userId: data.userId,
+  }));
+
+  prisma.refreshToken.create.mockImplementation(
+    async ({ data }: { data: { userId: string; familyId: string; expiresAt: Date } }) => ({
+      id: `refresh_${refreshTokenCounter += 1}`,
+      userId: data.userId,
+      familyId: data.familyId,
+      tokenHash: "hash",
+      createdAt: new Date(),
+      expiresAt: data.expiresAt,
+      revokedAt: null,
+      revokedReason: null,
+    }),
+  );
+
+  return prisma;
+};
+
+describe("onboarding routes", () => {
+  let app: FastifyInstance;
+  let prisma: PrismaMock;
+  let createdUser: {
+    id: string;
+    email: string;
+    nickname: string;
+    passwordHash: string;
+    role: Role;
+  } | null;
+  let settingsManager: SettingsManager;
+  let settingsUpdateMock: MockFn;
+  let currentSettings: ResolvedSystemSettings;
+
+  beforeAll(async () => {
+    ({ buildServer } = await import("../server.js"));
+  });
+
+  beforeEach(async () => {
+    createdUser = null;
+    prisma = createPrismaMock();
+
+    prisma.user.count.mockImplementation(async () => (createdUser ? 1 : 0));
+
+    prisma.user.create.mockImplementation(
+      async ({ data }: { data: { email: string; nickname: string; passwordHash: string; role: Role } }) => {
+        createdUser = {
+          id: "user_1",
+          email: data.email,
+          nickname: data.nickname,
+          passwordHash: data.passwordHash,
+          role: data.role,
+        };
+        const now = new Date();
+        return {
+          ...createdUser,
+          displayName: data.nickname,
+          createdAt: now,
+          updatedAt: now,
+        };
       },
-    } as unknown as PrismaMock & {
-      user: {
-        count: ReturnType<typeof vi.fn>;
-        create: ReturnType<typeof vi.fn>;
-      };
-      refreshTokenFamily: {
-        create: ReturnType<typeof vi.fn>;
-      };
-      refreshToken: {
-        create: ReturnType<typeof vi.fn>;
-      };
-      setupState: {
-        findUnique: ReturnType<typeof vi.fn>;
-        create: ReturnType<typeof vi.fn>;
-        upsert: ReturnType<typeof vi.fn>;
-      };
+    );
+
+    prisma.user.findFirst.mockImplementation(
+      async ({ where }: { where: { OR: Array<{ email?: string; nickname?: string }> } }) => {
+        if (!createdUser) {
+          return null;
+        }
+        const matches = where.OR.some(
+          (condition) =>
+            (condition.email && condition.email.toLowerCase() === createdUser!.email.toLowerCase()) ||
+            (condition.nickname && condition.nickname === createdUser!.nickname),
+        );
+        if (!matches) {
+          return null;
+        }
+        const now = new Date();
+        return {
+          ...createdUser,
+          createdAt: now,
+          updatedAt: now,
+          displayName: createdUser.nickname,
+          mfaSecrets: [],
+        };
+      },
+    );
+
+    app = buildServer({ registerPrisma: false });
+    app.decorate("prisma", prisma as unknown as typeof app.prisma);
+
+    await app.ready();
+
+    (app.authenticate as unknown) = vi.fn(async (request) => {
+      request.user = { sub: createdUser?.id ?? "user_1", role: "ADMIN" };
+    });
+    (app.requireAdmin as unknown) = vi.fn(async () => {});
+
+    app.mfaService = {
+      generateSecret: vi.fn(),
+      buildOtpAuthUri: vi.fn(),
+      verifyTotp: vi.fn(),
+      findMatchingRecoveryCode: vi.fn().mockResolvedValue(null),
+      encryptSecret: vi.fn((value: string) => value),
+      decryptSecret: vi.fn().mockReturnValue({ secret: "secret", needsRotation: false }),
     };
 
-    app.decorate("prisma", prisma);
-    await app.ready();
+    currentSettings = {
+      systemProfile: {
+        instanceName: "TREAZRISLAND",
+        timezone: "UTC",
+      },
+      storage: {
+        driver: "filesystem",
+        localRoot: "/var/treaz/storage",
+        bucketAssets: "assets",
+        bucketRoms: "roms",
+        bucketBios: "bios",
+      },
+      email: { provider: "none" },
+      metrics: { enabled: false, allowedCidrs: [], token: undefined },
+      screenscraper: {},
+      personalization: {},
+    };
+
+    settingsUpdateMock = vi.fn().mockResolvedValue(currentSettings);
+
+    settingsManager = {
+      get: () => currentSettings,
+      reload: async () => currentSettings,
+      update: settingsUpdateMock,
+    } satisfies SettingsManager;
+
+    (app.settings as SettingsManager) = settingsManager;
   });
 
   afterEach(async () => {
@@ -102,90 +273,111 @@ describe("onboarding routes", () => {
     vi.clearAllMocks();
   });
 
-  it("reports needsSetup=true when there are no users", async () => {
-    prisma.user.count.mockResolvedValueOnce(0);
+  it("walks through onboarding and authentication lifecycle", async () => {
+    const agent = request(app);
 
-    const response = await app.inject({
-      method: "GET",
-      url: "/onboarding/status"
+    const statusResponse = await agent.get("/onboarding/status");
+    expect(statusResponse.status).toBe(200);
+    expect(statusResponse.body.needsSetup).toBe(true);
+    expect(statusResponse.body.pendingSteps).toContain("first-admin");
+
+    const adminResponse = await agent.post("/onboarding/admin").send({
+      email: "admin@example.com",
+      nickname: "captain",
+      password: "Secret1234",
     });
 
-    expect(response.statusCode).toBe(200);
-    const body = await response.json();
-    expect(body.needsSetup).toBe(true);
-    expect(body.setupComplete).toBe(false);
-    expect(Array.isArray(body.pendingSteps)).toBe(true);
-    expect(body.steps["first-admin"].status).toBe("PENDING");
-  });
-
-  it("creates initial admin and issues tokens", async () => {
-    prisma.user.count.mockResolvedValueOnce(0).mockResolvedValueOnce(0);
-
-    const now = new Date();
-    prisma.user.create.mockResolvedValueOnce({
+    expect(adminResponse.status).toBe(201);
+    expect(adminResponse.body.user).toMatchObject({
       id: "user_1",
       email: "admin@example.com",
       nickname: "captain",
-      displayName: "captain",
-      passwordHash: "hash",
       role: "ADMIN",
-      createdAt: now,
-      updatedAt: now
     });
-    prisma.refreshTokenFamily.create.mockResolvedValueOnce({
-      id: "family_1",
-      userId: "user_1",
-      createdAt: now,
-      revokedAt: null,
-      revokedReason: null
-    });
-    prisma.refreshToken.create.mockResolvedValueOnce({
-      id: "token_1",
-      tokenHash: "hash",
-      userId: "user_1",
-      familyId: "family_1",
-      createdAt: now,
-      expiresAt: new Date(now.getTime() + 1000),
-      revokedAt: null,
-      revokedReason: null
+    expect(typeof adminResponse.body.accessToken).toBe("string");
+    const adminCookies = adminResponse.headers["set-cookie"];
+    const adminCookieValue = Array.isArray(adminCookies)
+      ? adminCookies.join(";")
+      : typeof adminCookies === "string"
+        ? adminCookies
+        : "";
+    expect(adminCookieValue).toContain("HttpOnly");
+
+    const postAdminStatus = await agent.get("/onboarding/status");
+    expect(postAdminStatus.status).toBe(200);
+    expect(postAdminStatus.body.pendingSteps).not.toContain("first-admin");
+    expect(postAdminStatus.body.pendingSteps).toContain("system-profile");
+
+    const systemProfileResponse = await agent
+      .patch("/onboarding/steps/system-profile")
+      .set("authorization", "Bearer token")
+      .send({
+        status: "COMPLETED",
+        settings: {
+          systemProfile: { instanceName: "Vault of Wonders", timezone: "America/New_York" },
+          storage: {
+            driver: "filesystem",
+            localRoot: "/srv/treaz",
+            bucketAssets: "assets",
+            bucketRoms: "roms",
+          },
+        },
+      });
+
+    expect(systemProfileResponse.status).toBe(200);
+    expect(systemProfileResponse.body.setupComplete).toBe(false);
+    expect(systemProfileResponse.body.steps["system-profile"].status).toBe("COMPLETED");
+    expect(settingsUpdateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        systemProfile: expect.objectContaining({ instanceName: "Vault of Wonders" }),
+        storage: expect.objectContaining({ localRoot: "/srv/treaz" }),
+      }),
+      expect.objectContaining({ actorId: "user_1" }),
+    );
+
+    const integrationsResponse = await agent
+      .patch("/onboarding/steps/integrations")
+      .set("authorization", "Bearer token")
+      .send({ status: "SKIPPED" });
+
+    expect(integrationsResponse.status).toBe(200);
+    expect(integrationsResponse.body.steps.integrations.status).toBe("SKIPPED");
+    expect(integrationsResponse.body.setupComplete).toBe(false);
+
+    const personalizationResponse = await agent
+      .patch("/onboarding/steps/personalization")
+      .set("authorization", "Bearer token")
+      .send({
+        status: "COMPLETED",
+        settings: { personalization: { theme: "midnight-harbor" } },
+      });
+
+    expect(personalizationResponse.status).toBe(200);
+    expect(personalizationResponse.body.steps.personalization.status).toBe("COMPLETED");
+    expect(personalizationResponse.body.setupComplete).toBe(true);
+
+    const finalStatus = await agent.get("/onboarding/status");
+    expect(finalStatus.status).toBe(200);
+    expect(finalStatus.body.needsSetup).toBe(false);
+    expect(finalStatus.body.setupComplete).toBe(true);
+
+    const loginResponse = await agent.post("/auth/login").send({
+      identifier: "captain",
+      password: "Secret1234",
     });
 
-    const response = await app.inject({
-      method: "POST",
-      url: "/onboarding/admin",
-      payload: {
-        email: "admin@example.com",
-        nickname: "captain",
-        password: "Secret123"
-      }
-    });
-
-    expect(response.statusCode).toBe(201);
-    const body = await response.json();
-
-    expect(body.user).toMatchObject({
+    expect(loginResponse.status).toBe(200);
+    expect(loginResponse.body.user).toMatchObject({
       id: "user_1",
       email: "admin@example.com",
       nickname: "captain",
-      role: "ADMIN"
     });
-    expect(typeof body.accessToken).toBe("string");
-    expect(body.refreshToken).toBeUndefined();
-
-    expect(prisma.refreshToken.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          userId: "user_1",
-          tokenHash: expect.any(String)
-        })
-      })
-    );
-    expect(prisma.refreshTokenFamily.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: { userId: "user_1" }
-      })
-    );
-    expect(response.headers["set-cookie"]).toContain("HttpOnly");
-    expect(prisma.setupState.upsert).toHaveBeenCalled();
+    const loginCookies = loginResponse.headers["set-cookie"];
+    const loginCookieValue = Array.isArray(loginCookies)
+      ? loginCookies.join(";")
+      : typeof loginCookies === "string"
+        ? loginCookies
+        : "";
+    expect(loginCookieValue).toContain("treaz_refresh");
   });
 });
