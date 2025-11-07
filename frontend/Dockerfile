@@ -16,6 +16,7 @@ CMD ["npm", "run", "dev"]
 
 FROM deps AS build
 ENV NODE_ENV=production
+ENV TREAZ_TLS_MODE=http
 COPY . .
 RUN npm run build
 
@@ -26,7 +27,8 @@ COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 COPY --from=build /app/next.config.ts ./next.config.ts
 COPY --from=build /app/security-headers.ts ./security-headers.ts
-COPY --from=build /app/security-headers.ts ./security-headers.ts
+COPY --from=build /app/scripts ./scripts
 ENV PORT=3000
+ENV TREAZ_TLS_MODE=http
 EXPOSE 3000
-CMD ["npm", "run", "start"]
+CMD ["node", "./scripts/start-http.mjs"]

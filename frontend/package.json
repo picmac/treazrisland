@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname 0.0.0.0",
     "build": "next build",
-    "start": "next start",
+    "start": "node ./scripts/start-http.mjs",
+    "start:lan": "node ./scripts/start-http.mjs",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest",
     "test:watch": "vitest watch",
