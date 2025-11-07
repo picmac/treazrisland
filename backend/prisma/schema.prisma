@@ -66,6 +66,35 @@ enum RomAssetSource {
   MANUAL_ENTRY
 }
 
+enum CreativeAssetKind {
+  HERO
+  BACKGROUND
+  BANNER
+}
+
+enum CreativeAssetStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum CreativeAssetUsageKind {
+  LIBRARY_HERO
+  PLATFORM_HERO
+}
+
+enum CreativeAssetAuditAction {
+  CREATE_ASSET
+  UPDATE_ASSET
+  DELETE_ASSET
+  ASSIGN_USAGE
+  REMOVE_USAGE
+}
+
+enum CreativeAssetAuditStatus {
+  SUCCEEDED
+  FAILED
+}
+
 model User {
   id             String               @id @default(cuid())
   email          String               @unique
@@ -94,6 +123,10 @@ model User {
   createdCollections RomCollection[] @relation("CollectionCreators")
   createdTopLists    RomTopList[]    @relation("TopListCreators")
   systemSettingsUpdated SystemSetting[] @relation("SystemSettingsUpdatedBy")
+  creativeAssetsCreated CreativeAsset[] @relation("CreativeAssetCreatedBy")
+  creativeAssetsUpdated CreativeAsset[] @relation("CreativeAssetUpdatedBy")
+  creativeAssetUsages  CreativeAssetUsage[] @relation("CreativeAssetUsageCreatedBy")
+  creativeAssetAudits  CreativeAssetAudit[] @relation("CreativeAssetAuditPerformedBy")
 }
 
 model UserInvitation {
@@ -200,6 +233,7 @@ model Platform {
   updatedAt       DateTime @updatedAt
   roms            Rom[]
   romUploadAudits RomUploadAudit[]
+  creativeAssetUsages CreativeAssetUsage[]
 }
 
 model Rom {
@@ -348,6 +382,73 @@ model RomUploadAudit {
   @@index([biosId])
   @@index([platformId])
   @@index([uploadedById])
+}
+
+model CreativeAsset {
+  id               String                @id @default(cuid())
+  slug             String                @unique
+  title            String
+  description      String?
+  kind             CreativeAssetKind
+  status           CreativeAssetStatus   @default(ACTIVE)
+  originalFilename String
+  storageKey       String
+  mimeType         String?
+  width            Int?
+  height           Int?
+  fileSize         Int
+  checksumSha256   String
+  checksumSha1     String?
+  checksumMd5      String?
+  createdById      String?
+  createdBy        User?                 @relation("CreativeAssetCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById      String?
+  updatedBy        User?                 @relation("CreativeAssetUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  usages           CreativeAssetUsage[]
+  audits           CreativeAssetAudit[]  @relation("CreativeAssetAuditAsset")
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([slug])
+}
+
+model CreativeAssetUsage {
+  id           String                @id @default(cuid())
+  assetId      String
+  asset        CreativeAsset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  kind         CreativeAssetUsageKind
+  targetKey    String
+  platformId   String?
+  platform     Platform?             @relation(fields: [platformId], references: [id], onDelete: SetNull)
+  notes        String?
+  createdById  String?
+  createdBy    User?                 @relation("CreativeAssetUsageCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  audits       CreativeAssetAudit[]  @relation("CreativeAssetAuditUsage")
+
+  @@unique([kind, targetKey])
+  @@index([platformId])
+}
+
+model CreativeAssetAudit {
+  id             String                    @id @default(cuid())
+  assetId        String?
+  asset          CreativeAsset?            @relation("CreativeAssetAuditAsset", fields: [assetId], references: [id], onDelete: SetNull)
+  usageId        String?
+  usage          CreativeAssetUsage?       @relation("CreativeAssetAuditUsage", fields: [usageId], references: [id], onDelete: SetNull)
+  action         CreativeAssetAuditAction
+  status         CreativeAssetAuditStatus
+  performedById  String?
+  performedBy    User?                     @relation("CreativeAssetAuditPerformedBy", fields: [performedById], references: [id], onDelete: SetNull)
+  details        Json?
+  errorMessage   String?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  @@index([assetId])
+  @@index([usageId])
+  @@index([performedById])
 }
 
 model PlayState {

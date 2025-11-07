@@ -80,6 +80,7 @@ describe("library routes", () => {
         shortName: "NES",
         screenscraperId: 1,
         _count: { roms: 2 },
+        creativeAssetUsages: [],
         roms: [
           {
             id: "rom_1",
@@ -120,6 +121,7 @@ describe("library routes", () => {
       name: "Nintendo Entertainment System",
       slug: "nes",
       romCount: 2,
+      heroArt: null,
       featuredRom: {
         id: "rom_1",
         title: "The Legend of Zelda"
@@ -159,6 +161,7 @@ describe("library routes", () => {
       shortName: "NES",
       screenscraperId: 1,
       _count: { roms: 2 },
+      creativeAssetUsages: [],
       roms: [
         {
           id: "rom_1",
@@ -175,7 +178,7 @@ describe("library routes", () => {
       .set("authorization", `Bearer ${token}`);
 
     expect(response.status).toBe(200);
-    expect(response.body.platform).toMatchObject({ slug: "nes", name: "Nintendo Entertainment System" });
+    expect(response.body.platform).toMatchObject({ slug: "nes", name: "Nintendo Entertainment System", heroArt: null });
     expect(prismaMock.platform.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { slug: "nes" },
@@ -183,6 +186,78 @@ describe("library routes", () => {
           roms: expect.objectContaining({ take: 1 })
         })
       })
+    );
+  });
+
+  it("surfaces curated hero art when platform usage exists", async () => {
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 60_000);
+    prismaMock.platform.findMany.mockResolvedValueOnce([
+      {
+        id: "platform_snes",
+        name: "Super Nintendo",
+        slug: "snes",
+        shortName: "SNES",
+        screenscraperId: 2,
+        _count: { roms: 1 },
+        roms: [
+          {
+            id: "rom_1",
+            title: "Chrono Trigger",
+            updatedAt: now,
+            assets: []
+          }
+        ],
+        creativeAssetUsages: [
+          {
+            id: "usage_1",
+            kind: "PLATFORM_HERO",
+            targetKey: "platform:platform_snes",
+            notes: "Curated cover",
+            createdAt: now,
+            updatedAt: now,
+            asset: {
+              id: "asset_1",
+              slug: "snes-hero",
+              title: "SNES Hero",
+              status: "ACTIVE",
+              kind: "HERO",
+              storageKey: "creative-assets/snes/hero.png",
+              mimeType: "image/png",
+              width: 800,
+              height: 450,
+              fileSize: 2048,
+              checksumSha256: "abcdef",
+              updatedAt: now
+            }
+          }
+        ]
+      }
+    ]);
+
+    const storage = app.storage as unknown as {
+      getAssetObjectSignedUrl: ReturnType<typeof vi.fn>;
+    };
+    storage.getAssetObjectSignedUrl = vi.fn().mockResolvedValue({
+      url: "https://cdn.test/creative-assets/snes/hero.png",
+      expiresAt
+    });
+
+    const token = app.jwt.sign({ sub: "user_1", role: "USER" });
+    const response = await request(app)
+      .get("/platforms")
+      .set("authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.platforms[0].heroArt).toMatchObject({
+      assetId: "asset_1",
+      slug: "snes-hero",
+      storageKey: "creative-assets/snes/hero.png",
+      signedUrl: "https://cdn.test/creative-assets/snes/hero.png",
+      notes: "Curated cover"
+    });
+    expect(storage.getAssetObjectSignedUrl).toHaveBeenCalledWith(
+      "creative-assets/snes/hero.png"
     );
   });
 

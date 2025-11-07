@@ -42,6 +42,30 @@ type FallbackEnums = {
     LOGOUT: "LOGOUT";
     PASSWORD_RESET: "PASSWORD_RESET";
   };
+  CreativeAssetKind: {
+    HERO: "HERO";
+    BACKGROUND: "BACKGROUND";
+    BANNER: "BANNER";
+  };
+  CreativeAssetStatus: {
+    ACTIVE: "ACTIVE";
+    ARCHIVED: "ARCHIVED";
+  };
+  CreativeAssetUsageKind: {
+    LIBRARY_HERO: "LIBRARY_HERO";
+    PLATFORM_HERO: "PLATFORM_HERO";
+  };
+  CreativeAssetAuditAction: {
+    CREATE_ASSET: "CREATE_ASSET";
+    UPDATE_ASSET: "UPDATE_ASSET";
+    DELETE_ASSET: "DELETE_ASSET";
+    ASSIGN_USAGE: "ASSIGN_USAGE";
+    REMOVE_USAGE: "REMOVE_USAGE";
+  };
+  CreativeAssetAuditStatus: {
+    SUCCEEDED: "SUCCEEDED";
+    FAILED: "FAILED";
+  };
 };
 
 const fallbackEnums: FallbackEnums = {
@@ -85,6 +109,30 @@ const fallbackEnums: FallbackEnums = {
     MFA_REQUIRED: "MFA_REQUIRED",
     LOGOUT: "LOGOUT",
     PASSWORD_RESET: "PASSWORD_RESET",
+  },
+  CreativeAssetKind: {
+    HERO: "HERO",
+    BACKGROUND: "BACKGROUND",
+    BANNER: "BANNER",
+  },
+  CreativeAssetStatus: {
+    ACTIVE: "ACTIVE",
+    ARCHIVED: "ARCHIVED",
+  },
+  CreativeAssetUsageKind: {
+    LIBRARY_HERO: "LIBRARY_HERO",
+    PLATFORM_HERO: "PLATFORM_HERO",
+  },
+  CreativeAssetAuditAction: {
+    CREATE_ASSET: "CREATE_ASSET",
+    UPDATE_ASSET: "UPDATE_ASSET",
+    DELETE_ASSET: "DELETE_ASSET",
+    ASSIGN_USAGE: "ASSIGN_USAGE",
+    REMOVE_USAGE: "REMOVE_USAGE",
+  },
+  CreativeAssetAuditStatus: {
+    SUCCEEDED: "SUCCEEDED",
+    FAILED: "FAILED",
   },
 };
 
@@ -135,3 +183,8 @@ export const RomAssetType = getEnum("RomAssetType");
 export const RomBinaryStatus = getEnum("RomBinaryStatus");
 export const RomUploadStatus = getEnum("RomUploadStatus");
 export const LoginAuditEvent = getEnum("LoginAuditEvent");
+export const CreativeAssetKind = getEnum("CreativeAssetKind");
+export const CreativeAssetStatus = getEnum("CreativeAssetStatus");
+export const CreativeAssetUsageKind = getEnum("CreativeAssetUsageKind");
+export const CreativeAssetAuditAction = getEnum("CreativeAssetAuditAction");
+export const CreativeAssetAuditStatus = getEnum("CreativeAssetAuditStatus");

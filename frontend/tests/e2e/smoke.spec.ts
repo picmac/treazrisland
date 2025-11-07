@@ -327,6 +327,7 @@ describe("@smoke TREAZRISLAND key flows", () => {
               shortName: "NES",
               screenscraperId: 1,
               romCount: 42,
+              heroArt: null,
               featuredRom: {
                 id: "rom-1",
                 title: "Legend of Pixel",
@@ -367,6 +368,7 @@ describe("@smoke TREAZRISLAND key flows", () => {
               name: "Super Nintendo",
               slug: "snes",
               shortName: "SNES",
+              heroArt: null,
             },
           ],
         }),
@@ -387,5 +389,60 @@ describe("@smoke TREAZRISLAND key flows", () => {
     });
 
     await expect(page.getByText(/Queue: 1 files/i)).toBeVisible();
+  });
+
+  test("library explorer shows curated hero art when provided", async ({ page }) => {
+    const now = new Date().toISOString();
+    await page.route("**/platforms", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          platforms: [
+            {
+              id: "snes",
+              name: "Super Nintendo",
+              slug: "snes",
+              shortName: "SNES",
+              screenscraperId: 2,
+              romCount: 1,
+              heroArt: {
+                assetId: "asset_1",
+                slug: "snes-hero",
+                kind: "HERO",
+                status: "ACTIVE",
+                storageKey: "creative-assets/snes/hero.png",
+                mimeType: "image/png",
+                width: 800,
+                height: 450,
+                fileSize: 2048,
+                checksumSha256: "abcdef",
+                signedUrl: "https://cdn.test/creative-assets/snes/hero.png",
+                signedUrlExpiresAt: now,
+                updatedAt: now,
+                notes: "Curated cover"
+              },
+              featuredRom: {
+                id: "rom-1",
+                title: "Chrono Trigger",
+                updatedAt: now,
+                assetSummary: {
+                  cover: null,
+                  screenshots: [],
+                  videos: [],
+                  manuals: [],
+                },
+              },
+            },
+          ],
+        }),
+      }),
+    );
+
+    await page.goto("/platforms");
+
+    await expect(
+      page.getByText(/Curated hero art/i),
+    ).toBeVisible();
   });
 });
