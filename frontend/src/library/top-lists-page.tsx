@@ -69,6 +69,7 @@ export function TopListsPage() {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {topLists.map((topList) => {
           const firstEntry = topList.entries[0];
+          const previewEntries = topList.entries.slice(0, 3);
           return (
             <CuratedListCard
               key={topList.id}
@@ -94,7 +95,30 @@ export function TopListsPage() {
               footer={`${topList.entries.length.toLocaleString()} entr${
                 topList.entries.length === 1 ? "y" : "ies"
               }`}
-            />
+            >
+              {previewEntries.length > 0 ? (
+                <ul className="space-y-2">
+                  {previewEntries.map((entry) => (
+                    <li
+                      key={entry.id}
+                      className="flex items-center justify-between gap-3 text-xs uppercase tracking-widest text-parchment/60"
+                    >
+                      <span className="text-parchment font-semibold">#{entry.rank}</span>
+                      <span className="flex-1 truncate text-left text-parchment/80">
+                        {entry.title}
+                      </span>
+                      {entry.platform ? (
+                        <span className="text-parchment/50">
+                          {entry.platform.shortName ?? entry.platform.name}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-parchment/60">No ranked entries yet.</p>
+              )}
+            </CuratedListCard>
           );
         })}
       </section>

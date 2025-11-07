@@ -35,9 +35,11 @@ npm run prisma:migrate      # prisma migrate dev
 npx prisma migrate deploy   # apply migrations in CI/production
 npm run prisma:generate     # regenerate the Prisma client
 npm run prisma:seed:platforms
+npm run prisma:seed:roms
 ```
 
 `npm run prisma:seed:platforms` loads the canonical platform catalogue required by the frontend to render browse views.
+`npm run prisma:seed:roms` enriches that catalogue with representative ROM metadata, artwork, and curated top lists.
 
 ## Running the service
 
@@ -74,5 +76,6 @@ When debugging long-running local sessions, run `npm run dev -- --inspect` and a
 - `npm run screenscraper:encrypt` – encrypt ScreenScraper credentials using AES-256-GCM; outputs Base64 text for `.env`.
 - `npm run prisma:migrate` – iterative schema work during development.
 - `npm run prisma:seed:platforms` – refresh the core platform catalogue.
+- `npm run prisma:seed:roms` – populate ROM, asset, and top list exemplars for demos and testing.
 
 See [`docs/observability/README.md`](../docs/observability/README.md) for guidance on consuming logs and metrics emitted by the backend.
