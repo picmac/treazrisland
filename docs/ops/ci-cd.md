@@ -41,22 +41,9 @@ mkdir -p /opt/treazrisland/config
 sudo chown treaz:treaz /opt/treazrisland/config
 ```
 
-- `/opt/treazrisland/config/backend.env` — populate **every** variable listed in `backend/.env.example`: database connection string, JWT secrets, email provider credentials, MinIO/S3 config, ScreenScraper credentials, logging sinks, etc.
-- `/opt/treazrisland/config/frontend.env` — mirror `frontend/.env.example`: API base URL, auth endpoints, public analytics keys, feature flags.
-- `/opt/treazrisland/config/compose.env` — values parsed by Docker Compose before containers start. At a minimum configure:
-  ```env
-  POSTGRES_DB=treazrisland
-  POSTGRES_USER=treazrisland
-  POSTGRES_PASSWORD=<strong database password>
-  MINIO_ROOT_USER=<random admin>
-  MINIO_ROOT_PASSWORD=<long random secret>
-  GRAFANA_ADMIN_USER=<grafana admin>
-  GRAFANA_ADMIN_PASSWORD=<grafana admin password>
-  METRICS_ALLOWED_CIDRS=127.0.0.1/32,172.16.0.0/12
-  # Optional override if Prometheus should scrape a different DSN
-  # POSTGRES_EXPORTER_SOURCE=postgresql://user:pass@postgres:5432/treazrisland?sslmode=disable
-  ```
-  Add any additional overrides consumed by `infra/docker-compose.prod.yml` here (for example different project names or monitoring network CIDRs).
+- `/opt/treazrisland/config/treaz.env` — copy `.env.example` from the repository root, populate **all** backend/frontend/infra variables, and treat it as the single source of truth. Symlink it to `/opt/treazrisland/app/backend/.env` and `/opt/treazrisland/app/frontend/.env.local` so local commands match what Docker Compose receives. Include database credentials, JWT secrets, email provider tokens, storage configuration, ScreenScraper credentials, monitoring toggles, and any overrides consumed by `infra/docker-compose.prod.yml` (such as `POSTGRES_EXPORTER_SOURCE` or custom project names).
+- Export `TREAZ_ENV_FILE=/opt/treazrisland/config/treaz.env` for any shell that runs deployment scripts or Docker Compose directly. The CI workflow sets the same variable before calling `scripts/deploy/deploy-local.sh`.
+- Compose-specific one-off overrides (for example, generating a new database password during bootstrap) can be exported inline: `export POSTGRES_PASSWORD="$(openssl rand -base64 24)"`.
 
 ### Monitoring secrets
 
@@ -71,7 +58,7 @@ chmod 600 /opt/treazrisland/app/infra/monitoring/secrets/metrics_token
 
 ## 3. Know the deployment assets
 
-- `infra/docker-compose.prod.yml` defines the production stack: Postgres, MinIO, backend, frontend, and the full observability suite (Prometheus, Alertmanager, Grafana, node-exporter, cAdvisor, postgres-exporter). It references the env files and secrets prepared above.
+- `infra/docker-compose.prod.yml` defines the production stack: Postgres, MinIO, backend, frontend, and the full observability suite (Prometheus, Alertmanager, Grafana, node-exporter, cAdvisor, postgres-exporter). It references the unified env file and secrets prepared above.
 - `scripts/deploy/deploy-local.sh` executes the deployment end-to-end: fetches `origin/main`, rebuilds Docker images with `--pull`, applies the compose stack, runs Prisma migrations, and optionally seeds platform data when `TREAZ_RUN_PLATFORM_SEED=true`. The script maintains a manifest of health probes for the external services (`postgres`, `minio`, `backend`, `frontend`) and executes them with configurable retries/backoff. Use `TREAZ_HEALTH_MAX_ATTEMPTS` and `TREAZ_HEALTH_BACKOFF_SECONDS` to adjust the retry window when running on slower hardware.
 - `scripts/ci/run-tests.sh` mirrors the CI workflow locally (`npm ci`, `npm run lint`, `npm test -- --run`, `npm run build` for both backend and frontend).
 - `.github/workflows/ci.yml` ties everything together: the `lint-test-build` matrix runs on GitHub-hosted runners for every push/PR targeting `main` or `develop`; the `deploy` job triggers only for pushes to `main` after the matrix succeeds.
@@ -110,7 +97,7 @@ Run the following as the runner user to ensure the service account can control D
 docker info
 cd /opt/treazrisland/app
 chmod +x scripts/deploy/deploy-local.sh
-TREAZ_ENV_FILE=/opt/treazrisland/config/compose.env \
+TREAZ_ENV_FILE=/opt/treazrisland/config/treaz.env \
 TREAZ_COMPOSE_PROJECT_NAME=treazrisland \
 scripts/deploy/deploy-local.sh
 ```
@@ -149,7 +136,7 @@ Manual redeployments (e.g., after rotating secrets or updating Docker images) sh
 
 ```bash
 cd /opt/treazrisland/app
-TREAZ_ENV_FILE=/opt/treazrisland/config/compose.env \
+TREAZ_ENV_FILE=/opt/treazrisland/config/treaz.env \
 TREAZ_COMPOSE_PROJECT_NAME=treazrisland \
 scripts/deploy/deploy-local.sh
 ```

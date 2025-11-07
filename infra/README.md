@@ -35,7 +35,7 @@ default filesystem storage.
 
 ## Configuration files
 
-All runtime services now share the canonical variables defined in the repository root [`/.env.example`](../.env.example). Copy that file to a private location (for example `.env` or `infra/compose.env`) and override any secrets before running Compose. Secrets—such as database passwords or ScreenScraper credentials—must be injected via environment variables or Docker secrets; never commit plaintext secrets to the repository. For Prometheus bearer authentication, either export `METRICS_TOKEN_FILE=/absolute/path/to/metrics_token` before launching Compose or copy `infra/monitoring/secrets/metrics_token.sample` to `infra/monitoring/secrets/metrics_token` and paste the same value used for `METRICS_TOKEN` in the backend environment file. The tracked sample contains a placeholder so CI can boot, but production stacks **must** override it. When running the production stack export `GRAFANA_ADMIN_USER`/`GRAFANA_ADMIN_PASSWORD` so Grafana rotates its default credentials on boot.
+All runtime services now share the canonical variables defined in the repository root [`/.env.example`](../.env.example). Copy that file once (for example to `.env` or `infra/compose.env`), override secrets, and optionally symlink it into `backend/.env` and `frontend/.env.local` so every runtime consumes the same source of truth. Secrets—such as database passwords or ScreenScraper credentials—must be injected via environment variables or Docker secrets; never commit plaintext secrets to the repository. For Prometheus bearer authentication, either export `METRICS_TOKEN_FILE=/absolute/path/to/metrics_token` before launching Compose or copy `infra/monitoring/secrets/metrics_token.sample` to `infra/monitoring/secrets/metrics_token` and paste the same value used for `METRICS_TOKEN` in the backend environment file. The tracked sample contains a placeholder so CI can boot, but production stacks **must** override it. When running the production stack export `GRAFANA_ADMIN_USER`/`GRAFANA_ADMIN_PASSWORD` so Grafana rotates its default credentials on boot.
 
 ## Local development stack
 
@@ -51,7 +51,7 @@ To iterate on code without rebuilding containers, launch only the dependencies a
 docker compose -f infra/docker-compose.yml up postgres minio
 ```
 
-Ensure your host `.env`, `backend/.env`, and `frontend/.env.local` files mirror the Docker defaults so the services share the same credentials. Use `scripts/health/check-stack.sh` or `scripts/smoke/local-stack.sh` (with `STACK_FILE=infra/docker-compose.yml DB_SERVICE=postgres`) to verify the stack after Compose finishes booting.
+Ensure your host `.env` (or whichever file you pass through `TREAZ_ENV_FILE`) is shared with `backend/.env` and `frontend/.env.local` so every service reads identical credentials. Symlinks keep the files in sync. Use `scripts/health/check-stack.sh` or `scripts/smoke/local-stack.sh` (with `STACK_FILE=infra/docker-compose.yml DB_SERVICE=postgres`) to verify the stack after Compose finishes booting.
 
 ## Production-style stack
 

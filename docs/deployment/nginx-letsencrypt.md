@@ -29,8 +29,8 @@ Populate the following keys (see `.env.example` for defaults) in an `.env` file 
 
 ## One-time bootstrap
 
-1. Copy `.env.example` to `.env` and customise the values above.
-2. Ensure the frontend and backend `.env.docker` files are configured for production URLs (not localhost) if serving real traffic.
+1. Copy `.env.example` to `.env`, customise the values above, and share it with `backend/.env` and `frontend/.env.local` (symlink or copy) so Docker Compose and local commands agree on production URLs.
+2. Double-check the unified env file sets the public hostnames for `NEXT_PUBLIC_API_BASE_URL`, backend CORS origins, and any reverse-proxy aware settings before serving real traffic.
 3. Start the stack and tail the logs:
    ```bash
    docker compose --project-directory infra up -d postgres minio

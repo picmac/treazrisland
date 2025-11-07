@@ -7,9 +7,11 @@ Keep the following API references handy when debugging login issues or player da
 - [Authentication API](../API_AUTH.md)
 - [Player API](../API_PLAYER.md)
 
+> **Upgrade note:** Existing deployments that previously relied on separate backend/frontend env files must merge those secrets into a single `.env`-style file before upgrading. Docker Compose and local development now consume the same source of truth.
+
 ## 1. Bootstrap the Stack
 
-1. Copy `.env.example` to `.env` for local testing, or use `.env.docker` templates for Compose deployments. Refer to [Local Stack Playbook](./local-stack.md) for the list of secrets that must be replaced in shared environments.
+1. Copy `.env.example` to `.env` and reuse it everywhere (symlink to `backend/.env` and `frontend/.env.local`, or point Compose to it with `TREAZ_ENV_FILE`). Refer to [Local Stack Playbook](./local-stack.md) for the list of secrets that must be replaced in shared environments.
 2. Install JavaScript dependencies on the host **before** starting Docker Compose so the bind-mounted `node_modules/` folders exist:
    ```bash
    (cd backend && npm install)
@@ -31,7 +33,7 @@ Keep the following API references handy when debugging login issues or player da
    scripts/smoke/local-stack.sh
    ```
    These commands validate service readiness, confirm seed data exists, and ensure MinIO buckets were created.
-7. Either export `METRICS_TOKEN_FILE=/path/to/metrics_token` before starting Compose or copy `infra/monitoring/secrets/metrics_token.sample` to `infra/monitoring/secrets/metrics_token` and keep it in sync with the backend `METRICS_TOKEN` so Prometheus and Grafana can authenticate to `/metrics`. The sample ships with a placeholder token to keep CI and ad-hoc environments bootable.
+6. Either export `METRICS_TOKEN_FILE=/path/to/metrics_token` before starting Compose or copy `infra/monitoring/secrets/metrics_token.sample` to `infra/monitoring/secrets/metrics_token` and keep it in sync with the backend `METRICS_TOKEN` so Prometheus and Grafana can authenticate to `/metrics`. The sample ships with a placeholder token to keep CI and ad-hoc environments bootable.
 
 ## 2. Metadata Enrichment
 
