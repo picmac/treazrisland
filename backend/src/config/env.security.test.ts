@@ -122,14 +122,41 @@ describe("env TLS mode validation", () => {
     expect(module.env.TLS_ENABLED).toBe(true);
   });
 
-  it("normalises http aliases", async () => {
-    process.env.TREAZ_TLS_MODE = "off";
+  it.each([
+    ["https", "https", true],
+    ["HTTPS", "https", true],
+    [" true ", "https", true],
+    ["1", "https", true],
+    ["on", "https", true]
+  ])(
+    "normalises TLS-enabled alias %s",
+    async (alias, expectedMode, expectedTlsEnabled) => {
+      process.env.TREAZ_TLS_MODE = alias;
 
-    const module = await import("./env.js");
+      const module = await import("./env.js");
 
-    expect(module.env.TREAZ_TLS_MODE).toBe("http");
-    expect(module.env.TLS_ENABLED).toBe(false);
-  });
+      expect(module.env.TREAZ_TLS_MODE).toBe(expectedMode);
+      expect(module.env.TLS_ENABLED).toBe(expectedTlsEnabled);
+    }
+  );
+
+  it.each([
+    ["http", "http", false],
+    ["HTTP", "http", false],
+    [" 0 ", "http", false],
+    ["false", "http", false],
+    ["off", "http", false]
+  ])(
+    "normalises TLS-disabled alias %s",
+    async (alias, expectedMode, expectedTlsEnabled) => {
+      process.env.TREAZ_TLS_MODE = alias;
+
+      const module = await import("./env.js");
+
+      expect(module.env.TREAZ_TLS_MODE).toBe(expectedMode);
+      expect(module.env.TLS_ENABLED).toBe(expectedTlsEnabled);
+    }
+  );
 
   it("rejects unsupported TLS modes", async () => {
     process.env.TREAZ_TLS_MODE = "maybe";
