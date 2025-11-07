@@ -1,5 +1,4 @@
-import { render, screen, waitFor, act } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import EmulatorPlayer from "./EmulatorPlayer";
 import { loadEmulatorBundle } from "@/lib/emulator/loadBundle";
@@ -99,7 +98,7 @@ describe("EmulatorPlayer", () => {
     expect(createPlayState).toHaveBeenCalledWith({ romId: "rom-1", data: savedBuffer });
     expect(onSaveSpy).toHaveBeenCalledWith(savedBuffer);
 
-    await userEvent.click(await screen.findByTestId("mobile-controls"));
+    fireEvent.click(await screen.findByTestId("mobile-controls"));
   });
 
   it("creates an object URL when the ROM is streamed inline", async () => {
