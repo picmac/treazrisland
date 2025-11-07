@@ -1,448 +1,192 @@
 import { test, expect } from "@playwright/test";
 import { Buffer } from "node:buffer";
+import { getSmokeFixtureConfig, resetSmokeSession } from "../api/smoke-fixtures";
 
 const runSmoke = ["1", "true", "yes"].includes(
   (process.env.RUN_SMOKE_E2E ?? "").toLowerCase(),
 );
-const describe = runSmoke ? test.describe : test.describe.skip;
+const describe = runSmoke ? test.describe.serial : test.describe.skip;
+
+const fixture = getSmokeFixtureConfig();
 
 describe("@smoke TREAZRISLAND key flows", () => {
   test.beforeEach(async ({ page }) => {
-    await page.route("**/auth/refresh", (route) =>
-      route.fulfill({
-        status: 401,
-        contentType: "application/json",
-        body: JSON.stringify({ message: "Unauthenticated" }),
-      }),
-    );
+    await resetSmokeSession(page);
   });
 
-  test("onboarding surfaces first admin setup", async ({ page }) => {
-    await page.route("**/onboarding/status", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ needsSetup: true }),
-      }),
+  test("completes onboarding and prepares admin workspace", async ({ page }) => {
+    const statusPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/onboarding/status") &&
+        response.request().method() === "GET",
     );
-
     await page.goto("/onboarding");
-
     await expect(
       page.getByRole("heading", { name: /Welcome, Keeper of the Vault/i }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /Create Admin/i }),
-    ).toBeVisible();
-  });
+    expect((await statusPromise).status()).toBe(200);
 
-  test("completes onboarding, redeems invite, and signs in", async ({ page }) => {
-    const nowIso = () => new Date().toISOString();
-    const stepsState: Record<string, { status: string; updatedAt: string; payload?: unknown }> = {
-      "first-admin": { status: "PENDING", updatedAt: nowIso() },
-      "system-profile": { status: "PENDING", updatedAt: nowIso() },
-      integrations: { status: "PENDING", updatedAt: nowIso() },
-      personalization: { status: "PENDING", updatedAt: nowIso() },
-    };
-
-    const computePending = () =>
-      Object.entries(stepsState)
-        .filter(([, step]) => step.status === "PENDING")
-        .map(([key]) => key);
-
-    const computeSetupComplete = () =>
-      stepsState["first-admin"].status === "COMPLETED" &&
-      stepsState["system-profile"].status === "COMPLETED" &&
-      stepsState.integrations.status !== "PENDING" &&
-      stepsState.personalization.status !== "PENDING";
-
-    await page.route("**/onboarding/status", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          needsSetup: !computeSetupComplete(),
-          setupComplete: computeSetupComplete(),
-          steps: stepsState,
-          pendingSteps: computePending(),
-        }),
-      }),
+    const createAdminPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/onboarding/admin") &&
+        response.request().method() === "POST",
     );
-
-    await page.route("**/onboarding/admin", async (route) => {
-      stepsState["first-admin"] = {
-        status: "COMPLETED",
-        updatedAt: nowIso(),
-        payload: { userId: "user_1" },
-      };
-      await route.fulfill({
-        status: 201,
-        contentType: "application/json",
-        body: JSON.stringify({
-          user: {
-            id: "user_1",
-            email: "admin@example.com",
-            nickname: "captain",
-            role: "ADMIN",
-          },
-          accessToken: "admin-token",
-          refreshExpiresAt: new Date(Date.now() + 60_000).toISOString(),
-        }),
-      });
-    });
-
-    await page.route("**/admin/settings", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          systemProfile: {
-            instanceName: "TREAZRISLAND",
-            timezone: "UTC",
-          },
-          storage: {
-            driver: "filesystem",
-            localRoot: "/var/treaz/storage",
-            bucketAssets: "assets",
-            bucketRoms: "roms",
-            bucketBios: "bios",
-          },
-          email: { provider: "none" },
-          metrics: { enabled: false, allowedCidrs: [] },
-          screenscraper: {},
-          personalization: {},
-        }),
-      }),
-    );
-
-    await page.route("**/onboarding/steps/system-profile", async (route) => {
-      const body = JSON.parse(route.request().postData() ?? "{}") as {
-        settings?: { systemProfile?: unknown };
-      };
-      stepsState["system-profile"] = {
-        status: "COMPLETED",
-        updatedAt: nowIso(),
-        payload: body.settings,
-      };
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          setupComplete: computeSetupComplete(),
-          steps: stepsState,
-        }),
-      });
-    });
-
-    await page.route("**/onboarding/steps/integrations", async (route) => {
-      stepsState.integrations = {
-        status: "SKIPPED",
-        updatedAt: nowIso(),
-      };
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          setupComplete: computeSetupComplete(),
-          steps: stepsState,
-        }),
-      });
-    });
-
-    await page.route("**/onboarding/steps/personalization", async (route) => {
-      const body = JSON.parse(route.request().postData() ?? "{}") as {
-        settings?: { personalization?: unknown };
-      };
-      stepsState.personalization = {
-        status: "COMPLETED",
-        updatedAt: nowIso(),
-        payload: body.settings,
-      };
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          setupComplete: computeSetupComplete(),
-          steps: stepsState,
-        }),
-      });
-    });
-
-    await page.route("**/auth/invitations/preview", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          invitation: {
-            role: "USER",
-            email: "crew@example.com",
-          },
-        }),
-      }),
-    );
-
-    await page.route("**/auth/signup", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          user: {
-            id: "user_2",
-            email: "crew@example.com",
-            nickname: "deckhand",
-            role: "USER",
-          },
-          accessToken: "user-token",
-          refreshExpiresAt: new Date(Date.now() + 120_000).toISOString(),
-        }),
-      }),
-    );
-
-    await page.route("**/auth/login", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          user: {
-            id: "user_2",
-            email: "crew@example.com",
-            nickname: "deckhand",
-            role: "USER",
-          },
-          accessToken: "login-token",
-          refreshExpiresAt: new Date(Date.now() + 180_000).toISOString(),
-        }),
-      }),
-    );
-
-    await page.goto("/onboarding");
-
-    await expect(
-      page.getByRole("heading", { name: /Welcome, Keeper of the Vault/i }),
-    ).toBeVisible();
-
-    await page.getByLabel(/Admin Email/i).fill("admin@example.com");
-    await page.getByLabel(/Nickname/i).fill("captain");
-    await page.getByLabel(/^Password$/i).fill("Secret1234");
+    await page.getByLabel(/Admin Email/i).fill(fixture.adminEmail);
+    await page.getByLabel(/Nickname/i).fill(fixture.adminNickname);
+    await page.getByLabel(/^Password$/i).fill(fixture.adminPassword);
     await page.getByRole("button", { name: /Create Admin/i }).click();
+    expect((await createAdminPromise).status()).toBe(201);
 
     await expect(
       page.getByRole("heading", { name: /Configure system profile/i }),
     ).toBeVisible();
 
-    await page.getByLabel(/Instance name/i).fill("Vault of Wonders");
-    await page.getByLabel(/Timezone/i).fill("America/New_York");
-    await page.getByLabel(/Base URL/i).fill("https://vault.example.com");
-    await page.getByLabel(/Local root/i).fill("/srv/treaz");
+    const systemProfilePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/onboarding/steps/system-profile") &&
+        response.request().method() === "PATCH",
+    );
+    await page.getByLabel(/Instance name/i).fill(fixture.instanceName);
+    await page.getByLabel(/Timezone/i).fill(fixture.timezone);
+    await page.getByLabel(/Base URL/i).fill(fixture.baseUrl);
+    await page.getByLabel(/Local root/i).fill(fixture.localRoot);
     await page.getByRole("button", { name: /Save and continue/i }).click();
+    expect((await systemProfilePromise).status()).toBe(200);
 
     await expect(
       page.getByRole("heading", { name: /Connect integrations/i }),
     ).toBeVisible();
 
+    const integrationsPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/onboarding/steps/integrations") &&
+        response.request().method() === "PATCH",
+    );
     await page.getByRole("button", { name: /Skip for now/i }).click();
+    expect((await integrationsPromise).status()).toBe(200);
 
     await expect(
       page.getByRole("heading", { name: /Personalize your portal/i }),
     ).toBeVisible();
 
+    const personalizationPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/onboarding/steps/personalization") &&
+        response.request().method() === "PATCH",
+    );
     await page.getByLabel(/Portal theme/i).selectOption("midnight-harbor");
     await page.getByRole("button", { name: /Finish setup/i }).click();
+    expect((await personalizationPromise).status()).toBe(200);
 
     await expect(page.getByRole("heading", { name: /Setup complete/i })).toBeVisible();
 
-    await page.goto("/auth/signup?token=treaz-token");
-
-    await expect(page.getByRole("heading", { name: /Welcome Aboard/i })).toBeVisible();
-    await page.getByLabel(/Nickname/i).fill("deckhand");
-    await page.getByLabel(/Display Name/i).fill("Deck Hand");
-    await page.getByLabel(/^Password$/i).fill("StrongPass1");
-    await page.getByRole("button", { name: /Join as user/i }).click();
-
-    await expect(page).toHaveURL(/\/play/);
-
-    await page.goto("/auth/login");
-    await page.getByLabel(/Email or Nickname/i).fill("crew@example.com");
-    await page.getByLabel(/^Password$/i).fill("StrongPass1");
-    await page.getByRole("button", { name: /Log In/i }).click();
-
-    await expect(page).toHaveURL(/\/play/);
-  });
-
-  test("login handles MFA challenge then redirects to play", async ({
-    page,
-  }) => {
-    let loginAttempts = 0;
-    await page.route("**/auth/login", (route) => {
-      loginAttempts += 1;
-      if (loginAttempts === 1) {
-        return route.fulfill({
-          status: 401,
-          contentType: "application/json",
-          body: JSON.stringify({ message: "MFA required", mfaRequired: true }),
-        });
-      }
-
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          user: {
-            id: "user-1",
-            email: "pirate@example.com",
-            nickname: "Captain",
-            role: "ADMIN",
-          },
-          accessToken: "fake-token",
-          refreshExpiresAt: new Date(Date.now() + 60_000).toISOString(),
-        }),
-      });
-    });
-
-    await page.goto("/auth/login");
-
-    await page.getByLabel(/Email or Nickname/i).fill("pirate@example.com");
-    await page.getByLabel(/Password/i).fill("Secret123!");
-    await page.getByRole("button", { name: /Log In/i }).click();
-
-    await expect(page.getByText(/Enter your MFA code/i)).toBeVisible();
-
-    await page.getByLabel(/MFA Code/i).fill("123456");
-    await page.getByRole("button", { name: /Log In/i }).click();
-
-    await expect(page).toHaveURL(/\/play/);
-  });
-
-  test("library explorer lists mocked platforms", async ({ page }) => {
-    await page.route("**/platforms", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          platforms: [
-            {
-              id: "nes",
-              name: "Nintendo Entertainment System",
-              slug: "nes",
-              shortName: "NES",
-              screenscraperId: 1,
-              romCount: 42,
-              heroArt: null,
-              featuredRom: {
-                id: "rom-1",
-                title: "Legend of Pixel",
-                updatedAt: new Date().toISOString(),
-                assetSummary: {
-                  cover: null,
-                  screenshots: [],
-                  videos: [],
-                  manuals: [],
-                },
-              },
-            },
-          ],
-        }),
-      }),
+    const adminPlatformsPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/admin/platforms") &&
+        response.request().method() === "GET",
     );
-
-    await page.goto("/platforms");
-
-    await expect(
-      page.getByRole("heading", { name: /Choose your platform/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /Nintendo Entertainment System/i }),
-    ).toBeVisible();
-    await expect(page.getByText(/42 ROMs/)).toBeVisible();
-  });
-
-  test("admin upload queue accepts files for processing", async ({ page }) => {
-    await page.route("**/admin/platforms", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          platforms: [
-            {
-              id: "snes",
-              name: "Super Nintendo",
-              slug: "snes",
-              shortName: "SNES",
-              heroArt: null,
-            },
-          ],
-        }),
-      }),
-    );
-
     await page.goto("/admin/uploads");
-
+    expect((await adminPlatformsPromise).status()).toBe(200);
     await expect(
       page.getByRole("heading", { name: /ROM & BIOS Dropzone/i }),
     ).toBeVisible();
 
-    const romBuffer = Buffer.from("pretend rom archive");
+    const romBuffer = Buffer.from("smoke-rom-placeholder");
     await page.setInputFiles('input[type="file"]', {
-      name: "test-rom.zip",
+      name: "smoke-demo.zip",
       mimeType: "application/zip",
       buffer: romBuffer,
     });
 
-    await expect(page.getByText(/Queue: 1 files/i)).toBeVisible();
+    await expect(page.getByText(/Queue:\s*1 files/i)).toBeVisible();
   });
 
-  test("library explorer shows curated hero art when provided", async ({ page }) => {
-    const now = new Date().toISOString();
-    await page.route("**/platforms", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          platforms: [
-            {
-              id: "snes",
-              name: "Super Nintendo",
-              slug: "snes",
-              shortName: "SNES",
-              screenscraperId: 2,
-              romCount: 1,
-              heroArt: {
-                assetId: "asset_1",
-                slug: "snes-hero",
-                kind: "HERO",
-                status: "ACTIVE",
-                storageKey: "creative-assets/snes/hero.png",
-                mimeType: "image/png",
-                width: 800,
-                height: 450,
-                fileSize: 2048,
-                checksumSha256: "abcdef",
-                signedUrl: "https://cdn.test/creative-assets/snes/hero.png",
-                signedUrlExpiresAt: now,
-                updatedAt: now,
-                notes: "Curated cover"
-              },
-              featuredRom: {
-                id: "rom-1",
-                title: "Chrono Trigger",
-                updatedAt: now,
-                assetSummary: {
-                  cover: null,
-                  screenshots: [],
-                  videos: [],
-                  manuals: [],
-                },
-              },
-            },
-          ],
-        }),
-      }),
+  test("redeems invitation, browses library, and boots emulator", async ({ page }) => {
+    const previewPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/auth/invitations/preview") &&
+        response.request().method() === "POST",
+    );
+    await page.goto(`/auth/signup?token=${encodeURIComponent(fixture.inviteToken)}`);
+    expect((await previewPromise).status()).toBe(200);
+    await expect(page.getByRole("heading", { name: /Welcome Aboard/i })).toBeVisible();
+    await expect(page.getByText(fixture.inviteEmail)).toBeVisible();
+
+    await page.getByLabel(/Nickname/i).fill(fixture.userNickname);
+    await page.getByLabel(/Display Name/i).fill(fixture.userDisplayName);
+    await page.getByLabel(/^Password$/i).fill(fixture.userPassword);
+
+    const signupPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/auth/signup") &&
+        response.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: /Join as/i }).click();
+    expect((await signupPromise).status()).toBe(200);
+    await expect(page).toHaveURL(/\/play/);
+
+    await resetSmokeSession(page);
+
+    await page.goto("/auth/login");
+    await page.getByLabel(/Email or Nickname/i).fill(fixture.userLoginIdentifier);
+    await page.getByLabel(/^Password$/i).fill(fixture.userPassword);
+    const loginPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/auth/login") &&
+        response.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: /Log In/i }).click();
+    expect((await loginPromise).status()).toBe(200);
+    await expect(page).toHaveURL(/\/play/);
+
+    const platformsPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/platforms") &&
+        response.request().method() === "GET",
+    );
+    await page.goto("/platforms");
+    expect((await platformsPromise).status()).toBe(200);
+    await expect(
+      page.getByRole("heading", { name: /Choose your platform/i }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: fixture.platformName })).toBeVisible();
+
+    const platformDetailPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/platforms/${fixture.platformSlug}`) &&
+        response.request().method() === "GET",
+    );
+    const romListPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/roms") &&
+        response.request().method() === "GET" &&
+        response.request().url().includes(`platform=${fixture.platformSlug}`),
+    );
+    await page.getByRole("link", { name: fixture.platformName }).click();
+    expect((await platformDetailPromise).status()).toBe(200);
+    expect((await romListPromise).status()).toBe(200);
+    await expect(page.getByRole("heading", { name: fixture.platformName })).toBeVisible();
+    await expect(page.getByRole("heading", { name: fixture.romTitle })).toBeVisible();
+
+    const emulatorBundlePromise = page.waitForResponse((response) =>
+      response.url().includes("/vendor/emulatorjs/emulator.js"),
+    );
+    const romBinaryPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/player/roms/${fixture.romId}/binary`) &&
+        response.request().method() === "GET",
+    );
+    const playStatesPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/player/play-states") &&
+        response.request().method() === "GET" &&
+        response.request().url().includes(`romId=${fixture.romId}`),
     );
 
-    await page.goto("/platforms");
-
-    await expect(
-      page.getByText(/Curated hero art/i),
-    ).toBeVisible();
+    await page.goto(`/play/${fixture.romId}`);
+    expect((await emulatorBundlePromise).status()).toBe(200);
+    expect((await romBinaryPromise).status()).toBe(200);
+    expect((await playStatesPromise).status()).toBe(200);
+    await expect(page.getByTestId("emulator-canvas")).toBeVisible();
   });
 });
