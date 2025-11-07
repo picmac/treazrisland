@@ -180,6 +180,147 @@ run_all_probes() {
   return 0
 }
 
+ensure_database_url() {
+  if [[ -z "${DATABASE_URL:-}" ]]; then
+    if [[ -n "${POSTGRES_USER:-}" && -n "${POSTGRES_PASSWORD:-}" && -n "${POSTGRES_DB:-}" ]]; then
+      export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public"
+      log "DATABASE_URL not provided; defaulting to postgres service host"
+      return 0
+    else
+      log "DATABASE_URL not provided and could not be inferred; set it explicitly or provide Postgres credentials"
+      return 1
+    fi
+  fi
+
+  local normalized="${DATABASE_URL}"
+  local rewrote=false
+
+  if [[ "${normalized}" == *"@localhost:"* ]]; then
+    normalized="${normalized//@localhost:/@postgres:}"
+    rewrote=true
+  fi
+
+  if [[ "${normalized}" == *"@127.0.0.1:"* ]]; then
+    normalized="${normalized//@127.0.0.1:/@postgres:}"
+    rewrote=true
+  fi
+
+  if [[ "${rewrote}" == "true" ]]; then
+    export DATABASE_URL="${normalized}"
+    log "DATABASE_URL pointed at localhost; rewriting to docker postgres service host"
+  fi
+
+  return 0
+}
+
+sync_database_url_env_files() {
+  local value="$1"
+  local python_cmd="python3"
+
+  if [[ -z "${value}" ]]; then
+    return 0
+  fi
+
+  if ! command -v "${python_cmd}" >/dev/null 2>&1; then
+    if command -v python >/dev/null 2>&1; then
+      python_cmd="python"
+    else
+      log "Python interpreter not found; skipping DATABASE_URL env file synchronisation"
+      return 0
+    fi
+  fi
+
+  local files=()
+
+  if [[ -f "${COMPOSE_ENV_FILE}" ]]; then
+    files+=("${COMPOSE_ENV_FILE}")
+  fi
+
+  if [[ -f "${BACKEND_ENV_FILE}" ]]; then
+    local already_listed=false
+    for candidate in "${files[@]}"; do
+      if [[ "${candidate}" == "${BACKEND_ENV_FILE}" ]]; then
+        already_listed=true
+        break
+      fi
+    done
+    if [[ "${already_listed}" == "false" ]]; then
+      files+=("${BACKEND_ENV_FILE}")
+    fi
+  fi
+
+  if (( ${#files[@]} == 0 )); then
+    return 0
+  fi
+
+  local file
+  for file in "${files[@]}"; do
+    if [[ ! -w "${file}" ]]; then
+      log "Cannot update DATABASE_URL in ${file}; file is not writable"
+      continue
+    fi
+
+    local update_result
+    if ! update_result=$("${python_cmd}" - "${file}" "${value}" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+value = sys.argv[2]
+key = "DATABASE_URL"
+
+try:
+    original = path.read_text(encoding="utf-8")
+except FileNotFoundError:
+    original = ""
+
+lines = original.splitlines()
+new_lines = []
+found = False
+changed = False
+
+desired = f'{key}="{value}"'
+
+for raw_line in lines:
+    stripped = raw_line.strip()
+    if not stripped or stripped.startswith("#") or "=" not in raw_line:
+        new_lines.append(raw_line.rstrip("\n"))
+        continue
+
+    key_part, value_part = raw_line.split("=", 1)
+    current_key = key_part.strip()
+
+    if current_key == key:
+        found = True
+        if stripped != desired:
+            new_lines.append(desired)
+            changed = True
+        else:
+            new_lines.append(raw_line.rstrip("\n"))
+        continue
+
+    new_lines.append(raw_line.rstrip("\n"))
+
+if not found:
+    new_lines.append(desired)
+    changed = True
+
+if changed:
+    Path(path).write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
+print("changed" if changed else "unchanged")
+PY
+); then
+      log "Failed to update DATABASE_URL in ${file}"
+      continue
+    fi
+
+    if [[ "${update_result}" == "changed" ]]; then
+      log "Updated DATABASE_URL in ${file} to use postgres service host"
+    fi
+  done
+}
+
 log() {
   local message="$1"
   if command -v logger >/dev/null 2>&1; then
@@ -221,6 +362,13 @@ if [[ -f "${COMPOSE_ENV_FILE}" ]]; then
 else
   log "No environment file found at ${COMPOSE_ENV_FILE}; relying on host environment"
 fi
+
+if ! ensure_database_url; then
+  log "Unable to determine DATABASE_URL; aborting deployment"
+  exit 1
+fi
+
+sync_database_url_env_files "${DATABASE_URL}"
 
 export TREAZ_BACKEND_ENV_FILE="${BACKEND_ENV_FILE}"
 export TREAZ_FRONTEND_ENV_FILE="${FRONTEND_ENV_FILE}"

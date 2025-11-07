@@ -69,6 +69,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: ${BACKEND_PORT:-3001}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set for backend connectivity}
       METRICS_ALLOWED_CIDRS: ${METRICS_ALLOWED_CIDRS:-127.0.0.1/32,172.16.0.0/12}
     depends_on:
       postgres:
