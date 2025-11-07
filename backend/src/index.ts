@@ -9,7 +9,10 @@ const start = async () => {
     const hostForLog = env.LISTEN_HOST.includes(":")
       ? `[${env.LISTEN_HOST}]`
       : env.LISTEN_HOST;
-    app.log.info(`Server listening on http://${hostForLog}:${env.PORT}`);
+    const protocol = env.TLS_ENABLED ? "https" : "http";
+    app.log.info(
+      `Server listening on ${protocol}://${hostForLog}:${env.PORT}`,
+    );
   } catch (err) {
     app.log.error(err);
     process.exit(1);
