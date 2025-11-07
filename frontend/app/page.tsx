@@ -1,9 +1,10 @@
 import Link from "next/link";
+import type { Route } from "next";
 import { DashboardPanels } from "@/src/components/dashboard-panels";
 import { PixelFrame } from "@/src/components/pixel-frame";
 
 type QuickLink = {
-  href: string;
+  href: Route;
   eyebrow: string;
   title: string;
   description: string;

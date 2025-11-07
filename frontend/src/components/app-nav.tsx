@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import { PixelFrame } from "@/src/components/pixel-frame";
 
 type NavItem = {
-  href: string;
+  href: Route;
   label: string;
   description: string;
 };
@@ -49,7 +50,7 @@ const NAV_ITEMS: NavItem[] = [
   }
 ];
 
-function isActivePath(pathname: string, target: string) {
+function isActivePath(pathname: string, target: Route) {
   if (target === "/") {
     return pathname === "/";
   }
