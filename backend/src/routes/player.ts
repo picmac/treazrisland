@@ -127,6 +127,38 @@ function normalizePlaybackReason(reason: string): string {
   return normalized.length > 0 ? normalized : "unknown";
 }
 
+function parseAllowedOrigins(raw: string): Set<string> {
+  const origins = new Set<string>();
+  for (const entry of raw.split(",")) {
+    const trimmed = entry.trim();
+    if (!trimmed) {
+      continue;
+    }
+    try {
+      origins.add(new URL(trimmed).origin);
+    } catch {
+      origins.add(trimmed);
+    }
+  }
+  return origins;
+}
+
+function normalizeOriginHeader(value?: string): string | null {
+  if (!value) {
+    return null;
+  }
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
+const EMULATOR_SOCKET_PREFIX = "/player/emulator";
+const ALLOWED_EMULATOR_SOCKET_ORIGINS = parseAllowedOrigins(
+  env.CORS_ALLOWED_ORIGINS,
+);
+
 function recordPlaybackError(
   app: FastifyInstance,
   request: FastifyRequest,
@@ -223,6 +255,32 @@ async function removePlayState(
 export async function registerPlayerRoutes(
   app: FastifyInstance,
 ): Promise<void> {
+  app.server.on("upgrade", (rawRequest, socket) => {
+    const upgradePath = (rawRequest.url ?? "").split("?")[0] ?? "";
+    if (!upgradePath.startsWith(EMULATOR_SOCKET_PREFIX)) {
+      return;
+    }
+
+    const originHeader =
+      rawRequest.headers?.origin ??
+      rawRequest.headers?.["sec-websocket-origin"] ??
+      null;
+    const normalized = normalizeOriginHeader(originHeader ?? undefined);
+
+    if (!normalized || !ALLOWED_EMULATOR_SOCKET_ORIGINS.has(normalized)) {
+      socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+      socket.destroy();
+      app.log.warn(
+        {
+          event: "player.ws_rejected",
+          origin: originHeader ?? null,
+          path: upgradePath,
+        },
+        "Rejected EmulatorJS websocket upgrade from untrusted origin",
+      );
+    }
+  });
+
   const rateLimitHook = createRoleAwareRateLimit(app);
 
   app.get(

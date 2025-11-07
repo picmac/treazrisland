@@ -290,7 +290,8 @@ export class StorageService {
     const headerEntries: Array<[string, string]> = [
       ["host", url.host],
       ["x-amz-content-sha256", payloadHash],
-      ["x-amz-date", amzDate]
+      ["x-amz-date", amzDate],
+      ["x-amz-server-side-encryption", "AES256"],
     ];
 
     if (source.contentType) {
@@ -340,6 +341,7 @@ export class StorageService {
     headers.set("host", url.host);
     headers.set("x-amz-content-sha256", payloadHash);
     headers.set("x-amz-date", amzDate);
+    headers.set("x-amz-server-side-encryption", "AES256");
     headers.set("authorization", authorization);
     headers.set("content-length", source.size.toString());
 

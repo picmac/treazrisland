@@ -3,11 +3,32 @@ export type ContentSecurityPolicyOptions = {
   mediaCdn?: string | null;
 };
 
+const TLS_ENABLED_VALUES = new Set(["https", "true", "1", "on"]);
+const TLS_DISABLED_VALUES = new Set(["http", "false", "0", "off"]);
+
 function isTlsEnabled(): boolean {
-  const rawTlsMode = process.env.TREAZ_TLS_MODE?.toLowerCase();
-  return (
-    rawTlsMode === "https" || rawTlsMode === "true" || rawTlsMode === "1"
-  );
+  const raw = process.env.TREAZ_TLS_MODE;
+  if (!raw || raw.trim().length === 0) {
+    return true;
+  }
+
+  const normalized = raw.trim().toLowerCase();
+  if (TLS_ENABLED_VALUES.has(normalized)) {
+    return true;
+  }
+
+  if (TLS_DISABLED_VALUES.has(normalized)) {
+    return false;
+  }
+
+  const message =
+    `Unsupported TREAZ_TLS_MODE value "${raw}". Accepted values: https, http, true, false, 1, 0.`;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(message);
+  }
+
+  console.warn(`[security-headers] ${message} Defaulting to strict HTTPS headers.`);
+  return true;
 }
 
 function normalizeOrigin(value?: string | null): string | null {

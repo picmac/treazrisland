@@ -1,0 +1,56 @@
+name: Dependency Security
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  npm-audit:
+    name: npm audit (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project: [backend, frontend]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+          cache-dependency-path: "${{ matrix.project }}/package-lock.json"
+      - name: Install dependencies
+        working-directory: ${{ matrix.project }}
+        run: npm ci --ignore-scripts
+      - name: Run npm audit
+        working-directory: ${{ matrix.project }}
+        run: npm audit --audit-level=high
+
+  snyk:
+    name: Snyk scan (${{ matrix.project }})
+    if: secrets.SNYK_TOKEN != ''
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project: [backend, frontend]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+          cache-dependency-path: "${{ matrix.project }}/package-lock.json"
+      - name: Install dependencies
+        working-directory: ${{ matrix.project }}
+        run: npm ci --ignore-scripts
+      - name: Setup Snyk
+        uses: snyk/actions/setup@v3
+      - name: Snyk test
+        working-directory: ${{ matrix.project }}
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk test --severity-threshold=high

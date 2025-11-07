@@ -4,6 +4,7 @@ import request from "supertest";
 import { promises as fs } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
+import type { Socket } from "node:net";
 import type { PrismaClient } from "@prisma/client";
 import {
   RomAssetSource,
@@ -24,6 +25,7 @@ process.env.STORAGE_BUCKET_BIOS = "bios";
 process.env.ROM_UPLOAD_MAX_BYTES = `${1024 * 1024}`;
 process.env.PLAY_STATE_MAX_BYTES = `${512 * 1024}`;
 process.env.PLAY_STATE_MAX_PER_ROM = "3";
+process.env.CORS_ALLOWED_ORIGINS = "https://trusted.example";
 
 const STORAGE_ROOT = resolve(join(tmpdir(), "treaz-player-tests"));
 process.env.STORAGE_LOCAL_ROOT = STORAGE_ROOT;
@@ -211,6 +213,38 @@ describe("player routes", () => {
         cover: expect.objectContaining({ id: "asset-1" })
       }
     });
+  });
+
+  it("denies EmulatorJS websocket upgrades from untrusted origins", async () => {
+    const write = vi.fn();
+    const destroy = vi.fn();
+    const fakeSocket = { write, destroy } as unknown as Socket;
+
+    app.server.emit(
+      "upgrade",
+      { url: "/player/emulator/socket", headers: { origin: "https://evil.example" } } as unknown,
+      fakeSocket,
+      Buffer.alloc(0),
+    );
+
+    expect(write).toHaveBeenCalledWith(expect.stringContaining("403 Forbidden"));
+    expect(destroy).toHaveBeenCalled();
+  });
+
+  it("allows EmulatorJS websocket upgrades from trusted origins", async () => {
+    const write = vi.fn();
+    const destroy = vi.fn();
+    const fakeSocket = { write, destroy } as unknown as Socket;
+
+    app.server.emit(
+      "upgrade",
+      { url: "/player/emulator/socket", headers: { origin: "https://trusted.example" } } as unknown,
+      fakeSocket,
+      Buffer.alloc(0),
+    );
+
+    expect(write).not.toHaveBeenCalled();
+    expect(destroy).not.toHaveBeenCalled();
   });
 
   it("enforces per-ROM play state limits and records eviction metrics", async () => {

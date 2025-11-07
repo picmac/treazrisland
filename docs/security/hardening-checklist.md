@@ -10,9 +10,9 @@ This guide enumerates the operational controls required before promoting a TREAZ
 
 ## Secrets & Key Management
 
-- [ ] ScreenScraper API tokens rotated every 90 days; replacement values stored outside the codebase. _(Pending – Owner: Integrations (Ravi Patel); align vendor credential rotation by 2025-03-15; tracked in **SEC-47**.)_
+- [ ] ScreenScraper API tokens rotated every 90 days; replacement values stored outside the codebase. Use `backend/scripts/rotate-screenscraper-credentials.ts` to generate encrypted developer credentials. _(Pending – Owner: Integrations (Ravi Patel); align vendor credential rotation by 2025-03-15; tracked in **SEC-47**.)_
 - [x] `METRICS_TOKEN` set to a long, random value and distributed only to observability tooling. _(Rotated 2025-02-08; stored in Vault `secret/data/treaz/prod/observability#METRICS_TOKEN`; Compose overrides documented in [Operator Runbook §4](../operators/runbook.md#4-metrics--health).)_
-- [x] Audit access to the object storage credentials (`STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY`). Keys must be scoped to the TREAZ buckets with read/write but no delete permissions unless lifecycle policies exist. _(Completed 2025-02-24; restricted policy codified at `infra/minio/policies/treaz-uploader.json` and documented in `docs/security/reports/2025-02-24-storage-credential-audit.md`. Follow-up automation captured under **SEC-60**.)_
+- [x] Audit access to the object storage credentials (`STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY`). Keys must be scoped to the TREAZ buckets with read/write but no delete permissions unless lifecycle policies exist. _(Completed 2025-02-24; restricted policy codified at `infra/minio/policies/treaz-uploader.json`, rotation procedure in `docs/security/minio-credential-rotation.md`, and documented in `docs/security/reports/2025-02-24-storage-credential-audit.md`. Follow-up automation captured under **SEC-60**.)_
 
 ## Storage Validation
 

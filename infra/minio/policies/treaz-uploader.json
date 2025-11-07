@@ -13,7 +13,12 @@
       "Resource": [
         "arn:aws:s3:::treaz-roms/uploads/*",
         "arn:aws:s3:::treaz-assets/uploads/*"
-      ]
+      ],
+      "Condition": {
+        "StringEquals": {
+          "s3:x-amz-server-side-encryption": "AES256"
+        }
+      }
     },
     {
       "Sid": "TreazUploadList",
@@ -30,6 +35,21 @@
           "s3:prefix": [
             "uploads/*"
           ]
+        }
+      }
+    },
+    {
+      "Sid": "TreazUploadAuditLogging",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::treaz-audit/upload-events/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "s3:x-amz-server-side-encryption": "AES256"
         }
       }
     }
