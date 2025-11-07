@@ -76,7 +76,7 @@ With the environment prepared, bring the stack online:
 docker compose -f infra/docker-compose.prod.yml up -d
 ```
 
-The single `compose.env` file carries every variable documented in `.env.example`, covering backend, frontend, and infra secrets. `TREAZ_BACKEND_ENV_FILE` and `TREAZ_FRONTEND_ENV_FILE` are no longer required unless you want to split credentials again for a custom deployment.
+The single `compose.env` file carries every variable documented in `.env.example`, covering backend, frontend, and infra secrets. Helper scripts and Docker Compose will respect `TREAZ_ENV_FILE`, so per-service files are optional unless you choose to split credentials for a custom deployment.
 
 ## Secrets management
 

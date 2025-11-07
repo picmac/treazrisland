@@ -59,9 +59,7 @@ jobs:
 
       - name: Deploy to home infrastructure
         env:
-          TREAZ_BACKEND_ENV_FILE: /opt/treazrisland/config/backend.env
-          TREAZ_FRONTEND_ENV_FILE: /opt/treazrisland/config/frontend.env
-          TREAZ_COMPOSE_ENV_FILE: /opt/treazrisland/config/compose.env
+          TREAZ_ENV_FILE: /opt/treazrisland/config/compose.env
           TREAZ_COMPOSE_PROJECT_NAME: treazrisland
         run: |
           chmod +x scripts/deploy/deploy-local.sh
