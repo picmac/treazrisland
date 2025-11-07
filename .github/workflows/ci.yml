@@ -45,6 +45,9 @@ jobs:
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: lint-test-build
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: true
     runs-on:
       - self-hosted
       - treaz-home
