@@ -1,6 +1,6 @@
 # Playwright Smoke End-to-End Guide
 
-The Playwright smoke suite validates the golden paths for onboarding, authentication, library browsing, and the admin upload flow. The specs run quickly because all backend calls are intercepted and stubbed while the Next.js runtime renders real UI routes. This guide covers the prerequisites, local stack bootstrapping, and how to execute the suite from `frontend/`.
+The Playwright smoke suite validates the golden paths for onboarding, authentication, library browsing, EmulatorJS playback, and the admin upload flow. The specs now exercise the real Fastify backend instead of relying on route intercepts, so deterministic fixtures must exist before launching the tests. This guide covers the prerequisites, fixture bootstrap, and how to execute the suite from `frontend/`.
 
 ## Prerequisites
 
@@ -26,7 +26,15 @@ If you manage services manually (without Compose), ensure the backend, frontend,
 
    This brings up PostgreSQL, MinIO, and hot-reloading containers for the backend and frontend apps. Wait until the frontend container reports that the Next.js dev server is listening on port `3000`.
 
-3. (Optional) If you prefer running the apps directly, start them from separate terminals after installing dependencies:
+3. Seed the deterministic smoke fixtures and ensure the stack is healthy:
+
+   ```bash
+   ./scripts/smoke/local-stack.sh
+   ```
+
+   The script waits for the backend health endpoint, runs `npm run prisma:seed:smoke` inside the backend container, verifies the invitation, platform, and ROM fixtures, and confirms that the required MinIO buckets exist. Override the defaults with `SMOKE_*` environment variables when needed (see below).
+
+4. (Optional) If you prefer running the apps directly, start them from separate terminals after installing dependencies:
 
    ```bash
    cd backend
@@ -54,20 +62,23 @@ The suite honors the following environment variables:
 
 - `RUN_SMOKE_E2E` – must be set to a truthy value (`1`, `true`, `yes`) or the specs are skipped.
 - `PLAYWRIGHT_BASE_URL` – overrides the default `http://localhost:3000`. Use this when the frontend dev server runs on another host or port.
+- `SMOKE_INVITE_TOKEN` – invitation token used to redeem the seeded admin invite. Defaults to `smoke-test-token`.
+- `SMOKE_INVITE_EMAIL` – email address tied to the invitation. Defaults to `deckhand-smoke@example.com`.
+- `SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD`, `SMOKE_ADMIN_NICKNAME` – credentials entered during the onboarding flow. Defaults are safe for local smoke runs.
+- `SMOKE_USER_PASSWORD`, `SMOKE_USER_NICKNAME`, `SMOKE_USER_DISPLAY_NAME` – controls the account created from the invitation.
+- `SMOKE_PLATFORM_NAME`, `SMOKE_PLATFORM_SLUG`, `SMOKE_ROM_ID`, `SMOKE_ROM_TITLE` – identify the demo platform and ROM the specs navigate to.
+- `SMOKE_STORAGE_ROOT` – filesystem root that the onboarding wizard saves. Defaults to `/var/treaz/storage` when unset and should align with the backend's `STORAGE_LOCAL_ROOT`.
 
-### Route behavior
+## Deterministic fixtures
 
-The smoke specs intercept network calls with Playwright's routing API to keep the tests deterministic:
+`backend/prisma/seed-test-fixtures.ts` creates the minimal data that the smoke suite expects:
 
-| Route pattern           | Behavior                          | Notes |
-| ----------------------- | --------------------------------- | ----- |
-| `**/auth/refresh`       | Stubbed with a 401 response       | Forces the app to treat the session as logged out when the suite begins. |
-| `**/onboarding/status`  | Stubbed with `needsSetup: true`   | Simulates the first-admin experience. |
-| `**/auth/login`         | Stubbed MFA challenge then success | Exercises the multi-step login flow without hitting the real backend. |
-| `**/platforms`          | Stubbed with a single mock platform | Ensures the library UI renders predictable data. |
-| `**/admin/platforms`    | Stubbed with one selectable platform | Allows the admin upload queue to populate without querying the API. |
+- A pending invitation with the configured `SMOKE_INVITE_TOKEN` and email address.
+- A `Smoke Test Console` platform containing the `Smoke Test Adventure` ROM with a ready binary.
+- Storage configuration pointing at the local filesystem root and buckets defined in the Docker Compose stack.
+- A reset onboarding state so the first test can create the inaugural admin account.
 
-All other requests (static assets, page navigations) are served by the running Next.js application. Do **not** point the smoke suite at production—its mocked responses bypass real authentication and persistence.
+`scripts/smoke/local-stack.sh` runs the seed every time to guarantee a clean slate. If you change any of the defaults, export matching `SMOKE_*` variables before invoking the script and the Playwright command.
 
 ## Troubleshooting
 
