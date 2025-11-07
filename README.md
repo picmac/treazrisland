@@ -27,21 +27,17 @@ Review the [Product Requirements Document](./TREAZRISLAND_PRD.md) and the [Threa
    cp .env.example .env
    ```
 
-2. Provide the backend with environment variables by copying (or symlinking) the same file into the package directory:
+2. Reuse the same file everywhere by symlinking it into each package (or copying it if you prefer standalone files):
 
    ```bash
-   cp .env backend/.env
+   ln -s ../.env backend/.env
+   ln -s ../.env frontend/.env.local
    ```
 
-3. Create the frontend environment file using only the `NEXT_PUBLIC_*` keys:
+   The frontend reads only `NEXT_PUBLIC_*` variables; adjust `NEXT_PUBLIC_API_BASE_URL` if your backend runs on a non-default
+   host/port.
 
-   ```bash
-   grep '^NEXT_' .env > frontend/.env.local
-   ```
-
-   Adjust `NEXT_PUBLIC_API_BASE_URL` if your backend runs on a non-default host/port.
-
-4. Replace all placeholder secrets before exposing the stack to real users. The most important keys are summarised below:
+3. Replace all placeholder secrets before exposing the stack to real users. The most important keys are summarised below:
 
 | Area | Keys | Notes |
 | ---- | ---- | ----- |
@@ -91,7 +87,8 @@ Backend configuration is validated on boot by [`backend/src/config/env.ts`](./ba
    docker compose -f infra/docker-compose.yml up --build
    ```
 
-   This command builds the Dockerfiles, injects the package-specific `.env.docker` files, and launches all services together.
+   This command builds the Dockerfiles, loads environment defaults from `.env` (or the file referenced by `TREAZ_ENV_FILE`), and
+   launches all services together.
 
 ## Quality gates
 
