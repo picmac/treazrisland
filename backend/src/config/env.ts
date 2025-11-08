@@ -99,14 +99,8 @@ const envSchema = z.object({
     .transform((value) =>
       value && value.trim().length > 0 ? value.trim() : undefined,
     ),
-  SMTP_PORT: z
-    .string()
-    .regex(/^\d+$/)
-    .default("587")
-    .transform(Number),
-  SMTP_SECURE: z
-    .enum(["none", "starttls", "implicit"])
-    .default("starttls"),
+  SMTP_PORT: z.string().regex(/^\d+$/).default("587").transform(Number),
+  SMTP_SECURE: z.enum(["none", "starttls", "implicit"]).default("starttls"),
   SMTP_USERNAME: z
     .string()
     .optional()
@@ -116,9 +110,7 @@ const envSchema = z.object({
   SMTP_PASSWORD: z
     .string()
     .optional()
-    .transform((value) =>
-      value && value.length > 0 ? value : undefined,
-    ),
+    .transform((value) => (value && value.length > 0 ? value : undefined)),
   SMTP_FROM_EMAIL: z
     .string()
     .optional()
