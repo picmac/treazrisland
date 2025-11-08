@@ -8,8 +8,6 @@ const normalizeOrigin = (origin: string): string => {
   return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
 };
 
-type OriginCallback = Parameters<NonNullable<FastifyCorsOptions["origin"]>>[1];
-
 enum OriginDecision {
   Allow = "allow",
   Reject = "reject",
@@ -42,7 +40,7 @@ export default fp(async (app) => {
 
   await app.register(cors, {
     credentials: true,
-    origin: (origin, callback: OriginCallback) => {
+    origin(origin, callback) {
       const decision = evaluateOrigin(origin, allowedOrigins, allowAll);
 
       if (decision === OriginDecision.Allow) {
@@ -53,5 +51,5 @@ export default fp(async (app) => {
       app.log.warn({ origin }, "CORS origin rejected");
       callback(null, false);
     },
-  });
+  } satisfies FastifyCorsOptions);
 });
