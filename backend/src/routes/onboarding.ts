@@ -45,6 +45,34 @@ const stepUpdateSchema = z.object({
   notes: z.string().max(200).optional(),
 });
 
+type StepUpdateSettings = z.infer<
+  typeof stepUpdateSchema
+>["settings"];
+
+const stepParamsSchema = z.object({
+  stepKey: z.enum(ONBOARDING_STEP_KEYS),
+});
+
+const buildStepPayload = (
+  settings: StepUpdateSettings,
+  notes?: string,
+): Record<string, unknown> | undefined => {
+  if (!notes && !settings) {
+    return undefined;
+  }
+
+  const payload: Record<string, unknown> = {};
+  if (notes) {
+    payload.notes = notes;
+  }
+
+  if (settings) {
+    payload.settings = settings;
+  }
+
+  return Object.keys(payload).length > 0 ? payload : undefined;
+};
+
 export async function registerOnboardingRoutes(app: FastifyInstance) {
   app.get("/onboarding/status", async () => {
     const [userCount, setupState] = await Promise.all([
@@ -77,50 +105,49 @@ export async function registerOnboardingRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const validation = adminPayloadSchema.safeParse(request.body);
-      if (!validation.success) {
+      const parsed = adminPayloadSchema.safeParse(request.body);
+      if (!parsed.success) {
         return reply.status(400).send({
           message: "Invalid payload",
-          errors: validation.error.flatten().fieldErrors,
+          errors: parsed.error.flatten().fieldErrors,
+        });
+      }
+
+      const existingUsers = await app.prisma.user.count();
+      if (existingUsers > 0) {
+        return reply.status(400).send({
+          message: "Onboarding is already completed.",
+        });
+      }
+
+      const { email, nickname, password } = parsed.data;
+      const passwordHash = await argon2.hash(password, {
+        type: argon2.argon2id,
       });
-    }
 
-    const existingUsers = await app.prisma.user.count();
-    if (existingUsers > 0) {
-      return reply.status(400).send({
-        message: "Onboarding is already completed.",
+      const adminUser = await app.prisma.user.create({
+        data: {
+          email: email.toLowerCase(),
+          nickname,
+          displayName: nickname,
+          passwordHash,
+          role: "ADMIN",
+        },
       });
-    }
 
-    const { email, nickname, password } = validation.data;
+      const { accessToken, refreshToken, refreshExpiresAt } =
+        await issueSessionTokens(app, adminUser.id, adminUser.role);
 
-    const passwordHash = await argon2.hash(password, {
-      type: argon2.argon2id,
-    });
+      setRefreshCookie(reply, refreshToken, refreshExpiresAt);
 
-    const adminUser = await app.prisma.user.create({
-      data: {
-        email: email.toLowerCase(),
-        nickname,
-        displayName: nickname,
-        passwordHash,
-        role: "ADMIN",
-      },
-    });
+      await updateSetupStep(app.prisma, "first-admin", "COMPLETED", {
+        userId: adminUser.id,
+      });
 
-    const { accessToken, refreshToken, refreshExpiresAt } =
-      await issueSessionTokens(app, adminUser.id, adminUser.role);
-
-    setRefreshCookie(reply, refreshToken, refreshExpiresAt);
-
-    await updateSetupStep(app.prisma, "first-admin", "COMPLETED", {
-      userId: adminUser.id,
-    });
-
-    request.log.info(
-      { userId: adminUser.id },
-      "Initial admin account created via onboarding",
-    );
+      request.log.info(
+        { userId: adminUser.id },
+        "Initial admin account created via onboarding",
+      );
 
       return reply.status(201).send({
         user: {
@@ -150,11 +177,7 @@ export async function registerOnboardingRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const params = z
-        .object({
-          stepKey: z.enum(ONBOARDING_STEP_KEYS),
-        })
-        .parse(request.params);
+      const params = stepParamsSchema.parse(request.params);
 
       if (params.stepKey === "first-admin") {
         return reply.status(400).send({
@@ -180,7 +203,7 @@ export async function registerOnboardingRoutes(app: FastifyInstance) {
         app.prisma,
         params.stepKey,
         validation.data.status,
-        validation.data.notes ? { notes: validation.data.notes } : undefined,
+        buildStepPayload(validation.data.settings, validation.data.notes),
       );
 
       return {
