@@ -13,7 +13,7 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 ## Goals
 - Deliver a full self-hosted experience: onboarding, Admin/User roles, secure authentication, and SPA navigation.
 - Offer a discoverable library with fast filtering, personal favorites, top lists, and collections.
-- Stream ROMs in-browser through EmulatorJS with synchronized play states across devices.
+- Stream ROMs in-browser through EmulatorJS with synchronized play states across devices and cooperative/competitive netplay sessions.
 - Keep ROM binaries and assets private via signed URLs, strict JWT enforcement, and rate limiting.
 - Provide admins with powerful upload, enrichment, and auditing flows, including integration with external metadata sources.
 - Ensure the brand consistently reflects the SNES/Monkey Island vibe through curated artwork guidelines and tooling.
@@ -22,7 +22,7 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 - Cloud-hosted sync, leaderboards, or public multiplayer matchmaking.
 - Automatic ROM scraping from third parties; uploads remain user-sourced.
 - Native mobile clients; focus remains on a responsive web app.
-- Netplay or other synchronized multiplayer features.
+- Public matchmaking remains out of scope; netplay is limited to invite-only sessions hosted by existing players.
 
 ## Target Personas
 - **Archivist Admin (ROLE: ADMIN):** Manages invitations, uploads, metadata enrichment, and asset curation. Needs comprehensive tooling and audits.
@@ -35,7 +35,7 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 | Onboarding & Users | First-run setup, invitations, MFA | Admin | `/onboarding`, `/users/*`, `User`, `UserInvitation` |
 | Authentication | Login, refresh, password reset | All | `/auth/*`, `RefreshToken`, `PasswordResetToken` |
 | Discovery & Library | Platform grid, search, filters | All | `/platforms/*`, `/roms`, `Rom`, `RomAsset` |
-| Game Detail & Player | EmulatorJS canvas, downloads | All | `/play/:id`, `/roms/:id/download`, `/play-states/*` |
+| Game Detail, Player & Netplay | EmulatorJS canvas, downloads, synchronized sessions | All | `/play/:id`, `/roms/:id/download`, `/play-states/*`, `/netplay/*` |
 | Favorites & Collections | Personalized lists | All | `/favorites/*`, `/collections`, `/top-lists`, `UserRomFavorite` |
 | Admin Upload & Enrichment | ROM intake, metadata fetch | Admin | `/roms/upload`, `/roms/:id/enrich`, `UploadAudit` |
 | Monitoring & Stats | Usage metrics | All (read), Admin (analysis) | `/stats/overview` |
@@ -54,6 +54,12 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 - **Rate limiting:** Global limiter (`RATE_LIMIT_DEFAULT_*`) plus auth-specific caps (`RATE_LIMIT_AUTH_*`).
 - **MFA:** TOTP via `otplib`; setup returns secret + hashed recovery codes. Verification and teardown routes enforce rotation on use.
 - **Password reset:** Two-step flow (request + confirm) backed by hashed reset tokens and email notifications.
+- **SMTP delivery:** Authentication emails (invitations, password reset, MFA recovery) use a configurable SMTP provider supporting AUTH or anonymous delivery with optional STARTTLS/implicit TLS. Runtime configuration uses:
+  - `EMAIL_PROVIDER=smtp` to activate SMTP mode.
+  - `SMTP_HOST`, `SMTP_PORT`, and `SMTP_SECURE` (`none` | `starttls` | `implicit`) to describe transport security.
+  - `SMTP_USERNAME` and `SMTP_PASSWORD` when the remote relay requires authentication.
+  - `SMTP_FROM_EMAIL` and optional `SMTP_FROM_NAME` for sender identity validation.
+  Deployments may additionally set `SMTP_ALLOW_INVALID_CERTS=false` by default, enabling overrides only for trusted, self-hosted MTAs.
 - **CORS & CSP:** Allowlist configured via `CORS_ALLOWED_ORIGINS`. Helmet enforces strict CSP, referrer policy, frameguard, and disables COEP for compatibility. All routes except `/auth/*`, `/onboarding/*`, `/health`, and GET `/rom-assets/*` require JWT.
 - **Auditability:** Upload and enrichment actions generate `UploadAudit` entries. Future iterations will extend auditing to auth events.
 
@@ -63,11 +69,13 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
 - **ROM catalog (`GET /roms`):** Accepts query params for platform, text search, publisher, year, sort, limit. Returns ROM summaries with curated asset metadata filtered to `COVER`, `VIDEO`, `SCREENSHOT`, `MANUAL`.
 - **ROM detail (`GET /roms/:id`):** Supplies full metadata, checksums, asset list, and audit context.
 
-### 4. Game Detail & Emulator
+### 4. Game Detail, Emulator & Netplay
 - **Player page (`/play/:id`):** Fetches ROM metadata, handles optional `?token=` seeding, and downloads ROM via JWT-protected endpoint. Exposes stats (platform, size, release year, genre) and toggles for synopsis display.
 - **Save states:** `/play-states` offers CRUD with slot support (0–9). Payloads store Base64 buffers and optional JSON metadata. Frontend auto-synchronizes on unload or resume.
 - **Asset delivery:** `/rom-assets/:id` streams asset content when authorized via bearer or signed token from `/rom-assets/:id/sign` (default TTL 5 min, `ASSET_TOKEN_TTL` configurable). Manual assets enforce file download with sanitized filenames.
 - **Resume handling:** Local resume state stored in browser and cross-synced via `fetchPlayState`. UI indicates resume availability and offers clearing.
+- **Netplay orchestration:** `/netplay/sessions` creates and lists ad-hoc multiplayer rooms scoped to an underlying ROM and optional save-state seed. Session host invites authenticated players by ID or email; invites respect role permissions and expire after 30 minutes. Connection hand-off uses WebRTC data channels negotiated through a Fastify-powered signaling endpoint (`/netplay/signal`) backed by JWT auth and per-session tokens. Session lifecycle includes host migration safeguards, periodic heartbeat pings, and automatic teardown on inactivity (default 10 minutes, configurable via `NETPLAY_IDLE_TIMEOUT`).
+- **Quality of service:** Backend throttles simultaneous sessions per host (`NETPLAY_MAX_HOSTED_SESSIONS`) and per server (`NETPLAY_MAX_CONCURRENT_SESSIONS`). Client displays latency indicators and fallbacks to save-state sync when peer connectivity fails.
 
 ### 5. Favorites, Recents & Stats
 - **Favorites:** `/favorites/` (GET) and `/favorites/:romId` (POST/DELETE) manage per-user favorites. Conflicts return 204, preventing duplicate errors.
@@ -109,10 +117,11 @@ Art direction leans heavily into a 16-bit SNES aesthetic inspired by Monkey Isla
   - `db` (PostgreSQL 16) with health check.
   - `adminer` for DB inspection.
   - `minio` for object storage.
-  - `backend` Fastify service (Node 22), internal-only via `expose`, environment-driven config for JWT, storage, and ScreenScraper.
+  - `backend` Fastify service (Node 22), internal-only via `expose`, environment-driven config for JWT, storage, ScreenScraper, SMTP, and netplay signaling credentials.
   - `frontend` Next.js app published on host port 3000 with API rewrites.
   - Optional `cloudflared` profile for Cloudflare Tunnel exposure.
 - **Environment variables:** `.env.example` covers JWT secrets, rate limits, storage credentials, ScreenScraper config, and Cloudflare token.
+- **SMTP & Netplay configuration:** `.env.example` documents SMTP options (`EMAIL_PROVIDER`, `SMTP_*`) and netplay settings (`NETPLAY_IDLE_TIMEOUT`, `NETPLAY_MAX_HOSTED_SESSIONS`, `NETPLAY_MAX_CONCURRENT_SESSIONS`, `NETPLAY_SIGNAL_ALLOWED_ORIGINS`). Self-hosted deployments can target Gmail, Office365, or local MTAs as long as the chosen relay accepts the configured TLS/authentication mode.
 - **Build/test scripts:** Backend `npm run dev/build/test`, Frontend `npm run dev/build/test/test:e2e`. Utility scripts generate pixel assets and icon sets.
 
 ## Non-Functional Requirements

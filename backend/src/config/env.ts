@@ -92,25 +92,48 @@ const envSchema = z.object({
     .regex(/^\d+$/)
     .default("10")
     .transform(Number),
-  EMAIL_PROVIDER: z.enum(["none", "postmark"]).default("none"),
-  POSTMARK_SERVER_TOKEN: z
+  EMAIL_PROVIDER: z.enum(["none", "smtp"]).default("none"),
+  SMTP_HOST: z
     .string()
     .optional()
     .transform((value) =>
       value && value.trim().length > 0 ? value.trim() : undefined,
     ),
-  POSTMARK_FROM_EMAIL: z
+  SMTP_PORT: z.string().regex(/^\d+$/).default("587").transform(Number),
+  SMTP_SECURE: z.enum(["none", "starttls", "implicit"]).default("starttls"),
+  SMTP_USERNAME: z
     .string()
     .optional()
     .transform((value) =>
       value && value.trim().length > 0 ? value.trim() : undefined,
     ),
-  POSTMARK_MESSAGE_STREAM: z
+  SMTP_PASSWORD: z
+    .string()
+    .optional()
+    .transform((value) => (value && value.length > 0 ? value : undefined)),
+  SMTP_FROM_EMAIL: z
     .string()
     .optional()
     .transform((value) =>
       value && value.trim().length > 0 ? value.trim() : undefined,
     ),
+  SMTP_FROM_NAME: z
+    .string()
+    .optional()
+    .transform((value) =>
+      value && value.trim().length > 0 ? value.trim() : undefined,
+    ),
+  SMTP_ALLOW_INVALID_CERTS: z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (value === undefined) {
+        return false;
+      }
+
+      const normalized = value.trim().toLowerCase();
+      return normalized === "true" || normalized === "1";
+    }),
   CORS_ALLOWED_ORIGINS: z.string().default("http://localhost:3000"),
   RATE_LIMIT_DEFAULT_POINTS: z
     .string()
@@ -306,6 +329,23 @@ const envSchema = z.object({
 
       return entries;
     }),
+  NETPLAY_IDLE_TIMEOUT: z.string().default("10m"),
+  NETPLAY_MAX_HOSTED_SESSIONS: z
+    .string()
+    .regex(/^\d+$/)
+    .default("2")
+    .transform(Number),
+  NETPLAY_MAX_CONCURRENT_SESSIONS: z
+    .string()
+    .regex(/^\d+$/)
+    .default("10")
+    .transform(Number),
+  NETPLAY_SIGNAL_ALLOWED_ORIGINS: z
+    .string()
+    .optional()
+    .transform((value) =>
+      value && value.trim().length > 0 ? value.trim() : undefined,
+    ),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -324,6 +364,7 @@ const signedUrlTtlMs = parsed.data.STORAGE_SIGNED_URL_TTL
   ? ms(parsed.data.STORAGE_SIGNED_URL_TTL as StringValue)
   : undefined;
 const tlsEnabled = parsed.data.TREAZ_TLS_MODE === "https";
+const netplayIdleMs = ms(parsed.data.NETPLAY_IDLE_TIMEOUT as StringValue);
 if (typeof accessMs !== "number" || accessMs <= 0) {
   throw new Error("JWT_ACCESS_TTL must be a positive duration string");
 }
@@ -332,6 +373,9 @@ if (typeof refreshMs !== "number" || refreshMs <= 0) {
 }
 if (typeof passwordResetMs !== "number" || passwordResetMs <= 0) {
   throw new Error("PASSWORD_RESET_TTL must be a positive duration string");
+}
+if (typeof netplayIdleMs !== "number" || netplayIdleMs <= 0) {
+  throw new Error("NETPLAY_IDLE_TIMEOUT must be a positive duration string");
 }
 
 if (
@@ -343,22 +387,35 @@ if (
   );
 }
 
-if (parsed.data.EMAIL_PROVIDER === "postmark") {
-  const missingPostmark = [
-    ["POSTMARK_SERVER_TOKEN", parsed.data.POSTMARK_SERVER_TOKEN],
-    ["POSTMARK_FROM_EMAIL", parsed.data.POSTMARK_FROM_EMAIL],
+if (parsed.data.EMAIL_PROVIDER === "smtp") {
+  const missingSmtp = [
+    ["SMTP_HOST", parsed.data.SMTP_HOST],
+    ["SMTP_FROM_EMAIL", parsed.data.SMTP_FROM_EMAIL],
   ].filter(([, value]) => !value);
 
-  if (missingPostmark.length > 0) {
+  if (missingSmtp.length > 0) {
     throw new Error(
-      `Postmark provider requires configuration for: ${missingPostmark
+      `SMTP provider requires configuration for: ${missingSmtp
         .map(([key]) => key)
         .join(", ")}`,
     );
   }
 
-  if (!parsed.data.POSTMARK_FROM_EMAIL!.includes("@")) {
-    throw new Error("POSTMARK_FROM_EMAIL must be a valid email address");
+  if (!parsed.data.SMTP_FROM_EMAIL!.includes("@")) {
+    throw new Error("SMTP_FROM_EMAIL must be a valid email address");
+  }
+
+  if (parsed.data.SMTP_PORT <= 0 || parsed.data.SMTP_PORT > 65535) {
+    throw new Error("SMTP_PORT must be between 1 and 65535");
+  }
+
+  const hasUsername = Boolean(parsed.data.SMTP_USERNAME);
+  const hasPassword = Boolean(parsed.data.SMTP_PASSWORD);
+
+  if (hasUsername !== hasPassword) {
+    throw new Error(
+      "SMTP authentication requires both SMTP_USERNAME and SMTP_PASSWORD",
+    );
   }
 }
 
@@ -415,6 +472,14 @@ if (parsed.data.STORAGE_DRIVER === "s3") {
   }
 }
 
+if (parsed.data.NETPLAY_MAX_HOSTED_SESSIONS <= 0) {
+  throw new Error("NETPLAY_MAX_HOSTED_SESSIONS must be greater than zero");
+}
+
+if (parsed.data.NETPLAY_MAX_CONCURRENT_SESSIONS <= 0) {
+  throw new Error("NETPLAY_MAX_CONCURRENT_SESSIONS must be greater than zero");
+}
+
 function splitCsv(value: string): string[] {
   return value
     .split(",")
@@ -457,12 +522,24 @@ export const env = {
   MFA_RECOVERY_CODE_COUNT: parsed.data.MFA_RECOVERY_CODE_COUNT,
   MFA_RECOVERY_CODE_LENGTH: parsed.data.MFA_RECOVERY_CODE_LENGTH,
   EMAIL_PROVIDER: parsed.data.EMAIL_PROVIDER,
-  POSTMARK_SERVER_TOKEN: parsed.data.POSTMARK_SERVER_TOKEN!,
-  POSTMARK_FROM_EMAIL: parsed.data.POSTMARK_FROM_EMAIL!,
-  POSTMARK_MESSAGE_STREAM: parsed.data.POSTMARK_MESSAGE_STREAM,
+  SMTP_HOST: parsed.data.SMTP_HOST,
+  SMTP_PORT: parsed.data.SMTP_PORT,
+  SMTP_SECURE: parsed.data.SMTP_SECURE,
+  SMTP_USERNAME: parsed.data.SMTP_USERNAME,
+  SMTP_PASSWORD: parsed.data.SMTP_PASSWORD,
+  SMTP_FROM_EMAIL: parsed.data.SMTP_FROM_EMAIL,
+  SMTP_FROM_NAME: parsed.data.SMTP_FROM_NAME,
+  SMTP_ALLOW_INVALID_CERTS: parsed.data.SMTP_ALLOW_INVALID_CERTS ?? false,
   PLAY_STATE_MAX_BYTES: parsed.data.PLAY_STATE_MAX_BYTES,
   PLAY_STATE_MAX_PER_ROM: parsed.data.PLAY_STATE_MAX_PER_ROM,
   METRICS_ENABLED: parsed.data.METRICS_ENABLED ?? false,
   METRICS_TOKEN: parsed.data.METRICS_TOKEN,
   METRICS_ALLOWED_CIDRS: parsed.data.METRICS_ALLOWED_CIDRS ?? [],
+  NETPLAY_IDLE_TIMEOUT: parsed.data.NETPLAY_IDLE_TIMEOUT,
+  NETPLAY_IDLE_TIMEOUT_MS: netplayIdleMs,
+  NETPLAY_MAX_HOSTED_SESSIONS: parsed.data.NETPLAY_MAX_HOSTED_SESSIONS,
+  NETPLAY_MAX_CONCURRENT_SESSIONS: parsed.data.NETPLAY_MAX_CONCURRENT_SESSIONS,
+  NETPLAY_SIGNAL_ALLOWED_ORIGINS: parsed.data.NETPLAY_SIGNAL_ALLOWED_ORIGINS
+    ? splitCsv(parsed.data.NETPLAY_SIGNAL_ALLOWED_ORIGINS)
+    : [],
 };

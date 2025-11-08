@@ -46,11 +46,18 @@ export interface SettingsUpdatePayload {
     };
   };
   email?: {
-    provider: "none" | "postmark";
-    postmark?: {
-      serverToken: string;
+    provider: "none" | "smtp";
+    smtp?: {
+      host: string;
+      port: number;
+      secure: "none" | "starttls" | "implicit";
       fromEmail: string;
-      messageStream?: string;
+      fromName?: string;
+      allowInvalidCerts?: boolean;
+      auth?: {
+        username: string;
+        password?: string;
+      };
     };
   };
   metrics?: {

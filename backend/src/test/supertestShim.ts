@@ -235,6 +235,17 @@ export default function request(app: FastifyInstance) {
         files: []
       });
     },
+    delete<T = unknown>(url: string): RequestChain<T> {
+      return createChain<T>(app, "DELETE", url, {
+        headers: {},
+        payload: undefined,
+        fields: [],
+        files: []
+      });
+    },
+    del<T = unknown>(url: string): RequestChain<T> {
+      return this.delete<T>(url);
+    },
     patch<T = unknown>(url: string): RequestChain<T> {
       return createChain<T>(app, "PATCH", url, {
         headers: {},

@@ -8,7 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       supertest: resolve(__dirname, "src/test/supertestShim.ts"),
-      postmark: resolve(__dirname, "src/test/postmarkStub.ts")
+      nodemailer: resolve(__dirname, "src/test/nodemailerStub.ts")
     }
   },
   test: {

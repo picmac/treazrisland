@@ -21,7 +21,7 @@ Keep the following API references handy when debugging login issues or player da
 3. Update the following secrets in your secret manager and inject them at runtime:
    - `JWT_SECRET`
    - `STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY`
-  - Postmark transactional email secrets (`POSTMARK_SERVER_TOKEN`, `POSTMARK_FROM_EMAIL`, optional `POSTMARK_MESSAGE_STREAM`)
+  - SMTP transactional email configuration (`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_FROM_EMAIL`, optional `SMTP_USERNAME`/`SMTP_PASSWORD`, `SMTP_FROM_NAME`, `SMTP_ALLOW_INVALID_CERTS`)
   - MFA issuer & recovery policy (`MFA_ISSUER`, `MFA_RECOVERY_CODE_COUNT`, `MFA_RECOVERY_CODE_LENGTH`)
   - `SCREENSCRAPER_*` credentials (encrypted dev keys plus runtime secret)
   - `METRICS_TOKEN`
@@ -73,21 +73,18 @@ Keep the following API references handy when debugging login issues or player da
 - Capture new screenshots for onboarding, login, library, and admin flows (see `docs/qa/`).
 - Verify CI pipeline is green and all migrations have been applied to staging before production promotion.
 
-## 6. Email Delivery (Postmark)
+## 6. Email Delivery (SMTP)
 
 - **Provisioning:**
-  - Create a dedicated [Postmark Server](https://account.postmarkapp.com/servers) for TREAZRISLAND with an "outbound" message stream.
-  - Generate a Server API token and record the From address authorized for the stream.
-  - Store the token, from address, and (if customized) the stream name in the platform secret manager under `POSTMARK_SERVER_TOKEN`, `POSTMARK_FROM_EMAIL`, and `POSTMARK_MESSAGE_STREAM`.
+  - Choose an SMTP relay that fits your deployment (self-hosted Postfix, Gmail/Google Workspace, Office365, etc.). Confirm which ports and TLS modes it supports and whether authentication is required.
+  - Register the From address you plan to use for password resets and invitations. Many providers require SPF/DKIM alignment before accepting mail from a new domain.
+  - Store connection details and credentials in the secret manager under the keys defined in `.env.example` (`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_FROM_EMAIL`, optional `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_NAME`, `SMTP_ALLOW_INVALID_CERTS`).
 - **Configuration:**
-  - Set `EMAIL_PROVIDER=postmark` in the backend environment.
-  - Validate mail delivery by triggering a password reset in staging. Check Postmark activity for a 200 response and matching metadata.
+  - Set `EMAIL_PROVIDER=smtp` in the backend environment and provide the matching `SMTP_*` values. Use `SMTP_SECURE=starttls` for opportunistic TLS, `implicit` for SMTPS, or `none` for plaintext/local relays.
+  - Validate mail delivery by triggering a password reset in staging. Monitor the SMTP server logs or web console to confirm the message was accepted and delivered.
 - **Rotation:**
-  - Postmark supports creating additional Server tokens without downtime. Every 90 days:
-    1. Create a new Server token in the Postmark UI and stage it in the secret manager as `POSTMARK_SERVER_TOKEN_NEXT`.
-    2. Update the backend deployment to read the new token (swap `POSTMARK_SERVER_TOKEN` to the staged value).
-    3. Trigger a password reset to confirm delivery, then revoke the previous token in Postmark.
-  - Update the `POSTMARK_FROM_EMAIL` sender signature only after verifying the new domain. Deploy the change and perform a live test before decommissioning the old sender.
+  - Rotate SMTP credentials on the cadence required by your provider. Update the secret manager first, redeploy the backend, and send a live password-reset smoke test to confirm the new credentials work end to end.
+  - When changing the From address or domain, update SPF/DKIM records before redeploying and re-run the password-reset test.
 
 ## 7. Account security & MFA onboarding
 

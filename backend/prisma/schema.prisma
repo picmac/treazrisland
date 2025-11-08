@@ -95,6 +95,23 @@ enum CreativeAssetAuditStatus {
   FAILED
 }
 
+enum NetplaySessionStatus {
+  OPEN
+  ACTIVE
+  CLOSED
+}
+
+enum NetplayParticipantRole {
+  HOST
+  PLAYER
+}
+
+enum NetplayParticipantStatus {
+  INVITED
+  CONNECTED
+  DISCONNECTED
+}
+
 model User {
   id             String               @id @default(cuid())
   email          String               @unique
@@ -127,6 +144,8 @@ model User {
   creativeAssetsUpdated CreativeAsset[] @relation("CreativeAssetUpdatedBy")
   creativeAssetUsages  CreativeAssetUsage[] @relation("CreativeAssetUsageCreatedBy")
   creativeAssetAudits  CreativeAssetAudit[] @relation("CreativeAssetAuditPerformedBy")
+  hostedNetplaySessions NetplaySession[] @relation("NetplayHost")
+  netplayParticipants NetplayParticipant[]
 }
 
 model UserInvitation {
@@ -258,6 +277,7 @@ model Rom {
   favorites       UserRomFavorite[]
   collectionItems RomCollectionItem[]
   topListEntries  RomTopListEntry[]
+  netplaySessions NetplaySession[]
 
   @@index([platformId])
   @@index([screenscraperId])
@@ -465,6 +485,7 @@ model PlayState {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   playbackAudits RomPlaybackAudit[]
+  netplaySeedSessions NetplaySession[] @relation("NetplaySeedState")
 
   @@index([userId])
   @@index([romId])
@@ -494,6 +515,48 @@ model RomPlaybackAudit {
   @@index([romAssetId])
   @@index([playStateId])
   @@index([createdAt])
+}
+
+model NetplaySession {
+  id             String                @id @default(cuid())
+  romId          String
+  hostId         String
+  saveStateId    String?
+  status         NetplaySessionStatus  @default(OPEN)
+  expiresAt      DateTime
+  lastActivityAt DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  rom       Rom       @relation(fields: [romId], references: [id], onDelete: Cascade)
+  host      User      @relation("NetplayHost", fields: [hostId], references: [id], onDelete: Cascade)
+  saveState PlayState? @relation("NetplaySeedState", fields: [saveStateId], references: [id], onDelete: SetNull)
+  participants NetplayParticipant[]
+
+  @@index([hostId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model NetplayParticipant {
+  id               String                    @id @default(cuid())
+  sessionId        String
+  userId           String
+  role             NetplayParticipantRole    @default(PLAYER)
+  status           NetplayParticipantStatus  @default(INVITED)
+  peerTokenHash    String?
+  lastHeartbeatAt  DateTime?
+  connectedAt      DateTime?
+  disconnectedAt   DateTime?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+
+  session NetplaySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([userId])
+  @@index([status])
 }
 
 model UserRomFavorite {

@@ -46,12 +46,21 @@ export const storageSchema = z
   );
 
 export const emailSchema = z.object({
-  provider: z.enum(["none", "postmark"]),
-  postmark: z
+  provider: z.enum(["none", "smtp"]),
+  smtp: z
     .object({
-      serverToken: z.string().min(1),
+      host: z.string().min(1),
+      port: z.number().int().positive(),
+      secure: z.enum(["none", "starttls", "implicit"]),
       fromEmail: z.string().email(),
-      messageStream: z.string().min(1).optional(),
+      fromName: z.string().min(1).optional(),
+      allowInvalidCerts: z.boolean().default(false),
+      auth: z
+        .object({
+          username: z.string().min(1),
+          password: z.string().min(1),
+        })
+        .optional(),
     })
     .optional(),
 });
@@ -125,13 +134,23 @@ const defaultSettings = (): ResolvedSystemSettings => ({
         : undefined,
   },
   email:
-    env.EMAIL_PROVIDER === "postmark"
+    env.EMAIL_PROVIDER === "smtp"
       ? {
-          provider: "postmark",
-          postmark: {
-            serverToken: env.POSTMARK_SERVER_TOKEN!,
-            fromEmail: env.POSTMARK_FROM_EMAIL!,
-            messageStream: env.POSTMARK_MESSAGE_STREAM ?? undefined,
+          provider: "smtp",
+          smtp: {
+            host: env.SMTP_HOST!,
+            port: env.SMTP_PORT,
+            secure: env.SMTP_SECURE,
+            fromEmail: env.SMTP_FROM_EMAIL!,
+            fromName: env.SMTP_FROM_NAME,
+            allowInvalidCerts: env.SMTP_ALLOW_INVALID_CERTS,
+            auth:
+              env.SMTP_USERNAME && env.SMTP_PASSWORD
+                ? {
+                    username: env.SMTP_USERNAME,
+                    password: env.SMTP_PASSWORD,
+                  }
+                : undefined,
           },
         }
       : { provider: "none" },

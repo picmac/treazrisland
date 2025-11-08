@@ -43,7 +43,7 @@ Review the [Product Requirements Document](./TREAZRISLAND_PRD.md) and the [Threa
 | Area | Keys | Notes |
 | ---- | ---- | ----- |
 | JWT & sessions | `JWT_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL` | Use a 32+ character secret in production. TTL values accept [zeit/ms](https://github.com/vercel/ms) format (`15m`, `30d`). |
-| Email (Postmark) | `POSTMARK_SERVER_TOKEN`, `POSTMARK_FROM_EMAIL`, `POSTMARK_MESSAGE_STREAM` | Mandatory when `EMAIL_PROVIDER=postmark`. Disable email features by leaving the provider unset only in development. |
+| Email (SMTP) | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_FROM_EMAIL`, optional `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_NAME`, `SMTP_ALLOW_INVALID_CERTS` | Mandatory when `EMAIL_PROVIDER=smtp`. Disable email features by leaving the provider as `none` only in development. |
 | Storage | `STORAGE_DRIVER`, `STORAGE_*` | Set `STORAGE_DRIVER=filesystem` for a simple local path (`STORAGE_LOCAL_ROOT`). For MinIO/S3, fill `ENDPOINT`, `REGION`, `ACCESS_KEY`, `SECRET_KEY`, and bucket names. |
 | ScreenScraper | `SCREENSCRAPER_*` | Store plaintext credentials in a secret manager. Use `npm run screenscraper:encrypt` (in `backend/`) to produce the encrypted developer ID/password and commit only the encrypted values. |
 | Observability | `LOG_LEVEL`, `METRICS_ENABLED`, `METRICS_TOKEN` | Enable metrics and set a token when scraping `/metrics` from Prometheus. |
