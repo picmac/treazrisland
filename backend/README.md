@@ -20,7 +20,7 @@ Fastify + Prisma service powering authentication, library management, emulator s
 
    - **Database**: `DATABASE_URL` must point at your PostgreSQL instance. The compose file uses `postgresql://treazrisland:treazrisland@localhost:5432/treazrisland?schema=public`.
    - **JWT + security**: set a unique `JWT_SECRET` for every deployment, tune the rate-limit values, and review password policy variables.
-   - **Email**: supply Postmark credentials (`POSTMARK_SERVER_TOKEN`, `POSTMARK_FROM_EMAIL`) if you expect password reset or invite emails to work. Leave them blank only in development.
+   - **Email**: supply SMTP credentials (`SMTP_HOST`, `SMTP_PORT`, optional `SMTP_USERNAME`/`SMTP_PASSWORD`) and a sender identity (`SMTP_FROM_EMAIL`, optional `SMTP_FROM_NAME`) if you expect password reset or invite emails to work. Leave the provider as `none` only in development.
    - **Storage**: choose between `STORAGE_DRIVER=filesystem` (requires `STORAGE_LOCAL_ROOT`) or `STORAGE_DRIVER=s3` (requires the MinIO/S3 settings from `.env.example`).
    - **ScreenScraper**: either populate `SCREENSCRAPER_USERNAME`/`SCREENSCRAPER_PASSWORD` directly for local experiments or use encrypted developer credentials (`npm run screenscraper:encrypt`).
 

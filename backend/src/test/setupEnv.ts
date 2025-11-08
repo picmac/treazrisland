@@ -5,10 +5,11 @@ process.env.STORAGE_BUCKET_ASSETS = process.env.STORAGE_BUCKET_ASSETS ?? "assets
 process.env.STORAGE_BUCKET_ROMS = process.env.STORAGE_BUCKET_ROMS ?? "roms";
 process.env.STORAGE_DRIVER = process.env.STORAGE_DRIVER ?? "filesystem";
 process.env.STORAGE_LOCAL_ROOT = process.env.STORAGE_LOCAL_ROOT ?? "/tmp/treazrisland";
-process.env.EMAIL_PROVIDER = process.env.EMAIL_PROVIDER ?? "postmark";
-process.env.POSTMARK_SERVER_TOKEN =
-  process.env.POSTMARK_SERVER_TOKEN ?? "test-postmark-token";
-process.env.POSTMARK_FROM_EMAIL =
-  process.env.POSTMARK_FROM_EMAIL ?? "no-reply@example.com";
-process.env.POSTMARK_MESSAGE_STREAM =
-  process.env.POSTMARK_MESSAGE_STREAM ?? "outbound";
+process.env.EMAIL_PROVIDER = process.env.EMAIL_PROVIDER ?? "smtp";
+process.env.SMTP_HOST = process.env.SMTP_HOST ?? "localhost";
+process.env.SMTP_PORT = process.env.SMTP_PORT ?? "1025";
+process.env.SMTP_SECURE = process.env.SMTP_SECURE ?? "none";
+process.env.SMTP_FROM_EMAIL =
+  process.env.SMTP_FROM_EMAIL ?? "no-reply@example.com";
+process.env.SMTP_FROM_NAME =
+  process.env.SMTP_FROM_NAME ?? "TREAZRISLAND";

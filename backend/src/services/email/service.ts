@@ -1,5 +1,6 @@
 import type { FastifyBaseLogger } from "fastify";
-import { ServerClient } from "postmark";
+import nodemailer, { type Transporter } from "nodemailer";
+import type SMTPTransport from "nodemailer/lib/smtp-transport";
 import type { EmailSettings } from "../../plugins/settings.js";
 import { env } from "../../config/env.js";
 
@@ -24,7 +25,14 @@ export class EmailDeliveryError extends Error {
   }
 }
 
-const RETRYABLE_STATUS_CODES = new Set([408, 409, 429, 500, 502, 503, 504]);
+const RETRYABLE_SMTP_CODES = new Set([421, 450, 451, 452, 454]);
+const RETRYABLE_NETWORK_CODES = new Set([
+  "ETIMEDOUT",
+  "ESOCKET",
+  "ECONNRESET",
+  "EAI_AGAIN",
+  "ETIME",
+]);
 const MAX_ATTEMPTS = 3;
 
 const sleep = (durationMs: number): Promise<void> =>
@@ -36,12 +44,16 @@ const errorForLog = (error: unknown) => {
       .statusCode ?? (error as { StatusCode?: number }).StatusCode;
     const code = (error as { code?: number | string; Code?: number | string })
       .code ?? (error as { Code?: number | string }).Code;
+    const responseCode = (error as { responseCode?: number }).responseCode;
+    const command = (error as { command?: string }).command;
 
     return {
       name: error.name,
       message: error.message,
       statusCode,
-      code
+      code,
+      responseCode,
+      command,
     };
   }
 
@@ -56,15 +68,28 @@ const isRetryableError = (error: unknown): boolean => {
   const statusCode = (error as { statusCode?: number; StatusCode?: number })
     .statusCode ?? (error as { StatusCode?: number }).StatusCode;
 
-  if (typeof statusCode === "number") {
-    return RETRYABLE_STATUS_CODES.has(statusCode);
+  if (typeof statusCode === "number" && statusCode >= 500) {
+    return true;
   }
 
-  const isTimeout =
-    (error as { code?: string }).code === "ETIMEDOUT" ||
-    (error as { name?: string }).name === "TimeoutError";
+  const responseCode = (error as { responseCode?: number }).responseCode;
+  if (typeof responseCode === "number") {
+    if (responseCode >= 500) {
+      return true;
+    }
 
-  return isTimeout;
+    if (RETRYABLE_SMTP_CODES.has(responseCode)) {
+      return true;
+    }
+  }
+
+  const code = (error as { code?: string }).code;
+  if (typeof code === "string" && RETRYABLE_NETWORK_CODES.has(code)) {
+    return true;
+  }
+
+  const name = (error as { name?: string }).name;
+  return name === "TimeoutError";
 };
 
 const passwordResetSubject = "Reset your TREAZRISLAND password";
@@ -97,12 +122,11 @@ const buildPasswordResetBodies = (payload: PasswordResetPayload) => {
   return { htmlBody, textBody };
 };
 
-class PostmarkEmailService implements EmailService {
+class SmtpEmailService implements EmailService {
   constructor(
-    private readonly client: ServerClient,
+    private readonly transporter: Transporter<SMTPTransport.SentMessageInfo>,
     private readonly logger: FastifyBaseLogger,
-    private readonly fromEmail: string,
-    private readonly messageStream?: string
+    private readonly from: { address: string; name?: string },
   ) {}
 
   async sendPasswordReset(payload: PasswordResetPayload): Promise<void> {
@@ -110,23 +134,22 @@ class PostmarkEmailService implements EmailService {
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
       try {
-        await this.client.sendEmail({
-          From: this.fromEmail,
-          To: payload.to,
-          Subject: passwordResetSubject,
-          HtmlBody: htmlBody,
-          TextBody: textBody,
-          MessageStream: this.messageStream
+        await this.transporter.sendMail({
+          from: this.from,
+          to: payload.to,
+          subject: passwordResetSubject,
+          html: htmlBody,
+          text: textBody,
         });
 
         this.logger.info(
           {
             event: "email.password_reset.sent",
-            provider: "postmark",
+            provider: "smtp",
             to: payload.to,
-            attempt
+            attempt,
           },
-          "Password reset email sent"
+          "Password reset email sent",
         );
 
         return;
@@ -136,18 +159,18 @@ class PostmarkEmailService implements EmailService {
         this.logger.error(
           {
             event: "email.password_reset.failed",
-            provider: "postmark",
+            provider: "smtp",
             to: payload.to,
             attempt,
             retryable: shouldRetry,
-            error: errorForLog(error)
+            error: errorForLog(error),
           },
-          "Failed to send password reset email"
+          "Failed to send password reset email",
         );
 
         if (!shouldRetry) {
           throw new EmailDeliveryError("Unable to send password reset email", {
-            cause: error
+            cause: error,
           });
         }
 
@@ -164,13 +187,23 @@ const resolveEmailSettings = (settings?: EmailSettings): EmailSettings => {
     return settings;
   }
 
-  if (env.EMAIL_PROVIDER === "postmark") {
+  if (env.EMAIL_PROVIDER === "smtp") {
     return {
-      provider: "postmark",
-      postmark: {
-        serverToken: env.POSTMARK_SERVER_TOKEN!,
-        fromEmail: env.POSTMARK_FROM_EMAIL!,
-        messageStream: env.POSTMARK_MESSAGE_STREAM ?? undefined,
+      provider: "smtp",
+      smtp: {
+        host: env.SMTP_HOST!,
+        port: env.SMTP_PORT,
+        secure: env.SMTP_SECURE,
+        fromEmail: env.SMTP_FROM_EMAIL!,
+        fromName: env.SMTP_FROM_NAME ?? undefined,
+        allowInvalidCerts: env.SMTP_ALLOW_INVALID_CERTS,
+        auth:
+          env.SMTP_USERNAME && env.SMTP_PASSWORD
+            ? {
+                username: env.SMTP_USERNAME,
+                password: env.SMTP_PASSWORD,
+              }
+            : undefined,
       },
     };
   }
@@ -184,10 +217,7 @@ export const createEmailService = (
 ): EmailService => {
   const effectiveSettings = resolveEmailSettings(settings);
 
-  if (
-    effectiveSettings.provider !== "postmark" ||
-    !effectiveSettings.postmark
-  ) {
+  if (effectiveSettings.provider !== "smtp" || !effectiveSettings.smtp) {
     return {
       async sendPasswordReset() {
         throw new EmailDeliveryError(
@@ -197,13 +227,36 @@ export const createEmailService = (
     };
   }
 
-  const client = new ServerClient(effectiveSettings.postmark.serverToken);
-  const serviceLogger = logger.child({ service: "email", provider: "postmark" });
+  const { smtp } = effectiveSettings;
+  const transportOptions: SMTPTransport.Options = {
+    host: smtp.host,
+    port: smtp.port,
+    secure: smtp.secure === "implicit",
+    tls: { rejectUnauthorized: !smtp.allowInvalidCerts },
+  };
 
-  return new PostmarkEmailService(
-    client,
-    serviceLogger,
-    effectiveSettings.postmark.fromEmail,
-    effectiveSettings.postmark.messageStream,
-  );
+  if (smtp.secure === "starttls") {
+    transportOptions.secure = false;
+    transportOptions.requireTLS = true;
+  }
+
+  if (smtp.secure === "none") {
+    transportOptions.secure = false;
+    transportOptions.requireTLS = false;
+  }
+
+  if (smtp.auth) {
+    transportOptions.auth = {
+      user: smtp.auth.username,
+      pass: smtp.auth.password,
+    };
+  }
+
+  const transporter = nodemailer.createTransport(transportOptions);
+  const serviceLogger = logger.child({ service: "email", provider: "smtp" });
+
+  return new SmtpEmailService(transporter, serviceLogger, {
+    address: smtp.fromEmail,
+    name: smtp.fromName ?? undefined,
+  });
 };

@@ -112,7 +112,7 @@ The GitHub workflow passes `TREAZ_ENV_FILE` and `TREAZ_COMPOSE_PROJECT_NAME` to 
 
 - The referenced env file exists and is readable by the runner service.
 - Sensitive environment editing happens with shell history disabled (`HISTCONTROL=ignorespace` or editing via `nano`/`vim`).
-- Additional secrets referenced by the env file (ScreenScraper keys, Postmark tokens, OAuth secrets) are set and rotate per security policy.
+- Additional secrets referenced by the env file (ScreenScraper keys, SMTP credentials, OAuth secrets) are set and rotate per security policy.
 
 ## 7. Understand the GitHub Actions workflow
 
@@ -204,7 +204,7 @@ Email notifications can be configured under **Settings → Notifications** in th
 
 ## 11. Security hygiene
 
-- Rotate JWT, Postmark, MinIO, ScreenScraper, and Grafana credentials regularly.
+- Rotate JWT, SMTP, MinIO, ScreenScraper, and Grafana credentials regularly.
 - Keep Ubuntu patched (`sudo unattended-upgrade` or monthly `sudo apt upgrade`).
 - Restrict exposed ports via a firewall or reverse proxy (typically only 80/443 externally; 3000/3001/3002/9000/9001/9090/9093 remain internal).
 - Back up Docker volumes (`postgres-data`, `minio-data`) and monitoring configs using scheduled `pg_dump`, MinIO `mc mirror`, or volume snapshots.

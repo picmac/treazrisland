@@ -79,11 +79,18 @@ interface ResolvedSystemSettings {
     };
   };
   email: {
-    provider: "none" | "postmark";
-    postmark?: {
-      serverToken: string;
+    provider: "none" | "smtp";
+    smtp?: {
+      host: string;
+      port: number;
+      secure: "none" | "starttls" | "implicit";
       fromEmail: string;
-      messageStream?: string;
+      fromName?: string;
+      allowInvalidCerts?: boolean;
+      auth?: {
+        username: string;
+        password?: string;
+      };
     };
   };
   metrics: {
@@ -182,9 +189,9 @@ export function SetupWizard({ initialStatus }: SetupWizardProps) {
           ? {
               ...previous.email,
               ...update.email,
-              postmark: update.email.postmark
-                ? { ...previous.email.postmark, ...update.email.postmark }
-                : previous.email.postmark,
+              smtp: update.email.smtp
+                ? { ...previous.email.smtp, ...update.email.smtp }
+                : previous.email.smtp,
             }
           : previous.email,
         screenscraper: update.screenscraper
@@ -362,7 +369,7 @@ function renderStepDescription(step: OnboardingStepKey): string {
     case "system-profile":
       return "Name your instance, set the timezone, and choose where ROMs live.";
     case "integrations":
-      return "Configure optional services like Postmark email and ScreenScraper.";
+      return "Configure optional services like SMTP email and ScreenScraper.";
     case "personalization":
       return "Pick a theme to greet future keepers of the vault.";
     default:
@@ -638,17 +645,28 @@ interface IntegrationsStepProps {
 }
 
 function IntegrationsStep({ settings, submitting, onSubmit, onSkip }: IntegrationsStepProps) {
-  const [postmarkEnabled, setPostmarkEnabled] = useState(
-    settings.email.provider === "postmark",
+  const [smtpEnabled, setSmtpEnabled] = useState(
+    settings.email.provider === "smtp",
   );
-  const [serverToken, setServerToken] = useState(
-    settings.email.postmark?.serverToken ?? "",
+  const [smtpHost, setSmtpHost] = useState(settings.email.smtp?.host ?? "");
+  const [smtpPort, setSmtpPort] = useState(
+    settings.email.smtp?.port ? String(settings.email.smtp?.port) : "587",
   );
-  const [fromEmail, setFromEmail] = useState(
-    settings.email.postmark?.fromEmail ?? "",
+  const [smtpSecure, setSmtpSecure] = useState<"none" | "starttls" | "implicit">(
+    settings.email.smtp?.secure ?? "starttls",
   );
-  const [messageStream, setMessageStream] = useState(
-    settings.email.postmark?.messageStream ?? "",
+  const [smtpUsername, setSmtpUsername] = useState(
+    settings.email.smtp?.auth?.username ?? "",
+  );
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [smtpFromEmail, setSmtpFromEmail] = useState(
+    settings.email.smtp?.fromEmail ?? "",
+  );
+  const [smtpFromName, setSmtpFromName] = useState(
+    settings.email.smtp?.fromName ?? "",
+  );
+  const [allowInvalidCerts, setAllowInvalidCerts] = useState(
+    settings.email.smtp?.allowInvalidCerts ?? false,
   );
   const [screenScraperUser, setScreenScraperUser] = useState(
     settings.screenscraper.username ?? "",
@@ -663,13 +681,23 @@ function IntegrationsStep({ settings, submitting, onSubmit, onSkip }: Integratio
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const update: SettingsUpdatePayload = {};
-    update.email = postmarkEnabled
+    update.email = smtpEnabled
       ? {
-          provider: "postmark",
-          postmark: {
-            serverToken: serverToken.trim(),
-            fromEmail: fromEmail.trim(),
-            messageStream: messageStream.trim() || undefined,
+          provider: "smtp",
+          smtp: {
+            host: smtpHost.trim(),
+            port: Number.parseInt(smtpPort, 10) || 587,
+            secure: smtpSecure,
+            fromEmail: smtpFromEmail.trim(),
+            fromName: smtpFromName.trim() || undefined,
+            allowInvalidCerts,
+            auth:
+              smtpUsername.trim() && smtpPassword.trim()
+                ? {
+                    username: smtpUsername.trim(),
+                    password: smtpPassword,
+                  }
+                : undefined,
           },
         }
       : { provider: "none" };
@@ -698,22 +726,72 @@ function IntegrationsStep({ settings, submitting, onSubmit, onSkip }: Integratio
         <label className="flex items-center space-x-2 text-sm text-slate-200">
           <input
             type="checkbox"
-            checked={postmarkEnabled}
-            onChange={(event) => setPostmarkEnabled(event.target.checked)}
+            checked={smtpEnabled}
+            onChange={(event) => setSmtpEnabled(event.target.checked)}
           />
-          <span>Enable Postmark for password resets</span>
+          <span>Enable SMTP for password resets</span>
         </label>
-        {postmarkEnabled && (
+        {smtpEnabled && (
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="space-y-1 text-sm text-slate-200">
               <span className="block text-xs uppercase tracking-widest text-slate-300">
-                Server token
+                SMTP host
               </span>
               <input
                 className="w-full rounded border border-primary/40 bg-background px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
-                value={serverToken}
-                onChange={(event) => setServerToken(event.target.value)}
+                value={smtpHost}
+                onChange={(event) => setSmtpHost(event.target.value)}
                 required
+              />
+            </label>
+            <label className="space-y-1 text-sm text-slate-200">
+              <span className="block text-xs uppercase tracking-widest text-slate-300">
+                Port
+              </span>
+              <input
+                type="number"
+                min={1}
+                className="w-full rounded border border-primary/40 bg-background px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                value={smtpPort}
+                onChange={(event) => setSmtpPort(event.target.value)}
+                required
+              />
+            </label>
+            <label className="space-y-1 text-sm text-slate-200 sm:col-span-2">
+              <span className="block text-xs uppercase tracking-widest text-slate-300">
+                TLS mode
+              </span>
+              <select
+                className="w-full rounded border border-primary/40 bg-background px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                value={smtpSecure}
+                onChange={(event) =>
+                  setSmtpSecure(event.target.value as typeof smtpSecure)
+                }
+              >
+                <option value="starttls">STARTTLS (recommended)</option>
+                <option value="implicit">Implicit TLS (SMTPS)</option>
+                <option value="none">None</option>
+              </select>
+            </label>
+            <label className="space-y-1 text-sm text-slate-200">
+              <span className="block text-xs uppercase tracking-widest text-slate-300">
+                Username (optional)
+              </span>
+              <input
+                className="w-full rounded border border-primary/40 bg-background px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                value={smtpUsername}
+                onChange={(event) => setSmtpUsername(event.target.value)}
+              />
+            </label>
+            <label className="space-y-1 text-sm text-slate-200">
+              <span className="block text-xs uppercase tracking-widest text-slate-300">
+                Password (optional)
+              </span>
+              <input
+                type="password"
+                className="w-full rounded border border-primary/40 bg-background px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                value={smtpPassword}
+                onChange={(event) => setSmtpPassword(event.target.value)}
               />
             </label>
             <label className="space-y-1 text-sm text-slate-200">
@@ -723,20 +801,28 @@ function IntegrationsStep({ settings, submitting, onSubmit, onSkip }: Integratio
               <input
                 type="email"
                 className="w-full rounded border border-primary/40 bg-background px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
-                value={fromEmail}
-                onChange={(event) => setFromEmail(event.target.value)}
+                value={smtpFromEmail}
+                onChange={(event) => setSmtpFromEmail(event.target.value)}
                 required
               />
             </label>
             <label className="space-y-1 text-sm text-slate-200 sm:col-span-2">
               <span className="block text-xs uppercase tracking-widest text-slate-300">
-                Message stream (optional)
+                From name (optional)
               </span>
               <input
                 className="w-full rounded border border-primary/40 bg-background px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
-                value={messageStream}
-                onChange={(event) => setMessageStream(event.target.value)}
+                value={smtpFromName}
+                onChange={(event) => setSmtpFromName(event.target.value)}
               />
+            </label>
+            <label className="flex items-center space-x-2 text-sm text-slate-200 sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={allowInvalidCerts}
+                onChange={(event) => setAllowInvalidCerts(event.target.checked)}
+              />
+              <span>Allow self-signed certificates</span>
             </label>
           </div>
         )}

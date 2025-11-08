@@ -21,6 +21,7 @@ import { registerCollectionRoutes } from "./routes/collections.js";
 import { registerTopListRoutes } from "./routes/topLists.js";
 import { registerStatsRoutes } from "./routes/stats.js";
 import { registerUserRoutes } from "./routes/users.js";
+import { registerNetplayRoutes } from "./routes/netplay.js";
 import supportServices from "./plugins/support-services.js";
 import observabilityPlugin from "./plugins/observability.js";
 import settingsPlugin from "./plugins/settings.js";
@@ -172,6 +173,7 @@ export const buildServer = (
       await registerCollectionRoutes(instance);
       await registerTopListRoutes(instance);
       await registerStatsRoutes(instance);
+      await registerNetplayRoutes(instance);
     }
   });
 

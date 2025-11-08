@@ -18,10 +18,15 @@ const REQUIRED_ENV: Record<string, string> = {
   MFA_ISSUER: "TREAZRISLAND",
   MFA_RECOVERY_CODE_COUNT: "4",
   MFA_RECOVERY_CODE_LENGTH: "8",
-  EMAIL_PROVIDER: "postmark",
-  POSTMARK_SERVER_TOKEN: "postmark-token",
-  POSTMARK_FROM_EMAIL: "observability@example.com",
-  POSTMARK_MESSAGE_STREAM: "outbound",
+  EMAIL_PROVIDER: "smtp",
+  SMTP_HOST: "smtp.example.com",
+  SMTP_PORT: "587",
+  SMTP_SECURE: "starttls",
+  SMTP_USERNAME: "mailer",
+  SMTP_PASSWORD: "secret",
+  SMTP_FROM_EMAIL: "observability@example.com",
+  SMTP_FROM_NAME: "Observability Bot",
+  SMTP_ALLOW_INVALID_CERTS: "false",
 };
 
 function seedRequiredEnv(overrides: Record<string, string> = {}) {
