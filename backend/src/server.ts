@@ -24,6 +24,8 @@ import { registerUserRoutes } from "./routes/users.js";
 import supportServices from "./plugins/support-services.js";
 import observabilityPlugin from "./plugins/observability.js";
 import settingsPlugin from "./plugins/settings.js";
+import loggingPlugin from "./plugins/logging.js";
+import healthPlugin from "./plugins/health.js";
 import {
   fetchSetupState,
   ONBOARDING_STEP_KEYS,
@@ -71,7 +73,39 @@ export const buildServer = (
   });
 
   app.register(sensible);
-  app.register(underPressure);
+  app.register(loggingPlugin);
+  app.register(healthPlugin);
+  app.register(underPressure, {
+    healthCheck: async () => {
+      if (!app.hasDecorator("health")) {
+        return true;
+      }
+
+      const report = await app.health.ready();
+      return report.status !== "fail";
+    },
+    healthCheckInterval: 10_000,
+    pressureHandler: async (request, reply, type) => {
+      if (request.raw.url?.startsWith("/health")) {
+        if (app.hasDecorator("health")) {
+          const report = await app.health.ready();
+          return reply.code(report.status === "fail" ? 503 : 200).send(report);
+        }
+
+        return reply.code(503).send({ status: "fail", reason: type });
+      }
+
+      return reply
+        .code(503)
+        .send({ status: "fail", reason: type ?? "unknown" });
+    },
+    exposeStatusRoute: {
+      url: "/health/system",
+      routeOpts: {
+        logLevel: "warn",
+      },
+    },
+  });
   app.register(rateLimit, {
     global: false,
     max: env.RATE_LIMIT_DEFAULT_POINTS,
@@ -85,6 +119,11 @@ export const buildServer = (
         "unknown";
       const role = (request.user?.role ?? "anonymous").toLowerCase();
       request.server.metrics.rateLimit.inc({ route, role });
+      const logger = request.requestLogger ?? request.log;
+      logger.warn(
+        { event: "rate_limit.exceeded", route, role, ip: request.ip },
+        "rate limit exceeded",
+      );
     },
   });
 
@@ -135,8 +174,6 @@ export const buildServer = (
       await registerStatsRoutes(instance);
     }
   });
-
-  app.get("/health", async () => ({ status: "ok" }));
 
   app.get("/health/setup", async () => {
     const secrets = {

@@ -4,6 +4,11 @@ TREAZRISLAND emits structured JSON logs via Pino and exposes a comprehensive Pro
 
 ## Structured Logging
 
+- Fastify emits request-scoped logs for every HTTP call. Each request receives a correlation identifier derived from the incoming `X-Request-Id` header (or generated when absent) that is echoed back on the response and propagated to all downstream logs. Two baseline events accompany every interaction:
+  - `request.received`: recorded when Fastify begins processing the request. Includes the correlation ID, method, raw URL, and remote IP.
+  - `request.completed`: emitted after the response is sent. Captures status code, resolved route, duration (milliseconds), and response size. Combine this with Loki queries such as `{service="backend"} | json | requestId="<uuid>"` to build end-to-end traces.
+- When the global rate limiter rejects a client, the server logs `event: "rate_limit.exceeded"` with the offending route, role, and IP while incrementing the `treaz_rate_limit_exceeded_total` metric surfaced on the Grafana dashboards.
+
 - `rom.upload` / `bios.upload`: emitted on every archive processed (status `success`, `duplicate`, or `failed`). Includes audit ID, checksum, and platform metadata.
 - `rom.enrichment.enqueued`: logged whenever an enrichment job is submitted to ScreenScraper.
 - `player.activity`: recorded for ROM downloads, asset fetches, and save-state uploads/downloads. Labels include `action`, `romId`, `assetId`, and `playStateId`.
@@ -42,9 +47,11 @@ Enable metrics by setting `METRICS_ENABLED=true`, providing a `METRICS_TOKEN`, a
 Compose automatically provisions Grafana using the JSON dashboards stored under `infra/monitoring/dashboards/` and the datasource definitions in `infra/monitoring/grafana/provisioning/`. Dashboards cover:
 
 - **Backend reliability:** request volume, latency percentiles, and 5xx ratio.
+- **Rate-limit telemetry:** the "Rate Limit Rejections (5m)" panel surfaces throttled routes broken down by role to spot abusive clients.
 - **Upload & enrichment operations:** upload throughput, duration percentiles, queue depth, and job timings.
 - **Playback & storage health:** playback interactions, audit failures, player errors, and event-loop lag.
 - **Infrastructure overview:** node load, backend RSS, container CPU, and Prisma latency.
+- **Log review:** the "Backend Request Logs" panel queries Loki for structured Fastify events with filters for `route`, `statusCode`, and `requestId` labels.
 
 To make these dashboards live:
 
@@ -54,7 +61,15 @@ To make these dashboards live:
 
 ## Health Checks
 
-- `GET /health`: basic readiness endpoint (returns `{ status: "ok" }`).
-- `GET /metrics`: Prometheus metrics (enabled only when `METRICS_ENABLED=true`).
+- `GET /health/live`: liveness probe that returns `{ status: "pass" }` with uptime and build version.
+- `GET /health/ready` (alias `/health`): readiness probe that checks Prisma connectivity and observability wiring. It aggregates component checks for the database and metrics subsystem, returning HTTP 503 only when a component reports `status: "fail"`. A degraded dependency returns `status: "warn"` in the payload while keeping the HTTP status at 200 so the service can remain in rotation during partial outages.
+- `GET /health/system`: `@fastify/under-pressure` system status (event loop lag, heap usage) for infrastructure probes. The pressure handler reuses the readiness report and only treats `status: "fail"` as unavailable.
+- `GET /metrics`: Prometheus metrics (enabled only when `METRICS_ENABLED=true`). When metrics are disabled by configuration the readiness payload includes `{ component: "metrics", details: { enabled: false, reason: "disabled" } }` while still reporting a passing status.
 
 Use dashboards to correlate upload failure spikes with enrichment job queues and playback errors for faster incident response.
+
+## Log aggregation pipeline
+
+- The Compose stacks ship `loki` and `promtail` services. Promtail tails Docker logs via the Unix socket, parses JSON emitted by Pino, and enriches entries with `service`, `event`, `route`, and `statusCode` labels before shipping to Loki.
+- Grafana auto-provisions a Loki datasource (`uid: treaz-loki`) and the backend reliability dashboard includes a `Backend Request Logs` panel filtered to `service="backend"`. Filter by `requestId` or `event="rate_limit.exceeded"` to investigate spikes.
+- Adjust the promtail stages via `infra/monitoring/promtail-config.yml` if additional containers or custom labels are required.
