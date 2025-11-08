@@ -3,8 +3,8 @@
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent, type ChangeEvent } from "react";
-import { signupWithInvitation } from "@/src/lib/api/invitations";
-import { ApiError } from "@/src/lib/api/client";
+import { redeemInvitationAction } from "@/app/(auth)/signup/actions";
+import { PixelButton, PixelInput, PixelNotice } from "@/src/components/pixel";
 import { useSession } from "@/src/auth/session-provider";
 
 interface SignupFormProps {
@@ -45,7 +45,7 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
 
     startTransition(async () => {
       try {
-        const payload = await signupWithInvitation({
+        const result = await redeemInvitationAction({
           token,
           email: invitationEmail ?? form.email,
           nickname: form.nickname,
@@ -53,17 +53,16 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
           displayName: form.displayName || form.nickname
         });
 
-        setSession(payload);
-        router.push(playRoute);
-        router.refresh();
-      } catch (err) {
-        if (err instanceof ApiError) {
-          setError(`${err.status}: ${err.message}`);
-        } else if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError("Unknown error while redeeming invitation");
+        if (result.success) {
+          setSession(result.payload);
+          router.push(playRoute);
+          router.refresh();
+          return;
         }
+
+        setError(result.error || "Unknown error while redeeming invitation");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unknown error while redeeming invitation");
       }
     });
   };
@@ -83,14 +82,13 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
           <label className="block text-xs uppercase tracking-widest text-slate-300" htmlFor="email">
             Email
           </label>
-          <input
+          <PixelInput
             id="email"
             name="email"
             type="email"
             required
             value={form.email}
             onChange={handleChange("email")}
-            className="w-full rounded border border-primary/40 bg-background px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
           />
         </div>
       )}
@@ -99,14 +97,13 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
         <label className="block text-xs uppercase tracking-widest text-slate-300" htmlFor="nickname">
           Nickname
         </label>
-        <input
+        <PixelInput
           id="nickname"
           name="nickname"
           required
           minLength={3}
           value={form.nickname}
           onChange={handleChange("nickname")}
-          className="w-full rounded border border-primary/40 bg-background px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
         />
       </div>
 
@@ -114,13 +111,12 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
         <label className="block text-xs uppercase tracking-widest text-slate-300" htmlFor="displayName">
           Display Name
         </label>
-        <input
+        <PixelInput
           id="displayName"
           name="displayName"
           placeholder="Optional"
           value={form.displayName}
           onChange={handleChange("displayName")}
-          className="w-full rounded border border-primary/40 bg-background px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
         />
         <p className="text-xs text-slate-400">Shown to other players. Defaults to your nickname if left empty.</p>
       </div>
@@ -129,7 +125,7 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
         <label className="block text-xs uppercase tracking-widest text-slate-300" htmlFor="password">
           Password
         </label>
-        <input
+        <PixelInput
           id="password"
           name="password"
           type="password"
@@ -137,20 +133,15 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
           minLength={8}
           value={form.password}
           onChange={handleChange("password")}
-          className="w-full rounded border border-primary/40 bg-background px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
         />
         <p className="text-xs text-slate-400">Password must include at least one uppercase letter and one digit.</p>
       </div>
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="w-full rounded bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-background hover:bg-primary-dark disabled:opacity-60"
-      >
+      <PixelButton type="submit" disabled={isPending} className="w-full">
         {isPending ? "Hoisting sails…" : `Join as ${role.toLowerCase()}`}
-      </button>
+      </PixelButton>
 
-      {error && <p className="text-xs text-red-300">{error}</p>}
+      {error && <PixelNotice tone="error">{error}</PixelNotice>}
     </form>
   );
 }
