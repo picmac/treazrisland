@@ -22,6 +22,22 @@ HEALTHCHECK_ORDER=(
 
 PROBE_FAILURES=()
 
+collect_probe_failure_logs() {
+  if (( ${#PROBE_FAILURES[@]} == 0 )); then
+    return
+  fi
+
+  log "Collecting logs for failing services"
+  local service
+  for service in "${PROBE_FAILURES[@]}"; do
+    log "Last 100 log lines for ${service}"
+    if ! docker compose -f "${COMPOSE_FILE}" logs --tail 100 "${service}" 2>&1 \
+      | sed "s/^/[${service}] /"; then
+      log "Failed to collect logs for ${service}"
+    fi
+  done
+}
+
 require_docker() {
   if ! command -v docker >/dev/null 2>&1; then
     log "Docker CLI not found. Install Docker or set TREAZ_USE_HOST_RUNTIME to run without containers (not yet implemented)."
@@ -383,10 +399,12 @@ bring_up_stack
 
 log "Verifying service health"
 if ! run_all_probes; then
+  collect_probe_failure_logs
   if [[ "$(to_lower "${RESET_ON_FAILURE}")" == "true" ]]; then
     reset_stack
     log "Re-running service health checks after reset"
     if ! run_all_probes; then
+      collect_probe_failure_logs
       log "Health checks failed after stack reset for: ${PROBE_FAILURES[*]}"
       log "Skipping migrations because required services are unhealthy"
       exit 1
