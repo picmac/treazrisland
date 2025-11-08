@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { apiFetch } from "./client";
 
 export type AssetSummary = {
@@ -246,4 +247,396 @@ export async function listRomAssets(
   const suffix = query.toString();
   const path = suffix.length > 0 ? `/roms/${encodeURIComponent(id)}/assets?${suffix}` : `/roms/${encodeURIComponent(id)}/assets`;
   return apiFetch(path);
+}
+
+type SwrSnapshot<T> = {
+  data: T | null;
+  error: Error | null;
+  isLoading: boolean;
+  isValidating: boolean;
+};
+
+type SwrSubscriber<T> = () => void;
+
+type SwrCacheEntry<T> = {
+  data?: T;
+  error?: Error;
+  promise?: Promise<T> | null;
+  subscribers: Set<SwrSubscriber<T>>;
+};
+
+function ensureCacheEntry<T>(map: Map<string, SwrCacheEntry<T>>, key: string): SwrCacheEntry<T> {
+  let entry = map.get(key);
+  if (!entry) {
+    entry = { subscribers: new Set() };
+    map.set(key, entry);
+  }
+  return entry;
+}
+
+function toSnapshot<T>(entry: SwrCacheEntry<T>): SwrSnapshot<T> {
+  const data = (entry.data ?? null) as T | null;
+  const error = (entry.error ?? null) as Error | null;
+  const isValidating = Boolean(entry.promise);
+  const isLoading = data === null && error === null;
+  return {
+    data,
+    error,
+    isLoading,
+    isValidating
+  };
+}
+
+function notifySubscribers<T>(entry: SwrCacheEntry<T>) {
+  for (const subscriber of entry.subscribers) {
+    subscriber();
+  }
+}
+
+async function revalidateEntry<T>(
+  entry: SwrCacheEntry<T>,
+  fetcher: () => Promise<T>
+): Promise<T> {
+  if (entry.promise) {
+    return entry.promise;
+  }
+
+  const promise = fetcher()
+    .then((result) => {
+      entry.data = result;
+      entry.error = undefined;
+      entry.promise = null;
+      notifySubscribers(entry);
+      return result;
+    })
+    .catch((error) => {
+      entry.error = error instanceof Error ? error : new Error(String(error));
+      entry.promise = null;
+      notifySubscribers(entry);
+      throw entry.error;
+    });
+
+  entry.promise = promise;
+  notifySubscribers(entry);
+
+  return promise;
+}
+
+function mutateEntry<T>(
+  entry: SwrCacheEntry<T>,
+  updater: (current: T | null) => T | null | undefined
+) {
+  const current = (entry.data ?? null) as T | null;
+  const next = updater(current);
+  if (next === null || next === undefined) {
+    entry.data = undefined;
+  } else {
+    entry.data = next;
+  }
+  entry.error = undefined;
+  entry.promise = null;
+  notifySubscribers(entry);
+}
+
+type UsePlatformLibraryParams = {
+  search?: string;
+  includeEmpty?: boolean;
+};
+
+type UsePlatformLibraryResult = SwrSnapshot<{ platforms: PlatformSummary[] }> & {
+  refresh: () => Promise<void>;
+  mutate: (updater: (current: { platforms: PlatformSummary[] } | null) => { platforms: PlatformSummary[] } | null | undefined) => void;
+  key: string;
+};
+
+const platformCache = new Map<string, SwrCacheEntry<{ platforms: PlatformSummary[] }>>();
+
+function normalisePlatformParams(params: UsePlatformLibraryParams = {}) {
+  const search = params.search?.trim() ?? "";
+  return {
+    search: search.length > 0 ? search : null,
+    includeEmpty: Boolean(params.includeEmpty)
+  };
+}
+
+function platformCacheKey(params: ReturnType<typeof normalisePlatformParams>): string {
+  return `platforms:${params.search ?? ""}:${params.includeEmpty ? "1" : "0"}`;
+}
+
+export function usePlatformLibrary(params: UsePlatformLibraryParams = {}): UsePlatformLibraryResult {
+  const normalised = normalisePlatformParams(params);
+  const key = platformCacheKey(normalised);
+  const requestSearch = normalised.search ?? undefined;
+  const requestIncludeEmpty = normalised.includeEmpty ? true : undefined;
+
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      const entry = ensureCacheEntry(platformCache, key);
+      entry.subscribers.add(onStoreChange);
+      return () => {
+        entry.subscribers.delete(onStoreChange);
+      };
+    },
+    [key]
+  );
+
+  const getSnapshot = useCallback(
+    () => toSnapshot(ensureCacheEntry(platformCache, key)),
+    [key]
+  );
+
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+
+  useEffect(() => {
+    const entry = ensureCacheEntry(platformCache, key);
+    void revalidateEntry(entry, () =>
+      listPlatforms({
+        search: requestSearch,
+        includeEmpty: requestIncludeEmpty
+      })
+    );
+  }, [key, requestIncludeEmpty, requestSearch]);
+
+  const refresh = useCallback(async () => {
+    const entry = ensureCacheEntry(platformCache, key);
+    await revalidateEntry(entry, () =>
+      listPlatforms({
+        search: requestSearch,
+        includeEmpty: requestIncludeEmpty
+      })
+    );
+  }, [key, requestIncludeEmpty, requestSearch]);
+
+  const mutate = useCallback(
+    (
+      updater: (current: { platforms: PlatformSummary[] } | null) => { platforms: PlatformSummary[] } | null | undefined
+    ) => {
+      const entry = ensureCacheEntry(platformCache, key);
+      mutateEntry(entry, updater);
+    },
+    [key]
+  );
+
+  return {
+    ...snapshot,
+    refresh: async () => {
+      await refresh();
+    },
+    mutate,
+    key
+  };
+}
+
+type UseRomLibraryResult = SwrSnapshot<RomListResponse> & {
+  refresh: () => Promise<void>;
+  mutate: (updater: (current: RomListResponse | null) => RomListResponse | null | undefined) => void;
+  key: string;
+};
+
+const romListCache = new Map<string, SwrCacheEntry<RomListResponse>>();
+
+function normaliseRomParams(params: ListRomsParams = {}) {
+  const assetTypes = Array.isArray(params.assetTypes)
+    ? params.assetTypes.map((type) => type.trim()).filter((value) => value.length > 0).sort()
+    : [];
+  const search = params.search?.trim() ?? "";
+  const publisher = params.publisher?.trim() ?? "";
+  const year = typeof params.year === "number" ? params.year : null;
+  return {
+    platform: params.platform?.trim() ?? null,
+    search: search.length > 0 ? search : null,
+    publisher: publisher.length > 0 ? publisher : null,
+    year,
+    sort: params.sort ?? "title",
+    direction: params.direction ?? "asc",
+    page: params.page ?? 1,
+    pageSize: params.pageSize ?? 24,
+    includeHistory: Boolean(params.includeHistory),
+    assetTypes,
+    favoritesOnly: Boolean(params.favoritesOnly)
+  };
+}
+
+function romCacheKey(params: ReturnType<typeof normaliseRomParams>): string {
+  return `roms:${JSON.stringify(params)}`;
+}
+
+export function useRomLibrary(params: ListRomsParams = {}): UseRomLibraryResult {
+  const normalised = normaliseRomParams(params);
+  const key = romCacheKey(normalised);
+  const assetTypesKey = normalised.assetTypes.join("|");
+
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      const entry = ensureCacheEntry(romListCache, key);
+      entry.subscribers.add(onStoreChange);
+      return () => {
+        entry.subscribers.delete(onStoreChange);
+      };
+    },
+    [key]
+  );
+
+  const getSnapshot = useCallback(
+    () => toSnapshot(ensureCacheEntry(romListCache, key)),
+    [key]
+  );
+
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+
+  useEffect(() => {
+    const entry = ensureCacheEntry(romListCache, key);
+    const request: ListRomsParams = {
+      platform: normalised.platform ?? undefined,
+      search: normalised.search ?? undefined,
+      publisher: normalised.publisher ?? undefined,
+      year: normalised.year ?? undefined,
+      sort: normalised.sort,
+      direction: normalised.direction,
+      page: normalised.page,
+      pageSize: normalised.pageSize,
+      includeHistory: normalised.includeHistory || undefined,
+      assetTypes: normalised.assetTypes.length > 0 ? normalised.assetTypes : undefined,
+      favoritesOnly: normalised.favoritesOnly || undefined
+    };
+    void revalidateEntry(entry, () => listRoms(request));
+  }, [
+    key,
+    normalised.direction,
+    normalised.favoritesOnly,
+    normalised.includeHistory,
+    normalised.page,
+    normalised.pageSize,
+    normalised.platform,
+    normalised.publisher,
+    normalised.search,
+    normalised.sort,
+    normalised.year,
+    normalised.assetTypes
+  ]);
+
+  const refresh = useCallback(async () => {
+    const entry = ensureCacheEntry(romListCache, key);
+    const request: ListRomsParams = {
+      platform: normalised.platform ?? undefined,
+      search: normalised.search ?? undefined,
+      publisher: normalised.publisher ?? undefined,
+      year: normalised.year ?? undefined,
+      sort: normalised.sort,
+      direction: normalised.direction,
+      page: normalised.page,
+      pageSize: normalised.pageSize,
+      includeHistory: normalised.includeHistory || undefined,
+      assetTypes: normalised.assetTypes.length > 0 ? normalised.assetTypes : undefined,
+      favoritesOnly: normalised.favoritesOnly || undefined
+    };
+    await revalidateEntry(entry, () => listRoms(request));
+  }, [
+    key,
+    normalised.direction,
+    normalised.favoritesOnly,
+    normalised.includeHistory,
+    normalised.page,
+    normalised.pageSize,
+    normalised.platform,
+    normalised.publisher,
+    normalised.search,
+    normalised.sort,
+    normalised.year,
+    normalised.assetTypes
+  ]);
+
+  const mutate = useCallback(
+    (updater: (current: RomListResponse | null) => RomListResponse | null | undefined) => {
+      const entry = ensureCacheEntry(romListCache, key);
+      mutateEntry(entry, updater);
+    },
+    [key]
+  );
+
+  return {
+    ...snapshot,
+    refresh: async () => {
+      await refresh();
+    },
+    mutate,
+    key
+  };
+}
+
+type UseRomDetailResult = SwrSnapshot<RomDetail> & {
+  refresh: () => Promise<void>;
+  mutate: (updater: (current: RomDetail | null) => RomDetail | null | undefined) => void;
+  key: string;
+};
+
+const romDetailCache = new Map<string, SwrCacheEntry<RomDetail>>();
+
+export function useRomDetail(id: string | null | undefined): UseRomDetailResult {
+  const romId = id?.trim() ?? "";
+  const key = romId.length > 0 ? `rom:${romId}` : null;
+
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      if (!key) {
+        return () => {};
+      }
+      const entry = ensureCacheEntry(romDetailCache, key);
+      entry.subscribers.add(onStoreChange);
+      return () => {
+        entry.subscribers.delete(onStoreChange);
+      };
+    },
+    [key]
+  );
+
+  const getSnapshot = useCallback((): SwrSnapshot<RomDetail> => {
+    if (!key) {
+      return {
+        data: null,
+        error: null,
+        isLoading: false,
+        isValidating: false
+      };
+    }
+    return toSnapshot(ensureCacheEntry(romDetailCache, key));
+  }, [key]);
+
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+
+  useEffect(() => {
+    if (!key) {
+      return;
+    }
+    const entry = ensureCacheEntry(romDetailCache, key);
+    void revalidateEntry(entry, () => getRom(romId));
+  }, [key, romId]);
+
+  const refresh = useCallback(async () => {
+    if (!key) {
+      return;
+    }
+    const entry = ensureCacheEntry(romDetailCache, key);
+    await revalidateEntry(entry, () => getRom(romId));
+  }, [key, romId]);
+
+  const mutate = useCallback(
+    (updater: (current: RomDetail | null) => RomDetail | null | undefined) => {
+      if (!key) {
+        return;
+      }
+      const entry = ensureCacheEntry(romDetailCache, key);
+      mutateEntry(entry, updater);
+    },
+    [key]
+  );
+
+  return {
+    ...snapshot,
+    refresh: async () => {
+      await refresh();
+    },
+    mutate,
+    key: key ?? "rom:"
+  };
 }

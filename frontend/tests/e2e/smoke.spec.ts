@@ -144,29 +144,26 @@ describe("@smoke TREAZRISLAND key flows", () => {
         response.url().includes("/platforms") &&
         response.request().method() === "GET",
     );
-    await page.goto("/platforms");
-    expect((await platformsPromise).status()).toBe(200);
-    await expect(
-      page.getByRole("heading", { name: /Choose your platform/i }),
-    ).toBeVisible();
-    await expect(page.getByRole("heading", { name: fixture.platformName })).toBeVisible();
-
-    const platformDetailPromise = page.waitForResponse(
-      (response) =>
-        response.url().includes(`/platforms/${fixture.platformSlug}`) &&
-        response.request().method() === "GET",
-    );
     const romListPromise = page.waitForResponse(
       (response) =>
         response.url().includes("/roms") &&
         response.request().method() === "GET" &&
         response.request().url().includes(`platform=${fixture.platformSlug}`),
     );
-    await page.getByRole("link", { name: fixture.platformName }).click();
-    expect((await platformDetailPromise).status()).toBe(200);
+    await page.goto("/library");
+    expect((await platformsPromise).status()).toBe(200);
     expect((await romListPromise).status()).toBe(200);
-    await expect(page.getByRole("heading", { name: fixture.platformName })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Discover the vault/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 2, name: fixture.platformName }),
+    ).toBeVisible();
     await expect(page.getByRole("heading", { name: fixture.romTitle })).toBeVisible();
+    await page
+      .getByRole("button", { name: new RegExp(fixture.platformName, "i") })
+      .click();
+    await expect(page.getByText(/Save-state sync coming soon/i)).toBeVisible();
 
     const emulatorBundlePromise = page.waitForResponse((response) =>
       response.url().includes("/vendor/emulatorjs/emulator.js"),
