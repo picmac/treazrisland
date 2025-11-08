@@ -7,7 +7,7 @@ COMPOSE_FILE="${COMPOSE_FILE:-${REPO_ROOT}/infra/docker-compose.prod.yml}"
 PROJECT_NAME="${TREAZ_COMPOSE_PROJECT_NAME:-treazrisland}"
 ENV_FILE="${TREAZ_ENV_FILE:-/opt/treazrisland/config/compose.env}"
 SEED_PLATFORMS="${TREAZ_RUN_PLATFORM_SEED:-false}"
-RESET_ON_FAILURE="${TREAZ_RESET_ON_FAILURE:-true}"
+RESET_ON_FAILURE="${TREAZ_RESET_ON_FAILURE:-false}"
 HEALTH_MAX_ATTEMPTS="${TREAZ_HEALTH_MAX_ATTEMPTS:-12}"
 HEALTH_BACKOFF_SECONDS="${TREAZ_HEALTH_BACKOFF_SECONDS:-5}"
 SYNC_WITH_ORIGIN="${TREAZ_SYNC_WITH_ORIGIN:-false}"
@@ -410,7 +410,8 @@ if ! run_all_probes; then
       exit 1
     fi
   else
-    log "Health checks failed and TREAZ_RESET_ON_FAILURE is disabled; skipping migrations"
+    log "Health checks failed; TREAZ_RESET_ON_FAILURE is disabled so the stack will be left as-is for investigation"
+    log "Set TREAZ_RESET_ON_FAILURE=true to restore the previous behaviour of tearing down and retrying"
     exit 1
   fi
 fi
