@@ -2,6 +2,9 @@ import { apiFetch, apiRequest } from "@lib/api/client";
 
 type SetCookieHeader = string[];
 
+const REFRESH_CSRF_COOKIE_NAME = "treaz_refresh_csrf";
+const REFRESH_CSRF_HEADER = "x-refresh-csrf";
+
 export interface SessionUser {
   id: string;
   email: string;
@@ -41,6 +44,41 @@ function extractSetCookies(response: Response): SetCookieHeader {
   return single ? [single] : [];
 }
 
+function readRefreshCsrfTokenFromCookies(): string | null {
+  if (typeof document === "undefined" || typeof document.cookie !== "string") {
+    return null;
+  }
+
+  const prefix = `${REFRESH_CSRF_COOKIE_NAME}=`;
+  const entry = document.cookie
+    .split(";")
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(prefix));
+
+  if (!entry) {
+    return null;
+  }
+
+  const rawValue = entry.slice(prefix.length);
+  try {
+    return decodeURIComponent(rawValue);
+  } catch {
+    return rawValue;
+  }
+}
+
+function withRefreshCsrf(init?: RequestInit): RequestInit {
+  const baseInit: RequestInit = init ? { ...init } : {};
+  const csrfToken = readRefreshCsrfTokenFromCookies();
+  if (!csrfToken) {
+    return baseInit;
+  }
+
+  const headers = new Headers(baseInit.headers ?? {});
+  headers.set(REFRESH_CSRF_HEADER, csrfToken);
+  return { ...baseInit, headers };
+}
+
 export async function login(payload: {
   identifier: string;
   password: string;
@@ -77,13 +115,11 @@ export async function loginWithCookies(
 }
 
 export async function logout(): Promise<void> {
-  await apiFetch("/auth/logout", { method: "POST" });
+  await apiFetch("/auth/logout", withRefreshCsrf({ method: "POST" }));
 }
 
 export async function refreshSession(): Promise<SessionPayload> {
-  return apiFetch<SessionPayload>("/auth/refresh", {
-    method: "POST"
-  });
+  return apiFetch<SessionPayload>("/auth/refresh", withRefreshCsrf({ method: "POST" }));
 }
 
 export async function requestPasswordReset(email: string): Promise<{ message: string }> {

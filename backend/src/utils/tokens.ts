@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { env } from "../config/env.js";
 
 export const REFRESH_COOKIE_NAME = "treaz_refresh";
+export const REFRESH_CSRF_COOKIE_NAME = "treaz_refresh_csrf";
 
 export class RefreshTokenError extends Error {
   constructor(message: string) {

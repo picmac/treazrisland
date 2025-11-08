@@ -63,14 +63,16 @@ export function createContentSecurityPolicy(options: ContentSecurityPolicyOption
   if (nonce) {
     scriptSrc.add(`'nonce-${nonce}'`);
     scriptSrc.add("'strict-dynamic'");
-  } else {
-    scriptSrc.add("'unsafe-inline'");
   }
 
   const styleSrc = new Set(["'self'", "'unsafe-inline'"]);
   const imgSrc = new Set(["'self'", "data:", "blob:", "https:"]);
   const fontSrc = new Set(["'self'", "data:"]);
-  const connectSrc = new Set(["'self'", "https:", "http:"]);
+  const connectSrc = new Set(["'self'", "https:", "wss:"]);
+  if (!tlsEnabled) {
+    connectSrc.add("http:");
+    connectSrc.add("ws:");
+  }
   const mediaSrc = new Set(["'self'", "blob:"]);
   const frameSrc = new Set(["'self'"]);
   const workerSrc = new Set(["'self'", "blob:"]);

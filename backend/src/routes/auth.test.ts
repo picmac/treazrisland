@@ -114,6 +114,14 @@ describe("auth routes", () => {
 
   const fingerprintToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
+  const getSetCookieHeaders = (response: request.Response): string[] => {
+    const raw = response.headers["set-cookie"];
+    if (!raw) {
+      return [];
+    }
+    return Array.isArray(raw) ? raw : [raw];
+  };
+
   it("returns 404 for invalid invitation preview", async () => {
     prisma.userInvitation.findUnique.mockResolvedValueOnce(null);
 
@@ -216,7 +224,13 @@ describe("auth routes", () => {
     });
     expect(typeof body.accessToken).toBe("string");
     expect(body.refreshToken).toBeUndefined();
-    expect(response.headers["set-cookie"]).toContain("HttpOnly");
+    const signupCookies = getSetCookieHeaders(response);
+    expect(signupCookies.some((cookie) => cookie.includes("treaz_refresh=") && cookie.includes("HttpOnly"))).toBe(
+      true
+    );
+    expect(signupCookies.some((cookie) => cookie.includes("treaz_refresh_csrf=") && !cookie.includes("HttpOnly"))).toBe(
+      true
+    );
 
     expect(prisma.userInvitation.update).toHaveBeenCalledWith({
       where: { id: "invite2" },
@@ -440,7 +454,13 @@ describe("auth routes", () => {
     const body = response.body;
     expect(body.user).toMatchObject({ id: "user-2", email: "player@example.com" });
     expect(typeof body.accessToken).toBe("string");
-    expect(response.headers["set-cookie"]).toContain("HttpOnly");
+    const cookies = getSetCookieHeaders(response);
+    expect(cookies.some((cookie) => cookie.includes("treaz_refresh=") && cookie.includes("HttpOnly"))).toBe(
+      true
+    );
+    expect(cookies.some((cookie) => cookie.includes("treaz_refresh_csrf=") && !cookie.includes("HttpOnly"))).toBe(
+      true
+    );
     expect(prisma.loginAudit.create).toHaveBeenCalled();
   });
 
@@ -494,12 +514,42 @@ describe("auth routes", () => {
 
     const response = await request(app)
       .post("/auth/refresh")
-      .set("Cookie", "treaz_refresh=refresh-token");
+      .set("Cookie", "treaz_refresh=refresh-token; treaz_refresh_csrf=csrf-token")
+      .set("x-refresh-csrf", "csrf-token");
 
     expect(response.status).toBe(200);
     const body = response.body;
     expect(body.user).toMatchObject({ id: "user-4" });
-    expect(response.headers["set-cookie"]).toContain("treaz_refresh=");
+    const cookies = getSetCookieHeaders(response);
+    expect(cookies.some((cookie) => cookie.includes("treaz_refresh=") && cookie.includes("HttpOnly"))).toBe(
+      true
+    );
+    expect(cookies.some((cookie) => cookie.includes("treaz_refresh_csrf=") && !cookie.includes("HttpOnly"))).toBe(
+      true
+    );
+  });
+
+  it("rejects refresh attempts without matching CSRF token", async () => {
+    const now = new Date();
+    prisma.refreshToken.findUnique.mockResolvedValueOnce({
+      id: "token-old",
+      userId: "user-4",
+      familyId: "family-4",
+      tokenHash: fingerprintToken("refresh-token"),
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + 60_000),
+      revokedAt: null,
+      revokedReason: null,
+      family: { id: "family-4", revokedAt: null, revokedReason: null },
+      user: { id: "user-4", email: "u4@example.com", nickname: "u4", role: "USER" }
+    });
+
+    const response = await request(app)
+      .post("/auth/refresh")
+      .set("Cookie", "treaz_refresh=refresh-token; treaz_refresh_csrf=csrf-token");
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ message: "CSRF token missing or invalid" });
   });
 
   it("clears cookie on logout and revokes family", async () => {
@@ -511,18 +561,28 @@ describe("auth routes", () => {
 
     const response = await request(app)
       .post("/auth/logout")
-      .set("Cookie", "treaz_refresh=logout-token");
+      .set("Cookie", "treaz_refresh=logout-token; treaz_refresh_csrf=csrf-token")
+      .set("x-refresh-csrf", "csrf-token");
 
     expect(response.status).toBe(204);
-    const logoutCookies = response.headers["set-cookie"];
-    if (Array.isArray(logoutCookies)) {
-      expect(logoutCookies.some((entry) => entry.includes("Max-Age=0"))).toBe(true);
-    } else if (typeof logoutCookies === "string") {
-      expect(logoutCookies).toContain("Max-Age=0");
-    } else {
-      throw new Error("Expected logout to set cookie header");
-    }
+    const logoutCookies = getSetCookieHeaders(response);
+    expect(logoutCookies.filter((entry) => entry.includes("Max-Age=0")).length).toBeGreaterThanOrEqual(2);
     expect(prisma.refreshTokenFamily.updateMany).toHaveBeenCalled();
     expect(prisma.refreshToken.updateMany).toHaveBeenCalled();
+  });
+
+  it("rejects logout attempts without CSRF confirmation when a refresh token cookie is present", async () => {
+    prisma.refreshToken.findUnique.mockResolvedValueOnce({
+      id: "token-old",
+      userId: "user-5",
+      familyId: "family-5"
+    });
+
+    const response = await request(app)
+      .post("/auth/logout")
+      .set("Cookie", "treaz_refresh=logout-token; treaz_refresh_csrf=csrf-token");
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ message: "CSRF token missing or invalid" });
   });
 });
