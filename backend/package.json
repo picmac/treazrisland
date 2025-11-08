@@ -19,7 +19,8 @@
     "prisma:seed:platforms": "tsx prisma/seed-platforms.ts",
     "prisma:seed:roms": "tsx prisma/seed-roms.ts",
     "prisma:seed:smoke": "tsx prisma/seed-test-fixtures.ts",
-    "retention:prune": "tsx scripts/retention/prune-rom-upload-audit.ts"
+    "retention:prune": "tsx scripts/retention/prune-rom-upload-audit.ts",
+    "storage:health": "tsx scripts/storage/health-check.ts"
   },
   "dependencies": {
     "@fastify/jwt": "^10.0.0",
