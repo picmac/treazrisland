@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import type { ChangeEvent, FormEvent } from "react";
 import { useState, useTransition } from "react";
-import { apiFetch, ApiError } from "@lib/api/client";
+import { ApiError } from "@lib/api/client";
+import { createFirstAdmin } from "@lib/api/onboarding";
 import { useSession } from "@/src/auth/session-provider";
 
 interface FormState {
@@ -72,14 +73,7 @@ export function FirstAdminForm() {
 
     startTransition(async () => {
       try {
-        const payload = await apiFetch<{
-          user: { id: string; email: string; nickname: string; role: string };
-          accessToken: string;
-          refreshExpiresAt: string;
-        }>("/onboarding/admin", {
-          method: "POST",
-          body: JSON.stringify(form)
-        });
+        const payload = await createFirstAdmin(form);
 
         setSession({
           user: payload.user,

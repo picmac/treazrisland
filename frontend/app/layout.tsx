@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
+import { Press_Start_2P } from "next/font/google";
 import type { ReactNode } from "react";
 import { AuthProvider } from "@/src/auth/session-provider";
 import { AppShell } from "@/src/components/app-shell";
 import "./globals.css";
+
+const pressStart = Press_Start_2P({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-press-start",
+});
 
 export const metadata: Metadata = {
   title: "TREAZRISLAND",
@@ -15,7 +22,7 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="en" className="bg-background text-foreground">
+    <html lang="en" className={`${pressStart.variable} bg-background text-foreground`}>
       <body className="min-h-screen bg-background font-sans antialiased text-foreground">
         <AuthProvider>
           <AppShell>{children}</AppShell>
