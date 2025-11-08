@@ -6,6 +6,8 @@ import type { EmailService } from "../services/email/service.js";
 import type { MfaService } from "../services/mfa/service.js";
 import type { ObservabilityMetrics } from "../plugins/observability.js";
 import type { SettingsManager } from "../plugins/settings.js";
+import type { HealthManager } from "../plugins/health.js";
+import type { Logger } from "pino";
 
 declare module "@fastify/jwt" {
   interface FastifyJWT {
@@ -33,10 +35,14 @@ declare module "fastify" {
     mfaService: MfaService;
     metrics: ObservabilityMetrics;
     settings: SettingsManager;
+    health: HealthManager;
   }
 
   interface FastifyRequest {
     user?: { sub: string; role: Role };
     metricsStartTime?: bigint;
+    requestStartTime?: bigint;
+    correlationId?: string;
+    requestLogger?: Logger;
   }
 }

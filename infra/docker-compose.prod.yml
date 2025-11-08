@@ -124,6 +124,37 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --web.enable-lifecycle
 
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: treazrisland-prod-loki
+    restart: unless-stopped
+    networks:
+      - monitoring
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/config.yml:ro
+      - loki-data:/var/loki
+    command:
+      - -config.file=/etc/loki/config.yml
+
+  promtail:
+    image: grafana/promtail:3.1.0
+    container_name: treazrisland-prod-promtail
+    restart: unless-stopped
+    depends_on:
+      loki:
+        condition: service_started
+    networks:
+      - monitoring
+    volumes:
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/log:/var/log:ro
+    command:
+      - -config.file=/etc/promtail/config.yml
+
   alertmanager:
     image: prom/alertmanager:v0.27.0
     container_name: treazrisland-alertmanager
@@ -146,6 +177,8 @@ services:
     restart: unless-stopped
     depends_on:
       prometheus:
+        condition: service_started
+      loki:
         condition: service_started
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?GRAFANA_ADMIN_USER must be set}
@@ -192,6 +225,7 @@ services:
 volumes:
   postgres-data:
   minio-data:
+  loki-data:
 
 networks:
   monitoring:
