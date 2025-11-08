@@ -1,6 +1,6 @@
 import type { FastifyBaseLogger } from "fastify";
 import nodemailer, { type Transporter } from "nodemailer";
-import type SMTPTransport from "nodemailer/lib/smtp-transport";
+import type SMTPTransport from "nodemailer/lib/smtp-transport/index.js";
 import type { EmailSettings } from "../../plugins/settings.js";
 import { env } from "../../config/env.js";
 
@@ -126,7 +126,8 @@ class SmtpEmailService implements EmailService {
   constructor(
     private readonly transporter: Transporter<SMTPTransport.SentMessageInfo>,
     private readonly logger: FastifyBaseLogger,
-    private readonly from: { address: string; name?: string },
+    private readonly fromAddress: string,
+    private readonly fromName?: string,
   ) {}
 
   async sendPasswordReset(payload: PasswordResetPayload): Promise<void> {
@@ -134,8 +135,13 @@ class SmtpEmailService implements EmailService {
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
       try {
+        const from =
+          this.fromName !== undefined
+            ? { name: this.fromName, address: this.fromAddress }
+            : this.fromAddress;
+
         await this.transporter.sendMail({
-          from: this.from,
+          from,
           to: payload.to,
           subject: passwordResetSubject,
           html: htmlBody,
@@ -255,8 +261,10 @@ export const createEmailService = (
   const transporter = nodemailer.createTransport(transportOptions);
   const serviceLogger = logger.child({ service: "email", provider: "smtp" });
 
-  return new SmtpEmailService(transporter, serviceLogger, {
-    address: smtp.fromEmail,
-    name: smtp.fromName ?? undefined,
-  });
+  return new SmtpEmailService(
+    transporter,
+    serviceLogger,
+    smtp.fromEmail,
+    smtp.fromName ?? undefined,
+  );
 };

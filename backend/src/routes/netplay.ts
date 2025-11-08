@@ -1,10 +1,14 @@
 import { randomBytes, createHash } from "node:crypto";
 import type { FastifyInstance } from "fastify";
+import type { NetplaySessionStatus } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { z } from "zod";
 import { env } from "../config/env.js";
 
-const ACTIVE_SESSION_STATUSES = ["OPEN", "ACTIVE"] as const;
+const ACTIVE_SESSION_STATUSES: NetplaySessionStatus[] = [
+  "OPEN",
+  "ACTIVE",
+];
 
 const createSessionBodySchema = z.object({
   romId: z.string().trim().min(1, "romId is required"),
@@ -365,7 +369,7 @@ export async function registerNetplayRoutes(app: FastifyInstance) {
 
         const participant = await instance.prisma.netplayParticipant.findUnique({
           where: { sessionId_userId: { sessionId, userId: request.user.sub } },
-          include: { session: true },
+          include: { session: { include: { participants: true } } },
         });
 
         if (!participant) {
