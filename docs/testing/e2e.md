@@ -67,6 +67,17 @@ Automated flows should follow the same journey that manual testers use when boot
 
 Capturing these checkpoints in future Playwright specs guarantees that onboarding regressions surface quickly and that the login portal stays compatible with freshly provisioned instances.
 
+### Auth portal smoke assertions
+
+End-to-end coverage for the dedicated auth pages should exercise both the happy path and the protective branches exposed by the new server actions:
+
+1. **Invitation redemption** – Visit `/signup?token=<invite>` and submit the player manifest. The form delegates to `frontend/app/(auth)/signup/actions.ts#redeemInvitationAction`, which proxies to the Fastify `/auth/signup` endpoint and mirrors the `Set-Cookie` headers into the Next.js response. Verify that the `treaz_refresh` cookie is present afterwards and that `AuthProvider` reflects the returned user payload.
+2. **Primary login challenge** – Submit credentials on `/login`. The `LoginForm` now invokes the server action in `frontend/app/(auth)/login/actions.ts#performLogin`, so the test should assert that a successful response redirects to `/play` and that the session cookie is rotated. Snapshotting the network panel in Playwright ensures no duplicate login calls fire.
+3. **MFA branch** – Trigger a `401` with `{ "mfaRequired": true }` (fixture users such as `smoke-mfa@example.com` ship with an active secret). The form should reveal the MFA inputs without clearing the primary credential fields, and a subsequent submit with the correct TOTP should resume the normal flow.
+4. **Recovery codes** – Provide a recovery code instead of a TOTP to confirm that alternative factors are respected. This scenario uses the same server action but asserts that the fallback path succeeds.
+
+Document the assertions you automate in `frontend/tests/auth/*.spec.ts` so future contributors understand which behaviors must remain intact.
+
 ### Environment variables
 
 The suite honors the following environment variables:

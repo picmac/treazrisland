@@ -1,17 +1,21 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
 
-vi.mock("@lib/api/client", () => {
-  return {
-    apiFetch: vi.fn()
-  };
-});
+vi.mock("@lib/api/client", () => ({
+  apiFetch: vi.fn()
+}));
+
+vi.mock("./auth", () => ({
+  signupWithInvitation: vi.fn()
+}));
 
 import { apiFetch } from "@lib/api/client";
+import { signupWithInvitation as signupThroughAuth } from "./auth";
 import { previewInvitation, signupWithInvitation, createInvitation, listInvitations } from "./invitations";
 
 describe("invitation api helpers", () => {
   beforeEach(() => {
     vi.mocked(apiFetch).mockReset();
+    vi.mocked(signupThroughAuth).mockReset();
   });
 
   it("calls preview endpoint with token", async () => {
@@ -29,9 +33,13 @@ describe("invitation api helpers", () => {
   });
 
   it("posts signup payload", async () => {
-    vi.mocked(apiFetch).mockResolvedValueOnce({ user: { id: "1", email: "a", nickname: "b", role: "USER" } });
+    vi.mocked(signupThroughAuth).mockResolvedValueOnce({
+      accessToken: "token",
+      refreshExpiresAt: "future",
+      user: { id: "1", email: "a", nickname: "b", role: "USER" }
+    });
 
-    await signupWithInvitation({
+    const result = await signupWithInvitation({
       token: "token-abc",
       email: "player@example.com",
       nickname: "player",
@@ -39,19 +47,18 @@ describe("invitation api helpers", () => {
       displayName: "Player"
     });
 
-    expect(apiFetch).toHaveBeenCalledWith(
-      "/auth/signup",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          token: "token-abc",
-          email: "player@example.com",
-          nickname: "player",
-          password: "Password1",
-          displayName: "Player"
-        })
-      })
-    );
+    expect(signupThroughAuth).toHaveBeenCalledWith({
+      token: "token-abc",
+      email: "player@example.com",
+      nickname: "player",
+      password: "Password1",
+      displayName: "Player"
+    });
+    expect(result).toEqual({
+      accessToken: "token",
+      refreshExpiresAt: "future",
+      user: { id: "1", email: "a", nickname: "b", role: "USER" }
+    });
   });
 
   it("creates an invitation", async () => {

@@ -1,4 +1,7 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
+export const API_BASE =
+  process.env.AUTH_API_BASE_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  "http://localhost:3001";
 
 export class ApiError extends Error {
   constructor(message: string, readonly status: number, readonly body?: unknown) {
@@ -6,7 +9,7 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiRequest(path: string, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers ?? {});
   const isFormData =
     typeof FormData !== "undefined" && init?.body instanceof FormData;
@@ -47,6 +50,12 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
     throw new ApiError(message, response.status, parsedBody);
   }
+
+  return response;
+}
+
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await apiRequest(path, init);
 
   if (response.status === 204 || response.status === 205) {
     return undefined as T;

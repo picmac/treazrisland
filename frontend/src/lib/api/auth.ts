@@ -1,4 +1,6 @@
-import { apiFetch } from "@lib/api/client";
+import { apiFetch, apiRequest } from "@lib/api/client";
+
+type SetCookieHeader = string[];
 
 export interface SessionUser {
   id: string;
@@ -17,11 +19,26 @@ export interface LoginResponse extends SessionPayload {
   mfaRequired?: boolean;
 }
 
+export interface SignupResponse extends SessionPayload {}
+
 export interface MfaSetupResponse {
   secretId: string;
   secret: string;
   otpauthUri: string;
   recoveryCodes: string[];
+}
+
+function extractSetCookies(response: Response): SetCookieHeader {
+  const headers = response.headers as unknown as {
+    getSetCookie?: () => string[];
+  };
+
+  if (typeof headers.getSetCookie === "function") {
+    return headers.getSetCookie();
+  }
+
+  const single = response.headers.get("set-cookie");
+  return single ? [single] : [];
 }
 
 export async function login(payload: {
@@ -34,6 +51,29 @@ export async function login(payload: {
     method: "POST",
     body: JSON.stringify(payload)
   });
+}
+
+export async function loginWithCookies(
+  payload: {
+    identifier: string;
+    password: string;
+    mfaCode?: string;
+    recoveryCode?: string;
+  },
+  options?: { cookieHeader?: string }
+): Promise<{ payload: LoginResponse; cookies: SetCookieHeader }> {
+  const response = await apiRequest("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: options?.cookieHeader
+      ? {
+          cookie: options.cookieHeader
+        }
+      : undefined
+  });
+
+  const data = (await response.json()) as LoginResponse;
+  return { payload: data, cookies: extractSetCookies(response) };
 }
 
 export async function logout(): Promise<void> {
@@ -61,6 +101,41 @@ export async function confirmPasswordReset(payload: {
     method: "POST",
     body: JSON.stringify(payload)
   });
+}
+
+export async function redeemInvitation(
+  payload: {
+    token: string;
+    email?: string;
+    nickname: string;
+    password: string;
+    displayName?: string;
+  },
+  options?: { cookieHeader?: string }
+): Promise<{ payload: SignupResponse; cookies: SetCookieHeader }> {
+  const response = await apiRequest("/auth/signup", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: options?.cookieHeader
+      ? {
+          cookie: options.cookieHeader
+        }
+      : undefined
+  });
+
+  const data = (await response.json()) as SignupResponse;
+  return { payload: data, cookies: extractSetCookies(response) };
+}
+
+export async function signupWithInvitation(payload: {
+  token: string;
+  email?: string;
+  nickname: string;
+  password: string;
+  displayName?: string;
+}): Promise<SignupResponse> {
+  const { payload: data } = await redeemInvitation(payload);
+  return data;
 }
 
 export async function startMfaSetup(): Promise<MfaSetupResponse> {

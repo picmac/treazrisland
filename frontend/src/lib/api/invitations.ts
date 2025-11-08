@@ -1,21 +1,11 @@
 import { apiFetch } from "@lib/api/client";
+import { signupWithInvitation as signupThroughAuth, type SignupResponse } from "./auth";
 
 type PreviewResponse = {
   invitation: {
     role: string;
     email: string | null;
   };
-};
-
-type SignupResponse = {
-  user: {
-    id: string;
-    email: string;
-    nickname: string;
-    role: string;
-  };
-  accessToken: string;
-  refreshExpiresAt: string;
 };
 
 type InvitationRecord = {
@@ -41,10 +31,7 @@ export async function signupWithInvitation(payload: {
   password: string;
   displayName?: string;
 }): Promise<SignupResponse> {
-  return apiFetch<SignupResponse>("/auth/signup", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
+  return signupThroughAuth(payload);
 }
 
 export async function createInvitation(payload: {
