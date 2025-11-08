@@ -20,11 +20,11 @@ export type LoginActionResult =
 
 export async function performLogin(payload: LoginActionInput): Promise<LoginActionResult> {
   try {
-    const cookieHeader = buildCookieHeaderFromStore();
+    const cookieHeader = await buildCookieHeaderFromStore();
     const { payload: session, cookies } = await loginWithCookies(payload, {
       cookieHeader
     });
-    applyBackendCookies(cookies);
+    await applyBackendCookies(cookies);
     return { success: true, payload: session };
   } catch (error) {
     if (error instanceof ApiError) {

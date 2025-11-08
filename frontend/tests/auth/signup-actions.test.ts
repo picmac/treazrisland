@@ -25,7 +25,7 @@ describe("redeemInvitationAction", () => {
   });
 
   it("passes through invitation payload", async () => {
-    vi.mocked(buildCookieHeaderFromStore).mockReturnValue("treaz_refresh=abc");
+    vi.mocked(buildCookieHeaderFromStore).mockResolvedValue("treaz_refresh=abc");
     vi.mocked(redeemInvitation).mockResolvedValue({
       payload: {
         accessToken: "token",

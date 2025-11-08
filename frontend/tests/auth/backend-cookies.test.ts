@@ -25,8 +25,8 @@ describe("backend cookie helpers", () => {
     store.length = 0;
   });
 
-  it("parses Set-Cookie headers and stores them", () => {
-    applyBackendCookies([
+  it("parses Set-Cookie headers and stores them", async () => {
+    await applyBackendCookies([
       "treaz_refresh=abc; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=1200",
       "theme=retro; Path=/settings; SameSite=None; Secure"
     ]);
@@ -44,16 +44,16 @@ describe("backend cookie helpers", () => {
     expect(store[1]).toMatchObject({ name: "theme", value: "retro", path: "/settings", sameSite: "none", secure: true });
   });
 
-  it("builds cookie header from stored values", () => {
+  it("builds cookie header from stored values", async () => {
     store.push(
       { name: "treaz_refresh", value: "abc" },
       { name: "pixel_theme", value: "monkey" }
     );
 
-    expect(buildCookieHeaderFromStore()).toBe("treaz_refresh=abc; pixel_theme=monkey");
+    await expect(buildCookieHeaderFromStore()).resolves.toBe("treaz_refresh=abc; pixel_theme=monkey");
   });
 
-  it("returns undefined when no cookies exist", () => {
-    expect(buildCookieHeaderFromStore()).toBeUndefined();
+  it("returns undefined when no cookies exist", async () => {
+    await expect(buildCookieHeaderFromStore()).resolves.toBeUndefined();
   });
 });

@@ -23,11 +23,11 @@ export async function redeemInvitationAction(
   payload: SignupActionInput
 ): Promise<SignupActionResult> {
   try {
-    const cookieHeader = buildCookieHeaderFromStore();
+    const cookieHeader = await buildCookieHeaderFromStore();
     const { payload: session, cookies } = await redeemInvitation(payload, {
       cookieHeader
     });
-    applyBackendCookies(cookies);
+    await applyBackendCookies(cookies);
     return { success: true, payload: session };
   } catch (error) {
     if (error instanceof ApiError) {

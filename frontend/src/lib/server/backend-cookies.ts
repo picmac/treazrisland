@@ -79,8 +79,8 @@ function parseSetCookie(header: string): ParsedCookie | null {
   return cookie;
 }
 
-export function applyBackendCookies(setCookieHeaders: readonly string[]) {
-  const store = cookies();
+export async function applyBackendCookies(setCookieHeaders: readonly string[]) {
+  const store = await cookies();
   for (const header of setCookieHeaders) {
     const parsed = parseSetCookie(header);
     if (!parsed) {
@@ -91,8 +91,8 @@ export function applyBackendCookies(setCookieHeaders: readonly string[]) {
   }
 }
 
-export function buildCookieHeaderFromStore(): string | undefined {
-  const store = cookies();
+export async function buildCookieHeaderFromStore(): Promise<string | undefined> {
+  const store = await cookies();
   const all = store.getAll();
   if (all.length === 0) {
     return undefined;

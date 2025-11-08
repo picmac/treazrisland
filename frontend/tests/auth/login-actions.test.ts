@@ -25,7 +25,7 @@ describe("performLogin", () => {
   });
 
   it("forwards cookies and returns success payload", async () => {
-    vi.mocked(buildCookieHeaderFromStore).mockReturnValue("treaz_refresh=abc");
+    vi.mocked(buildCookieHeaderFromStore).mockResolvedValue("treaz_refresh=abc");
     vi.mocked(loginWithCookies).mockResolvedValue({
       payload: {
         accessToken: "token",
@@ -55,7 +55,7 @@ describe("performLogin", () => {
   });
 
   it("surfaces MFA challenge errors", async () => {
-    vi.mocked(buildCookieHeaderFromStore).mockReturnValue(undefined);
+    vi.mocked(buildCookieHeaderFromStore).mockResolvedValue(undefined);
     vi.mocked(loginWithCookies).mockRejectedValue(
       new ApiError("MFA challenge required", 401, { message: "MFA challenge required", mfaRequired: true })
     );
