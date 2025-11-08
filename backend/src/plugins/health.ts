@@ -1,6 +1,6 @@
 import fp from "fastify-plugin";
 import type { FastifyInstance, FastifyReply } from "fastify";
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient, Prisma } from "@prisma/client";
 import packageInfo from "../../package.json" with { type: "json" };
 
 export type HealthComponentStatus = {
@@ -86,11 +86,30 @@ async function checkDatabase(
       latencyMs: Number(process.hrtime.bigint() - start) / 1_000_000,
     };
   } catch (error) {
+    const latencyMs = Number(process.hrtime.bigint() - start) / 1_000_000;
+    const prismaError = error as Partial<Prisma.PrismaClientKnownRequestError>;
+
+    if (prismaError?.code === "P2021") {
+      app.log.warn(
+        {
+          event: "health.prisma.missing_table",
+          message: "System settings table unavailable; reporting warn",
+        },
+        "Database health check blocked until migrations are applied",
+      );
+      return {
+        component: "database",
+        status: "warn",
+        latencyMs,
+        details: { reason: "system_settings_table_missing" },
+      };
+    }
+
     app.log.error({ err: error }, "database health check failed");
     return {
       component: "database",
       status: "fail",
-      latencyMs: Number(process.hrtime.bigint() - start) / 1_000_000,
+      latencyMs,
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
