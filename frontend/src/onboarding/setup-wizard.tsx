@@ -4,14 +4,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import Link from "next/link";
 import { ApiError, apiFetch } from "@lib/api/client";
+import {
+  updateOnboardingStep,
+  type OnboardingStatus,
+  type OnboardingStepKey,
+  type OnboardingStepState,
+  type SettingsUpdatePayload,
+  type StorageDriver,
+} from "@lib/api/onboarding";
 import { PixelFrame } from "@/src/components/pixel-frame";
 import { useSession } from "@/src/auth/session-provider";
-import type {
-  OnboardingStatus,
-  OnboardingStepKey,
-  OnboardingStepState,
-} from "./types";
-
 const STEP_ORDER: OnboardingStepKey[] = [
   "system-profile",
   "integrations",
@@ -53,52 +55,6 @@ const formatApiErrorMessage = (error: ApiError): string => {
     }
   }
   return error.message;
-};
-
-type StorageDriver = "filesystem" | "s3";
-
-type SettingsUpdatePayload = {
-  systemProfile?: {
-    instanceName: string;
-    timezone: string;
-    baseUrl?: string;
-  };
-  storage?: {
-    driver: StorageDriver;
-    localRoot?: string;
-    bucketAssets: string;
-    bucketRoms: string;
-    bucketBios?: string;
-    signedUrlTTLSeconds?: number;
-    s3?: {
-      endpoint: string;
-      region: string;
-      accessKey: string;
-      secretKey: string;
-      forcePathStyle?: boolean;
-    };
-  };
-  email?: {
-    provider: "none" | "postmark";
-    postmark?: {
-      serverToken: string;
-      fromEmail: string;
-      messageStream?: string;
-    };
-  };
-  screenscraper?: {
-    username?: string;
-    password?: string;
-    secretKey?: string;
-  };
-  personalization?: {
-    theme?: string;
-  };
-};
-
-type WizardStepResult = {
-  setupComplete: boolean;
-  steps: Record<OnboardingStepKey, OnboardingStepState>;
 };
 
 interface ResolvedSystemSettings {
@@ -251,14 +207,9 @@ export function SetupWizard({ initialStatus }: SetupWizardProps) {
       setSubmissionError(null);
       setSubmitting(true);
       try {
-        const response = await apiFetch<WizardStepResult>(`/onboarding/steps/${stepKey}`,
-          {
-            method: "PATCH",
-            headers: accessToken
-              ? { authorization: `Bearer ${accessToken}` }
-              : undefined,
-            body: JSON.stringify(payload),
-          });
+        const response = await updateOnboardingStep(stepKey, payload, {
+          accessToken,
+        });
         setStatus((previous) => ({
           needsSetup: !response.setupComplete,
           setupComplete: response.setupComplete,

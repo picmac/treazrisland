@@ -1,13 +1,12 @@
-import { apiFetch } from "@lib/api/client";
 import { FirstAdminForm } from "@/src/onboarding/sections/first-admin-form";
 import { PixelFrame } from "@/src/components/pixel-frame";
 import { SetupWizard } from "@/src/onboarding/setup-wizard";
-import type { OnboardingStatus } from "@/src/onboarding/types";
+import { fetchOnboardingStatus, type OnboardingStatus } from "@lib/api/onboarding";
 
 export default async function OnboardingEntry() {
   let status: OnboardingStatus | null = null;
   try {
-    status = await apiFetch<OnboardingStatus>("/onboarding/status");
+    status = await fetchOnboardingStatus();
   } catch (error) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-white">

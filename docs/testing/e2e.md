@@ -56,6 +56,17 @@ From the `frontend/` directory, enable the smoke specs and execute them against 
 RUN_SMOKE_E2E=1 npm run test:e2e:smoke
 ```
 
+### Login and onboarding happy path
+
+Automated flows should follow the same journey that manual testers use when bootstrapping a fresh stack:
+
+1. Visit `/onboarding` and wait for `frontend/src/onboarding/onboarding-entry.tsx` to resolve the status call. The page renders the `FirstAdminForm` while the backend reports the `first-admin` step as pending.
+2. Submit the inaugural admin credentials. The form posts to `/onboarding/admin` via `frontend/src/lib/api/onboarding.ts#createFirstAdmin`, receives session tokens, and hydrates the `AuthProvider` with the new admin user.
+3. The wizard automatically advances to the remaining setup steps (`system-profile`, `integrations`, `personalization`). Each panel is orchestrated by `frontend/src/onboarding/setup-wizard.tsx` and persists data by PATCHing `/onboarding/steps/:stepKey` through `updateOnboardingStep`.
+4. After the backend flags `setupComplete`, redirect to `/login` and verify that the credentials created during onboarding work against `/auth/login` through `frontend/src/auth/login-form.tsx`.
+
+Capturing these checkpoints in future Playwright specs guarantees that onboarding regressions surface quickly and that the login portal stays compatible with freshly provisioned instances.
+
 ### Environment variables
 
 The suite honors the following environment variables:
