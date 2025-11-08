@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtemp, rm, stat, readdir } from "node:fs/promises";
+import { mkdtemp, rm, stat, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { Readable } from "node:stream";
@@ -92,5 +92,51 @@ describe("StorageService avatar uploads", () => {
       }
     }
     expect(entries.length).toBe(0);
+  });
+});
+
+describe("StorageService filesystem hardening", () => {
+  let tempRoot: string;
+  let service: StorageService;
+
+  beforeEach(async () => {
+    tempRoot = await mkdtemp(join(tmpdir(), "storage-security-test-"));
+    service = new StorageService({
+      driver: "filesystem",
+      localRoot: tempRoot,
+      assetBucket: "assets",
+      romBucket: "roms",
+      biosBucket: "bios",
+      forcePathStyle: true
+    });
+  });
+
+  afterEach(async () => {
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("rejects keys that resolve outside the storage root", async () => {
+    const sourcePath = join(tempRoot, "payload.bin");
+    await writeFile(sourcePath, Buffer.from("payload"));
+
+    await expect(
+      service.putObject(service.assetBucket, "../outside", {
+        filePath: sourcePath,
+        size: 7,
+        sha256: "deadbeef"
+      })
+    ).rejects.toThrow(/outside the configured storage root/);
+  });
+
+  it("prevents read access to paths outside the storage root", async () => {
+    await expect(
+      service.getObjectStream(service.assetBucket, "../../../../etc/passwd")
+    ).rejects.toThrow(/outside the configured storage root/);
+  });
+
+  it("prevents deleting files outside the storage root", async () => {
+    await expect(
+      service.deleteObject(service.assetBucket, "../outside-file")
+    ).rejects.toThrow(/outside the configured storage root/);
   });
 });

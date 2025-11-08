@@ -18,6 +18,8 @@ import {
 import { env } from "../config/env.js";
 import {
   clearRefreshCookie,
+  readRefreshCsrfHeader,
+  readRefreshCsrfTokenFromRequest,
   readRefreshTokenFromRequest,
   setRefreshCookie
 } from "../utils/cookies.js";
@@ -767,9 +769,16 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         return reply.status(401).send({ message: "Refresh token missing" });
       }
 
-    try {
-      const result = await rotateRefreshToken(app, refreshToken);
-      setRefreshCookie(reply, result.refreshToken, result.refreshExpiresAt);
+      const csrfCookie = readRefreshCsrfTokenFromRequest(request);
+      const csrfHeader = readRefreshCsrfHeader(request);
+      if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
+        clearRefreshCookie(reply);
+        return reply.status(403).send({ message: "CSRF token missing or invalid" });
+      }
+
+      try {
+        const result = await rotateRefreshToken(app, refreshToken);
+        setRefreshCookie(reply, result.refreshToken, result.refreshExpiresAt);
 
       return reply.send({
         user: result.user,
@@ -790,6 +799,16 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
   app.post("/auth/logout", async (request, reply) => {
     const refreshToken = readRefreshTokenFromRequest(request);
+    const csrfCookie = readRefreshCsrfTokenFromRequest(request);
+    const csrfHeader = readRefreshCsrfHeader(request);
+
+    if (refreshToken) {
+      if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
+        clearRefreshCookie(reply);
+        return reply.status(403).send({ message: "CSRF token missing or invalid" });
+      }
+    }
+
     clearRefreshCookie(reply);
 
     if (!refreshToken) {

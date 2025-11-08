@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:16.10-alpine3.22
     container_name: treazrisland-db
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-treazrisland}
@@ -19,7 +19,7 @@ services:
       retries: 6
 
   minio:
-    image: minio/minio:RELEASE.2024-05-28T17-19-04Z
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: treazrisland-minio
     command: server /data --console-address :9001
     environment:
@@ -37,7 +37,7 @@ services:
       retries: 6
 
   minio-setup:
-    image: minio/mc:RELEASE.2024-05-28T18-11-17Z
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
     container_name: treazrisland-minio-setup
     depends_on:
       minio:

@@ -1,7 +1,7 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { mkdir, unlink, copyFile, stat, readFile } from "node:fs/promises";
-import { dirname, join, normalize } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 import type { ReadableStream as WebReadableStream } from "node:stream/web";
@@ -250,7 +250,7 @@ export class StorageService {
     if (this.config.driver !== "filesystem") {
       throw new Error("Filesystem storage is not configured");
     }
-    const destPath = normalize(join(this.config.localRoot, bucket, key));
+    const destPath = this.resolveFilesystemPath(bucket, key);
     await mkdir(dirname(destPath), { recursive: true });
     await copyFile(source.filePath, destPath);
   }
@@ -259,7 +259,7 @@ export class StorageService {
     if (this.config.driver !== "filesystem") {
       throw new Error("Filesystem storage is not configured");
     }
-    const filePath = normalize(join(this.config.localRoot, bucket, key));
+    const filePath = this.resolveFilesystemPath(bucket, key);
     const stream = createReadStream(filePath);
     const stats = await stat(filePath);
     return {
@@ -272,8 +272,25 @@ export class StorageService {
     if (this.config.driver !== "filesystem") {
       throw new Error("Filesystem storage is not configured");
     }
-    const filePath = normalize(join(this.config.localRoot, bucket, key));
+    const filePath = this.resolveFilesystemPath(bucket, key);
     await safeUnlink(filePath);
+  }
+
+  private resolveFilesystemPath(bucket: string, key: string): string {
+    if (this.config.driver !== "filesystem") {
+      throw new Error("Filesystem storage is not configured");
+    }
+
+    const root = resolve(this.config.localRoot);
+    const bucketRoot = resolve(root, bucket);
+    const resolvedPath = resolve(bucketRoot, key);
+    const bucketPrefix = bucketRoot.endsWith(sep) ? bucketRoot : `${bucketRoot}${sep}`;
+
+    if (resolvedPath !== bucketRoot && !resolvedPath.startsWith(bucketPrefix)) {
+      throw new Error("Storage key resolves outside the configured storage root");
+    }
+
+    return resolvedPath;
   }
 
   private async putObjectS3(bucket: string, key: string, source: UploadSource): Promise<void> {

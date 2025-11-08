@@ -23,10 +23,16 @@ describe("createContentSecurityPolicy", () => {
     const scriptDirective = csp
       .split("; ")
       .find((directive) => directive.startsWith("script-src"));
+    const connectDirective = csp
+      .split("; ")
+      .find((directive) => directive.startsWith("connect-src"));
 
     expect(csp).toContain("default-src 'self'");
     expect(csp).toContain("report-uri /api/csp-report");
-    expect(scriptDirective).toBe("script-src 'self' https: blob: 'unsafe-inline'");
+    expect(scriptDirective).toBe("script-src 'self' https: blob:");
+    expect(connectDirective).toContain("http:");
+    expect(connectDirective).toContain("ws:");
+    expect(connectDirective).toContain("wss:");
     expect(csp).not.toContain("upgrade-insecure-requests");
   });
 
@@ -55,8 +61,14 @@ describe("createContentSecurityPolicy", () => {
     delete process.env.TREAZ_TLS_MODE;
 
     const csp = createContentSecurityPolicy();
+    const connectDirective = csp
+      .split("; ")
+      .find((directive) => directive.startsWith("connect-src"));
 
     expect(csp).toContain("upgrade-insecure-requests");
+    expect(connectDirective).not.toContain("http:");
+    expect(connectDirective).not.toContain("ws:");
+    expect(connectDirective).toContain("wss:");
   });
 
   test("throws in production when TREAZ_TLS_MODE is invalid", () => {
