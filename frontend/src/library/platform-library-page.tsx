@@ -10,6 +10,8 @@ import {
   LibraryFilterControls,
   type LibraryFilterState
 } from "@/src/components/library-filter-controls";
+import { VirtualizedGrid } from "@/src/components/virtualized-grid";
+import { useVirtualizedGridResetKey } from "@/src/hooks/useVirtualizedGrid";
 
 const DEFAULT_FILTERS: LibraryFilterState = {
   search: "",
@@ -21,12 +23,17 @@ const DEFAULT_FILTERS: LibraryFilterState = {
 
 type FetchState = "idle" | "loading" | "error" | "loaded";
 
+type PlatformGridItem =
+  | { kind: "platform"; platform: PlatformSummary }
+  | { kind: "placeholder"; id: string };
+
 export function PlatformLibraryPage() {
   const [filters, setFilters] = useState<LibraryFilterState>(DEFAULT_FILTERS);
   const [includeEmpty, setIncludeEmpty] = useState(false);
   const [platforms, setPlatforms] = useState<PlatformSummary[]>([]);
   const [state, setState] = useState<FetchState>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [columns, setColumns] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,6 +63,31 @@ export function PlatformLibraryPage() {
       cancelled = true;
     };
   }, [filters.search, includeEmpty]);
+
+  useEffect(() => {
+    const resolveColumns = (width: number) => {
+      if (width >= 1280) {
+        return 3;
+      }
+      if (width >= 768) {
+        return 2;
+      }
+      return 1;
+    };
+
+    const updateColumns = () => {
+      if (typeof window === "undefined") {
+        return;
+      }
+      setColumns(resolveColumns(window.innerWidth));
+    };
+
+    updateColumns();
+    window.addEventListener("resize", updateColumns);
+    return () => {
+      window.removeEventListener("resize", updateColumns);
+    };
+  }, []);
 
   const visiblePlatforms = useMemo(() => {
     const normalizedSearch = filters.search.trim().toLowerCase();
@@ -125,6 +157,33 @@ export function PlatformLibraryPage() {
     });
   }, [filters.direction, filters.sort, filters.search, platforms]);
 
+  const resetBaseKey = useVirtualizedGridResetKey({
+    slug: "platforms",
+    filters
+  });
+
+  const gridResetKey = useMemo(
+    () => `${resetBaseKey}|${includeEmpty ? "include-empty" : "exclude-empty"}`,
+    [includeEmpty, resetBaseKey]
+  );
+
+  const showPlaceholderGrid = state === "loading" && platforms.length === 0;
+
+  const gridItems: PlatformGridItem[] = useMemo(() => {
+    if (showPlaceholderGrid) {
+      const placeholderCount = Math.max(columns * 3, columns);
+      return Array.from({ length: placeholderCount }, (_, index) => ({
+        kind: "placeholder" as const,
+        id: `placeholder-${index}`
+      }));
+    }
+
+    return visiblePlatforms.map((platform) => ({
+      kind: "platform" as const,
+      platform
+    }));
+  }, [columns, showPlaceholderGrid, visiblePlatforms]);
+
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-6 text-parchment">
       <PixelFrame className="space-y-3 bg-night/80 p-6">
@@ -166,77 +225,27 @@ export function PlatformLibraryPage() {
         </div>
       )}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {visiblePlatforms.map((platform) => {
-          const heroArt = platform.heroArt;
-          const heroUrl = resolveAssetUrl(heroArt?.storageKey ?? null, heroArt?.signedUrl ?? null);
-          const cover = platform.featuredRom?.assetSummary.cover;
-          const fallbackCoverUrl = cover?.externalUrl ?? null;
-          const coverUrl = heroUrl ?? fallbackCoverUrl;
-          const coverAlt = heroArt
-            ? `${platform.name} curated hero art`
-            : platform.featuredRom
-              ? `${platform.featuredRom.title} cover art`
-              : `${platform.name} cover art`;
-          const coverWidth =
-            heroArt?.width && heroArt.width > 0
-              ? heroArt.width
-              : cover?.width && cover.width > 0
-                ? cover.width
-                : 640;
-          const coverHeight =
-            heroArt?.height && heroArt.height > 0
-              ? heroArt.height
-              : cover?.height && cover.height > 0
-                ? cover.height
-                : 480;
-
-          return (
-            <Link
-              key={platform.id}
-              href={`/platforms/${platform.slug}`}
-              className="group rounded-pixel border border-ink/40 bg-night/70 p-4 transition hover:border-lagoon hover:bg-night/80"
-            >
-              <div className="flex items-center justify-between text-xs uppercase tracking-widest text-parchment/60">
-                <span>{platform.shortName ?? platform.slug.toUpperCase()}</span>
-                <span>{platform.romCount} ROMs</span>
-              </div>
-              <h2 className="mt-2 text-lg font-semibold text-parchment group-hover:text-lagoon">
-                {platform.name}
-              </h2>
-              {heroArt ? (
-                <p className="mt-2 text-[0.65rem] uppercase tracking-[0.35em] text-lagoon/80">
-                  Curated hero art
-                  {heroArt.notes ? (
-                    <span className="ml-2 text-[0.6rem] normal-case tracking-normal text-parchment/70">
-                      {heroArt.notes}
-                    </span>
-                  ) : null}
-                </p>
-              ) : null}
-              {coverUrl ? (
-                <div className="mt-3 overflow-hidden rounded-pixel border border-ink/40 bg-night/60">
-                  <Image
-                    src={coverUrl}
-                    alt={coverAlt}
-                    width={coverWidth}
-                    height={coverHeight}
-                    className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    sizes="(max-width: 768px) 100vw, 33vw"
-                  />
-                </div>
-              ) : null}
-              {platform.featuredRom ? (
-                <p className="mt-2 text-sm text-parchment/70">
-                  Latest arrival: <span className="text-parchment">{platform.featuredRom.title}</span>
-                </p>
-              ) : (
-                <p className="mt-2 text-sm text-parchment/50">No ROMs uploaded yet.</p>
-              )}
-            </Link>
-          );
-        })}
-      </section>
+      {gridItems.length > 0 && (
+        <div className="rounded-pixel border border-ink/40 bg-night/70 p-4">
+          <div className="h-[720px]">
+            <VirtualizedGrid
+              items={gridItems}
+              columns={columns}
+              rowHeight={360}
+              overscan={2}
+              gap="1rem"
+              resetKey={gridResetKey}
+              renderItem={(item) =>
+                item.kind === "platform" ? (
+                  <PlatformCard platform={item.platform} />
+                ) : (
+                  <PlatformPlaceholderCard />
+                )
+              }
+            />
+          </div>
+        </div>
+      )}
 
       {state === "loaded" && visiblePlatforms.length === 0 && (
         <div className="rounded-pixel border border-ink/40 bg-night/70 p-6 text-sm text-parchment/70">
@@ -245,5 +254,88 @@ export function PlatformLibraryPage() {
         </div>
       )}
     </main>
+  );
+}
+
+function PlatformCard({ platform }: { platform: PlatformSummary }) {
+  const heroArt = platform.heroArt;
+  const heroUrl = resolveAssetUrl(heroArt?.storageKey ?? null, heroArt?.signedUrl ?? null);
+  const cover = platform.featuredRom?.assetSummary.cover;
+  const fallbackCoverUrl = cover?.externalUrl ?? null;
+  const coverUrl = heroUrl ?? fallbackCoverUrl;
+  const coverAlt = heroArt
+    ? `${platform.name} curated hero art`
+    : platform.featuredRom
+      ? `${platform.featuredRom.title} cover art`
+      : `${platform.name} cover art`;
+  const coverWidth =
+    heroArt?.width && heroArt.width > 0
+      ? heroArt.width
+      : cover?.width && cover.width > 0
+        ? cover.width
+        : 640;
+  const coverHeight =
+    heroArt?.height && heroArt.height > 0
+      ? heroArt.height
+      : cover?.height && cover.height > 0
+        ? cover.height
+        : 480;
+
+  return (
+    <Link
+      href={`/platforms/${platform.slug}`}
+      className="group flex h-full flex-col rounded-pixel border border-ink/40 bg-night/70 p-4 transition hover:border-lagoon hover:bg-night/80"
+    >
+      <div className="flex items-center justify-between text-xs uppercase tracking-widest text-parchment/60">
+        <span>{platform.shortName ?? platform.slug.toUpperCase()}</span>
+        <span>{platform.romCount} ROMs</span>
+      </div>
+      <h2 className="mt-2 text-lg font-semibold text-parchment group-hover:text-lagoon">
+        {platform.name}
+      </h2>
+      {heroArt ? (
+        <p className="mt-2 text-[0.65rem] uppercase tracking-[0.35em] text-lagoon/80">
+          Curated hero art
+          {heroArt.notes ? (
+            <span className="ml-2 text-[0.6rem] normal-case tracking-normal text-parchment/70">
+              {heroArt.notes}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
+      {coverUrl ? (
+        <div className="mt-3 overflow-hidden rounded-pixel border border-ink/40 bg-night/60">
+          <Image
+            src={coverUrl}
+            alt={coverAlt}
+            width={coverWidth}
+            height={coverHeight}
+            className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            sizes="(max-width: 768px) 100vw, 33vw"
+          />
+        </div>
+      ) : null}
+      {platform.featuredRom ? (
+        <p className="mt-2 text-sm text-parchment/70">
+          Latest arrival: <span className="text-parchment">{platform.featuredRom.title}</span>
+        </p>
+      ) : (
+        <p className="mt-2 text-sm text-parchment/50">No ROMs uploaded yet.</p>
+      )}
+    </Link>
+  );
+}
+
+function PlatformPlaceholderCard() {
+  return (
+    <div className="flex h-full flex-col justify-between rounded-pixel border border-ink/40 bg-night/60 p-4 text-parchment/60">
+      <div className="flex items-center justify-between text-xs uppercase tracking-widest">
+        <span className="h-3 w-14 rounded bg-ink/50" />
+        <span className="h-3 w-20 rounded bg-ink/50" />
+      </div>
+      <div className="mt-3 h-6 w-3/4 rounded bg-ink/50" />
+      <div className="mt-4 h-40 w-full rounded bg-ink/50" />
+      <div className="mt-3 h-4 w-1/2 rounded bg-ink/50" />
+    </div>
   );
 }
