@@ -280,6 +280,7 @@ model Rom {
   netplaySessions NetplaySession[]
 
   @@index([platformId])
+  @@index([platformId, title])
   @@index([screenscraperId])
 }
 
@@ -325,6 +326,7 @@ model RomAsset {
   playbackAudits RomPlaybackAudit[]
 
   @@index([romId])
+  @@index([romId, type])
   @@index([type])
   @@index([providerId])
   @@unique([romId, providerId])

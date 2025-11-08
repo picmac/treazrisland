@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { PLATFORM_SEEDS } from "./seed-data.js";
+import { PLATFORM_SEEDS } from "../seed-data.js";
 
 const prisma = new PrismaClient();
 
