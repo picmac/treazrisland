@@ -1,7 +1,6 @@
 import fp from "fastify-plugin";
 import { randomUUID } from "node:crypto";
-import type { FastifyInstance } from "fastify";
-import type { Logger } from "pino";
+import type { FastifyBaseLogger, FastifyInstance } from "fastify";
 
 function resolveCorrelationId(
   requestId: string,
@@ -33,7 +32,7 @@ function durationMs(start?: bigint): number | undefined {
   return Number(process.hrtime.bigint() - start) / 1_000_000;
 }
 
-type RequestLogger = Logger & { context?: Record<string, unknown> };
+type RequestLogger = FastifyBaseLogger & { context?: Record<string, unknown> };
 
 export default fp(async (app: FastifyInstance) => {
   app.addHook("onRequest", (request, reply, done) => {

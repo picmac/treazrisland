@@ -1,7 +1,7 @@
 import fp from "fastify-plugin";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import type { PrismaClient } from "@prisma/client";
-import packageInfo from "../../package.json" assert { type: "json" };
+import packageInfo from "../../package.json" with { type: "json" };
 
 export type HealthComponentStatus = {
   component: string;

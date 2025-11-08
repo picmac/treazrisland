@@ -100,7 +100,7 @@ export const buildServer = (
         .send({ status: "fail", reason: type ?? "unknown" });
     },
     exposeStatusRoute: {
-      route: "/health/system",
+      url: "/health/system",
       routeOpts: {
         logLevel: "warn",
       },

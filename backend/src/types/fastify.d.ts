@@ -1,4 +1,4 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyBaseLogger, FastifyReply, FastifyRequest } from "fastify";
 import type { Role } from "@prisma/client";
 import type { ScreenScraperService } from "../services/screenscraper/service.js";
 import type { StorageService } from "../services/storage/storage.js";
@@ -7,7 +7,6 @@ import type { MfaService } from "../services/mfa/service.js";
 import type { ObservabilityMetrics } from "../plugins/observability.js";
 import type { SettingsManager } from "../plugins/settings.js";
 import type { HealthManager } from "../plugins/health.js";
-import type { Logger } from "pino";
 
 declare module "@fastify/jwt" {
   interface FastifyJWT {
@@ -43,6 +42,6 @@ declare module "fastify" {
     metricsStartTime?: bigint;
     requestStartTime?: bigint;
     correlationId?: string;
-    requestLogger?: Logger;
+    requestLogger?: FastifyBaseLogger;
   }
 }
