@@ -1,7 +1,8 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import AdmZip from "adm-zip";
+import extract from "extract-zip";
 
 type GitHubAsset = {
   name: string;
@@ -56,8 +57,15 @@ async function getLatestRelease(token?: string): Promise<GitHubRelease> {
 }
 
 async function extractZip(buffer: Buffer, destination: string) {
-  const zip = new AdmZip(buffer);
-  zip.extractAllTo(destination, true);
+  const tempDir = await mkdtemp(path.join(tmpdir(), "treazrisland-emulatorjs-"));
+  const archivePath = path.join(tempDir, "bundle.zip");
+
+  try {
+    await writeFile(archivePath, buffer);
+    await extract(archivePath, { dir: destination });
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 }
 
 async function main() {
