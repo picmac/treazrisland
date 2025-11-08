@@ -79,6 +79,40 @@ describe("observability surfaces", () => {
     expect(database?.error).toContain("connection refused");
   });
 
+  it("reports readiness warnings when Prisma tables are unavailable", async () => {
+    app = buildServer({ registerPrisma: false });
+    const prismaError = Object.assign(new Error("table does not exist"), {
+      code: "P2021",
+    });
+    app.decorate("prisma", {
+      systemSetting: {
+        findMany: vi.fn().mockRejectedValue(prismaError),
+      },
+    });
+    await app.ready();
+
+    const response = await app.inject({ method: "GET", url: "/health/ready" });
+    expect(response.statusCode).toBe(200);
+
+    const payload = response.json() as {
+      status: string;
+      components: Array<{
+        component: string;
+        status: string;
+        details?: Record<string, unknown>;
+      }>;
+    };
+
+    expect(payload.status).toBe("warn");
+    const database = payload.components.find(
+      (entry) => entry.component === "database",
+    );
+    expect(database?.status).toBe("warn");
+    expect(database?.details).toMatchObject({
+      reason: "system_settings_table_missing",
+    });
+  });
+
   it("propagates correlation identifiers", async () => {
     app = buildServer({ registerPrisma: false });
     await app.ready();
