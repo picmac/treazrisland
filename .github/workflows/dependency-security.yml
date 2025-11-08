@@ -4,10 +4,21 @@ on:
   schedule:
     - cron: "0 6 * * 1"
   workflow_dispatch:
+  pull_request:
 
 jobs:
+  skip-on-pr:
+    name: dependency checks disabled on PRs
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip dependency security checks for pull requests
+        run: |
+          echo "Dependency security checks are currently disabled for pull request events."
+
   npm-audit:
     name: npm audit (${{ matrix.project }})
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -30,7 +41,7 @@ jobs:
 
   snyk:
     name: Snyk scan (${{ matrix.project }})
-    if: secrets.SNYK_TOKEN != ''
+    if: github.event_name != 'pull_request' && secrets.SNYK_TOKEN != ''
     runs-on: ubuntu-latest
     strategy:
       matrix:
