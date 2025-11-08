@@ -4,7 +4,8 @@
     "noEmit": false,
     "sourceMap": false,
     "declaration": true,
-    "declarationDir": "dist/types"
+    "declarationDir": "dist/types",
+    "rootDir": "src"
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts", "src/**/*.spec.ts"]
