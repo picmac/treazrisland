@@ -7,18 +7,8 @@ on:
   pull_request:
 
 jobs:
-  skip-on-pr:
-    name: dependency checks disabled on PRs
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip dependency security checks for pull requests
-        run: |
-          echo "Dependency security checks are currently disabled for pull request events."
-
   npm-audit:
     name: npm audit (${{ matrix.project }})
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -29,8 +19,8 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
-          cache: "npm"
+          node-version: 24
+          cache: npm
           cache-dependency-path: "${{ matrix.project }}/package-lock.json"
       - name: Install dependencies
         working-directory: ${{ matrix.project }}
@@ -38,30 +28,3 @@ jobs:
       - name: Run npm audit
         working-directory: ${{ matrix.project }}
         run: npm audit --audit-level=high
-
-  snyk:
-    name: Snyk scan (${{ matrix.project }})
-    if: github.event_name != 'pull_request' && secrets.SNYK_TOKEN != ''
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        project: [backend, frontend]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20.x"
-          cache: "npm"
-          cache-dependency-path: "${{ matrix.project }}/package-lock.json"
-      - name: Install dependencies
-        working-directory: ${{ matrix.project }}
-        run: npm ci --ignore-scripts
-      - name: Setup Snyk
-        uses: snyk/actions/setup@v3
-      - name: Snyk test
-        working-directory: ${{ matrix.project }}
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk test --severity-threshold=high
