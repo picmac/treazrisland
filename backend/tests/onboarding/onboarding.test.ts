@@ -2,7 +2,10 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import request from "supertest";
 import type { FastifyInstance } from "fastify";
 import type { Role } from "@prisma/client";
-import type { SettingsManager, ResolvedSystemSettings } from "../plugins/settings.js";
+import type {
+  SettingsManager,
+  ResolvedSystemSettings,
+} from "../../src/plugins/settings.js";
 
 vi.mock("argon2", () => {
   const hashMock = vi.fn().mockImplementation(async (value: string) => `hashed-${value}`);
@@ -30,7 +33,7 @@ process.env.STORAGE_BUCKET_ROMS = process.env.STORAGE_BUCKET_ROMS ?? "roms";
 process.env.STORAGE_BUCKET_BIOS = process.env.STORAGE_BUCKET_BIOS ?? "bios";
 process.env.ROM_UPLOAD_MAX_BYTES = process.env.ROM_UPLOAD_MAX_BYTES ?? `${1024 * 1024}`;
 
-let buildServer: typeof import("../server.js").buildServer;
+let buildServer: typeof import("../../src/server.js").buildServer;
 
 type MockFn = ReturnType<typeof vi.fn>;
 
@@ -168,7 +171,7 @@ describe("onboarding routes", () => {
   let currentSettings: ResolvedSystemSettings;
 
   beforeAll(async () => {
-    ({ buildServer } = await import("../server.js"));
+    ({ buildServer } = await import("../../src/server.js"));
   });
 
   beforeEach(async () => {

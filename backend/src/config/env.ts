@@ -492,6 +492,7 @@ export const env = {
   LOG_LEVEL:
     parsed.data.LOG_LEVEL ??
     (parsed.data.NODE_ENV === "production" ? "info" : "debug"),
+  CORS_ALLOWED_ORIGINS: splitCsv(parsed.data.CORS_ALLOWED_ORIGINS),
   TREAZ_TLS_MODE: parsed.data.TREAZ_TLS_MODE,
   TLS_ENABLED: tlsEnabled,
   JWT_ACCESS_TTL_MS: accessMs,

@@ -138,9 +138,10 @@ function normalizePlaybackReason(reason: string): string {
   return normalized.length > 0 ? normalized : "unknown";
 }
 
-function parseAllowedOrigins(raw: string): Set<string> {
+function parseAllowedOrigins(raw: string | string[]): Set<string> {
   const origins = new Set<string>();
-  for (const entry of raw.split(",")) {
+  const values = Array.isArray(raw) ? raw : raw.split(",");
+  for (const entry of values) {
     const trimmed = entry.trim();
     if (!trimmed) {
       continue;

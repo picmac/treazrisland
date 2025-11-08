@@ -7,6 +7,7 @@ import jwt from "@fastify/jwt";
 import { env, bootstrapSecrets } from "./config/env.js";
 import prismaPlugin from "./plugins/prisma.js";
 import authPlugin from "./plugins/auth.js";
+import corsPlugin from "./plugins/cors.js";
 import storagePlugin from "./plugins/storage.js";
 import screenScraperPlugin from "./plugins/screenscraper.js";
 import { registerOnboardingRoutes } from "./routes/onboarding.js";
@@ -74,6 +75,7 @@ export const buildServer = (
   });
 
   app.register(sensible);
+  app.register(corsPlugin);
   app.register(loggingPlugin);
   app.register(healthPlugin);
   app.register(underPressure, {
