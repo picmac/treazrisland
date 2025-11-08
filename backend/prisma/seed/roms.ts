@@ -1,5 +1,8 @@
 import { PrismaClient } from "@prisma/client";
-import { PLATFORM_SEEDS, TOP_LIST_SEEDS } from "./seed-data.js";
+import { PLATFORM_SEEDS, TOP_LIST_SEEDS } from "../seed-data.js";
+
+// TODO: Replace inline seed data with curated CSV/JSON metadata exports.
+// Binary ROM archives are intentionally excluded from the repository.
 
 const prisma = new PrismaClient();
 

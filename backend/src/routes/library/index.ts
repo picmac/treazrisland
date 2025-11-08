@@ -5,13 +5,13 @@ import {
   SUMMARY_ASSET_TYPES,
   assetSummarySelect,
   buildAssetSummary,
-} from "../utils/asset-summary.js";
+} from "../../utils/asset-summary.js";
 import {
   CreativeAssetStatus,
   CreativeAssetUsageKind,
   EnrichmentProvider,
   RomAssetType
-} from "../utils/prisma-enums.js";
+} from "../../utils/prisma-enums.js";
 
 type RomAssetTypeValue = (typeof RomAssetType)[keyof typeof RomAssetType];
 const ROM_ASSET_TYPE_VALUES = Object.values(RomAssetType) as string[];
@@ -317,10 +317,16 @@ function pickPrimaryMetadata(
 }
 
 export async function registerLibraryRoutes(app: FastifyInstance): Promise<void> {
+  const libraryRateLimit = app.rateLimit({
+    hook: "preHandler",
+    timeWindow: 60_000,
+    max: 60
+  });
+
   app.get(
     "/platforms",
     {
-      preHandler: app.authenticate
+      preHandler: [app.authenticate, libraryRateLimit]
     },
     async (request) => {
       const { search, includeEmpty } = listPlatformsQuerySchema.parse(request.query ?? {});
@@ -356,7 +362,7 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
   app.get(
     "/platforms/:slug",
     {
-      preHandler: app.authenticate
+      preHandler: [app.authenticate, libraryRateLimit]
     },
     async (request) => {
       const params = z.object({ slug: z.string().min(1) }).parse(request.params);
@@ -384,7 +390,7 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
   app.get(
     "/roms",
     {
-      preHandler: app.authenticate
+      preHandler: [app.authenticate, libraryRateLimit]
     },
     async (request) => {
       const parsed = listRomsQuerySchema.parse(request.query ?? {});
@@ -534,7 +540,7 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
   app.get(
     "/roms/:id",
     {
-      preHandler: app.authenticate
+      preHandler: [app.authenticate, libraryRateLimit]
     },
     async (request) => {
       const params = z.object({ id: z.string().min(1) }).parse(request.params);
@@ -621,7 +627,7 @@ export async function registerLibraryRoutes(app: FastifyInstance): Promise<void>
   app.get(
     "/roms/:id/assets",
     {
-      preHandler: app.authenticate
+      preHandler: [app.authenticate, libraryRateLimit]
     },
     async (request) => {
       const params = z.object({ id: z.string().min(1) }).parse(request.params);

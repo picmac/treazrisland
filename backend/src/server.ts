@@ -15,7 +15,7 @@ import { registerScreenScraperRoutes } from "./routes/screenscraper.js";
 import { registerInvitationRoutes } from "./routes/invitations.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
-import { registerLibraryRoutes } from "./routes/library.js";
+import { registerLibraryRoutes } from "./routes/library/index.js";
 import { registerPlayerRoutes } from "./routes/player.js";
 import { registerFavoriteRoutes } from "./routes/favorites.js";
 import { registerCollectionRoutes } from "./routes/collections.js";

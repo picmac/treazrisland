@@ -21,11 +21,11 @@ process.env.STORAGE_BUCKET_BIOS = "bios";
 process.env.ROM_UPLOAD_MAX_BYTES = `${1024 * 1024}`;
 
 let buildServer: typeof import("../server.js").buildServer;
-let registerLibraryRoutes: typeof import("./library.js").registerLibraryRoutes;
+let registerLibraryRoutes: typeof import("./library/index.js").registerLibraryRoutes;
 
 beforeAll(async () => {
   ({ buildServer } = await import("../server.js"));
-  ({ registerLibraryRoutes } = await import("./library.js"));
+  ({ registerLibraryRoutes } = await import("./library/index.js"));
 });
 
 type PrismaMock = {
