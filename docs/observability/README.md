@@ -73,3 +73,30 @@ Use dashboards to correlate upload failure spikes with enrichment job queues and
 - The Compose stacks ship `loki` and `promtail` services. Promtail tails Docker logs via the Unix socket, parses JSON emitted by Pino, and enriches entries with `service`, `event`, `route`, and `statusCode` labels before shipping to Loki.
 - Grafana auto-provisions a Loki datasource (`uid: treaz-loki`) and the backend reliability dashboard includes a `Backend Request Logs` panel filtered to `service="backend"`. Filter by `requestId` or `event="rate_limit.exceeded"` to investigate spikes.
 - Adjust the promtail stages via `infra/monitoring/promtail-config.yml` if additional containers or custom labels are required.
+
+## Operational runbooks
+
+### Health check or readiness alarms
+
+1. Hit `GET /health/ready` (or `/health`) on the Fastify service. The handler logs a `health.probe` event that includes component statuses and returns HTTP 503 only when the aggregate state is `fail`.
+2. If the payload reports a database warning (`details.reason === "system_settings_table_missing"`), run `docker compose -f infra/docker-compose.yml exec backend npx prisma migrate deploy` to apply migrations, then re-check the endpoint.
+3. When metrics are disabled or unreachable, inspect the backend logs with `docker compose -f infra/docker-compose.yml logs backend | jq '.message'` to confirm whether the `metrics` component is marked `enabled: false` (expected for local dev) or failing unexpectedly.
+
+### Rate limit or 429 spike investigation
+
+1. Query Loki for `event="rate_limit.exceeded"` to identify offending routes, roles, and source IP addresses. The logging plugin now attaches `userAgent`, `forwardedFor`, and authenticated `userRole` metadata to each rejection event.
+2. Scrape Prometheus directly for `treaz_rate_limit_exceeded_total` to corroborate the volume:
+
+   ```sh
+   docker compose -f infra/docker-compose.yml exec prometheus \
+     wget -qO- 'http://localhost:9090/api/v1/query?query=treaz_rate_limit_exceeded_total'
+   ```
+
+3. If a single user or network is abusing the API, temporarily raise route-specific thresholds in `backend/src/server.ts` or apply upstream firewall rules before tuning the defaults in `.env`.
+
+### Log and metric scraping cheat sheet
+
+- **Backend logs:** `docker compose -f infra/docker-compose.yml logs --tail=200 backend` or follow live with `-f`. Pipe through `jq` to pretty-print the structured events emitted by Pino.
+- **Frontend logs:** `docker compose -f infra/docker-compose.yml logs frontend` for Next.js build/start output, including CSP violation forwarding attempts.
+- **Prometheus snapshot:** `docker compose -f infra/docker-compose.yml exec prometheus promtool tsdb create-blocks-from` (see Prometheus docs) to export raw TSDB blocks when escalation teams need offline analysis.
+- **Grafana dashboards:** JSON definitions live under `infra/monitoring/dashboards/`. Binary exports for MinIO and Prometheus dashboards remain on the TODO list and will ship as a follow-up package rather than being committed directly to the repository.

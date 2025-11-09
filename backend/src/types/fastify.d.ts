@@ -42,6 +42,7 @@ declare module "fastify" {
     metricsStartTime?: bigint;
     requestStartTime?: bigint;
     correlationId?: string;
-    requestLogger?: FastifyBaseLogger;
+    requestLogger?: FastifyBaseLogger & { context?: Record<string, unknown> };
+    appendLogContext: (context: Record<string, unknown>) => void;
   }
 }
