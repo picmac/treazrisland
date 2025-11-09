@@ -16,7 +16,7 @@ export type PlayState = {
 export async function listPlayStates(romId: string): Promise<PlayState[]> {
   const params = new URLSearchParams({ romId });
   const response = await apiFetch<{ playStates: PlayState[] }>(
-    `/player/play-states?${params.toString()}`
+    `/play-states?${params.toString()}`
   );
   return response.playStates;
 }
@@ -38,7 +38,7 @@ export type RecentPlayState = {
 
 export async function listRecentPlayStates(): Promise<RecentPlayState[]> {
   const response = await apiFetch<{ recent: RecentPlayState[] }>(
-    "/player/play-states/recent"
+    "/play-states/recent"
   );
   return response.recent;
 }
@@ -62,7 +62,7 @@ export async function createPlayState(payload: {
     body.slot = payload.slot;
   }
 
-  return apiFetch<PlayState>("/player/play-states", {
+  return apiFetch<PlayState>("/play-states", {
     method: "POST",
     body: JSON.stringify(body)
   });
@@ -112,7 +112,7 @@ export async function requestRomBinary(
   }
 
   const response = await fetch(
-    `${API_BASE}/player/roms/${encodeURIComponent(romId)}/binary`,
+    `${API_BASE}/play/roms/${encodeURIComponent(romId)}/download`,
     {
       credentials: "include",
       headers

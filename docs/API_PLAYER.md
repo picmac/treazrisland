@@ -6,9 +6,9 @@ The player routes serve ROM binaries, auxiliary assets, and cloud-backed save st
 
 ## ROM Binary Streaming
 
-### `GET /player/roms/:id/binary`
+### `GET /play/roms/:id/download`
 
-Retrieves the packaged ROM archive for the specified ROM. The handler attempts to generate a signed URL first; if unavailable it streams directly from object storage.
+Retrieves the packaged ROM archive for the specified ROM. The handler attempts to generate a signed URL first; if unavailable it streams directly from object storage. Legacy clients may continue using `GET /player/roms/:id/binary`, which proxies to the same logic.
 
 - **Auth**: Required (`app.authenticate`).
 - **Rate limit**: 30 requests/minute for players, 120/minute for admins.
@@ -80,7 +80,7 @@ Playback audits emit action `ASSET_DOWNLOAD` with associated ROM context when av
 
 All save-state routes enforce ownership: the authenticated user must match the play-state `userId`.
 
-### `GET /player/play-states`
+### `GET /play-states`
 
 Lists the caller's save states, optionally filtered by ROM.
 
@@ -102,13 +102,13 @@ Lists the caller's save states, optionally filtered by ROM.
       "checksumSha256": "...",
       "createdAt": "2025-01-10T05:00:00.000Z",
       "updatedAt": "2025-01-10T05:00:00.000Z",
-      "downloadUrl": "/player/play-states/ps_123/binary"
+      "downloadUrl": "/play-states/ps_123/binary"
     }
   ]
 }
 ```
 
-### `GET /player/play-states/recent`
+### `GET /play-states/recent`
 
 Returns up to 10 of the most recent save states for the authenticated user. Each entry embeds ROM
 metadata and a condensed asset summary so the frontend can present “resume” tiles without issuing
@@ -132,7 +132,7 @@ additional library requests.
         "checksumSha256": "...",
         "createdAt": "2025-01-10T05:00:00.000Z",
         "updatedAt": "2025-01-12T08:30:00.000Z",
-        "downloadUrl": "/player/play-states/ps_123/binary"
+        "downloadUrl": "/play-states/ps_123/binary"
       },
       "rom": {
         "id": "rom_456",
@@ -155,20 +155,20 @@ additional library requests.
 }
 ```
 
-### `GET /player/play-states/:id`
+### `GET /play-states/:id`
 
 Fetches metadata for a single save state owned by the caller.
 
 - **Errors**: `401` when unauthenticated, `404` for missing or foreign states.
 
-### `GET /player/play-states/:id/binary`
+### `GET /play-states/:id/binary`
 
 Downloads the binary payload. Returns a signed URL when available or streams an octet payload with `Content-Length`.
 
 - **Errors**: `401` unauthorized, `404` when not found.
 - **Audit**: `PLAY_STATE_DOWNLOAD` events recorded with IP/user agent metadata.
 
-### `POST /player/play-states`
+### `POST /play-states`
 
 Creates a new save state from base64-encoded data.
 
@@ -190,7 +190,7 @@ Creates a new save state from base64-encoded data.
 
 Returns the serialized play state (same shape as `GET /player/play-states/:id`).
 
-### `PATCH /player/play-states/:id`
+### `PATCH /play-states/:id`
 
 Updates save-state metadata or payload. Provide any combination of `label`, `slot`, or `data`.
 
@@ -202,7 +202,7 @@ Updates save-state metadata or payload. Provide any combination of `label`, `slo
 - `400`: Missing update fields or payload exceeds byte limit.
 - `404`: Save state missing or not owned by the caller.
 
-### `DELETE /player/play-states/:id`
+### `DELETE /play-states/:id`
 
 Deletes the save state and purges the underlying object from storage.
 

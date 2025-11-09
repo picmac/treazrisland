@@ -67,7 +67,7 @@ describe("player api", () => {
 
     const result = await listPlayStates("rom-1");
 
-    expect(apiFetch).toHaveBeenCalledWith("/player/play-states?romId=rom-1");
+    expect(apiFetch).toHaveBeenCalledWith("/play-states?romId=rom-1");
     expect(result).toBe(playStates);
   });
 
@@ -83,14 +83,14 @@ describe("player api", () => {
       checksumSha256: "abc",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      downloadUrl: "/player/play-states/state-1/binary",
+      downloadUrl: "/play-states/state-1/binary",
     };
     vi.mocked(apiFetch).mockResolvedValueOnce(created);
 
     const result = await createPlayState(payload);
 
     expect(apiFetch).toHaveBeenCalledWith(
-      "/player/play-states",
+      "/play-states",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ romId: "rom-1", data: expectedBase64 }),
@@ -105,7 +105,7 @@ describe("player api", () => {
 
     const result = await listRecentPlayStates();
 
-    expect(apiFetch).toHaveBeenCalledWith("/player/play-states/recent");
+    expect(apiFetch).toHaveBeenCalledWith("/play-states/recent");
     expect(result).toBe(recent);
   });
 
@@ -121,7 +121,7 @@ describe("player api", () => {
     const result = await requestRomBinary("rom-1");
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/player/roms/rom-1/binary"),
+      expect.stringContaining("/play/roms/rom-1/download"),
       expect.objectContaining({
         credentials: "include",
         headers: expect.any(Headers),

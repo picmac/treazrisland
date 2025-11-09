@@ -32,6 +32,8 @@ process.env.STORAGE_LOCAL_ROOT = STORAGE_ROOT;
 
 let buildServer: typeof import("../server.js").buildServer;
 let registerPlayerRoutes: typeof import("./player.js").registerPlayerRoutes;
+let registerPlayRoutes: typeof import("./play/index.js").registerPlayRoutes;
+let registerPlayStateRoutes: typeof import("./play-states/index.js").registerPlayStateRoutes;
 
 type PrismaMock = {
   rom: { findUnique: ReturnType<typeof vi.fn> };
@@ -70,6 +72,10 @@ describe("player routes", () => {
   beforeAll(async () => {
     ({ buildServer } = await import("../server.js"));
     ({ registerPlayerRoutes } = await import("./player.js"));
+    ({ registerPlayRoutes } = await import("./play/index.js"));
+    ({ registerPlayStateRoutes } = await import(
+      "./play-states/index.js"
+    ));
   });
 
   beforeEach(async () => {
@@ -93,6 +99,8 @@ describe("player routes", () => {
     );
     app.decorate("prisma", prismaMock as unknown as PrismaClient);
     await app.register(async (instance) => {
+      await registerPlayRoutes(instance);
+      await registerPlayStateRoutes(instance);
       await registerPlayerRoutes(instance);
     });
     await app.ready();
@@ -135,6 +143,63 @@ describe("player routes", () => {
       expect.objectContaining({ where: { id: "rom-1" } })
     );
     expect(prismaMock.romPlaybackAudit.create).toHaveBeenCalled();
+  });
+
+  it("proxies ROM downloads through the /play endpoint", async () => {
+    const binaryData = Buffer.from("ROMDATA");
+    const romStoragePath = join(STORAGE_ROOT, process.env.STORAGE_BUCKET_ROMS!, "rom-1.bin");
+    await fs.mkdir(join(STORAGE_ROOT, process.env.STORAGE_BUCKET_ROMS!), { recursive: true });
+    await fs.writeFile(romStoragePath, binaryData);
+
+    prismaMock.rom.findUnique.mockResolvedValue({
+      id: "rom-1",
+      binary: {
+        id: "binary-1",
+        storageKey: "rom-1.bin",
+        status: RomBinaryStatus.READY,
+        archiveSize: binaryData.length,
+        archiveMimeType: "application/octet-stream"
+      }
+    });
+    prismaMock.romPlaybackAudit.create.mockResolvedValue({});
+
+    const token = app.jwt.sign({ sub: "user-1", role: "USER" });
+    const response = await request(app)
+      .get("/play/roms/rom-1/download")
+      .set("authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.headers["content-length"]).toBe(String(binaryData.length));
+    const bodyBuffer = Buffer.isBuffer(response.body)
+      ? response.body
+      : Buffer.from(response.body as string, "binary");
+    expect(bodyBuffer).toEqual(binaryData);
+  });
+
+  it("preserves query strings and range headers when proxying ROM downloads", async () => {
+    const injectSpy = vi.spyOn(app, "inject");
+    prismaMock.rom.findUnique.mockResolvedValue(null);
+
+    const token = app.jwt.sign({ sub: "user-1", role: "USER" });
+
+    try {
+      await request(app)
+        .get("/play/roms/rom-1/download?token=abc123")
+        .set("authorization", `Bearer ${token}`)
+        .set("Range", "bytes=0-1023")
+        .expect(404);
+
+      expect(injectSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: "/player/roms/rom-1/binary?token=abc123",
+          headers: expect.objectContaining({
+            range: "bytes=0-1023",
+          }),
+        }),
+      );
+    } finally {
+      injectSpy.mockRestore();
+    }
   });
 
   it("returns recent play states with rom context", async () => {
@@ -200,7 +265,7 @@ describe("player routes", () => {
     expect(response.body.recent[0].playState).toMatchObject({
       id: "play-1",
       romId: "rom-1",
-      downloadUrl: "/player/play-states/play-1/binary"
+      downloadUrl: "/play-states/play-1/binary"
     });
     expect(response.body.recent[0].rom).toMatchObject({
       id: "rom-1",
@@ -213,6 +278,35 @@ describe("player routes", () => {
         cover: expect.objectContaining({ id: "asset-1" })
       }
     });
+  });
+
+  it("exposes the /play-states proxy endpoints", async () => {
+    const now = new Date();
+    prismaMock.playState.findMany.mockResolvedValueOnce([
+      {
+        id: "ps-1",
+        userId: "user-1",
+        romId: "rom-1",
+        storageKey: "play-states/user-1/rom-1/ps-1.bin",
+        label: "Start",
+        slot: 0,
+        size: 128,
+        checksumSha256: "checksum",
+        createdAt: now,
+        updatedAt: now,
+      }
+    ]);
+
+    const token = app.jwt.sign({ sub: "user-1", role: "USER" });
+    const response = await request(app)
+      .get("/play-states")
+      .set("authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body.playStates).toHaveLength(1);
+    expect(response.body.playStates[0].downloadUrl).toBe(
+      "/play-states/ps-1/binary"
+    );
   });
 
   it("denies EmulatorJS websocket upgrades from untrusted origins", async () => {

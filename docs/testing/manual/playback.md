@@ -11,7 +11,7 @@ This checklist verifies that in-browser EmulatorJS playback flows remain healthy
 1. Navigate to `/play?romId=<known-rom-id>` and confirm the ROM metadata header renders with the expected title and platform slug.
 2. Let the ROM boot, then trigger an in-game save action (e.g., pause menu) or use the EmulatorJS hotkey (`Shift+F5`) to create a save state.
 3. Verify a success toast or status indicator appears inside the emulator frame (if applicable) and no errors are logged in the browser console.
-4. Inspect the network tab for a `POST /player/play-states` call that returns `201`.
+4. Inspect the network tab for a `POST /play-states` call that returns `201`.
 
 ## Resume From Latest State
 1. Reload the `/play?romId=<same-rom-id>` page.

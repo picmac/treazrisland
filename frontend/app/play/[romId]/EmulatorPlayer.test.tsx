@@ -14,6 +14,19 @@ vi.mock("@lib/api/player", () => ({
   requestRomBinary: vi.fn(),
 }));
 
+vi.mock("@auth/session-provider", () => ({
+  useSession: () => ({
+    user: null,
+    accessToken: "test-token",
+    loading: false,
+    login: vi.fn(),
+    logout: vi.fn(),
+    refresh: vi.fn(),
+    setSession: vi.fn(),
+    clearSession: vi.fn()
+  })
+}));
+
 vi.mock("@/components/MobileControls", () => ({
   __esModule: true,
   default: ({ onVirtualKey }: { onVirtualKey: (key: string, pressed: boolean) => void }) => (
@@ -36,7 +49,7 @@ describe("EmulatorPlayer", () => {
       checksumSha256: "new",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      downloadUrl: "/player/play-states/state-new/binary",
+      downloadUrl: "/play-states/state-new/binary",
     });
     vi.mocked(requestRomBinary).mockResolvedValue({
       type: "signed-url",
@@ -65,7 +78,7 @@ describe("EmulatorPlayer", () => {
       checksumSha256: "checksum",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      downloadUrl: "/player/play-states/state-1/binary",
+      downloadUrl: "/play-states/state-1/binary",
     };
     vi.mocked(listPlayStates).mockResolvedValueOnce([playState]);
 
@@ -83,10 +96,12 @@ describe("EmulatorPlayer", () => {
       expect(window.EJS_player).toHaveBeenCalled();
     });
 
+    expect(requestRomBinary).toHaveBeenCalledWith("rom-1", { authToken: "test-token" });
+
     const config = vi.mocked(window.EJS_player).mock.calls[0]?.[0] as Record<string, unknown>;
     expect(config.gameUrl).toBe("https://example.com/rom.zip");
     expect(config.system).toBe("snes9x");
-    expect(config.loadStateUrl).toBe("/api/player/play-states/state-1/binary");
+    expect(config.loadStateUrl).toBe("/api/play-states/state-1/binary");
 
     const savedBuffer = new ArrayBuffer(8);
     const saveHandler = config.onSaveState as (payload: ArrayBuffer) => void;
@@ -95,10 +110,15 @@ describe("EmulatorPlayer", () => {
       await saveHandler(savedBuffer);
     });
 
-    expect(createPlayState).toHaveBeenCalledWith({ romId: "rom-1", data: savedBuffer });
+    expect(createPlayState).toHaveBeenCalledWith({
+      romId: "rom-1",
+      data: savedBuffer,
+      slot: 0
+    });
     expect(onSaveSpy).toHaveBeenCalledWith(savedBuffer);
 
     fireEvent.click(await screen.findByTestId("mobile-controls"));
+    expect(await screen.findByRole("button", { name: /Slot 0/ })).toBeInTheDocument();
   });
 
   it("creates an object URL when the ROM is streamed inline", async () => {

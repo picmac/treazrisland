@@ -17,7 +17,7 @@ type SignedUrlPayload = {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { romId } = await params;
-  const backendPath = `/player/roms/${encodeURIComponent(romId)}/binary`;
+  const backendPath = `/play/roms/${encodeURIComponent(romId)}/download`;
   return proxyBinaryRequest(request, backendPath);
 }
 

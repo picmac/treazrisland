@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadEmulatorBundle } from "@/lib/emulator/loadBundle";
 import { getPlatformConfig, type EmulatorPlatformConfig } from "@/lib/emulator/platforms";
 import MobileControls from "@/components/MobileControls";
+import EmulatorCanvas from "@/components/player/EmulatorCanvas";
+import { useSession } from "@auth/session-provider";
 import {
   createPlayState,
   listPlayStates,
@@ -50,22 +52,67 @@ export default function EmulatorPlayer({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  const [, setPlayStates] = useState<PlayState[]>([]);
+  const [playStates, setPlayStates] = useState<PlayState[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<number>(0);
+  const selectedSlotRef = useRef<number>(0);
+  const [pendingSlots, setPendingSlots] = useState<number[]>([]);
   const objectUrlRef = useRef<string | null>(null);
+  const { accessToken } = useSession();
   const platformConfig = useMemo(() => getPlatformConfig(platform), [platform]);
   const activePlatformConfig = platformConfig ?? FALLBACK_PLATFORM_CONFIG;
   const { defaultCore, preferredCores, systemId } = activePlatformConfig;
+  const effectiveToken = authToken ?? accessToken ?? undefined;
+  const slotOptions = useMemo(() => Array.from({ length: 4 }, (_, index) => index), []);
+
+  useEffect(() => {
+    selectedSlotRef.current = selectedSlot;
+  }, [selectedSlot]);
 
   const handleSaveState = useCallback(
     async (payload: ArrayBuffer) => {
+      const slotToUse = selectedSlotRef.current;
+      if (typeof slotToUse === "number") {
+        setPendingSlots((previous) =>
+          previous.includes(slotToUse) ? previous : [...previous, slotToUse]
+        );
+      }
       try {
-        const savedState = await createPlayState({ romId, data: payload });
-        setPlayStates((previous) => {
-          const filtered = previous.filter((state) => state.id !== savedState.id);
-          return [savedState, ...filtered];
+        const savedState = await createPlayState({
+          romId,
+          data: payload,
+          slot: typeof slotToUse === "number" ? slotToUse : undefined,
         });
+        setPlayStates((previous) => {
+          const filtered = previous.filter((state) => {
+            if (state.id === savedState.id) {
+              return false;
+            }
+            if (
+              typeof savedState.slot === "number" &&
+              typeof state.slot === "number" &&
+              state.slot === savedState.slot
+            ) {
+              return false;
+            }
+            return true;
+          });
+          return [savedState, ...filtered].sort(
+            (a, b) =>
+              new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+          );
+        });
+        if (typeof slotToUse === "number") {
+          setPendingSlots((previous) =>
+            previous.filter((slot) => slot !== slotToUse),
+          );
+        }
         await onSaveState?.(payload);
       } catch (err) {
+        if (typeof slotToUse === "number") {
+          setPendingSlots((previous) =>
+            previous.filter((slot) => slot !== slotToUse),
+          );
+        }
         console.error("Failed to persist save state", err);
       }
     },
@@ -240,7 +287,10 @@ export default function EmulatorPlayer({
       try {
         await loadEmulatorBundle();
         const [romBinary, loadedStates] = await Promise.all([
-          requestRomBinary(romId, authToken ? { authToken } : undefined),
+          requestRomBinary(
+            romId,
+            effectiveToken ? { authToken: effectiveToken } : undefined
+          ),
           listPlayStates(romId).catch((err) => {
             console.error("Failed to load play states", err);
             return [] as PlayState[];
@@ -250,7 +300,15 @@ export default function EmulatorPlayer({
           return;
         }
 
-        setPlayStates(loadedStates);
+        const sortedStates = [...loadedStates].sort(
+          (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+        setPlayStates(sortedStates);
+        const defaultSlotValue =
+          sortedStates.find((state) => typeof state.slot === "number")?.slot ?? 0;
+        setSelectedSlot(defaultSlotValue);
+        setPendingSlots([]);
         if (objectUrlRef.current) {
           URL.revokeObjectURL(objectUrlRef.current);
           objectUrlRef.current = null;
@@ -302,22 +360,76 @@ export default function EmulatorPlayer({
         objectUrlRef.current = null;
       }
     };
-  }, [authToken, defaultCore, handleSaveState, platform, platformConfig, preferredCores, romId, romName, systemId]);
+  }, [defaultCore, effectiveToken, handleSaveState, platform, platformConfig, preferredCores, romId, romName, systemId]);
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <div
-        ref={containerRef}
-        className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-pixel border border-ink/80 bg-night"
-      >
-        {status === "loading" && (
-          <span className="text-sm uppercase tracking-widest text-parchment/70">Preparing emulator…</span>
-        )}
-        {status === "error" && error && (
-          <span className="text-sm text-coral">{error}</span>
-        )}
-        <canvas className="h-full w-full" data-testid="emulator-canvas" />
-      </div>
+      <EmulatorCanvas ref={containerRef} status={status} error={error} />
+      <section className="rounded-pixel border border-ink/60 bg-night/60 p-4">
+        <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold uppercase tracking-widest text-parchment">
+              Save-state slots
+            </h2>
+            <p className="text-xs text-parchment/60">
+              Choose an active slot before saving. Uploads replace any existing save in the same slot.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {slotOptions.map((slot) => {
+              const isSelected = selectedSlot === slot;
+              const isPending = pendingSlots.includes(slot);
+              return (
+                <button
+                  key={slot}
+                  type="button"
+                  onClick={() => setSelectedSlot(slot)}
+                  className={`rounded-pixel border px-3 py-2 text-xs font-semibold uppercase tracking-widest transition focus:outline-none focus:ring-2 focus:ring-lagoon ${
+                    isSelected
+                      ? "border-lagoon bg-lagoon/15 text-lagoon"
+                      : "border-ink/50 text-parchment/70 hover:border-lagoon hover:text-lagoon"
+                  }`}
+                  disabled={isPending}
+                >
+                  {isPending ? `Slot ${slot} · Saving…` : `Slot ${slot}`}
+                </button>
+              );
+            })}
+          </div>
+        </header>
+        <ul className="mt-4 flex flex-col gap-2">
+          {playStates.length === 0 && (
+            <li className="rounded-pixel border border-dashed border-ink/40 bg-night/40 px-3 py-2 text-sm text-parchment/60">
+              Cloud saves will appear here once you create your first snapshot.
+            </li>
+          )}
+          {playStates.map((state) => {
+            const isSaving =
+              typeof state.slot === "number" && pendingSlots.includes(state.slot);
+            const sizeKb = Math.max(1, Math.round(state.size / 1024));
+            return (
+              <li
+                key={state.id}
+                className="flex items-center justify-between rounded-pixel border border-ink/40 bg-night/40 px-3 py-2 text-sm text-parchment"
+              >
+                <div className="flex flex-col">
+                  <span className="font-semibold text-lagoon">
+                    {state.label ??
+                      (typeof state.slot === "number"
+                        ? `Slot ${state.slot}`
+                        : "Quick save")}
+                    {isSaving ? " · Saving…" : ""}
+                  </span>
+                  <span className="text-xs text-parchment/60">
+                    Updated {new Date(state.updatedAt).toLocaleString()}
+                  </span>
+                </div>
+                <span className="text-xs text-parchment/60">{sizeKb} KB</span>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
       <MobileControls onVirtualKey={emitVirtualKey} />
     </div>
   );

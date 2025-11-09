@@ -17,6 +17,8 @@ import { registerAuthRoutes } from "./routes/auth.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
 import { registerLibraryRoutes } from "./routes/library/index.js";
 import { registerPlayerRoutes } from "./routes/player.js";
+import { registerPlayRoutes } from "./routes/play/index.js";
+import { registerPlayStateRoutes } from "./routes/play-states/index.js";
 import { registerFavoriteRoutes } from "./routes/favorites.js";
 import { registerCollectionRoutes } from "./routes/collections.js";
 import { registerTopListRoutes } from "./routes/topLists.js";
@@ -175,6 +177,8 @@ export const buildServer = (
       await registerScreenScraperRoutes(instance);
       await registerAdminRoutes(instance);
       await registerLibraryRoutes(instance);
+      await registerPlayRoutes(instance);
+      await registerPlayStateRoutes(instance);
       await registerPlayerRoutes(instance);
       await registerFavoriteRoutes(instance);
       await registerCollectionRoutes(instance);
