@@ -78,8 +78,10 @@ export const buildServer = (
   app.register(sensible);
   app.register(corsPlugin);
   app.register(loggingPlugin);
-  app.register(healthPlugin);
-  registerHealthRoutes(app);
+  app.register(async (instance) => {
+    await instance.register(healthPlugin);
+    registerHealthRoutes(instance);
+  });
   app.register(underPressure, {
     healthCheck: async () => {
       if (!app.hasDecorator("health")) {
