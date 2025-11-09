@@ -12,10 +12,10 @@ export default function PasswordResetConfirmPage({ searchParams }: PasswordReset
 
   if (!token) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-white">
-        <PixelFrame className="space-y-4 max-w-lg text-center">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-foreground">
+        <PixelFrame className="space-y-4 max-w-lg text-center" tone="raised">
           <h1 className="text-lg uppercase tracking-widest text-primary">Missing reset token</h1>
-          <p className="text-sm text-slate-200">
+          <p className="text-sm text-foreground/80">
             We couldn&apos;t find your reset token. Double-check the link from your email or request a new
             message.
           </p>
@@ -25,11 +25,11 @@ export default function PasswordResetConfirmPage({ searchParams }: PasswordReset
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-white">
-      <PixelFrame className="space-y-6 max-w-md">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-foreground">
+      <PixelFrame className="space-y-6 max-w-md" tone="raised">
         <header className="space-y-2 text-center">
           <h1 className="text-lg uppercase tracking-widest text-primary">Choose a new password</h1>
-          <p className="text-sm text-slate-200">
+          <p className="text-sm text-foreground/80">
             Secure your treasure with a fresh passphrase. Once complete we&apos;ll guide you back to the
             island.
           </p>

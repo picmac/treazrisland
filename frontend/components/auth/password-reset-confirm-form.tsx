@@ -47,7 +47,7 @@ export function PasswordResetConfirmForm({ token }: PasswordResetConfirmFormProp
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
       <div className="space-y-1">
-        <label className="block text-xs uppercase tracking-widest text-slate-300" htmlFor="password">
+        <label className="block text-xs uppercase tracking-widest text-foreground/70" htmlFor="password">
           New password
         </label>
         <PixelInput
@@ -59,12 +59,12 @@ export function PasswordResetConfirmForm({ token }: PasswordResetConfirmFormProp
           onChange={(event) => setPassword(event.target.value)}
           required
         />
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-foreground/60">
           Must be at least 8 characters and include an uppercase letter and digit.
         </p>
       </div>
 
-      <PixelButton type="submit" disabled={isPending} className="w-full">
+      <PixelButton type="submit" disabled={isPending} fullWidth>
         {isPending ? "Anchoring new secret…" : "Update password"}
       </PixelButton>
 

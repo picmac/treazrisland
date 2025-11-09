@@ -22,6 +22,27 @@ const palette = {
   night: "#12121c"
 };
 
+const semanticColors = {
+  primary: palette.lagoon,
+  "primary-strong": "#4aa7b9",
+  secondary: palette.ink,
+  "secondary-strong": "#2a3747",
+  success: palette.kelp,
+  danger: palette.coral,
+  warning: "#f5c354",
+  info: "#7ec7ff",
+  surface: {
+    DEFAULT: "rgba(18, 18, 28, 0.82)",
+    raised: "rgba(18, 18, 28, 0.92)",
+    sunken: "rgba(12, 12, 24, 0.88)",
+    translucent: "rgba(31, 41, 51, 0.7)"
+  },
+  outline: {
+    subtle: "rgba(42, 55, 71, 0.75)",
+    strong: "rgba(61, 75, 90, 0.95)"
+  }
+} as const;
+
 const config = {
   content: [
     "./app/**/*.{ts,tsx,md,mdx}",
@@ -36,6 +57,7 @@ const config = {
     extend: {
       colors: {
         ...palette,
+        ...semanticColors,
         background: palette.night,
         foreground: palette.parchment
       },

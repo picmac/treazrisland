@@ -1,6 +1,7 @@
 import Link from "next/link";
 import EmulatorPlayer from "./[romId]/EmulatorPlayer";
 import { getRomMetadata } from "./getRomMetadata";
+import { PixelButton, PixelFrame, PixelInput } from "@/src/components/pixel";
 
 type PlayLandingPageProps = {
   searchParams?: {
@@ -8,26 +9,21 @@ type PlayLandingPageProps = {
   };
 };
 
-function RomLookupForm({ defaultValue }: { defaultValue?: string }) {
+export function RomLookupForm({ defaultValue }: { defaultValue?: string }) {
   return (
     <form className="flex flex-col gap-2" method="get">
-      <label htmlFor="rom-id" className="text-sm font-semibold uppercase tracking-widest text-parchment/70">
+      <label htmlFor="rom-id" className="text-sm font-semibold uppercase tracking-widest text-foreground/70">
         Load by ROM ID
       </label>
       <div className="flex flex-wrap gap-2 sm:flex-nowrap">
-        <input
+        <PixelInput
           id="rom-id"
           name="romId"
           defaultValue={defaultValue}
-          className="flex-1 rounded-pixel border border-ink/40 bg-night px-3 py-2 text-parchment shadow-inner-pixel focus:border-lagoon focus:outline-none"
           placeholder="ex: rom-1234"
+          className="flex-1"
         />
-        <button
-          type="submit"
-          className="rounded-pixel bg-lagoon px-4 py-2 font-semibold uppercase tracking-widest text-night shadow-pixel transition hover:bg-kelp"
-        >
-          Load ROM
-        </button>
+        <PixelButton type="submit">Load ROM</PixelButton>
       </div>
     </form>
   );
@@ -39,22 +35,21 @@ export default async function PlayLandingPage({ searchParams }: PlayLandingPageP
   if (!romId) {
     return (
       <main className="flex flex-1 flex-col gap-6">
-        <section className="pixel-frame flex flex-col gap-5 p-6">
-          <h1 className="text-3xl font-bold text-lagoon">Choose a ROM to start playing</h1>
-          <p className="text-base leading-relaxed text-parchment/80">
+        <PixelFrame className="flex flex-col gap-5 p-6" tone="raised">
+          <h1 className="text-3xl font-bold text-primary">Choose a ROM to start playing</h1>
+          <p className="text-base leading-relaxed text-foreground/80">
             Load a ROM from the library to launch the TREAZRISLAND emulator. Select a platform to browse available
             titles or paste a ROM ID directly into the form below to jump right into the action.
           </p>
           <RomLookupForm />
           <div className="flex flex-wrap gap-3">
-            <Link
-              href="/platforms"
-              className="inline-flex items-center justify-center rounded-pixel bg-kelp px-4 py-2 font-semibold text-night shadow-pixel transition hover:bg-lagoon"
-            >
-              Explore the library
+            <Link href="/platforms">
+              <PixelButton asChild>
+                <span>Explore the library</span>
+              </PixelButton>
             </Link>
           </div>
-        </section>
+        </PixelFrame>
       </main>
     );
   }
@@ -64,22 +59,21 @@ export default async function PlayLandingPage({ searchParams }: PlayLandingPageP
   if (!rom) {
     return (
       <main className="flex flex-1 flex-col gap-6">
-        <section className="pixel-frame flex flex-col gap-5 p-6">
-          <h1 className="text-3xl font-bold text-lagoon">ROM not found</h1>
-          <p className="text-base leading-relaxed text-parchment/80">
-            We couldn&apos;t find a ROM with ID <span className="font-mono text-parchment">{romId}</span>. Double-check the ID or
+        <PixelFrame className="flex flex-col gap-5 p-6" tone="raised">
+          <h1 className="text-3xl font-bold text-primary">ROM not found</h1>
+          <p className="text-base leading-relaxed text-foreground/80">
+            We couldn&apos;t find a ROM with ID <span className="font-mono text-foreground">{romId}</span>. Double-check the ID or
             browse the library to discover available titles.
           </p>
           <RomLookupForm defaultValue={romId} />
           <div className="flex flex-wrap gap-3">
-            <Link
-              href="/platforms"
-              className="inline-flex items-center justify-center rounded-pixel bg-kelp px-4 py-2 font-semibold text-night shadow-pixel transition hover:bg-lagoon"
-            >
-              Explore the library
+            <Link href="/platforms">
+              <PixelButton asChild>
+                <span>Explore the library</span>
+              </PixelButton>
             </Link>
           </div>
-        </section>
+        </PixelFrame>
       </main>
     );
   }
@@ -88,18 +82,18 @@ export default async function PlayLandingPage({ searchParams }: PlayLandingPageP
 
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <header className="pixel-frame flex flex-col gap-4 p-4">
+      <PixelFrame className="flex flex-col gap-4 p-4" tone="raised">
         <div>
-          <h1 className="text-2xl font-bold text-lagoon">{rom.title}</h1>
-          <p className="mt-1 text-sm uppercase tracking-widest text-parchment/70">
+          <h1 className="text-2xl font-bold text-primary">{rom.title}</h1>
+          <p className="mt-1 text-sm uppercase tracking-widest text-foreground/70">
             Platform: {platformSlug.toUpperCase()} • ROM ID: {rom.id}
           </p>
         </div>
         <RomLookupForm defaultValue={romId} />
-      </header>
-      <section className="pixel-frame flex flex-1 flex-col gap-4 p-4">
+      </PixelFrame>
+      <PixelFrame className="flex flex-1 flex-col gap-4 p-4" tone="sunken">
         <EmulatorPlayer romId={rom.id} romName={rom.title} platform={platformSlug} />
-      </section>
+      </PixelFrame>
     </main>
   );
 }

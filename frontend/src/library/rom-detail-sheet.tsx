@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getRom, type RomDetail } from "@lib/api/roms";
-import { PixelFrame } from "@/src/components/pixel-frame";
+import { PixelButton, PixelFrame } from "@/src/components/pixel";
 import { useSession } from "@/src/auth/session-provider";
 import { enqueueScreenScraperEnrichment } from "@/src/lib/api/admin/screenscraper";
 
@@ -73,36 +73,39 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 text-parchment">
-      <PixelFrame className="space-y-4 bg-night/80 p-6">
-        {state === "loading" && <p className="text-sm text-parchment/80">Charting ROM manifest…</p>}
+    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 text-foreground">
+      <PixelFrame className="space-y-4 p-6" tone="raised">
+        {state === "loading" && <p className="text-sm text-foreground/80">Charting ROM manifest…</p>}
         {state === "error" && error && (
-          <p className="text-sm text-red-300">{error}</p>
+          <p className="text-sm text-[color:var(--color-danger)]">{error}</p>
         )}
         {state === "loaded" && rom && (
           <div className="space-y-4">
             <header className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.35em] text-lagoon/70">ROM Detail</p>
-              <h1 className="text-3xl font-bold text-parchment">{rom.title}</h1>
-              <div className="text-sm text-parchment/70">
+              <p className="text-xs uppercase tracking-[0.35em] text-primary/70">ROM Detail</p>
+              <h1 className="text-3xl font-bold text-foreground">{rom.title}</h1>
+              <div className="text-sm text-foreground/70">
                 <span className="mr-4">Platform: {rom.platform.name}</span>
                 <span className="mr-4">Year: {rom.releaseYear ?? "????"}</span>
                 <span>Players: {rom.players ?? "?"}</span>
               </div>
               {isAdmin && (
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.3em]">
-                  <button
+                  <PixelButton
                     type="button"
                     onClick={handleEnrichment}
                     disabled={enrichmentStatus === "loading"}
-                    className="rounded border border-primary/60 px-4 py-1 text-primary transition hover:bg-primary/20 disabled:cursor-not-allowed disabled:border-slate-600 disabled:text-slate-500"
+                    size="sm"
+                    variant={enrichmentStatus === "success" ? "secondary" : "ghost"}
                   >
                     {enrichmentStatus === "loading" ? "Queueing…" : "Queue ScreenScraper job"}
-                  </button>
+                  </PixelButton>
                   {enrichmentMessage && (
                     <span
                       className={
-                        enrichmentStatus === "error" ? "text-red-300" : "text-slate-300"
+                        enrichmentStatus === "error"
+                          ? "text-[color:var(--color-danger)]"
+                          : "text-foreground/70"
                       }
                     >
                       {enrichmentMessage}
@@ -114,13 +117,13 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
 
             {primary?.summary && (
               <section className="space-y-2">
-                <h2 className="text-lg font-semibold text-parchment">Synopsis</h2>
-                <p className="text-sm leading-relaxed text-parchment/80">{primary.summary}</p>
+                <h2 className="text-lg font-semibold text-foreground">Synopsis</h2>
+                <p className="text-sm leading-relaxed text-foreground/80">{primary.summary}</p>
               </section>
             )}
 
-            <section className="space-y-2 text-sm text-parchment/70">
-              <h2 className="text-lg font-semibold text-parchment">Metadata</h2>
+            <section className="space-y-2 text-sm text-foreground/70">
+              <h2 className="text-lg font-semibold text-foreground">Metadata</h2>
               <ul className="space-y-1">
                 {primary?.developer && <li>Developer: {primary.developer}</li>}
                 {primary?.publisher && <li>Publisher: {primary.publisher}</li>}
@@ -131,8 +134,8 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
               </ul>
             </section>
 
-            <section className="space-y-2 text-sm text-parchment/70">
-              <h2 className="text-lg font-semibold text-parchment">Assets</h2>
+            <section className="space-y-2 text-sm text-foreground/70">
+              <h2 className="text-lg font-semibold text-foreground">Assets</h2>
               {rom.assets.length === 0 ? (
                 <p>No stored assets yet.</p>
               ) : (
@@ -144,7 +147,7 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
                         {asset.language ? ` • ${asset.language}` : ""}
                         {asset.region ? ` • ${asset.region}` : ""}
                       </span>
-                      <span className="text-xs text-parchment/50">
+                      <span className="text-xs text-foreground/50">
                         {asset.createdAt ? new Date(asset.createdAt).toLocaleDateString() : ""}
                       </span>
                     </li>
@@ -153,8 +156,8 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
               )}
             </section>
 
-            <section className="space-y-2 text-sm text-parchment/70">
-              <h2 className="text-lg font-semibold text-parchment">Recent uploads</h2>
+            <section className="space-y-2 text-sm text-foreground/70">
+              <h2 className="text-lg font-semibold text-foreground">Recent uploads</h2>
               {rom.uploadAudits.length === 0 ? (
                 <p>No upload activity recorded.</p>
               ) : (
@@ -168,8 +171,8 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
               )}
             </section>
 
-            <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-widest text-parchment/60">
-              <Link href={`/platforms/${rom.platform.slug}`} className="text-lagoon hover:underline">
+            <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-widest text-foreground/60">
+              <Link href={`/platforms/${rom.platform.slug}`} className="text-primary hover:underline">
                 Back to {rom.platform.shortName ?? rom.platform.name}
               </Link>
             </div>

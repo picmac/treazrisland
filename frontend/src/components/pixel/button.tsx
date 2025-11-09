@@ -1,34 +1,65 @@
-import { forwardRef, type ButtonHTMLAttributes } from "react";
+import { cloneElement, forwardRef, isValidElement, type ButtonHTMLAttributes, type ReactElement } from "react";
 import clsx from "clsx";
 
-type ButtonVariant = "primary" | "secondary" | "danger";
+type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
+type ButtonSize = "sm" | "md" | "lg";
 
 type BaseButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
+  asChild?: boolean;
 };
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-kelp text-night hover:bg-lagoon focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lagoon",
+    "bg-primary text-night hover:bg-primary-strong focus-visible:ring-primary border border-[color:color-mix(in srgb, var(--color-primary) 60%, transparent)]",
   secondary:
-    "bg-night border border-kelp text-kelp hover:bg-night/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-kelp",
+    "bg-surface-translucent border border-[color:var(--surface-outline-subtle)] text-primary hover:bg-surface-raised focus-visible:ring-primary",
   danger:
-    "bg-red-600 text-night hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
+    "bg-danger text-night hover:bg-[color:color-mix(in srgb, var(--color-danger) 78%, transparent)] focus-visible:ring-danger border border-[color:color-mix(in srgb, var(--color-danger) 70%, transparent)]",
+  ghost:
+    "bg-transparent border border-[color:var(--surface-outline-subtle)] text-foreground hover:bg-surface-translucent focus-visible:ring-primary"
+};
+
+const sizeClasses: Record<ButtonSize, string> = {
+  sm: "px-3 py-1.5 text-[11px]",
+  md: "px-4 py-2 text-xs",
+  lg: "px-5 py-3 text-sm"
 };
 
 export const PixelButton = forwardRef<HTMLButtonElement, BaseButtonProps>(
-  ({ className, variant = "primary", type = "button", children, ...props }, ref) => {
+  (
+    {
+      className,
+      variant = "primary",
+      size = "md",
+      fullWidth = false,
+      type = "button",
+      asChild = false,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const baseClasses = clsx(
+      "inline-flex items-center justify-center gap-2 rounded-pixel font-semibold uppercase tracking-widest shadow-pixel transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-night disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none",
+      variantClasses[variant],
+      sizeClasses[size],
+      fullWidth && "w-full",
+      className
+    );
+
+    if (asChild && isValidElement(children)) {
+      const child = children as ReactElement<{ className?: string }>;
+      return cloneElement(child, {
+        className: clsx(baseClasses, child.props.className),
+        ...props
+      });
+    }
+
     return (
-      <button
-        ref={ref}
-        type={type}
-        className={clsx(
-          "rounded-pixel px-4 py-2 text-xs font-semibold uppercase tracking-widest shadow-pixel transition disabled:opacity-60",
-          variantClasses[variant],
-          className
-        )}
-        {...props}
-      >
+      <button ref={ref} type={type} className={baseClasses} {...props}>
         {children}
       </button>
     );
