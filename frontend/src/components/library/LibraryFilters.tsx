@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import {
   LibraryFilterControls,
-  type LibraryFilterState
+  type LibraryFilterState,
 } from "@/src/components/library-filter-controls";
 
 type LibraryFiltersProps = {
@@ -55,3 +55,4 @@ export function LibraryFilters({
 }
 
 export default LibraryFilters;
+export type { LibraryFilterState } from "@/src/components/library-filter-controls";
