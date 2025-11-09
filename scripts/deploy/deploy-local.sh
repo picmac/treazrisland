@@ -332,10 +332,11 @@ log() {
 compose_invoke() {
   local subcommand="$1"
   shift || true
+  local docker_args=()
   local args=(compose -f "${COMPOSE_FILE}")
 
   if [[ "$(to_lower "${DEPLOY_DEBUG}")" == "true" ]]; then
-    args+=(--log-level DEBUG)
+    docker_args+=(--log-level debug)
   fi
 
   if [[ "${subcommand}" == "build" ]]; then
@@ -347,7 +348,7 @@ compose_invoke() {
     args+=("$@")
   fi
 
-  docker "${args[@]}"
+  docker "${docker_args[@]}" "${args[@]}"
 }
 
 require_file() {
