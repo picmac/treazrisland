@@ -123,11 +123,9 @@ The GitHub workflow passes `TREAZ_ENV_FILE` and `TREAZ_COMPOSE_PROJECT_NAME` to 
    - `npm run lint`
    - `npm test -- --run`
    - `npm run build`
-2. **`verify-deploy-runner`** on GitHub-hosted infrastructure for successful pushes to `main` only.
-   - Uses the GitHub REST API to confirm at least one `self-hosted` runner with the `treaz-home` label is online.
-   - Queries both repository-scoped runners and (when available) organization-level runners, logging every candidate and its labels for troubleshooting.
-   - Fails fast with guidance if the runner is offline so the deploy job does not sit in the queue indefinitely.
-3. **`deploy`** on the self-hosted `treaz-home` runner once the verification job and the matrix both succeed.
+   - For the backend leg (when `matrix.project == "backend"`) an additional `actions/github-script` step queries GitHub for any registered `self-hosted` runners carrying the `treaz-home` label. Repository-level runners are checked first; if none are registered, the step inspects organization-level runners as a fallback.
+   - When no runners or labels match, the step fails immediately with remediation guidance so the deployment does not queue indefinitely waiting for an offline self-hosted runner.
+2. **`deploy`** on the self-hosted `treaz-home` runner once the matrix succeeds.
    - Checks out the repo with full history (`fetch-depth: 0`).
    - Exports the env file paths mentioned earlier.
    - Calls `scripts/deploy/deploy-local.sh`.
