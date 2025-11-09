@@ -4,7 +4,7 @@ import type { ScreenScraperService } from "../services/screenscraper/service.js"
 import type { StorageService } from "../services/storage/storage.js";
 import type { EmailService } from "../services/email/service.js";
 import type { MfaService } from "../services/mfa/service.js";
-import type { ObservabilityMetrics } from "../plugins/observability.js";
+import type { ObservabilityMetrics } from "../plugins/metrics.js";
 import type { SettingsManager } from "../plugins/settings.js";
 import type { HealthManager } from "../plugins/health.js";
 

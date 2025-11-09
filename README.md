@@ -131,6 +131,45 @@ docker run --rm -p 3000:3000 treazrisland/frontend
 Override `TREAZ_TLS_MODE` at runtime (`http` for LAN testing, `https` for hardened deployments) and the helper applies the
 correct security headers while binding to `0.0.0.0` for you.
 
+## Self-hosted smoke checks
+
+After configuring your environment file, run a quick end-to-end validation before inviting real players:
+
+1. **Start the stack in HTTP mode for local testing**
+
+   ```bash
+   ./scripts/dev-http.sh
+   ```
+
+   The script exports sensible defaults (`LISTEN_HOST`, `NEXT_PUBLIC_API_BASE_URL`, `CORS_ALLOWED_ORIGINS`) so the frontend and
+   backend agree on URLs. Stop it with `Ctrl+C` after you finish checking the endpoints below.
+
+2. **Verify backend health probes**
+
+   ```bash
+   curl -s http://localhost:3001/health/live | jq
+   curl -s http://localhost:3001/health/ready | jq
+   ```
+
+   A passing readiness report includes `status: "pass"` (or `"warn"` while migrations settle) and lists each component under the
+   `components` array. If the response reports `metrics: { status: "fail" }`, double-check that `METRICS_ENABLED` is set correctly
+   and that Prometheus can reach the backend from the allowed CIDRs.
+
+3. **Optional: confirm the metrics surface when enabled**
+
+   ```bash
+   curl -H "authorization: Bearer ${METRICS_TOKEN}" http://localhost:3001/metrics | head
+   ```
+
+   Replace `${METRICS_TOKEN}` with the value from your `.env`. The output should include counters such as
+   `treaz_http_request_duration_seconds`. If you receive a `403` or `401`, make sure the curl command is running from an allowed
+   IP address and that the token matches the backend configuration.
+
+4. **Tear down the stack**
+
+   When finished, stop the helper (`Ctrl+C`) or run `docker compose -f infra/docker-compose.yml down` if you started the
+   containerised stack instead. These steps help self-hosters verify their installation without diving into the codebase.
+
 1. **Start shared services**
 
    ```bash

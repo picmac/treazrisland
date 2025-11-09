@@ -35,7 +35,21 @@ default filesystem storage.
 
 ## Configuration files
 
-All runtime services now share the canonical variables defined in the repository root [`/.env.example`](../.env.example). Copy that file once (for example to `.env` or `infra/compose.env`), override secrets, and optionally symlink it into `backend/.env` and `frontend/.env.local` so every runtime consumes the same source of truth. Secrets—such as database passwords or ScreenScraper credentials—must be injected via environment variables or Docker secrets; never commit plaintext secrets to the repository. For Prometheus bearer authentication, either export `METRICS_TOKEN_FILE=/absolute/path/to/metrics_token` before launching Compose or copy `infra/monitoring/secrets/metrics_token.sample` to `infra/monitoring/secrets/metrics_token` and paste the same value used for `METRICS_TOKEN` in the backend environment file. The tracked sample contains a placeholder so CI can boot, but production stacks **must** override it. When running the production stack export `GRAFANA_ADMIN_USER`/`GRAFANA_ADMIN_PASSWORD` so Grafana rotates its default credentials on boot.
+All runtime services now share the canonical variables defined in the repository root [`/.env.example`](../.env.example). Copy that file once (for example to `.env` or `infra/compose.env`), override secrets, and optionally symlink it into `backend/.env` and `frontend/.env.local` so every runtime consumes the same source of truth. The default `infra/docker-compose.yml` automatically loads the file referenced by `TREAZ_ENV_FILE` (falling back to `../.env`), so Compose services inherit credentials such as `POSTGRES_PASSWORD`, `MINIO_ROOT_PASSWORD`, and `METRICS_TOKEN` without duplicating them in the YAML. Secrets—such as database passwords or ScreenScraper credentials—must be injected via environment variables or Docker secrets; never commit plaintext secrets to the repository. For Prometheus bearer authentication, either export `METRICS_TOKEN_FILE=/absolute/path/to/metrics_token` before launching Compose or copy `infra/monitoring/secrets/metrics_token.sample` to `infra/monitoring/secrets/metrics_token` and paste the same value used for `METRICS_TOKEN` in the backend environment file. The tracked sample contains a placeholder so CI can boot, but production stacks **must** override it. When running the production stack export `GRAFANA_ADMIN_USER`/`GRAFANA_ADMIN_PASSWORD` so Grafana rotates its default credentials on boot.
+
+### Database preparation
+
+Before the backend container starts it waits for the `backend-migrate` one-shot job to finish. The helper applies Prisma migrations followed by the platform seed so the admin UI can enumerate systems immediately. You can trigger the job manually (for example after pulling new migrations) with:
+
+```bash
+./scripts/infra/migrate-seed.sh
+```
+
+The script respects `TREAZ_ENV_FILE`, `TREAZ_COMPOSE_PROJECT_NAME`, and `STACK_FILE` when you need to run against an alternate compose definition. It exits early with actionable errors if the compose file or environment file is missing so self-hosters do not accidentally boot the stack with default credentials.
+
+### Validating Compose manifests
+
+Run `docker compose -f infra/docker-compose.yml config` whenever you tweak the manifests. The command resolves variable substitutions, confirms that `env_file` entries exist, and highlights syntax errors before you attempt to boot the stack. Repeat the same command with `infra/docker-compose.prod.yml` to validate production overrides.
 
 ## Local development stack
 

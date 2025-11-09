@@ -27,7 +27,7 @@ import { registerUserRoutes } from "./routes/users.js";
 import { registerNetplayRoutes } from "./routes/netplay.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import supportServices from "./plugins/support-services.js";
-import observabilityPlugin from "./plugins/observability.js";
+import metricsPlugin from "./plugins/metrics.js";
 import settingsPlugin from "./plugins/settings.js";
 import loggingPlugin from "./plugins/logging.js";
 import healthPlugin from "./plugins/health.js";
@@ -146,7 +146,7 @@ export const buildServer = (
 
   const registerCorePlugins = () => {
     app.register(settingsPlugin);
-    app.register(observabilityPlugin);
+    app.register(metricsPlugin);
     app.register(authPlugin);
     app.register(storagePlugin);
     app.register(supportServices);
