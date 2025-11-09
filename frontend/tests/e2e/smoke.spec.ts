@@ -170,12 +170,12 @@ describe("@smoke TREAZRISLAND key flows", () => {
     );
     const romBinaryPromise = page.waitForResponse(
       (response) =>
-        response.url().includes(`/player/roms/${fixture.romId}/binary`) &&
+        response.url().includes(`/play/roms/${fixture.romId}/download`) &&
         response.request().method() === "GET",
     );
     const playStatesPromise = page.waitForResponse(
       (response) =>
-        response.url().includes("/player/play-states") &&
+        response.url().includes("/play-states") &&
         response.request().method() === "GET" &&
         response.request().url().includes(`romId=${fixture.romId}`),
     );

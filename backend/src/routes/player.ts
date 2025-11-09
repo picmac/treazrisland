@@ -1,9 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { createHash, randomUUID } from "node:crypto";
-import { writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
 import prisma from "@prisma/client";
 import type { PlayState, Prisma } from "@prisma/client";
 import {
@@ -14,7 +11,10 @@ import {
 import { RomBinaryStatus } from "../utils/prisma-enums.js";
 const PrismaClientPackage = prisma;
 import { env } from "../config/env.js";
-import { safeUnlink } from "../services/storage/storage.js";
+import {
+  PlayStateStorageService,
+  type PlayStateUploadResult,
+} from "../services/storage/playStates.js";
 
 const FALLBACK_PLAYBACK_ACTIONS = {
   ROM_DOWNLOAD: "ROM_DOWNLOAD",
@@ -85,7 +85,7 @@ function createRoleAwareRateLimit(app: FastifyInstance) {
 }
 
 function buildPlayStateDownloadPath(id: string): string {
-  return `/player/play-states/${id}/binary`;
+  return `/play-states/${id}/binary`;
 }
 
 function serializePlayState(playState: PlayState) {
@@ -243,12 +243,13 @@ async function logPlaybackAudit(
 
 async function removePlayState(
   app: FastifyInstance,
+  playStateStorage: PlayStateStorageService,
   playState: Pick<PlayState, "id" | "storageKey">,
   options: { deleteRecord?: boolean } = {},
 ) {
   const deleteRecord = options.deleteRecord ?? true;
   try {
-    await app.storage.deleteAssetObject(playState.storageKey);
+    await playStateStorage.delete(playState.storageKey);
   } catch (err) {
     app.log.warn(
       { err, playStateId: playState.id },
@@ -298,6 +299,7 @@ export async function registerPlayerRoutes(
   });
 
   const rateLimitHook = createRoleAwareRateLimit(app);
+  const playStateStorage = new PlayStateStorageService(app.storage);
 
   app.get(
     "/player/roms/:id/binary",
@@ -624,7 +626,7 @@ export async function registerPlayerRoutes(
 
       let signedUrl;
       try {
-        signedUrl = await app.storage.getAssetObjectSignedUrl(
+        signedUrl = await playStateStorage.getSignedUrl(
           playState.storageKey,
         );
       } catch (error) {
@@ -650,7 +652,7 @@ export async function registerPlayerRoutes(
 
       let object;
       try {
-        object = await app.storage.getAssetObjectStream(playState.storageKey);
+        object = await playStateStorage.getStream(playState.storageKey);
       } catch (error) {
         recordPlaybackError(
           app,
@@ -699,18 +701,14 @@ export async function registerPlayerRoutes(
         );
       }
 
-      const sha256 = createHash("sha256").update(buffer).digest("hex");
       const playStateId = randomUUID();
-      const storageKey = `play-states/${request.user.sub}/${rom.id}/${playStateId}.bin`;
-      const tempPath = join(tmpdir(), `treaz-play-state-${playStateId}.bin`);
-
-      await writeFile(tempPath, buffer);
+      let uploadResult: PlayStateUploadResult;
       try {
-        await app.storage.putObject(app.storage.assetBucket, storageKey, {
-          filePath: tempPath,
-          size: buffer.byteLength,
-          sha256,
-          contentType: "application/octet-stream",
+        uploadResult = await playStateStorage.uploadFromBuffer({
+          userId: request.user.sub,
+          romId: rom.id,
+          playStateId,
+          buffer,
         });
       } catch (error) {
         recordPlaybackError(
@@ -723,8 +721,6 @@ export async function registerPlayerRoutes(
         throw app.httpErrors.internalServerError(
           "Failed to persist play state",
         );
-      } finally {
-        await safeUnlink(tempPath);
       }
 
       if (typeof body.slot === "number") {
@@ -733,7 +729,7 @@ export async function registerPlayerRoutes(
           select: { id: true, storageKey: true },
         });
         if (existing) {
-          await removePlayState(app, existing);
+          await removePlayState(app, playStateStorage, existing);
         }
       }
 
@@ -744,11 +740,11 @@ export async function registerPlayerRoutes(
               id: playStateId,
               userId: request.user.sub,
               romId: rom.id,
-              storageKey,
+              storageKey: uploadResult.storageKey,
               label: body.label,
               slot: body.slot,
-              size: buffer.byteLength,
-              checksumSha256: sha256,
+              size: uploadResult.size,
+              checksumSha256: uploadResult.checksumSha256,
             },
           });
 
@@ -783,7 +779,9 @@ export async function registerPlayerRoutes(
 
       if (evictedStates.length > 0) {
         for (const state of evictedStates) {
-          await removePlayState(app, state, { deleteRecord: false });
+          await removePlayState(app, playStateStorage, state, {
+            deleteRecord: false,
+          });
         }
 
         if (app.metrics.enabled) {
@@ -865,20 +863,14 @@ export async function registerPlayerRoutes(
             `Save state exceeds ${env.PLAY_STATE_MAX_BYTES} bytes limit`,
           );
         }
-        const sha256 = createHash("sha256").update(buffer).digest("hex");
-        const tempPath = join(tmpdir(), `treaz-play-state-${playState.id}.bin`);
-        await writeFile(tempPath, buffer);
+        let uploadResult: PlayStateUploadResult;
         try {
-          await app.storage.putObject(
-            app.storage.assetBucket,
-            playState.storageKey,
-            {
-              filePath: tempPath,
-              size: buffer.byteLength,
-              sha256,
-              contentType: "application/octet-stream",
-            },
-          );
+          uploadResult = await playStateStorage.uploadFromBuffer({
+            userId: request.user.sub,
+            romId: playState.romId,
+            playStateId: playState.id,
+            buffer,
+          });
         } catch (error) {
           recordPlaybackError(
             app,
@@ -890,11 +882,12 @@ export async function registerPlayerRoutes(
           throw app.httpErrors.internalServerError(
             "Failed to persist play state",
           );
-        } finally {
-          await safeUnlink(tempPath);
         }
-        updateData.size = buffer.byteLength;
-        updateData.checksumSha256 = sha256;
+        updateData.size = uploadResult.size;
+        updateData.checksumSha256 = uploadResult.checksumSha256;
+        if (uploadResult.storageKey !== playState.storageKey) {
+          updateData.storageKey = uploadResult.storageKey;
+        }
       }
 
       if (body.slot !== undefined) {
@@ -908,7 +901,7 @@ export async function registerPlayerRoutes(
           select: { id: true, storageKey: true },
         });
         if (existing) {
-          await removePlayState(app, existing);
+          await removePlayState(app, playStateStorage, existing);
         }
       }
 
@@ -957,7 +950,7 @@ export async function registerPlayerRoutes(
         throw app.httpErrors.notFound("Play state not found");
       }
 
-      await removePlayState(app, playState);
+      await removePlayState(app, playStateStorage, playState);
       reply.code(204);
     },
   );

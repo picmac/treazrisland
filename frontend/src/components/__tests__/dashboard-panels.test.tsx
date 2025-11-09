@@ -50,7 +50,7 @@ describe("DashboardPanels", () => {
           checksumSha256: "hash",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          downloadUrl: "/player/play-states/state-1/binary",
+          downloadUrl: "/play-states/state-1/binary",
         },
         rom: {
           id: "rom-1",

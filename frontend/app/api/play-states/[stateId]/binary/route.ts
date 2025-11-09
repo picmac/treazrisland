@@ -17,11 +17,14 @@ type SignedUrlPayload = {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { stateId } = await params;
-  const backendPath = `/player/play-states/${encodeURIComponent(stateId)}/binary`;
+  const backendPath = `/play-states/${encodeURIComponent(stateId)}/binary`;
   return proxyBinaryRequest(request, backendPath);
 }
 
-async function proxyBinaryRequest(request: NextRequest, backendPath: string): Promise<Response> {
+async function proxyBinaryRequest(
+  request: NextRequest,
+  backendPath: string
+): Promise<Response> {
   const cookieHeader = request.headers.get("cookie");
   const headers = new Headers();
   headers.set("accept", request.headers.get("accept") ?? "application/octet-stream");
@@ -111,3 +114,4 @@ function isSignedUrlPayload(payload: unknown): payload is SignedUrlPayload {
 
   return false;
 }
+
