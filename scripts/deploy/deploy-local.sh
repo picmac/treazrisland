@@ -12,6 +12,13 @@ HEALTH_MAX_ATTEMPTS="${TREAZ_HEALTH_MAX_ATTEMPTS:-12}"
 HEALTH_BACKOFF_SECONDS="${TREAZ_HEALTH_BACKOFF_SECONDS:-5}"
 SYNC_WITH_ORIGIN="${TREAZ_SYNC_WITH_ORIGIN:-false}"
 DOCKER_CONFIG_DIR="${TREAZ_DOCKER_CONFIG:-${REPO_ROOT}/.docker}"
+DEPLOY_DEBUG="${TREAZ_DEPLOY_DEBUG:-true}"
+COMPOSE_PROGRESS_MODE="${TREAZ_COMPOSE_PROGRESS:-plain}"
+LOG_DIR="${TREAZ_DEPLOY_LOG_DIR:-${REPO_ROOT}/diagnostics}"
+
+if [[ "${COMPOSE_PROGRESS_MODE}" != "auto" && "${COMPOSE_PROGRESS_MODE}" != "plain" ]]; then
+  COMPOSE_PROGRESS_MODE="plain"
+fi
 
 HEALTHCHECK_ORDER=(
   postgres
@@ -51,12 +58,13 @@ require_docker() {
 }
 
 bring_up_stack() {
-  docker compose -f "${COMPOSE_FILE}" up -d --remove-orphans
+  local args=(up -d --remove-orphans)
+  compose_invoke "${args[@]}"
 }
 
 reset_stack() {
   log "Health checks failed; resetting stack (containers and volumes will be recreated)"
-  docker compose -f "${COMPOSE_FILE}" down -v
+  compose_invoke down -v
   log "Recreating services after reset"
   bring_up_stack
 }
@@ -321,6 +329,27 @@ log() {
   printf '[deploy] %s\n' "${message}"
 }
 
+compose_invoke() {
+  local subcommand="$1"
+  shift || true
+  local args=(compose -f "${COMPOSE_FILE}")
+
+  if [[ "$(to_lower "${DEPLOY_DEBUG}")" == "true" ]]; then
+    args+=(--log-level DEBUG)
+  fi
+
+  if [[ "${subcommand}" == "build" ]]; then
+    args+=("--progress=${COMPOSE_PROGRESS_MODE}")
+  fi
+
+  args+=("${subcommand}")
+  if [[ $# -gt 0 ]]; then
+    args+=("$@")
+  fi
+
+  docker "${args[@]}"
+}
+
 require_file() {
   local path="$1"
   local description="$2"
@@ -354,6 +383,9 @@ export TREAZ_ENV_FILE="${ENV_FILE}"
 export COMPOSE_PROJECT_NAME="${PROJECT_NAME}"
 
 cd "${REPO_ROOT}"
+
+mkdir -p "${LOG_DIR}"
+log "Writing deployment diagnostics to ${LOG_DIR}"
 
 if [[ -n "${DOCKER_CONFIG_DIR}" ]]; then
   mkdir -p "${DOCKER_CONFIG_DIR}"
@@ -391,8 +423,14 @@ fi
 
 require_docker
 
+export DOCKER_BUILDKIT="${DOCKER_BUILDKIT:-1}"
+export COMPOSE_DOCKER_CLI_BUILD="${COMPOSE_DOCKER_CLI_BUILD:-1}"
+
 log "Building production images"
-docker compose -f "${COMPOSE_FILE}" build --pull
+if ! compose_invoke build --pull 2>&1 | tee "${LOG_DIR}/compose-build.log"; then
+  log "docker compose build failed. Review ${LOG_DIR}/compose-build.log for details"
+  exit 1
+fi
 
 log "Applying stack changes"
 bring_up_stack
@@ -416,12 +454,20 @@ if ! run_all_probes; then
   fi
 fi
 
-log "Running database migrations"
-docker compose -f "${COMPOSE_FILE}" exec backend npx prisma migrate deploy
+log "Running database migrations with Prisma debug output"
+if ! docker compose -f "${COMPOSE_FILE}" exec backend env PRISMA_LOG_LEVEL=debug DEBUG="prisma:*" npx prisma migrate deploy 2>&1 \
+  | tee "${LOG_DIR}/prisma-migrate.log"; then
+  log "Prisma migrate failed. Review ${LOG_DIR}/prisma-migrate.log for details"
+  exit 1
+fi
 
 if [[ "${SEED_PLATFORMS}" == "true" ]]; then
   log "Seeding reference platform data"
-  docker compose -f "${COMPOSE_FILE}" exec backend npm run prisma:seed:platforms
+  if ! docker compose -f "${COMPOSE_FILE}" exec backend env PRISMA_LOG_LEVEL=debug DEBUG="prisma:*" npm run prisma:seed:platforms 2>&1 \
+    | tee "${LOG_DIR}/prisma-seed.log"; then
+    log "Prisma platform seed failed. Review ${LOG_DIR}/prisma-seed.log for details"
+    exit 1
+  fi
 fi
 
 log "Deployment completed"
