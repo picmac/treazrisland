@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { listPlatforms, type PlatformSummary } from "@lib/api/library";
+import { listPlatforms, type PlatformSummary } from "@lib/api/roms";
 import { resolveAssetUrl } from "@lib/media";
 import { PixelFrame } from "@/src/components/pixel-frame";
 import {

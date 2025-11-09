@@ -1,11 +1,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 
-vi.mock("@lib/api/library", () => ({
+vi.mock("@lib/api/roms", () => ({
   listPlatforms: vi.fn()
 }));
 
-const { listPlatforms } = await import("@lib/api/library");
+const { listPlatforms } = await import("@lib/api/roms");
 const { PlatformLibraryPage } = await import("./platform-library-page");
 
 describe("PlatformLibraryPage", () => {

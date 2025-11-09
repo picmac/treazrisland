@@ -1,6 +1,6 @@
 import Link from "next/link";
 import clsx from "clsx";
-import type { RomListItem } from "@lib/api/library";
+import type { RomListItem } from "@lib/api/roms";
 
 export type RomCardProps = {
   rom: RomListItem;

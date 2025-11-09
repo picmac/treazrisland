@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { useRomDetail } from "@lib/api/library";
-import { PixelButton } from "@/src/components/pixel/button";
+import { useRomDetail } from "@lib/api/roms";
 import { PixelFrame } from "@/src/components/pixel/frame";
 import { PixelNotice } from "@/src/components/pixel/notice";
 import { useFavorites } from "@/src/hooks/useFavorites";
+import { FavoriteToggle } from "@components/library/FavoriteToggle";
 
 type LibraryRomDetailShellProps = {
   romId: string;
@@ -34,13 +34,12 @@ export function LibraryRomDetailShell({ romId }: LibraryRomDetailShellProps) {
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <PixelButton
-                variant={isFavorite(romId) ? "secondary" : "primary"}
-                disabled={isPending(romId) || !data}
-                onClick={() => toggleFavorite(romId)}
-              >
-                {isPending(romId) ? "Saving…" : isFavorite(romId) ? "Favorited" : "Favorite"}
-              </PixelButton>
+              <FavoriteToggle
+                romId={romId}
+                favorite={isFavorite(romId)}
+                pending={isPending(romId)}
+                onToggle={toggleFavorite}
+              />
               {data && (
                 <Link
                   href={`/play/${data.id}`}

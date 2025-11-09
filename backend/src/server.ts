@@ -29,6 +29,7 @@ import observabilityPlugin from "./plugins/observability.js";
 import settingsPlugin from "./plugins/settings.js";
 import loggingPlugin from "./plugins/logging.js";
 import healthPlugin from "./plugins/health.js";
+import { registerRomRoutes } from "./routes/roms/index.js";
 import {
   fetchSetupState,
   ONBOARDING_STEP_KEYS,
@@ -181,6 +182,7 @@ export const buildServer = (
       await registerStatsRoutes(instance);
       await registerNetplayRoutes(instance);
     }
+    await registerRomRoutes(instance);
   });
 
   app.get("/health/setup", async () => {

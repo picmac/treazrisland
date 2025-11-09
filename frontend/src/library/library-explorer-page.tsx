@@ -6,16 +6,13 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   usePlatformLibrary,
   useRomLibrary,
-  type PlatformSummary,
   type RomListItem
-} from "@lib/api/library";
-import { PixelButton } from "@/src/components/pixel/button";
+} from "@lib/api/roms";
 import { PixelFrame } from "@/src/components/pixel/frame";
 import { PixelNotice } from "@/src/components/pixel/notice";
-import {
-  LibraryFilterControls,
-  type LibraryFilterState
-} from "@/src/components/library-filter-controls";
+import { LibraryFilters, type LibraryFilterState } from "@components/library/LibraryFilters";
+import { PlatformGrid } from "@components/library/PlatformGrid";
+import { FavoriteToggle } from "@components/library/FavoriteToggle";
 import { useFavorites } from "@/src/hooks/useFavorites";
 
 const DEFAULT_FILTERS: LibraryFilterState = {
@@ -41,10 +38,6 @@ const INITIAL_STATE: LibraryExplorerState = {
 type LibraryExplorerPageProps = {
   initialPlatformSlug?: string | null;
 };
-
-function getPlatformLabel(platform: PlatformSummary) {
-  return platform.shortName ?? platform.name ?? platform.slug.toUpperCase();
-}
 
 type RomRowProps = {
   rom: RomListItem;
@@ -93,13 +86,7 @@ function RomRow({ rom, favorite, pending, onToggleFavorite }: RomRowProps) {
       </PixelNotice>
 
       <div className="flex flex-wrap items-center gap-3">
-        <PixelButton
-          variant={favorite ? "secondary" : "primary"}
-          disabled={pending}
-          onClick={() => onToggleFavorite(rom.id)}
-        >
-          {pending ? "Saving…" : favorite ? "Favorited" : "Favorite"}
-        </PixelButton>
+        <FavoriteToggle romId={rom.id} favorite={favorite} pending={pending} onToggle={onToggleFavorite} />
         <Link
           href={`/play/${rom.id}`}
           className="rounded-pixel bg-kelp px-4 py-2 text-xs font-semibold uppercase tracking-widest text-night shadow-pixel transition hover:bg-lagoon"
@@ -150,6 +137,12 @@ export function LibraryExplorerPage({ initialPlatformSlug = null }: LibraryExplo
   const { isFavorite, toggleFavorite, isPending } = useFavorites();
 
   const platforms = useMemo(() => platformQuery.data?.platforms ?? [], [platformQuery.data]);
+  const platformError =
+    platformQuery.error instanceof Error
+      ? platformQuery.error
+      : platformQuery.error
+        ? new Error(String(platformQuery.error))
+        : null;
 
   useEffect(() => {
     if (!initialPlatformSlug) {
@@ -214,76 +207,29 @@ export function LibraryExplorerPage({ initialPlatformSlug = null }: LibraryExplo
           </p>
         </header>
         {/* TODO: Prepare curated SNES artwork spritesheets for the hero banner. */}
-        <div className="flex flex-col gap-4">
-          <LibraryFilterControls
-            value={filters}
-            onChange={(next) => setFilters((current) => ({ ...current, ...next }))}
-            onReset={() => setFilters(DEFAULT_FILTERS)}
-          />
-          <div className="flex flex-wrap gap-3">
-            <label className="flex items-center gap-2 text-xs uppercase tracking-widest text-parchment/70">
-              <input
-                type="checkbox"
-                checked={state.includeEmpty}
-                onChange={(event) =>
-                  setState((current) => ({ ...current, includeEmpty: event.target.checked }))
-                }
-                className="h-4 w-4 rounded border-ink/50 bg-night text-lagoon focus:ring-lagoon"
-              />
-              Show empty platforms
-            </label>
-            <label className="flex items-center gap-2 text-xs uppercase tracking-widest text-parchment/70">
-              <input
-                type="checkbox"
-                checked={state.favoritesOnly}
-                onChange={(event) =>
-                  setState((current) => ({ ...current, favoritesOnly: event.target.checked }))
-                }
-                className="h-4 w-4 rounded border-ink/50 bg-night text-lagoon focus:ring-lagoon"
-              />
-              Favorites only
-            </label>
-          </div>
-        </div>
+        <LibraryFilters
+          filters={filters}
+          onFiltersChange={(next) => setFilters((current) => ({ ...current, ...next }))}
+          onReset={() => setFilters(DEFAULT_FILTERS)}
+          includeEmpty={state.includeEmpty}
+          onIncludeEmptyChange={(value) =>
+            setState((current) => ({ ...current, includeEmpty: value }))
+          }
+          favoritesOnly={state.favoritesOnly}
+          onFavoritesOnlyChange={(value) =>
+            setState((current) => ({ ...current, favoritesOnly: value }))
+          }
+        />
       </PixelFrame>
 
       <section className="grid gap-6 md:grid-cols-[minmax(0,16rem)_1fr]">
-        <PixelFrame className="flex h-full flex-col gap-3 bg-night/85 p-4 text-sm text-parchment shadow-pixel">
-          <h2 className="text-lg font-semibold text-parchment">Platforms</h2>
-          {platformQuery.isLoading && (
-            <p className="text-xs text-parchment/70">Mapping systems…</p>
-          )}
-          {platformQuery.error && (
-            <PixelNotice tone="error">{platformQuery.error.message}</PixelNotice>
-          )}
-          <div className="flex flex-col gap-2">
-            {platforms.map((platform) => {
-              const isSelected = platform.slug === state.selectedPlatform;
-              return (
-                <button
-                  key={platform.id}
-                  type="button"
-                  onClick={() => handleSelectPlatform(platform.slug)}
-                  className={`rounded-pixel border px-3 py-2 text-left text-xs uppercase tracking-widest transition ${
-                    isSelected
-                      ? "border-lagoon bg-lagoon/20 text-parchment"
-                      : "border-ink/40 bg-night/50 text-parchment/70 hover:border-lagoon hover:text-parchment"
-                  }`}
-                >
-                  <span className="block text-sm font-semibold text-parchment">
-                    {platform.name}
-                  </span>
-                  <span className="block text-[0.65rem] uppercase tracking-[0.4em] text-parchment/60">
-                    {getPlatformLabel(platform)} • {platform.romCount} ROM{platform.romCount === 1 ? "" : "s"}
-                  </span>
-                </button>
-              );
-            })}
-            {platforms.length === 0 && !platformQuery.isLoading && (
-              <p className="text-xs text-parchment/60">No platforms match the current filters.</p>
-            )}
-          </div>
-        </PixelFrame>
+        <PlatformGrid
+          platforms={platforms}
+          selectedSlug={state.selectedPlatform}
+          onSelect={handleSelectPlatform}
+          isLoading={platformQuery.isLoading}
+          error={platformError}
+        />
 
         <div className="flex flex-col gap-4">
           <PixelFrame className="space-y-2 bg-night/85 p-4 text-sm text-parchment shadow-pixel">

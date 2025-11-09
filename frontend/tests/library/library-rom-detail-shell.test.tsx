@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-vi.mock("@lib/api/library", () => ({
+vi.mock("@lib/api/roms", () => ({
   useRomDetail: vi.fn()
 }));
 
@@ -9,7 +9,7 @@ vi.mock("@/src/hooks/useFavorites", () => ({
   useFavorites: vi.fn()
 }));
 
-const { useRomDetail } = await import("@lib/api/library");
+const { useRomDetail } = await import("@lib/api/roms");
 const { useFavorites } = await import("@/src/hooks/useFavorites");
 const { LibraryRomDetailShell } = await import("@/src/library/library-rom-detail-shell");
 

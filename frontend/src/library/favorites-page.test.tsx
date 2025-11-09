@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@lib/api/library", () => ({
+vi.mock("@lib/api/roms", () => ({
   listRoms: vi.fn()
 }));
 
@@ -11,7 +11,7 @@ vi.mock("@lib/api/favorites", () => ({
   removeFavorite: vi.fn()
 }));
 
-const { listRoms } = await import("@lib/api/library");
+const { listRoms } = await import("@lib/api/roms");
 const { listFavorites, addFavorite, removeFavorite } = await import("@lib/api/favorites");
 const { FavoritesPage } = await import("./favorites-page");
 

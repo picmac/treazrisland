@@ -27,15 +27,22 @@ export async function registerScreenScraperRoutes(app: FastifyInstance) {
   }
 
   app.register(async (instance) => {
+    const service = instance.screenScraperService;
+
+    if (!service) {
+      instance.log.warn("ScreenScraper service unavailable inside route scope");
+      return;
+    }
+
     instance.addHook("onRequest", instance.requireAdmin);
 
     instance.get("/admin/screenscraper/status", async () => {
-      return instance.screenScraperService.getStatus();
+      return service.getStatus();
     });
 
     instance.get("/admin/screenscraper/settings", async (request) => {
       const userId = request.user?.sub;
-      const settings = await instance.screenScraperService.getSettings(userId);
+      const settings = await service.getSettings(userId);
       return settings;
     });
 
@@ -55,10 +62,7 @@ export async function registerScreenScraperRoutes(app: FastifyInstance) {
           .send({ message: "Authenticated user is required" });
       }
 
-      const record = await instance.screenScraperService.updateUserSettings(
-        userId,
-        parsed.data,
-      );
+      const record = await service.updateUserSettings(userId, parsed.data);
 
       return {
         settings: record,
@@ -89,7 +93,7 @@ export async function registerScreenScraperRoutes(app: FastifyInstance) {
           .send({ message: "Authenticated user is required" });
       }
 
-      const job = await instance.screenScraperService.enqueueEnrichmentJob({
+      const job = await service.enqueueEnrichmentJob({
         romId: params.data.romId,
         requestedById: userId,
         overrides: body.data.overrides,
