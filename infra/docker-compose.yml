@@ -6,10 +6,12 @@ services:
     image: postgres:16-alpine
     container_name: treazrisland-postgres
     restart: unless-stopped
+    env_file:
+      - ${TREAZ_ENV_FILE:-../.env}
     environment:
-      POSTGRES_DB: treazrisland
-      POSTGRES_USER: treazrisland
-      POSTGRES_PASSWORD: treazrisland
+      POSTGRES_DB: ${POSTGRES_DB:-treazrisland}
+      POSTGRES_USER: ${POSTGRES_USER:-treazrisland}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-treazrisland}
     ports:
       - "5432:5432"
     volumes:
@@ -25,9 +27,11 @@ services:
     container_name: treazrisland-minio
     command: server /data
     restart: unless-stopped
+    env_file:
+      - ${TREAZ_ENV_FILE:-../.env}
     environment:
-      MINIO_ROOT_USER: treaz-admin
-      MINIO_ROOT_PASSWORD: treaz-secret
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-treaz-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-treaz-secret}
       MINIO_PROMETHEUS_AUTH_TYPE: public
     ports:
       - "9000:9000"
@@ -49,12 +53,14 @@ services:
     depends_on:
       minio:
         condition: service_healthy
+    env_file:
+      - ${TREAZ_ENV_FILE:-../.env}
     environment:
-      MINIO_ROOT_USER: treaz-admin
-      MINIO_ROOT_PASSWORD: treaz-secret
-      STORAGE_BUCKET_ASSETS: treaz-assets
-      STORAGE_BUCKET_ROMS: treaz-roms
-      STORAGE_BUCKET_BIOS: treaz-bios
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-treaz-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-treaz-secret}
+      STORAGE_BUCKET_ASSETS: ${STORAGE_BUCKET_ASSETS:-treaz-assets}
+      STORAGE_BUCKET_ROMS: ${STORAGE_BUCKET_ROMS:-treaz-roms}
+      STORAGE_BUCKET_BIOS: ${STORAGE_BUCKET_BIOS:-treaz-bios}
     volumes:
       - ./minio/bootstrap.sh:/bootstrap/bootstrap.sh:ro
       - ./minio/policies:/bootstrap/policies:ro
@@ -69,7 +75,7 @@ services:
     container_name: treazrisland-postgres-exporter
     restart: unless-stopped
     environment:
-      DATA_SOURCE_URI: postgresql://treazrisland:treazrisland@postgres:5432/treazrisland?sslmode=disable
+      DATA_SOURCE_URI: ${DATA_SOURCE_URI:-postgresql://${POSTGRES_USER:-treazrisland}:${POSTGRES_PASSWORD:-treazrisland}@postgres:5432/${POSTGRES_DB:-treazrisland}?sslmode=disable}
     depends_on:
       - postgres
     networks:
@@ -85,10 +91,10 @@ services:
     env_file:
       - ${TREAZ_ENV_FILE:-../.env}
     environment:
-      DATABASE_URL: postgresql://treazrisland:treazrisland@postgres:5432/treazrisland?schema=public
-      STORAGE_ENDPOINT: http://minio:9000
-      STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-treaz-admin}
-      STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-treaz-secret}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-treazrisland}:${POSTGRES_PASSWORD:-treazrisland}@postgres:5432/${POSTGRES_DB:-treazrisland}?schema=public}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://minio:9000}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-treaz-admin}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-treaz-secret}
     depends_on:
       postgres:
         condition: service_healthy
@@ -122,16 +128,15 @@ services:
     env_file:
       - ${TREAZ_ENV_FILE:-../.env}
     environment:
-      DATABASE_URL: postgresql://treazrisland:treazrisland@postgres:5432/treazrisland?schema=public
-      STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-treaz-admin}
-      STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-treaz-secret}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-treazrisland}:${POSTGRES_PASSWORD:-treazrisland}@postgres:5432/${POSTGRES_DB:-treazrisland}?schema=public}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-treaz-admin}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-treaz-secret}
     depends_on:
       postgres:
         condition: service_healthy
       minio-setup:
         condition: service_completed_successfully
-    command: >-
-      sh -c "npx prisma migrate deploy && npm run prisma:seed:platforms"
+    command: ["npm", "run", "db:prepare"]
     restart: "no"
     networks:
       - default

@@ -8,7 +8,7 @@ import {
 } from "vitest";
 import type { FastifyInstance } from "fastify";
 
-import type { ObservabilityMetrics } from "./observability.js";
+import type { ObservabilityMetrics } from "./metrics.js";
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
