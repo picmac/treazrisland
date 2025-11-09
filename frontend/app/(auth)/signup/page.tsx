@@ -13,10 +13,10 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
 
   if (!token) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-white">
-        <PixelFrame className="space-y-4 max-w-lg text-center">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-foreground">
+        <PixelFrame className="space-y-4 max-w-lg text-center" tone="raised">
           <h1 className="text-lg uppercase tracking-widest text-primary">Invitation Required</h1>
-          <p className="text-sm text-slate-200">
+          <p className="text-sm text-foreground/80">
             To join TREAZRISLAND you need a valid invitation token. Ask an administrator for an invite
             link and revisit this page once you have one.
           </p>
@@ -37,10 +37,10 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
 
   if (!invitation) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-white">
-        <PixelFrame className="space-y-4 max-w-lg text-center">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-foreground">
+        <PixelFrame className="space-y-4 max-w-lg text-center" tone="raised">
           <h1 className="text-lg uppercase tracking-widest text-primary">Invitation Issue</h1>
-          <p className="text-sm text-slate-200">
+          <p className="text-sm text-foreground/80">
             {errorMessage ??
               "We could not verify this invitation. Confirm the link or request a new token from your admin."}
           </p>
@@ -50,11 +50,11 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-white">
-      <PixelFrame className="space-y-6 max-w-lg">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-foreground">
+      <PixelFrame className="space-y-6 max-w-lg" tone="raised">
         <header className="space-y-2 text-center">
           <h1 className="text-lg uppercase tracking-widest text-primary">Welcome Aboard</h1>
-          <p className="text-sm text-slate-200">
+          <p className="text-sm text-foreground/80">
             Complete your crew manifest below to unlock the island. This invitation grants a
             <span className="text-primary"> {" "}</span>
             <span className="text-primary">{invitation.role}</span> role.

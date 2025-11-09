@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="title desc">
+  <title id="title">TREAZRISLAND Placeholder Hero Art</title>
+  <desc id="desc">Pixel coastline at dusk with stylised sun and clouds used as fallback hero artwork.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1f2933" />
+      <stop offset="60%" stop-color="#12121c" />
+    </linearGradient>
+    <linearGradient id="sea" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3c8c6c" />
+      <stop offset="100%" stop-color="#5dbbcd" />
+    </linearGradient>
+    <filter id="pixelate" x="0" y="0" width="1" height="1">
+      <feFlood result="bg" flood-color="#12121c" flood-opacity="0.05" />
+      <feComposite in="bg" in2="SourceGraphic" operator="atop" />
+    </filter>
+  </defs>
+  <rect width="640" height="360" fill="url(#sky)" />
+  <g filter="url(#pixelate)">
+    <rect y="220" width="640" height="140" fill="url(#sea)" />
+    <rect y="230" width="640" height="5" fill="#0f1b24" opacity="0.35" />
+    <rect y="260" width="640" height="4" fill="#0f1b24" opacity="0.45" />
+  </g>
+  <g>
+    <circle cx="480" cy="110" r="40" fill="#ff7a6c" opacity="0.85" />
+    <circle cx="470" cy="100" r="42" fill="#f4ede2" opacity="0.2" />
+    <rect x="90" y="80" width="110" height="24" rx="8" fill="#f4ede2" opacity="0.45" />
+    <rect x="140" y="60" width="70" height="18" rx="6" fill="#f4ede2" opacity="0.6" />
+    <rect x="520" y="80" width="60" height="20" rx="6" fill="#f4ede2" opacity="0.4" />
+  </g>
+  <g fill="#0f1b24" opacity="0.65">
+    <rect x="0" y="300" width="640" height="60" />
+    <rect x="30" y="280" width="120" height="40" />
+    <rect x="210" y="290" width="110" height="50" />
+    <rect x="370" y="285" width="140" height="55" />
+    <rect x="550" y="295" width="70" height="45" />
+  </g>
+  <text x="40" y="340" font-family="'Press Start 2P', monospace" font-size="18" fill="#f4ede2" letter-spacing="4">
+    TREAZRISLAND
+  </text>
+</svg>

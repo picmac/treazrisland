@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import clsx from "clsx";
 
-type NoticeTone = "info" | "success" | "error";
+type NoticeTone = "info" | "success" | "error" | "warning";
 
 type PixelNoticeProps = {
   tone?: NoticeTone;
@@ -10,9 +10,10 @@ type PixelNoticeProps = {
 };
 
 const toneClasses: Record<NoticeTone, string> = {
-  info: "border-lagoon/50 text-lagoon",
-  success: "border-kelp/60 text-kelp",
-  error: "border-red-500/60 text-red-200"
+  info: "border-[color:color-mix(in srgb, var(--color-info) 70%, transparent)] text-[color:var(--color-info)]",
+  success: "border-[color:color-mix(in srgb, var(--color-success) 70%, transparent)] text-[color:var(--color-success)]",
+  error: "border-[color:color-mix(in srgb, var(--color-danger) 70%, transparent)] text-[color:var(--color-danger)]",
+  warning: "border-[color:color-mix(in srgb, var(--color-warning) 75%, transparent)] text-[color:var(--color-warning)]"
 };
 
 export function PixelNotice({ tone = "info", children, className }: PixelNoticeProps) {

@@ -85,15 +85,15 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
     <form className="space-y-4" onSubmit={handleSubmit}>
       {invitationEmail ? (
         <div className="space-y-1">
-          <label className="block text-xs uppercase tracking-widest text-slate-300">Email</label>
-          <p className="rounded border border-primary/40 bg-background px-3 py-2 text-sm text-slate-200">
+          <label className="block text-xs uppercase tracking-widest text-foreground/70">Email</label>
+          <p className="rounded-pixel border border-[color:var(--surface-outline-subtle)] bg-surface-sunken px-3 py-2 text-sm text-foreground/85">
             {invitationEmail}
           </p>
-          <p className="text-xs text-slate-400">This invitation is locked to the email above.</p>
+          <p className="text-xs text-foreground/60">This invitation is locked to the email above.</p>
         </div>
       ) : (
         <div className="space-y-1">
-          <label className="block text-xs uppercase tracking-widest text-slate-300" htmlFor="email">
+          <label className="block text-xs uppercase tracking-widest text-foreground/70" htmlFor="email">
             Email
           </label>
           <PixelInput
@@ -108,7 +108,7 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
       )}
 
       <div className="space-y-1">
-        <label className="block text-xs uppercase tracking-widest text-slate-300" htmlFor="nickname">
+        <label className="block text-xs uppercase tracking-widest text-foreground/70" htmlFor="nickname">
           Nickname
         </label>
         <PixelInput
@@ -122,7 +122,7 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
       </div>
 
       <div className="space-y-1">
-        <label className="block text-xs uppercase tracking-widest text-slate-300" htmlFor="displayName">
+        <label className="block text-xs uppercase tracking-widest text-foreground/70" htmlFor="displayName">
           Display Name
         </label>
         <PixelInput
@@ -132,11 +132,11 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
           value={form.displayName}
           onChange={handleChange("displayName")}
         />
-        <p className="text-xs text-slate-400">Shown to other players. Defaults to your nickname if left empty.</p>
+        <p className="text-xs text-foreground/60">Shown to other players. Defaults to your nickname if left empty.</p>
       </div>
 
       <div className="space-y-1">
-        <label className="block text-xs uppercase tracking-widest text-slate-300" htmlFor="password">
+        <label className="block text-xs uppercase tracking-widest text-foreground/70" htmlFor="password">
           Password
         </label>
         <PixelInput
@@ -148,10 +148,10 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
           value={form.password}
           onChange={handleChange("password")}
         />
-        <p className="text-xs text-slate-400">Password must include at least one uppercase letter and one digit.</p>
+        <p className="text-xs text-foreground/60">Password must include at least one uppercase letter and one digit.</p>
       </div>
 
-      <PixelButton type="submit" disabled={isPending} className="w-full">
+      <PixelButton type="submit" disabled={isPending} fullWidth>
         {isPending ? "Hoisting sails…" : `Join as ${role.toLowerCase()}`}
       </PixelButton>
 

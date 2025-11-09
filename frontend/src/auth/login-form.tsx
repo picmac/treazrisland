@@ -85,7 +85,7 @@ export function LoginForm() {
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
       <div className="space-y-1">
-        <label className="block text-xs uppercase tracking-widest text-slate-300" htmlFor="identifier">
+        <label className="block text-xs uppercase tracking-widest text-foreground/70" htmlFor="identifier">
           Email or Nickname
         </label>
         <PixelInput
@@ -98,7 +98,7 @@ export function LoginForm() {
       </div>
 
       <div className="space-y-1">
-        <label className="block text-xs uppercase tracking-widest text-slate-300" htmlFor="password">
+        <label className="block text-xs uppercase tracking-widest text-foreground/70" htmlFor="password">
           Password
         </label>
         <PixelInput
@@ -112,9 +112,9 @@ export function LoginForm() {
       </div>
 
       {mfaRequired && (
-        <div className="space-y-3 rounded border border-primary/30 bg-background/60 p-3">
+        <div className="space-y-3 rounded-pixel border border-[color:var(--surface-outline-subtle)] bg-surface-translucent p-3">
           <div className="space-y-1">
-            <label className="block text-xs uppercase tracking-widest text-slate-300" htmlFor="mfaCode">
+            <label className="block text-xs uppercase tracking-widest text-foreground/70" htmlFor="mfaCode">
               MFA Code
             </label>
             <PixelInput
@@ -123,11 +123,11 @@ export function LoginForm() {
               value={form.mfaCode}
               onChange={handleChange("mfaCode")}
             />
-            <p className="text-xs text-slate-400">Enter the 6-digit code from your authenticator app.</p>
+            <p className="text-xs text-foreground/60">Enter the 6-digit code from your authenticator app.</p>
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs uppercase tracking-widest text-slate-300" htmlFor="recoveryCode">
+            <label className="block text-xs uppercase tracking-widest text-foreground/70" htmlFor="recoveryCode">
               Recovery Code
             </label>
             <PixelInput
@@ -136,12 +136,12 @@ export function LoginForm() {
               value={form.recoveryCode}
               onChange={handleChange("recoveryCode")}
             />
-            <p className="text-xs text-slate-400">Optional fallback. We will use it if the MFA code is unavailable.</p>
+            <p className="text-xs text-foreground/60">Optional fallback. We will use it if the MFA code is unavailable.</p>
           </div>
         </div>
       )}
 
-      <PixelButton type="submit" disabled={isPending} className="w-full">
+      <PixelButton type="submit" disabled={isPending} fullWidth>
         {isPending ? "Charting course…" : "Log In"}
       </PixelButton>
 

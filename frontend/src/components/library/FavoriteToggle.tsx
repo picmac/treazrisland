@@ -1,6 +1,6 @@
 "use client";
 
-import { PixelButton } from "@/src/components/pixel/button";
+import { PixelButton } from "@/src/components/pixel";
 
 type FavoriteToggleProps = {
   romId: string;
