@@ -13,3 +13,4 @@ process.env.SMTP_FROM_EMAIL =
   process.env.SMTP_FROM_EMAIL ?? "no-reply@example.com";
 process.env.SMTP_FROM_NAME =
   process.env.SMTP_FROM_NAME ?? "TREAZRISLAND";
+process.env.LOG_LEVEL = process.env.LOG_LEVEL ?? "silent";
