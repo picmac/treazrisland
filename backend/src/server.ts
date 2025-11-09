@@ -30,6 +30,7 @@ import supportServices from "./plugins/support-services.js";
 import metricsPlugin from "./plugins/metrics.js";
 import settingsPlugin from "./plugins/settings.js";
 import loggingPlugin from "./plugins/logging.js";
+import enforceHttpsPlugin from "./plugins/enforce-https.js";
 import healthPlugin from "./plugins/health.js";
 import { registerRomRoutes } from "./routes/roms/index.js";
 import {
@@ -81,6 +82,7 @@ export const buildServer = (
   app.register(sensible);
   app.register(corsPlugin);
   app.register(loggingPlugin);
+  app.register(enforceHttpsPlugin);
   app.register(async (instance) => {
     await instance.register(healthPlugin);
     registerHealthRoutes(instance);

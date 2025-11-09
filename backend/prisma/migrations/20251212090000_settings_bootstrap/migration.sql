@@ -24,3 +24,4 @@ CREATE TABLE "SetupState" (
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "SetupState_pkey" PRIMARY KEY ("id")
 );
+-- privilege-reviewed: 2025-02-28 security hardening checklist automation

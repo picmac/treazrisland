@@ -22,6 +22,8 @@ process.env.SMTP_PORT = "1025";
 process.env.SMTP_SECURE = "none";
 process.env.SMTP_FROM_EMAIL = "no-reply@example.com";
 process.env.SMTP_FROM_NAME = "TREAZ";
+process.env.NETPLAY_SIGNAL_ALLOWED_ORIGINS = "https://trusted.example";
+process.env.TREAZ_TLS_MODE = "http";
 
 let buildServer: typeof import("../server.js").buildServer;
 let registerNetplayRoutes: typeof import("./netplay.js").registerNetplayRoutes;
@@ -404,6 +406,7 @@ describe("netplay routes", () => {
       path: "/netplay/signal",
       transports: ["websocket"],
       auth: { sessionId: "session_1" },
+      extraHeaders: { origin: "https://trusted.example" },
     });
 
     const error = await new Promise<Error>((resolve) => {
@@ -416,6 +419,86 @@ describe("netplay routes", () => {
     });
 
     expect(error.message).toMatch(/authentication/i);
+    socket.close();
+  });
+
+  it("rejects signal connections from untrusted origins", async () => {
+    const address = await app.listen({ port: 0 });
+    const token = app.jwt.sign({ sub: "user_1", role: "USER" });
+
+    const socket = createSocketClient(address, {
+      path: "/netplay/signal",
+      transports: ["websocket"],
+      auth: { sessionId: "session_1", token },
+      extraHeaders: { origin: "https://evil.example" },
+    });
+
+    const error = await new Promise<Error>((resolve) => {
+      socket.on("connect", () => resolve(new Error("unexpected connection")));
+      socket.on("connect_error", (err) => {
+        resolve(err instanceof Error ? err : new Error(String(err)));
+      });
+    });
+
+    expect(error.message).toMatch(/origin/i);
+    socket.close();
+  });
+
+  it("allows signal connections from approved origins", async () => {
+    const address = await app.listen({ port: 0 });
+    const token = app.jwt.sign({ sub: "user_1", role: "USER" });
+
+    const now = new Date();
+    const participantRecord = {
+      id: "participant_1",
+      sessionId: "session_1",
+      userId: "user_1",
+      role: "HOST",
+      status: "CONNECTED",
+      peerTokenHash: null,
+      lastHeartbeatAt: now,
+      connectedAt: now,
+      disconnectedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    } as const;
+    const sessionRecord = {
+      id: "session_1",
+      romId: "rom_1",
+      hostId: "user_1",
+      saveStateId: null,
+      status: "OPEN",
+      expiresAt: new Date(now.getTime() + 60_000),
+      lastActivityAt: now,
+      createdAt: now,
+      updatedAt: now,
+      participants: [{ ...participantRecord }],
+    } as const;
+
+    prismaMock.netplayParticipant.findUnique.mockResolvedValue({
+      ...participantRecord,
+      session: { ...sessionRecord },
+    });
+    prismaMock.netplaySession.findUnique.mockResolvedValue({
+      ...sessionRecord,
+      participants: [{ ...participantRecord }],
+    });
+
+    const socket = createSocketClient(address, {
+      path: "/netplay/signal",
+      transports: ["websocket"],
+      auth: { sessionId: "session_1", token },
+      extraHeaders: { origin: "https://trusted.example" },
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      socket.on("connect", () => resolve());
+      socket.on("connect_error", (err) => {
+        reject(err instanceof Error ? err : new Error(String(err)));
+      });
+    });
+
+    expect(socket.connected).toBe(true);
     socket.close();
   });
 
@@ -512,6 +595,7 @@ describe("netplay routes", () => {
         sessionId: "session_1",
         peerToken: hostPeerToken,
       },
+      extraHeaders: { origin: "https://trusted.example" },
     });
 
     await new Promise<void>((resolve, reject) => {
@@ -527,6 +611,7 @@ describe("netplay routes", () => {
         sessionId: "session_1",
         peerToken: guestPeerToken,
       },
+      extraHeaders: { origin: "https://trusted.example" },
     });
 
     await new Promise<void>((resolve, reject) => {

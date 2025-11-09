@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
+import { pathToFileURL } from "node:url";
 import { encryptWithAesGcm } from "../src/utils/crypto.js";
 
-type ArgMap = Record<string, string | undefined>;
+export type ArgMap = Record<string, string | undefined>;
 
-type RotationInput = {
+export type RotationInput = {
   username: string;
   password: string;
   developerId: string;
@@ -13,7 +14,7 @@ type RotationInput = {
   secretKey: string;
 };
 
-const ARG_ALIASES: Record<string, keyof RotationInput> = {
+export const ARG_ALIASES: Record<string, keyof RotationInput> = {
   username: "username",
   password: "password",
   devId: "developerId",
@@ -24,7 +25,7 @@ const ARG_ALIASES: Record<string, keyof RotationInput> = {
   "secret-key": "secretKey",
 };
 
-function parseArgs(argv: string[]): ArgMap {
+export function parseArgs(argv: string[]): ArgMap {
   return argv.reduce<ArgMap>((acc, arg) => {
     const [key, ...rest] = arg.split("=");
     if (key.startsWith("--")) {
@@ -41,8 +42,11 @@ async function promptForValue(prompt: string): Promise<string> {
   return value.trim();
 }
 
-function resolveInput(args: ArgMap): Partial<RotationInput> & { secretKey: string } {
-  const secretKey = args.secretKey || process.env.SCREENSCRAPER_SECRET_KEY;
+export function resolveInput(args: ArgMap): Partial<RotationInput> & { secretKey: string } {
+  const secretKey =
+    args.secretKey ||
+    args["secret-key"] ||
+    process.env.SCREENSCRAPER_SECRET_KEY;
   if (!secretKey) {
     throw new Error(
       "Missing encryption secret. Provide via --secret-key or SCREENSCRAPER_SECRET_KEY env var.",
@@ -59,7 +63,7 @@ function resolveInput(args: ArgMap): Partial<RotationInput> & { secretKey: strin
   return rotation;
 }
 
-async function gatherRotationInput(args: ArgMap): Promise<RotationInput> {
+export async function gatherRotationInput(args: ArgMap): Promise<RotationInput> {
   const base = resolveInput(args);
   const rotation = { ...base };
 
@@ -85,23 +89,31 @@ async function gatherRotationInput(args: ArgMap): Promise<RotationInput> {
   return rotation as RotationInput;
 }
 
+export function formatRotationSummary(rotation: RotationInput, encryptedDevId: string, encryptedDevPassword: string): string {
+  const summary = `Rotation summary\n=================\nSCREENSCRAPER_USERNAME=${rotation.username}\nSCREENSCRAPER_PASSWORD=${rotation.password}\nSCREENSCRAPER_DEV_ID_ENC=${encryptedDevId}\nSCREENSCRAPER_DEV_PASSWORD_ENC=${encryptedDevPassword}\n`;
+
+  const nextSteps = `Next steps\n==========\n1. Update the shared secret manager with the values above.\n2. Redeploy the backend so the new credentials take effect.\n3. Run the metadata enrichment smoke test to confirm ScreenScraper lookups still succeed.\n4. Revoke the previous ScreenScraper credentials once validation passes.`;
+
+  return `${summary}\n${nextSteps}`;
+}
+
+export async function runRotation(argv: string[]): Promise<string> {
+  const args = parseArgs(argv);
+  const rotation = await gatherRotationInput(args);
+
+  const encryptedDevId = encryptWithAesGcm(rotation.developerId, rotation.secretKey);
+  const encryptedDevPassword = encryptWithAesGcm(
+    rotation.developerPassword,
+    rotation.secretKey,
+  );
+
+  return formatRotationSummary(rotation, encryptedDevId, encryptedDevPassword);
+}
+
 async function main() {
   try {
-    const args = parseArgs(process.argv.slice(2));
-    const rotation = await gatherRotationInput(args);
-
-    const encryptedDevId = encryptWithAesGcm(rotation.developerId, rotation.secretKey);
-    const encryptedDevPassword = encryptWithAesGcm(
-      rotation.developerPassword,
-      rotation.secretKey,
-    );
-
-    const summary = `Rotation summary\n=================\nSCREENSCRAPER_USERNAME=${rotation.username}\nSCREENSCRAPER_PASSWORD=${rotation.password}\nSCREENSCRAPER_DEV_ID_ENC=${encryptedDevId}\nSCREENSCRAPER_DEV_PASSWORD_ENC=${encryptedDevPassword}\n`;
-
-    const nextSteps = `Next steps\n==========\n1. Update the shared secret manager with the values above.\n2. Redeploy the backend so the new credentials take effect.\n3. Run the metadata enrichment smoke test to confirm ScreenScraper lookups still succeed.\n4. Revoke the previous ScreenScraper credentials once validation passes.`;
-
-    console.log(summary);
-    console.log(nextSteps);
+    const output = await runRotation(process.argv.slice(2));
+    console.log(output);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`Rotation aborted: ${message}`);
@@ -109,4 +121,7 @@ async function main() {
   }
 }
 
-await main();
+const executedFile = process.argv[1] ? pathToFileURL(process.argv[1]).href : null;
+if (executedFile === import.meta.url) {
+  await main();
+}

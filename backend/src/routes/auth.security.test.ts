@@ -25,7 +25,7 @@ process.env.RATE_LIMIT_AUTH_DURATION = "60";
 
 vi.mock("argon2", () => {
   const hashMock = vi.fn(async (value: string) => `hashed-${value}`);
-  const verifyMock = vi.fn(async () => false);
+  const verifyMock = vi.fn(async () => true);
   return {
     __esModule: true,
     default: {
@@ -45,7 +45,10 @@ type PrismaMock = {
   mfaSecret: {
     deleteMany: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
   };
+  refreshTokenFamily: { create: ReturnType<typeof vi.fn> };
+  refreshToken: { create: ReturnType<typeof vi.fn> };
   $transaction: ReturnType<typeof vi.fn>;
 };
 
@@ -55,7 +58,10 @@ const createPrismaMock = (): PrismaMock => ({
   mfaSecret: {
     deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     create: vi.fn(),
+    update: vi.fn(),
   },
+  refreshTokenFamily: { create: vi.fn().mockResolvedValue({ id: "family-1" }) },
+  refreshToken: { create: vi.fn().mockResolvedValue({ id: "token-1" }) },
   $transaction: vi.fn(),
 });
 
@@ -77,9 +83,12 @@ describe("authentication hardening scenarios", () => {
     prisma.user.findFirst.mockResolvedValue(null);
     prisma.user.findUnique.mockResolvedValue(null);
     prisma.mfaSecret.create.mockResolvedValue({ id: "secret-123" });
+    prisma.mfaSecret.update.mockResolvedValue({ id: "secret-123" });
     prisma.$transaction.mockImplementation(async (callback: (client: PrismaMock) => Promise<unknown>) =>
       callback({
         mfaSecret: prisma.mfaSecret,
+        refreshTokenFamily: prisma.refreshTokenFamily,
+        refreshToken: prisma.refreshToken,
       } as unknown as PrismaMock),
     );
 
@@ -203,5 +212,81 @@ describe("authentication hardening scenarios", () => {
 
     expect(response.status).toBe(401);
     expect(prisma.mfaSecret.create).not.toHaveBeenCalled();
+  });
+
+  it("enforces MFA challenges before issuing session tokens", async () => {
+    const now = new Date("2025-02-28T00:00:00Z");
+    const activeSecret = {
+      id: "secret-active",
+      userId: "user-123",
+      secret: "encrypted-JBSWY3DPEHPK3PXP",
+      recoveryCodes: "hashed-one\nhashed-two",
+      confirmedAt: now,
+      disabledAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    prisma.user.findFirst.mockResolvedValue({
+      id: "user-123",
+      email: "player@example.com",
+      nickname: "pixelpirate",
+      role: "USER",
+      passwordHash: "argon2-hash",
+      mfaSecrets: [activeSecret],
+    });
+
+    const mfaService = app.mfaService as MfaService;
+    mfaService.decryptSecret = vi.fn().mockReturnValue({
+      secret: "JBSWY3DPEHPK3PXP",
+      needsRotation: false,
+    });
+    mfaService.verifyTotp = vi.fn().mockResolvedValue(true);
+
+    argon2Mock.verify.mockResolvedValue(true);
+
+    const initialChallenge = await request(app)
+      .post("/auth/login")
+      .send({ identifier: "player@example.com", password: "Secret123" });
+
+    expect(initialChallenge.status).toBe(401);
+    expect(initialChallenge.body).toEqual({
+      message: "MFA challenge required",
+      mfaRequired: true,
+    });
+    expect(prisma.loginAudit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ event: "MFA_REQUIRED" }),
+    });
+
+    const sessionResponse = await request(app)
+      .post("/auth/login")
+      .send({
+        identifier: "player@example.com",
+        password: "Secret123",
+        mfaCode: "123456",
+      });
+
+    expect(sessionResponse.status).toBe(200);
+    expect(sessionResponse.body).toMatchObject({
+      user: {
+        id: "user-123",
+        email: "player@example.com",
+        nickname: "pixelpirate",
+        role: "USER",
+      },
+      accessToken: expect.any(String),
+      refreshExpiresAt: expect.any(String),
+    });
+
+    expect(mfaService.verifyTotp).toHaveBeenCalledWith(
+      "JBSWY3DPEHPK3PXP",
+      "123456",
+    );
+    expect(prisma.refreshTokenFamily.create).toHaveBeenCalledWith({
+      data: { userId: "user-123" },
+    });
+    expect(prisma.refreshToken.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ userId: "user-123" }),
+    });
   });
 });
