@@ -30,9 +30,7 @@ export async function registerScreenScraperRoutes(app: FastifyInstance) {
     const service = instance.screenScraperService;
 
     if (!service) {
-      instance.log.warn(
-        "ScreenScraper service unavailable inside route scope",
-      );
+      instance.log.warn("ScreenScraper service unavailable inside route scope");
       return;
     }
 
@@ -64,10 +62,7 @@ export async function registerScreenScraperRoutes(app: FastifyInstance) {
           .send({ message: "Authenticated user is required" });
       }
 
-      const record = await service.updateUserSettings(
-        userId,
-        parsed.data,
-      );
+      const record = await service.updateUserSettings(userId, parsed.data);
 
       return {
         settings: record,
