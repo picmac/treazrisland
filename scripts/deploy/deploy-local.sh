@@ -209,7 +209,23 @@ run_all_probes() {
 ensure_database_url() {
   if [[ -z "${DATABASE_URL:-}" ]]; then
     if [[ -n "${POSTGRES_USER:-}" && -n "${POSTGRES_PASSWORD:-}" && -n "${POSTGRES_DB:-}" ]]; then
-      export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public"
+      local encoded_user
+      local encoded_password
+      local encoded_db
+
+      if ! encoded_user=$(percent_encode "${POSTGRES_USER}"); then
+        return 1
+      fi
+
+      if ! encoded_password=$(percent_encode "${POSTGRES_PASSWORD}"); then
+        return 1
+      fi
+
+      if ! encoded_db=$(percent_encode "${POSTGRES_DB}"); then
+        return 1
+      fi
+
+      export DATABASE_URL="postgresql://${encoded_user}:${encoded_password}@postgres:5432/${encoded_db}?schema=public"
       log "DATABASE_URL not provided; defaulting to postgres service host"
       return 0
     else
@@ -242,7 +258,7 @@ ensure_database_url() {
 sync_env_value() {
   local key="$1"
   local value="$2"
-  local python_cmd="python3"
+  local python_cmd
   local file="${ENV_FILE}"
 
   if [[ -z "${key}" || -z "${value}" ]]; then
@@ -253,13 +269,9 @@ sync_env_value() {
     return 0
   fi
 
-  if ! command -v "${python_cmd}" >/dev/null 2>&1; then
-    if command -v python >/dev/null 2>&1; then
-      python_cmd="python"
-    else
-      log "Python interpreter not found; skipping ${key} env file synchronisation"
-      return 0
-    fi
+  if ! python_cmd=$(select_python_interpreter); then
+    log "Python interpreter not found; skipping ${key} env file synchronisation"
+    return 0
   fi
 
   if [[ ! -w "${file}" ]]; then
@@ -358,6 +370,37 @@ log() {
     logger "TREAZRISLAND deploy: ${message}" || true
   fi
   printf '[deploy] %s\n' "${message}"
+}
+
+select_python_interpreter() {
+  if command -v python3 >/dev/null 2>&1; then
+    printf 'python3'
+    return 0
+  fi
+
+  if command -v python >/dev/null 2>&1; then
+    printf 'python'
+    return 0
+  fi
+
+  return 1
+}
+
+percent_encode() {
+  local value="$1"
+  local python_cmd
+
+  if ! python_cmd=$(select_python_interpreter); then
+    printf '%s' "${value}"
+    return 0
+  fi
+
+  "${python_cmd}" - "$value" <<'PY'
+import sys
+from urllib.parse import quote
+
+print(quote(sys.argv[1], safe=""))
+PY
 }
 
 compose_invoke() {
