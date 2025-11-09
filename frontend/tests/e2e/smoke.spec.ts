@@ -179,11 +179,18 @@ describe("@smoke TREAZRISLAND key flows", () => {
         response.request().method() === "GET" &&
         response.request().url().includes(`romId=${fixture.romId}`),
     );
+    const netplaySessionsPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/netplay/sessions") &&
+        response.request().method() === "GET",
+    );
 
     await page.goto(`/play/${fixture.romId}`);
     expect((await emulatorBundlePromise).status()).toBe(200);
     expect((await romBinaryPromise).status()).toBe(200);
     expect((await playStatesPromise).status()).toBe(200);
+    expect((await netplaySessionsPromise).status()).toBe(200);
     await expect(page.getByTestId("emulator-canvas")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Netplay Session/i })).toBeVisible();
   });
 });

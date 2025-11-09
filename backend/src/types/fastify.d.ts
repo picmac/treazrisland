@@ -1,4 +1,5 @@
 import type { FastifyBaseLogger, FastifyReply, FastifyRequest } from "fastify";
+import type { Server as SocketIOServer } from "socket.io";
 import type { Role } from "@prisma/client";
 import type { ScreenScraperService } from "../services/screenscraper/service.js";
 import type { StorageService } from "../services/storage/storage.js";
@@ -35,6 +36,7 @@ declare module "fastify" {
     metrics: ObservabilityMetrics;
     settings: SettingsManager;
     health: HealthManager;
+    netplaySignalServer?: SocketIOServer;
   }
 
   interface FastifyRequest {

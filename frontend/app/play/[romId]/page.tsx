@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import EmulatorPlayer from "./EmulatorPlayer";
+import NetplayControls from "./NetplayControls";
 import { getRomMetadata } from "../getRomMetadata";
 
 type PlayPageProps = {
@@ -26,6 +27,7 @@ export default async function PlayRomPage({ params }: PlayPageProps) {
         </p>
       </header>
       <section className="pixel-frame flex flex-1 flex-col gap-4 p-4">
+        <NetplayControls romId={rom.id} />
         <EmulatorPlayer romId={rom.id} romName={rom.title} platform={platformSlug} />
       </section>
     </main>
