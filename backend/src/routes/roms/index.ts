@@ -205,17 +205,18 @@ export async function registerRomRoutes(app: FastifyInstance): Promise<void> {
     },
     async (request, reply) => {
       const parsed = await parseUploadForm(request);
+      const file = parsed.file;
 
-      if (!parsed.file) {
+      if (!file) {
         return reply.status(400).send({ message: "ROM archive is required" });
       }
 
       const platform = await ensurePlatform(app, parsed.fields.platformSlug);
-      const safeFilename = sanitizeFilename(parsed.file.filename);
+      const safeFilename = sanitizeFilename(file.filename);
       let staged: StagedUpload;
 
       try {
-        staged = await stageUploadStream(parsed.file.stream, {
+        staged = await stageUploadStream(file.stream, {
           filename: safeFilename,
           maxBytes: env.ROM_UPLOAD_MAX_BYTES,
         });
@@ -255,7 +256,7 @@ export async function registerRomRoutes(app: FastifyInstance): Promise<void> {
             uploadedById: request.user?.sub ?? null,
             storageKey: duplicate.storageKey,
             originalFilename: safeFilename,
-            archiveMimeType: parsed.file.mimeType,
+            archiveMimeType: file.mimeType,
             archiveSize: staged.size,
             checksumSha256: staged.sha256,
             checksumSha1: staged.sha1,
@@ -285,7 +286,7 @@ export async function registerRomRoutes(app: FastifyInstance): Promise<void> {
         sha1: staged.sha1,
         md5: staged.md5,
         crc32: staged.crc32,
-        contentType: parsed.file.mimeType,
+        contentType: file.mimeType,
         metadata: {
           platformId: platform.id,
           uploaderId: request.user?.sub,
@@ -324,7 +325,7 @@ export async function registerRomRoutes(app: FastifyInstance): Promise<void> {
             romId: romRecord.id,
             storageKey,
             originalFilename: safeFilename,
-            archiveMimeType: parsed.file.mimeType,
+            archiveMimeType: file.mimeType,
             archiveSize: staged!.size,
             checksumSha256: staged!.sha256,
             checksumSha1: staged!.sha1,
@@ -334,7 +335,7 @@ export async function registerRomRoutes(app: FastifyInstance): Promise<void> {
           },
           update: {
             storageKey,
-            archiveMimeType: parsed.file.mimeType,
+            archiveMimeType: file.mimeType,
             archiveSize: staged!.size,
             checksumSha256: staged!.sha256,
             checksumSha1: staged!.sha1,
@@ -355,7 +356,7 @@ export async function registerRomRoutes(app: FastifyInstance): Promise<void> {
             uploadedById: request.user?.sub ?? null,
             storageKey,
             originalFilename: safeFilename,
-            archiveMimeType: parsed.file.mimeType,
+            archiveMimeType: file.mimeType,
             archiveSize: staged!.size,
             checksumSha256: staged!.sha256,
             checksumSha1: staged!.sha1,

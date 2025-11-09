@@ -6,47 +6,10 @@ import { ScreenScraperService } from "../services/screenscraper/service.js";
 export default fp(async (app) => {
   if (!flags.screenscraper.enrichmentEnabled) {
     app.log.warn(
-      "ScreenScraper enrichment disabled via feature flag; registering stub service",
+      "ScreenScraper enrichment disabled via feature flag; ScreenScraper service stubbed",
     );
 
-    const stub = {
-      isEnabled: () => false,
-      getStatus: () => ({
-        enabled: false,
-        diagnostics: screenScraperConfig.diagnostics,
-      }),
-      async getSettings() {
-        const defaults = {
-          languagePriority: screenScraperConfig.languagePriority,
-          regionPriority: screenScraperConfig.regionPriority,
-          mediaTypes: screenScraperConfig.mediaTypes,
-          onlyBetterMedia: screenScraperConfig.onlyBetterMedia,
-          maxAssetsPerType: screenScraperConfig.maxAssetsPerType,
-          preferParentGames: true,
-        } as const;
-
-        return {
-          defaults,
-          user: null,
-          effective: defaults,
-        };
-      },
-      async updateUserSettings() {
-        throw new Error(
-          "ScreenScraper enrichment is currently disabled. Enable FLAG_SCREENSCRAPER_ENRICHMENT to allow settings updates.",
-        );
-      },
-      async enqueueEnrichmentJob() {
-        throw new Error(
-          "ScreenScraper enrichment is currently disabled. Enable FLAG_SCREENSCRAPER_ENRICHMENT to process jobs.",
-        );
-      },
-    } satisfies Partial<ScreenScraperService>;
-
-    app.decorate(
-      "screenScraperService",
-      stub as ScreenScraperService,
-    );
+    app.decorate("screenScraperService", null);
     return;
   }
 
