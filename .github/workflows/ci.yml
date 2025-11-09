@@ -52,9 +52,93 @@ jobs:
           NEXT_TELEMETRY_DISABLED: 1
         run: npm run build
 
+  verify-deploy-runner:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      - name: Ensure treaz-home self-hosted runner is online
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const requiredLabel = 'treaz-home';
+
+            async function fetchRunners(scope, fetchFn, params) {
+              try {
+                const runners = await github.paginate(
+                  fetchFn,
+                  params,
+                  (response) => response.data?.runners ?? [],
+                );
+
+                if (runners.length === 0) {
+                  core.info(`No ${scope} runners reported by GitHub.`);
+                } else {
+                  const description = runners
+                    .map((runner) => `${runner.name} [${runner.labels?.map((label) => label.name).join(', ') ?? 'no labels'}]`)
+                    .join('; ');
+                  core.info(`Discovered ${runners.length} ${scope} runner(s): ${description}`);
+                }
+
+                return { scope, runners };
+              } catch (error) {
+                core.warning(`Unable to query ${scope} runners: ${error.message}`);
+                return { scope, runners: [] };
+              }
+            }
+
+            const lookups = [];
+            lookups.push(
+              await fetchRunners('repository', github.rest.actions.listSelfHostedRunnersForRepo, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+              }),
+            );
+
+            if (
+              lookups[0].runners.length === 0 &&
+              context.payload.repository?.owner?.type === 'Organization'
+            ) {
+              lookups.push(
+                await fetchRunners('organization', github.rest.actions.listSelfHostedRunnersForOrg, {
+                  org: context.repo.owner,
+                  per_page: 100,
+                }),
+              );
+            }
+
+            const allRunners = lookups.flatMap((lookup) => lookup.runners);
+            const matching = allRunners.filter((runner) =>
+              runner.labels?.some((label) => label.name === requiredLabel),
+            );
+
+            if (matching.length === 0) {
+              const scopesSearched = lookups.map((lookup) => lookup.scope).join(', ');
+              core.setFailed(
+                `No self-hosted runners labelled "${requiredLabel}" were found in the checked scope(s): ${scopesSearched}. Register the production deploy runner or update .github/workflows/ci.yml.`,
+              );
+              return;
+            }
+
+            const online = matching.filter((runner) => runner.status === 'online');
+            if (online.length === 0) {
+              const names = matching.map((runner) => runner.name).join(', ') || 'unknown';
+              core.setFailed(
+                `Self-hosted runners with the "${requiredLabel}" label are offline. Current registered runners: ${names}. Start the Actions runner service on the deployment host.`,
+              );
+              return;
+            }
+
+            core.info(`Deploy runner(s) online: ${online.map((runner) => runner.name).join(', ')}`);
+
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: lint-test-build
+    needs:
+      - lint-test-build
+      - verify-deploy-runner
     concurrency:
       group: deploy-${{ github.ref }}
       cancel-in-progress: true

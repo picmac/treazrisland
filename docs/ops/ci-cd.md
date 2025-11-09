@@ -123,12 +123,21 @@ The GitHub workflow passes `TREAZ_ENV_FILE` and `TREAZ_COMPOSE_PROJECT_NAME` to 
    - `npm run lint`
    - `npm test -- --run`
    - `npm run build`
-2. **`deploy`** on the self-hosted `treaz-home` runner for successful pushes to `main` only.
+2. **`verify-deploy-runner`** on GitHub-hosted infrastructure for successful pushes to `main` only.
+   - Uses the GitHub REST API to confirm at least one `self-hosted` runner with the `treaz-home` label is online.
+   - Queries both repository-scoped runners and (when available) organization-level runners, logging every candidate and its labels for troubleshooting.
+   - Fails fast with guidance if the runner is offline so the deploy job does not sit in the queue indefinitely.
+3. **`deploy`** on the self-hosted `treaz-home` runner once the verification job and the matrix both succeed.
    - Checks out the repo with full history (`fetch-depth: 0`).
    - Exports the env file paths mentioned earlier.
    - Calls `scripts/deploy/deploy-local.sh`.
    - On failure the workflow automatically runs `scripts/infra/debug-stack.sh` with a longer log tail and uploads the resulting
      diagnostics as a GitHub Actions artifact (`compose-diagnostics`).
+
+If the CI run fails at the verification stage with a message about offline runners, SSH into the deployment host and restart the
+GitHub Actions runner service (`sudo systemctl restart actions.runner.picmac-treazrisland.treaz-home-runner.service`) or follow
+the registration steps in §4 above. Once the runner reports as **Online** in GitHub’s “Settings → Actions → Runners” screen, rerun
+the workflow.
 
 If any matrix job fails, the deploy job is skipped automatically. GitHub’s branch protection should require the matrix to finish before merging to `main`.
 
