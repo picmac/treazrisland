@@ -16,6 +16,11 @@ DEPLOY_DEBUG="${TREAZ_DEPLOY_DEBUG:-true}"
 COMPOSE_PROGRESS_MODE="${TREAZ_COMPOSE_PROGRESS:-plain}"
 LOG_DIR="${TREAZ_DEPLOY_LOG_DIR:-${REPO_ROOT}/diagnostics}"
 
+ENV_FILE_TEMPLATE="${TREAZ_ENV_TEMPLATE:-${REPO_ROOT}/.env.example}"
+ENV_FILE_ORIGINAL="${ENV_FILE}"
+ENV_FILE_IS_EPHEMERAL="false"
+ENV_FILE_TEMPLATE_SOURCE=""
+
 if [[ "${COMPOSE_PROGRESS_MODE}" != "auto" && "${COMPOSE_PROGRESS_MODE}" != "plain" ]]; then
   COMPOSE_PROGRESS_MODE="plain"
 fi
@@ -377,6 +382,46 @@ compose_invoke() {
   docker "${docker_args[@]}" "${args[@]}"
 }
 
+resolve_env_file() {
+  local requested_path="$1"
+  local template_path="$2"
+
+  ENV_FILE_IS_EPHEMERAL="false"
+  ENV_FILE_TEMPLATE_SOURCE=""
+
+  if [[ -f "${requested_path}" ]]; then
+    printf '%s' "${requested_path}"
+    return 0
+  fi
+
+  if [[ -n "${template_path}" && -f "${template_path}" ]]; then
+    local temp_file
+    if ! temp_file=$(mktemp "${TMPDIR:-/tmp}/treaz-env.XXXXXX"); then
+      printf 'Missing environment file at %s and failed to create a temporary copy from %s\n' \
+        "${requested_path}" "${template_path}" >&2
+      return 1
+    fi
+
+    if ! cp "${template_path}" "${temp_file}"; then
+      rm -f "${temp_file}" || true
+      printf 'Missing environment file at %s and failed to copy template %s\n' \
+        "${requested_path}" "${template_path}" >&2
+      return 1
+    fi
+
+    ENV_FILE_IS_EPHEMERAL="true"
+    ENV_FILE_TEMPLATE_SOURCE="${template_path}"
+    printf '%s' "${temp_file}"
+    return 0
+  fi
+
+  printf 'Missing environment file at %s\n' "${requested_path}" >&2
+  if [[ -n "${template_path}" ]]; then
+    printf 'Template file %s was also unavailable\n' "${template_path}" >&2
+  fi
+  return 1
+}
+
 require_file() {
   local path="$1"
   local description="$2"
@@ -387,6 +432,15 @@ require_file() {
 }
 
 log "Preparing environment"
+if ! resolved_env_file=$(resolve_env_file "${ENV_FILE}" "${ENV_FILE_TEMPLATE}"); then
+  exit 1
+fi
+
+if [[ "${ENV_FILE_IS_EPHEMERAL}" == "true" ]]; then
+  log "Environment file ${ENV_FILE_ORIGINAL} not found; using temporary copy of ${ENV_FILE_TEMPLATE_SOURCE} at ${resolved_env_file}"
+fi
+
+ENV_FILE="${resolved_env_file}"
 require_file "${ENV_FILE}" "environment file"
 
 if [[ -f "${ENV_FILE}" ]]; then
