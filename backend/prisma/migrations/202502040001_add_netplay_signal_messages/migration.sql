@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE "NetplaySignalMessage" (
+CREATE TABLE IF NOT EXISTS "NetplaySignalMessage" (
     "id" TEXT NOT NULL,
     "sessionId" TEXT NOT NULL,
     "senderId" TEXT NOT NULL,
@@ -14,20 +14,51 @@ CREATE TABLE "NetplaySignalMessage" (
 );
 
 -- CreateIndex
-CREATE INDEX "NetplaySignalMessage_sessionId_createdAt_idx" ON "NetplaySignalMessage"("sessionId", "createdAt");
+CREATE INDEX IF NOT EXISTS "NetplaySignalMessage_sessionId_createdAt_idx" ON "NetplaySignalMessage"("sessionId", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "NetplaySignalMessage_senderId_idx" ON "NetplaySignalMessage"("senderId");
+CREATE INDEX IF NOT EXISTS "NetplaySignalMessage_senderId_idx" ON "NetplaySignalMessage"("senderId");
 
 -- CreateIndex
-CREATE INDEX "NetplaySignalMessage_recipientId_idx" ON "NetplaySignalMessage"("recipientId");
+CREATE INDEX IF NOT EXISTS "NetplaySignalMessage_recipientId_idx" ON "NetplaySignalMessage"("recipientId");
 
 -- AddForeignKey
-ALTER TABLE "NetplaySignalMessage" ADD CONSTRAINT "NetplaySignalMessage_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "NetplaySession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'NetplaySignalMessage_sessionId_fkey'
+  ) THEN
+    ALTER TABLE "NetplaySignalMessage"
+      ADD CONSTRAINT "NetplaySignalMessage_sessionId_fkey"
+      FOREIGN KEY ("sessionId") REFERENCES "NetplaySession"("id")
+      ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "NetplaySignalMessage" ADD CONSTRAINT "NetplaySignalMessage_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "NetplayParticipant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'NetplaySignalMessage_senderId_fkey'
+  ) THEN
+    ALTER TABLE "NetplaySignalMessage"
+      ADD CONSTRAINT "NetplaySignalMessage_senderId_fkey"
+      FOREIGN KEY ("senderId") REFERENCES "NetplayParticipant"("id")
+      ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "NetplaySignalMessage" ADD CONSTRAINT "NetplaySignalMessage_recipientId_fkey" FOREIGN KEY ("recipientId") REFERENCES "NetplayParticipant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'NetplaySignalMessage_recipientId_fkey'
+  ) THEN
+    ALTER TABLE "NetplaySignalMessage"
+      ADD CONSTRAINT "NetplaySignalMessage_recipientId_fkey"
+      FOREIGN KEY ("recipientId") REFERENCES "NetplayParticipant"("id")
+      ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
+
 -- privilege-reviewed: 2025-02-28 security hardening checklist automation
