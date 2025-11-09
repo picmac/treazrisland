@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import type { InjectPayload } from "light-my-request";
 import { appendQueryString, forwardPlayerRequest } from "../play/proxy.js";
 
 function resolveContentType(request: { headers: Record<string, unknown> }): string {
@@ -70,7 +71,7 @@ export async function registerPlayStateRoutes(
       return forwardPlayerRequest(app, request, reply, {
         method: "POST",
         url: "/player/play-states",
-        payload: request.body,
+        payload: request.body as InjectPayload,
         contentType,
       });
     },
@@ -85,7 +86,7 @@ export async function registerPlayStateRoutes(
       return forwardPlayerRequest(app, request, reply, {
         method: "PATCH",
         url: `/player/play-states/${encodeURIComponent(params.id)}`,
-        payload: request.body,
+        payload: request.body as InjectPayload,
         contentType,
       });
     },

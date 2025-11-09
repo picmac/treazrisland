@@ -1,9 +1,10 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { InjectPayload } from "light-my-request";
 
 type ProxyOptions = {
   method: "GET" | "POST" | "PATCH" | "DELETE";
   url: string;
-  payload?: unknown;
+  payload?: InjectPayload;
   contentType?: string;
 };
 
