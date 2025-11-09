@@ -64,17 +64,31 @@ jobs:
       - name: Ensure treaz-home self-hosted runner is online
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.DEPLOY_RUNNER_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
             const requiredLabel = 'treaz-home';
-            const runners = await github.paginate(
-              github.rest.actions.listSelfHostedRunnersForRepo,
-              {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                per_page: 100,
-              },
-            );
+
+            let runners;
+            try {
+              runners = await github.paginate(
+                github.rest.actions.listSelfHostedRunnersForRepo,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  per_page: 100,
+                },
+              );
+            } catch (error) {
+              if (error.status === 403) {
+                core.warning(
+                  'Unable to verify self-hosted runner status because the configured token lacks `self-hosted runners: read` permission. ' +
+                    'Add a fine-grained PAT with that scope to `DEPLOY_RUNNER_TOKEN` to re-enable verification.',
+                );
+                return;
+              }
+
+              throw error;
+            }
 
             const matching = runners.filter((runner) =>
               runner.labels?.some((label) => label.name === requiredLabel),
