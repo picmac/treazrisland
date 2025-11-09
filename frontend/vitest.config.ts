@@ -21,7 +21,8 @@ export default defineConfig({
       "app/**/*.test.{ts,tsx}",
       "components/**/*.test.{ts,tsx}",
       "src/**/*.test.{ts,tsx}",
-      "tests/**/*.test.{ts,tsx}"
+      "tests/**/*.test.{ts,tsx}",
+      "__tests__/**/*.test.{ts,tsx}"
     ]
   }
 });

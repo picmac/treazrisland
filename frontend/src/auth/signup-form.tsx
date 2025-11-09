@@ -6,6 +6,7 @@ import { useState, useTransition, type FormEvent, type ChangeEvent } from "react
 import { redeemInvitationAction } from "@/app/(auth)/signup/actions";
 import { PixelButton, PixelInput, PixelNotice } from "@/src/components/pixel";
 import { useSession } from "@/src/auth/session-provider";
+import { signupSchema } from "@/lib/validation/auth";
 
 interface SignupFormProps {
   token: string;
@@ -43,15 +44,28 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
     event.preventDefault();
     setError(null);
 
+    const nickname = form.nickname.trim();
+    const displayName = form.displayName.trim();
+    const email = invitationEmail ?? form.email.trim();
+
+    const submission = {
+      token,
+      email: email || undefined,
+      nickname,
+      password: form.password,
+      displayName: displayName.length > 0 ? displayName : nickname,
+    };
+
+    const validation = signupSchema.safeParse(submission);
+    if (!validation.success) {
+      const [firstError] = validation.error.issues;
+      setError(firstError?.message ?? "Please review your details and try again.");
+      return;
+    }
+
     startTransition(async () => {
       try {
-        const result = await redeemInvitationAction({
-          token,
-          email: invitationEmail ?? form.email,
-          nickname: form.nickname,
-          password: form.password,
-          displayName: form.displayName || form.nickname
-        });
+        const result = await redeemInvitationAction(validation.data);
 
         if (result.success) {
           setSession(result.payload);

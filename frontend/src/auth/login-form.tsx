@@ -4,6 +4,7 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition, type ChangeEvent, type FormEvent } from "react";
 import { performLogin } from "@/app/(auth)/login/actions";
+import { loginSchema } from "@/lib/validation/auth";
 import { PixelButton, PixelInput, PixelNotice } from "@/src/components/pixel";
 import { useSession } from "@/src/auth/session-provider";
 
@@ -41,14 +42,24 @@ export function LoginForm() {
     event.preventDefault();
     setError(null);
 
+    const trimmed = {
+      identifier: form.identifier.trim(),
+      password: form.password,
+      mfaCode: form.mfaCode.trim() || undefined,
+      recoveryCode: form.recoveryCode.trim() || undefined
+    };
+
+    const validation = loginSchema.safeParse(trimmed);
+    if (!validation.success) {
+      const [firstError] = validation.error.issues;
+      setError(firstError?.message ?? "Check your credentials and try again.");
+      setMfaRequired(Boolean(trimmed.mfaCode || trimmed.recoveryCode));
+      return;
+    }
+
     startTransition(async () => {
       try {
-        const result = await performLogin({
-          identifier: form.identifier,
-          password: form.password,
-          mfaCode: form.mfaCode ? form.mfaCode : undefined,
-          recoveryCode: form.recoveryCode ? form.recoveryCode : undefined
-        });
+        const result = await performLogin(validation.data);
 
         if (result.success) {
           setSession(result.payload);

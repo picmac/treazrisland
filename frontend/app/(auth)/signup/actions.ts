@@ -6,6 +6,7 @@ import {
   applyBackendCookies,
   buildCookieHeaderFromStore
 } from "@/src/lib/server/backend-cookies";
+import { signupSchema } from "@/lib/validation/auth";
 
 export type SignupActionInput = {
   token: string;
@@ -22,9 +23,26 @@ export type SignupActionResult =
 export async function redeemInvitationAction(
   payload: SignupActionInput
 ): Promise<SignupActionResult> {
+  const sanitizedPayload = {
+    token: payload.token,
+    email: payload.email?.trim() || undefined,
+    nickname: payload.nickname.trim(),
+    password: payload.password,
+    displayName: payload.displayName?.trim() || payload.nickname.trim(),
+  };
+
+  const validation = signupSchema.safeParse(sanitizedPayload);
+  if (!validation.success) {
+    const [firstError] = validation.error.issues;
+    return {
+      success: false,
+      error: firstError?.message ?? "Please review your details and try again.",
+    };
+  }
+
   try {
     const cookieHeader = await buildCookieHeaderFromStore();
-    const { payload: session, cookies } = await redeemInvitation(payload, {
+    const { payload: session, cookies } = await redeemInvitation(validation.data, {
       cookieHeader
     });
     await applyBackendCookies(cookies);
