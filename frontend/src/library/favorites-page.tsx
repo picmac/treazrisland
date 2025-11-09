@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { listRoms, type RomListItem } from "@lib/api/library";
+import { listRoms, type RomListItem } from "@lib/api/roms";
 import { PixelFrame } from "@/src/components/pixel-frame";
 import {
   LibraryFilterControls,

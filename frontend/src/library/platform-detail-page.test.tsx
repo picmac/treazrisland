@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { ApiError } from "@lib/api/client";
 
-vi.mock("@lib/api/library", () => ({
+vi.mock("@lib/api/roms", () => ({
   getPlatform: vi.fn(),
   listRoms: vi.fn(),
   listPlatforms: vi.fn()
@@ -14,7 +14,7 @@ vi.mock("@lib/api/favorites", () => ({
   removeFavorite: vi.fn()
 }));
 
-const { getPlatform, listRoms, listPlatforms } = await import("@lib/api/library");
+const { getPlatform, listRoms, listPlatforms } = await import("@lib/api/roms");
 const { listFavorites, addFavorite, removeFavorite } = await import("@lib/api/favorites");
 const { PlatformDetailPage } = await import("./platform-detail-page");
 

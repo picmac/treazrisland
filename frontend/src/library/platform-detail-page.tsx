@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError } from "@lib/api/client";
-import { getPlatform, listRoms, type PlatformSummary, type RomListItem } from "@lib/api/library";
+import { getPlatform, listRoms, type PlatformSummary, type RomListItem } from "@lib/api/roms";
 import { PixelFrame } from "@/src/components/pixel-frame";
 import {
   LibraryFilterControls,

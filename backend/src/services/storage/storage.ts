@@ -1,11 +1,14 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
-import { mkdir, unlink, copyFile, stat, readFile } from "node:fs/promises";
+import { mkdir, unlink, copyFile, stat, readFile, mkdtemp } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import { tmpdir } from "node:os";
+import { once } from "node:events";
+import { PassThrough } from "node:stream";
+import { Crc32 } from "../../utils/crc32.js";
 
 type StorageDriver = "filesystem" | "s3";
 
@@ -60,6 +63,15 @@ export type AvatarUploadResult = {
   size: number;
   contentType: string;
   checksumSha256: string;
+};
+
+export type StagedUpload = {
+  filePath: string;
+  size: number;
+  sha256: string;
+  sha1: string;
+  md5: string;
+  crc32: string;
 };
 
 export class StorageService {
@@ -550,6 +562,69 @@ export class StorageService {
       headers
     });
   }
+}
+
+export async function stageUploadStream(
+  stream: NodeJS.ReadableStream,
+  options: { filename?: string; maxBytes?: number } = {},
+): Promise<StagedUpload> {
+  const safeName = options.filename ?? `${randomUUID()}.bin`;
+  const tempDir = await mkdtemp(`${tmpdir()}/treaz-upload-`);
+  const tempPath = join(tempDir, `${randomUUID()}-${safeName}`);
+  const writeStream = createWriteStream(tempPath);
+  const sha256 = createHash("sha256");
+  const sha1 = createHash("sha1");
+  const md5 = createHash("md5");
+  const crc = new Crc32();
+  const passthrough = new PassThrough();
+  stream.pipe(passthrough);
+
+  let size = 0;
+  const maxBytes = options.maxBytes ?? Number.POSITIVE_INFINITY;
+
+  try {
+    for await (const chunk of passthrough) {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      size += buffer.length;
+      if (size > maxBytes) {
+        const error = new Error("Upload exceeds maximum allowed size");
+        writeStream.destroy(error);
+        throw error;
+      }
+
+      sha256.update(buffer);
+      sha1.update(buffer);
+      md5.update(buffer);
+      crc.update(buffer);
+
+      if (!writeStream.write(buffer)) {
+        await once(writeStream, "drain");
+      }
+    }
+  } catch (error) {
+    writeStream.destroy();
+    await safeUnlink(tempPath).catch(() => {});
+    throw error;
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    writeStream.end((err: NodeJS.ErrnoException | null) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve();
+    });
+  });
+
+  return {
+    filePath: tempPath,
+    size,
+    sha256: sha256.digest("hex"),
+    sha1: sha1.digest("hex"),
+    md5: md5.digest("hex"),
+    crc32: crc.digest().toString(16).padStart(8, "0"),
+  };
 }
 
 export async function writeStreamToTempFile(

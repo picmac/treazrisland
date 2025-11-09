@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getRom, type RomDetail } from "@lib/api/library";
+import { getRom, type RomDetail } from "@lib/api/roms";
 import { PixelFrame } from "@/src/components/pixel-frame";
 import { useSession } from "@/src/auth/session-provider";
 import { enqueueScreenScraperEnrichment } from "@/src/lib/api/admin/screenscraper";

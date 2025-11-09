@@ -20,7 +20,7 @@ vi.mock("@tanstack/react-virtual", () => {
   };
 });
 
-vi.mock("@lib/api/library", () => ({
+vi.mock("@lib/api/roms", () => ({
   usePlatformLibrary: vi.fn(),
   useRomLibrary: vi.fn()
 }));
@@ -29,7 +29,7 @@ vi.mock("@/src/hooks/useFavorites", () => ({
   useFavorites: vi.fn()
 }));
 
-const { usePlatformLibrary, useRomLibrary } = await import("@lib/api/library");
+const { usePlatformLibrary, useRomLibrary } = await import("@lib/api/roms");
 const { useFavorites } = await import("@/src/hooks/useFavorites");
 const { LibraryExplorerPage } = await import("@/src/library/library-explorer-page");
 

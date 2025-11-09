@@ -28,7 +28,7 @@ declare module "fastify" {
       request: FastifyRequest,
       reply: FastifyReply,
     ) => Promise<void>;
-    screenScraperService: ScreenScraperService;
+    screenScraperService: ScreenScraperService | null;
     storage: StorageService;
     emailService: EmailService;
     mfaService: MfaService;

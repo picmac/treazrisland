@@ -1,7 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
-import type { RomDetail } from "@lib/api/library";
+import type { RomDetail } from "@lib/api/roms";
 import { API_BASE } from "@lib/api/client";
 
 export async function getRomMetadata(romId: string): Promise<RomDetail | null> {
