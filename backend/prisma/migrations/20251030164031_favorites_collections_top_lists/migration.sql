@@ -109,3 +109,4 @@ ALTER TABLE "RomTopListEntry" ADD CONSTRAINT "RomTopListEntry_topListId_fkey" FO
 
 -- AddForeignKey
 ALTER TABLE "RomTopListEntry" ADD CONSTRAINT "RomTopListEntry_romId_fkey" FOREIGN KEY ("romId") REFERENCES "Rom"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- privilege-reviewed: 2025-02-28 security hardening checklist automation

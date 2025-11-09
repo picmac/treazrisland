@@ -93,8 +93,8 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-treazrisland}:${POSTGRES_PASSWORD:-treazrisland}@postgres:5432/${POSTGRES_DB:-treazrisland}?schema=public}
       STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://minio:9000}
-      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-treaz-admin}
-      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-treaz-secret}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-treaz-uploader}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-treaz-uploader-secret}
     depends_on:
       postgres:
         condition: service_healthy
@@ -129,8 +129,8 @@ services:
       - ${TREAZ_ENV_FILE:-../.env}
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-treazrisland}:${POSTGRES_PASSWORD:-treazrisland}@postgres:5432/${POSTGRES_DB:-treazrisland}?schema=public}
-      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-treaz-admin}
-      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-treaz-secret}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-treaz-uploader}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-treaz-uploader-secret}
     depends_on:
       postgres:
         condition: service_healthy

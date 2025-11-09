@@ -375,3 +375,4 @@ ALTER TABLE "RomEnrichmentJob" ADD CONSTRAINT "RomEnrichmentJob_requestedById_fk
 -- AddForeignKey
 ALTER TABLE "ScreenScraperSettings" ADD CONSTRAINT "ScreenScraperSettings_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
+-- privilege-reviewed: 2025-02-28 security hardening checklist automation

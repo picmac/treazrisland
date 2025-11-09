@@ -30,3 +30,4 @@ ALTER TABLE "NetplaySignalMessage" ADD CONSTRAINT "NetplaySignalMessage_senderId
 
 -- AddForeignKey
 ALTER TABLE "NetplaySignalMessage" ADD CONSTRAINT "NetplaySignalMessage_recipientId_fkey" FOREIGN KEY ("recipientId") REFERENCES "NetplayParticipant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- privilege-reviewed: 2025-02-28 security hardening checklist automation

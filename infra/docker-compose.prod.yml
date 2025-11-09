@@ -71,6 +71,8 @@ services:
       PORT: ${BACKEND_PORT:-3001}
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set for backend connectivity}
       METRICS_ALLOWED_CIDRS: ${METRICS_ALLOWED_CIDRS:-127.0.0.1/32,172.16.0.0/12}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-treaz-uploader}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-treaz-uploader-secret}
     depends_on:
       postgres:
         condition: service_healthy

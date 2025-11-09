@@ -107,6 +107,7 @@ export default fp(async (app: FastifyInstance) => {
     }
 
     const baseLogger = request.log.child(baseContext) as RequestLogger;
+    mergeContext(baseLogger, baseContext);
 
     request.requestLogger = baseLogger;
     request.requestStartTime = process.hrtime.bigint();

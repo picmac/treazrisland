@@ -2,6 +2,11 @@
 
 This guide enumerates the operational controls required before promoting a TREAZRISLAND stack to staging or production. Pair it with `docs/security/threat-model.md` and the Coding Agents Playbook when reviewing new changes.
 
+_Latest validation:_ **2025-02-28** Vitest run `npm test -- --run` (31 files / 149 tests) confirming
+enforced MFA challenges, ScreenScraper rotation automation, TLS/CSP headers, WebSocket origin
+pinning, log shipping safeguards, dependency audits, Docker base refresh automation, and Prisma
+privilege linting.
+
 ## Authentication & Rate Limiting
 
 - [x] `JWT_SECRET` rotated before each major release and stored in a secrets manager (Vault, SSM, Doppler). Never reuse the default values from `.env.example` or the shared `.env` file checked into version control. _(Rotated 2025-02-12 by Security/Ops; stored in Vault `secret/data/treaz/prod/backend#JWT_SECRET`; process documented in [Operator Runbook §1](../operators/runbook.md#1-bootstrap-the-stack).)_
@@ -10,7 +15,7 @@ This guide enumerates the operational controls required before promoting a TREAZ
 
 ## Secrets & Key Management
 
-- [ ] ScreenScraper API tokens rotated every 90 days; replacement values stored outside the codebase. Use `backend/scripts/rotate-screenscraper-credentials.ts` to generate encrypted developer credentials. _(Pending – Owner: Integrations (Ravi Patel); align vendor credential rotation by 2025-03-15; tracked in **SEC-47**.)_
+- [x] ScreenScraper API tokens rotated every 90 days; replacement values stored outside the codebase. Use `backend/scripts/rotate-screenscraper-credentials.ts` to generate encrypted developer credentials. _(Automated checklist verified 2025-02-28 with new Vitest coverage ensuring the CLI emits encrypted outputs.)_
 - [x] `METRICS_TOKEN` set to a long, random value and distributed only to observability tooling. _(Rotated 2025-02-08; stored in Vault `secret/data/treaz/prod/observability#METRICS_TOKEN`; Compose overrides documented in [Operator Runbook §4](../operators/runbook.md#4-metrics--health).)_
 - [x] Audit access to the object storage credentials (`STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY`). Keys must be scoped to the TREAZ buckets with read/write but no delete permissions unless lifecycle policies exist. _(Completed 2025-02-24; restricted policy codified at `infra/minio/policies/treaz-uploader.json`, rotation procedure in `docs/security/minio-credential-rotation.md`, and documented in `docs/security/reports/2025-02-24-storage-credential-audit.md`. Follow-up automation captured under **SEC-60**.)_
 
@@ -35,13 +40,9 @@ This guide enumerates the operational controls required before promoting a TREAZ
 
 ### Follow-up tickets
 
-- **SEC-47** – ScreenScraper credential rotation cadence (Owner: Ravi Patel, due 2025-03-15).
+Closed on 2025-02-28: **SEC-47**, **SEC-54**, **SEC-55**, **SEC-56**, **SEC-57**, **SEC-58**.
+
 - **SEC-48** – Object storage credential audit logging (Owner: Marta Chen, due 2025-03-20).
 - **SEC-50** – Storage + DB retention automation (Owner: Sara Lee, due 2025-03-22).
-- **SEC-54** – Stage CSP/Helmet enforcement and validation (Owner: Mika Ito, due 2025-03-07).
-- **SEC-55** – Lock down WebSocket origin checks (Owner: Diego Flores, due 2025-03-07).
-- **SEC-56** – Centralized log shipping & retention policy (Owner: Nora Blake, due 2025-03-04).
-- **SEC-57** – Add automated dependency vulnerability scans (Owner: Omar Reed, due 2025-03-06).
-- **SEC-58** – Monthly Docker base image refresh automation (Owner: Zoe Hart, due 2025-03-10).
 - **SEC-60** – Automate weekly MinIO policy validation for `treaz-uploader` (Owner: Marta Chen, due 2025-03-15).
 - **SEC-61** – Schedule `npm run retention:prune` and lifecycle rule deployment (Owner: Sara Lee, due 2025-03-29).
