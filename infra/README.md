@@ -67,6 +67,20 @@ docker compose -f infra/docker-compose.yml up postgres minio
 
 Ensure your host `.env` (or whichever file you pass through `TREAZ_ENV_FILE`) is shared with `backend/.env` and `frontend/.env.local` so every service reads identical credentials. Symlinks keep the files in sync. Use `scripts/health/check-stack.sh` or `scripts/smoke/local-stack.sh` (with `STACK_FILE=infra/docker-compose.yml DB_SERVICE=postgres`) to verify the stack after Compose finishes booting.
 
+### Debugging a broken stack
+
+When a Compose service fails to start, run `scripts/infra/debug-stack.sh` to capture container status, health checks, and the most recent log lines for each service. The script respects the same environment overrides as the other helpers (`STACK_FILE`, `TREAZ_COMPOSE_PROJECT_NAME`, and `TREAZ_ENV_FILE`) and accepts `--service`/`--tail` flags to focus on specific containers or expand the log output:
+
+```bash
+# Inspect the full stack
+scripts/infra/debug-stack.sh
+
+# Only show backend logs with a larger tail
+scripts/infra/debug-stack.sh --service backend --tail 200
+```
+
+The summary includes restart counts and timestamps so you can pinpoint crash loops quickly, making it easier to share actionable diagnostics when asking for help.
+
 ## Production-style stack
 
 `docker-compose.prod.yml` mirrors the service list but targets the production stages of each Dockerfile, removes source mounts, and adds health checks. The production-style workflow now relies on a single environment file that both services share:
