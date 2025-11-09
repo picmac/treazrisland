@@ -1,9 +1,9 @@
 import { randomBytes, createHash } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import type { NetplaySessionStatus } from "@prisma/client";
+import { Prisma, type NetplaySessionStatus } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { z } from "zod";
-import { Server as SocketIOServer } from "socket.io";
+import { Server as SocketIOServer, type Socket } from "socket.io";
 import { env } from "../config/env.js";
 
 const ACTIVE_SESSION_STATUSES: NetplaySessionStatus[] = [
@@ -41,6 +41,37 @@ const hashPeerToken = (token: string): string =>
   createHash("sha256").update(token).digest("hex");
 
 const generatePeerToken = () => randomBytes(32).toString("hex");
+
+const sanitizeSignalPayload = (
+  payload: SignalMessagePayload["payload"],
+):
+  | {
+      success: true;
+      value: typeof Prisma.JsonNull | Prisma.InputJsonValue;
+    }
+  | { success: false } => {
+  if (payload === undefined) {
+    return { success: true, value: Prisma.JsonNull };
+  }
+
+  try {
+    const serialized = JSON.stringify(payload);
+
+    if (serialized === undefined) {
+      return { success: false };
+    }
+
+    const parsed = JSON.parse(serialized) as unknown;
+
+    if (parsed === null) {
+      return { success: true, value: Prisma.JsonNull };
+    }
+
+    return { success: true, value: parsed as Prisma.InputJsonValue };
+  } catch {
+    return { success: false };
+  }
+};
 
 const serializeParticipant = (participant: {
   id: string;
@@ -205,15 +236,21 @@ const configureSignalServer = (
         return next(new Error("Authentication token required"));
       }
 
-      const fakeRequest = {
+      const baseRequest = {
         headers: { authorization: `Bearer ${authToken}` },
-        user: undefined as FastifyRequest["user"],
-        async jwtVerify(this: FastifyRequest & { user?: typeof fakeRequest.user }) {
+        user: undefined as FastifyRequest["user"] | undefined,
+        async jwtVerify(
+          this: FastifyRequest & { user?: FastifyRequest["user"] },
+        ) {
           const decoded = await instance.jwt.verify(authToken);
-          this.user = decoded as typeof fakeRequest.user;
+          this.user = decoded as FastifyRequest["user"];
           return decoded;
         },
-      } as unknown as FastifyRequest;
+      };
+
+      const fakeRequest = baseRequest as unknown as FastifyRequest & {
+        user?: FastifyRequest["user"];
+      };
 
       const fakeReply = {} as FastifyReply;
       await instance.authenticate(fakeRequest, fakeReply);
@@ -320,68 +357,77 @@ const configureSignalServer = (
     }
   });
 
-  server.on("connection", (socket) => {
-    const { sessionId } = socket.data;
-    const room = sessionRoomId(sessionId);
-    socket.join(room);
+  server.on(
+    "connection",
+    (
+      socket: Socket<
+        NetplayClientToServerEvents,
+        NetplayServerToClientEvents,
+        NetplayInterServerEvents,
+        NetplaySocketData
+      >,
+    ) => {
+      const { sessionId } = socket.data;
+      const room = sessionRoomId(sessionId);
+      socket.join(room);
 
-    const emitSnapshot = async (broadcast: boolean) => {
-      try {
-        const session = await instance.prisma.netplaySession.findUnique({
-          where: { id: sessionId },
-          include: { participants: true },
-        });
+      const emitSnapshot = async (broadcast: boolean) => {
+        try {
+          const session = await instance.prisma.netplaySession.findUnique({
+            where: { id: sessionId },
+            include: { participants: true },
+          });
 
-        if (!session) {
-          socket.emit("session:closed", { sessionId, reason: "not_found" });
-          socket.disconnect(true);
-          return;
-        }
+          if (!session) {
+            socket.emit("session:closed", { sessionId, reason: "not_found" });
+            socket.disconnect(true);
+            return;
+          }
 
-        if (isExpired(session)) {
-          await instance.prisma.netplaySession
-            .update({
-              where: { id: sessionId },
-              data: { status: "CLOSED", expiresAt: new Date() },
-            })
-            .catch(() => undefined);
-          socket.emit("session:closed", { sessionId, reason: "expired" });
-          socket.disconnect(true);
-          return;
-        }
+          if (isExpired(session)) {
+            await instance.prisma.netplaySession
+              .update({
+                where: { id: sessionId },
+                data: { status: "CLOSED", expiresAt: new Date() },
+              })
+              .catch(() => undefined);
+            socket.emit("session:closed", { sessionId, reason: "expired" });
+            socket.disconnect(true);
+            return;
+          }
 
-        const serialized = serializeSession(session);
-        socket.emit("session:snapshot", {
-          session: serialized,
-          peerToken: socket.data.peerToken,
-        });
-
-        if (socket.data.refreshedToken) {
-          socket.emit("peer:token", {
-            sessionId,
+          const serialized = serializeSession(session);
+          socket.emit("session:snapshot", {
+            session: serialized,
             peerToken: socket.data.peerToken,
           });
-          socket.data.refreshedToken = false;
+
+          if (socket.data.refreshedToken) {
+            socket.emit("peer:token", {
+              sessionId,
+              peerToken: socket.data.peerToken,
+            });
+            socket.data.refreshedToken = false;
+          }
+
+          if (broadcast) {
+            socket.to(room).emit("session:update", { session: serialized });
+          }
+        } catch (error) {
+          instance.log.error(
+            {
+              event: "netplay.signal.snapshot_failed",
+              sessionId,
+              error: error instanceof Error ? error.message : String(error),
+            },
+            "Failed to emit netplay session snapshot",
+          );
         }
+      };
 
-        if (broadcast) {
-          socket.to(room).emit("session:update", { session: serialized });
-        }
-      } catch (error) {
-        instance.log.error(
-          {
-            event: "netplay.signal.snapshot_failed",
-            sessionId,
-            error: error instanceof Error ? error.message : String(error),
-          },
-          "Failed to emit netplay session snapshot",
-        );
-      }
-    };
+      void emitSnapshot(true);
 
-    void emitSnapshot(true);
-
-    socket.on("signal:message", async (rawPayload, callback) => {
+      socket.on("signal:message", async (rawPayload, callback) => {
       const payloadResult = signalMessageSchema.safeParse(rawPayload);
       if (!payloadResult.success) {
         callback?.({ status: "error", message: "Invalid signal payload" });
@@ -427,10 +473,21 @@ const configureSignalServer = (
           return;
         }
 
-        const sanitizedPayload =
-          payloadResult.data.payload === undefined
-            ? null
-            : payloadResult.data.payload;
+        const sanitizedPayloadResult = sanitizeSignalPayload(
+          payloadResult.data.payload,
+        );
+
+        if (!sanitizedPayloadResult.success) {
+          callback?.({
+            status: "error",
+            message: "Signal payload must be JSON serializable",
+          });
+          return;
+        }
+
+        const sanitizedPayload = sanitizedPayloadResult.value;
+        const outboundPayload =
+          sanitizedPayload === Prisma.JsonNull ? null : sanitizedPayload;
 
         const now = new Date();
         const expiresAt = new Date(now.getTime() + env.NETPLAY_IDLE_TIMEOUT_MS);
@@ -464,7 +521,7 @@ const configureSignalServer = (
           id: messageRecord.id,
           sessionId,
           type: payloadResult.data.type,
-          payload: sanitizedPayload,
+          payload: outboundPayload,
           sender: {
             userId: socket.data.userId,
             participantId: socket.data.participantId,
@@ -510,10 +567,11 @@ const configureSignalServer = (
       }
     });
 
-    socket.on("latency:ping", (ack) => {
-      ack?.({ receivedAt: Date.now() });
-    });
-  });
+      socket.on("latency:ping", (ack) => {
+        ack?.({ receivedAt: Date.now() });
+      });
+    },
+  );
 };
 
 export async function registerNetplayRoutes(app: FastifyInstance) {
