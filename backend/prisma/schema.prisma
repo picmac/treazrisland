@@ -534,6 +534,7 @@ model NetplaySession {
   host      User      @relation("NetplayHost", fields: [hostId], references: [id], onDelete: Cascade)
   saveState PlayState? @relation("NetplaySeedState", fields: [saveStateId], references: [id], onDelete: SetNull)
   participants NetplayParticipant[]
+  signals      NetplaySignalMessage[]
 
   @@index([hostId])
   @@index([status])
@@ -555,10 +556,32 @@ model NetplayParticipant {
 
   session NetplaySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sentSignals     NetplaySignalMessage[] @relation("NetplaySignalSender")
+  receivedSignals NetplaySignalMessage[] @relation("NetplaySignalRecipient")
 
   @@unique([sessionId, userId])
   @@index([userId])
   @@index([status])
+}
+
+model NetplaySignalMessage {
+  id                  String   @id @default(cuid())
+  sessionId           String
+  senderId            String
+  senderTokenHash     String
+  recipientId         String?
+  recipientTokenHash  String?
+  messageType         String
+  payload             Json
+  createdAt           DateTime @default(now())
+
+  session   NetplaySession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sender    NetplayParticipant @relation("NetplaySignalSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient NetplayParticipant? @relation("NetplaySignalRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@index([senderId])
+  @@index([recipientId])
 }
 
 model UserRomFavorite {

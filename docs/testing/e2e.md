@@ -78,6 +78,18 @@ End-to-end coverage for the dedicated auth pages should exercise both the happy 
 
 Document the assertions you automate in `frontend/tests/auth/*.spec.ts` so future contributors understand which behaviors must remain intact.
 
+### Netplay signalling checks
+
+The signalling socket is now part of the smoke journey. Manual QA should verify that a host can boot a netplay session from `/play/:romId`, retrieve a peer token, and invite another account:
+
+1. From the play view, select **Start netplay session**. Confirm that the panel surfaces a peer token for the host and that `/netplay/sessions` returns a `200` with the new session metadata.
+2. In a separate browser, log in as the invited player and visit the same ROM page. The UI should present a **Join session** button when the participant status is `INVITED` or `DISCONNECTED`.
+3. After joining, both clients should display **Signal connected** with a latency round-trip time and the participant list should reflect `CONNECTED` statuses.
+4. Exchange a few offers/candidates via the emulator to confirm that `netplay.signal` rows are recorded (via Prisma) and that the Socket.IO transport is relaying data between browsers.
+5. When the host ends the session, both clients should receive a session closed notice and the peer token should be purged from session storage.
+
+The Playwright smoke test (`frontend/tests/e2e/smoke.spec.ts`) now asserts that `/netplay/sessions` responds during the play view load and that the Netplay controls render as expected. Keep those checks updated whenever the signalling UI changes.
+
 ### Environment variables
 
 The suite honors the following environment variables:

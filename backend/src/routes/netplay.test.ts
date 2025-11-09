@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import type { FastifyInstance } from "fastify";
+import { io as createSocketClient } from "socket.io-client";
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
@@ -39,6 +40,9 @@ type PrismaMock = {
     update: ReturnType<typeof vi.fn>;
     updateMany: ReturnType<typeof vi.fn>;
   };
+  netplaySignalMessage: {
+    create: ReturnType<typeof vi.fn>;
+  };
   $transaction: ReturnType<typeof vi.fn>;
 };
 
@@ -62,6 +66,9 @@ describe("netplay routes", () => {
       create: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
+    },
+    netplaySignalMessage: {
+      create: vi.fn(),
     },
     $transaction: vi.fn(async (operations: unknown) => {
       if (Array.isArray(operations)) {
@@ -107,6 +114,17 @@ describe("netplay routes", () => {
     prismaMock.netplayParticipant.update.mockResolvedValue(undefined);
     prismaMock.netplayParticipant.updateMany.mockResolvedValue({ count: 1 });
     prismaMock.netplayParticipant.findUnique.mockResolvedValue(null);
+    prismaMock.netplaySignalMessage.create.mockResolvedValue({
+      id: "signal_1",
+      sessionId: "session_1",
+      senderId: "participant_1",
+      senderTokenHash: createHash("sha256").update("peer-token").digest("hex"),
+      recipientId: null,
+      recipientTokenHash: null,
+      messageType: "offer",
+      payload: {},
+      createdAt: new Date("2024-01-01T01:00:00.000Z"),
+    });
 
     await app.register(async (instance) => {
       await registerNetplayRoutes(instance);
@@ -378,5 +396,182 @@ describe("netplay routes", () => {
       where: { id: "session_1" },
       data: expect.objectContaining({ status: "CLOSED" }),
     });
+  });
+
+  it("rejects signal connections without authentication", async () => {
+    const address = await app.listen({ port: 0 });
+    const socket = createSocketClient(address, {
+      path: "/netplay/signal",
+      transports: ["websocket"],
+      auth: { sessionId: "session_1" },
+    });
+
+    const error = await new Promise<Error>((resolve) => {
+      socket.on("connect", () => {
+        resolve(new Error("unexpected connection"));
+      });
+      socket.on("connect_error", (err) => {
+        resolve(err instanceof Error ? err : new Error(String(err)));
+      });
+    });
+
+    expect(error.message).toMatch(/authentication/i);
+    socket.close();
+  });
+
+  it("persists and relays signalling payloads", async () => {
+    const now = new Date();
+    const futureExpiry = new Date(Date.now() + 5 * 60_000);
+    const hostPeerToken = "host-token";
+    const guestPeerToken = "guest-token";
+
+    const hostParticipant = {
+      id: "participant_1",
+      sessionId: "session_1",
+      userId: "user_1",
+      role: "HOST",
+      status: "CONNECTED",
+      peerTokenHash: createHash("sha256").update(hostPeerToken).digest("hex"),
+      lastHeartbeatAt: now,
+      connectedAt: now,
+      disconnectedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const guestParticipant = {
+      id: "participant_2",
+      sessionId: "session_1",
+      userId: "user_2",
+      role: "PLAYER",
+      status: "CONNECTED",
+      peerTokenHash: createHash("sha256").update(guestPeerToken).digest("hex"),
+      lastHeartbeatAt: now,
+      connectedAt: now,
+      disconnectedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const sessionRecord = {
+      id: "session_1",
+      romId: "rom_1",
+      hostId: "user_1",
+      saveStateId: null,
+      status: "ACTIVE",
+      expiresAt: futureExpiry,
+      lastActivityAt: now,
+      createdAt: now,
+      updatedAt: now,
+      participants: [hostParticipant, guestParticipant],
+    };
+
+    prismaMock.netplayParticipant.findUnique.mockImplementation(
+      async ({ where }: { where: { sessionId_userId: { userId: string } } }) => {
+        const { userId } = where.sessionId_userId;
+        if (userId === "user_1") {
+          return { ...hostParticipant, session: { ...sessionRecord } };
+        }
+        if (userId === "user_2") {
+          return { ...guestParticipant, session: { ...sessionRecord } };
+        }
+        return null;
+      },
+    );
+
+    prismaMock.netplaySession.findUnique.mockImplementation(async () => ({
+      ...sessionRecord,
+      participants: [
+        { ...hostParticipant },
+        { ...guestParticipant },
+      ],
+    }));
+
+    prismaMock.netplaySignalMessage.create.mockResolvedValueOnce({
+      id: "signal_1",
+      sessionId: "session_1",
+      senderId: hostParticipant.id,
+      senderTokenHash: hostParticipant.peerTokenHash!,
+      recipientId: guestParticipant.id,
+      recipientTokenHash: guestParticipant.peerTokenHash,
+      messageType: "offer",
+      payload: { sdp: "test" },
+      createdAt: now,
+    });
+
+    const address = await app.listen({ port: 0 });
+
+    const hostToken = app.jwt.sign({ sub: "user_1", role: "ADMIN" });
+    const guestToken = app.jwt.sign({ sub: "user_2", role: "ADMIN" });
+
+    const hostSocket = createSocketClient(address, {
+      path: "/netplay/signal",
+      transports: ["websocket"],
+      auth: {
+        token: hostToken,
+        sessionId: "session_1",
+        peerToken: hostPeerToken,
+      },
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      hostSocket.on("connect", () => resolve());
+      hostSocket.on("connect_error", reject);
+    });
+
+    const guestSocket = createSocketClient(address, {
+      path: "/netplay/signal",
+      transports: ["websocket"],
+      auth: {
+        token: guestToken,
+        sessionId: "session_1",
+        peerToken: guestPeerToken,
+      },
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      guestSocket.on("connect", () => resolve());
+      guestSocket.on("connect_error", reject);
+    });
+
+    const messagePromise = new Promise<unknown>((resolve) => {
+      guestSocket.on("signal:message", resolve);
+    });
+
+    const ack = await new Promise<{ status: string; id?: string; message?: string }>(
+      (resolve) => {
+        hostSocket.emit(
+          "signal:message",
+          {
+            type: "offer",
+            payload: { sdp: "test" },
+            targetUserId: "user_2",
+          },
+          resolve,
+        );
+      },
+    );
+
+    expect(ack.status).toBe("ok");
+    expect(prismaMock.netplaySignalMessage.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        senderTokenHash: hostParticipant.peerTokenHash,
+        recipientTokenHash: guestParticipant.peerTokenHash,
+        messageType: "offer",
+      }),
+    });
+
+    const delivered = (await messagePromise) as {
+      type: string;
+      sender: { userId: string; participantId: string };
+      recipient?: { userId: string; participantId: string };
+    };
+
+    expect(delivered.type).toBe("offer");
+    expect(delivered.sender.userId).toBe("user_1");
+    expect(delivered.recipient?.userId).toBe("user_2");
+
+    hostSocket.close();
+    guestSocket.close();
   });
 });
