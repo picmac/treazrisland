@@ -23,6 +23,7 @@ import { registerTopListRoutes } from "./routes/topLists.js";
 import { registerStatsRoutes } from "./routes/stats.js";
 import { registerUserRoutes } from "./routes/users.js";
 import { registerNetplayRoutes } from "./routes/netplay.js";
+import { registerHealthRoutes } from "./routes/health.js";
 import supportServices from "./plugins/support-services.js";
 import observabilityPlugin from "./plugins/observability.js";
 import settingsPlugin from "./plugins/settings.js";
@@ -77,7 +78,10 @@ export const buildServer = (
   app.register(sensible);
   app.register(corsPlugin);
   app.register(loggingPlugin);
-  app.register(healthPlugin);
+  app.register(async (instance) => {
+    await instance.register(healthPlugin);
+    registerHealthRoutes(instance);
+  });
   app.register(underPressure, {
     healthCheck: async () => {
       if (!app.hasDecorator("health")) {

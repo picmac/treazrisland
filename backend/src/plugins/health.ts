@@ -1,5 +1,5 @@
 import fp from "fastify-plugin";
-import type { FastifyInstance, FastifyReply } from "fastify";
+import type { FastifyInstance } from "fastify";
 import type { PrismaClient, Prisma } from "@prisma/client";
 import packageInfo from "../../package.json" with { type: "json" };
 
@@ -140,14 +140,6 @@ function checkMetrics(app: FastifyInstance): HealthComponentStatus {
   };
 }
 
-function respond(reply: FastifyReply, report: HealthReport): HealthReport {
-  if (report.status === "fail") {
-    reply.code(503);
-  }
-
-  return report;
-}
-
 export default fp(async (app: FastifyInstance) => {
   const manager: HealthManager = {
     live: async () => ({
@@ -166,14 +158,4 @@ export default fp(async (app: FastifyInstance) => {
   };
 
   app.decorate("health", manager);
-
-  app.get("/health/live", async (_request, reply) =>
-    respond(reply, await manager.live()),
-  );
-  app.get("/health/ready", async (_request, reply) =>
-    respond(reply, await manager.ready()),
-  );
-  app.get("/health", async (_request, reply) =>
-    respond(reply, await manager.ready()),
-  );
 });
