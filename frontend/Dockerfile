@@ -5,23 +5,25 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 FROM base AS deps
-COPY package.json package-lock.json ./
+COPY frontend/package.json ./package.json
+COPY frontend/package-lock.json ./package-lock.json
 RUN npm ci
 
 FROM deps AS development
 ENV NODE_ENV=development
 RUN npm install --include=dev
-COPY . .
+COPY frontend/. ./
 CMD ["npm", "run", "dev"]
 
 FROM deps AS build
 ENV NODE_ENV=production
 ENV TREAZ_TLS_MODE=http
-COPY . .
+COPY frontend/. ./
 RUN npm run build
 
 FROM base AS production
-COPY package.json package-lock.json ./
+COPY frontend/package.json ./package.json
+COPY frontend/package-lock.json ./package-lock.json
 RUN npm ci --omit=dev && npm install --no-save typescript@5.9.3
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
