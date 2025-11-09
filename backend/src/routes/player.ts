@@ -626,9 +626,7 @@ export async function registerPlayerRoutes(
 
       let signedUrl;
       try {
-        signedUrl = await playStateStorage.getSignedUrl(
-          playState.storageKey,
-        );
+        signedUrl = await playStateStorage.getSignedUrl(playState.storageKey);
       } catch (error) {
         recordPlaybackError(
           app,
