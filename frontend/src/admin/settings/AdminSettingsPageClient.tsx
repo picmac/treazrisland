@@ -105,7 +105,7 @@ function StatusMessage({ status }: { status: SectionStatus }) {
 
   if (status.state === "error" && status.message) {
     return (
-      <PixelNotice tone="danger">
+      <PixelNotice tone="error">
         <span className="font-semibold uppercase tracking-widest">{status.message}</span>
       </PixelNotice>
     );
@@ -525,7 +525,7 @@ export function AdminSettingsPageClient({
   return (
     <div className="grid grid-cols-1 gap-6">
       {loadError ? (
-        <PixelNotice tone="danger">
+        <PixelNotice tone="error">
           <span className="font-semibold uppercase tracking-widest">{loadError}</span>
         </PixelNotice>
       ) : null}
