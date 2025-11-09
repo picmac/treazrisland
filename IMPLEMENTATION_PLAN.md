@@ -39,4 +39,4 @@
 - Add automated tests: unit tests for session lifecycle, integration smoke tests simulating host/peer negotiation, and frontend component tests verifying UI states. Document manual QA for WebRTC flows including NAT-traversal scenarios via TURN when required.
 
 Open questions to clarify before implementation:
-1. Determine TURN/STUN infrastructure strategy for production netplay (self-hosted coturn vs. third-party) and capture any compliance requirements.
+1. Determine TURN/STUN infrastructure strategy for production netplay (self-hosted coturn vs. third-party) and capture any compliance requirements. **Resolved:** see `docs/netplay/turn-stun-strategy.md` for the selected approach, provisioning guidance, and compliance notes.
