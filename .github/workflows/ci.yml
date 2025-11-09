@@ -43,6 +43,9 @@ jobs:
         if: matrix.project == 'backend'
         env:
           NODE_ENV: production
+          PRISMA_LOG_LEVEL: debug
+          DEBUG: prisma:*
+          NPM_CONFIG_LOGLEVEL: verbose
         run: npm run build
 
       - name: Build frontend
@@ -133,10 +136,11 @@ jobs:
           if ! scripts/infra/debug-stack.sh --tail 200 > diagnostics/debug-stack.log 2>&1; then
             echo "::warning::debug-stack.sh exited with a non-zero status. Check diagnostics/debug-stack.log for details."
           fi
+          ls -lah diagnostics
 
       - name: Upload compose diagnostics artifact
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: compose-diagnostics
-          path: diagnostics/debug-stack.log
+          path: diagnostics

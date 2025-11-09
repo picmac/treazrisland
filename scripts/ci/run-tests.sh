@@ -12,7 +12,7 @@ for project in "${PROJECTS[@]}"; do
   npm ci
   npm run lint
   npm test -- --run
-  npm run build
+  PRISMA_LOG_LEVEL=debug DEBUG="prisma:*" NPM_CONFIG_LOGLEVEL=verbose npm run build
   popd >/dev/null
   printf '[ci] %s checks completed\n' "${project}"
 done
