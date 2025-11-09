@@ -29,7 +29,7 @@
 ### Package C — Container Currency & Supply Chain Hygiene
 - Pin PostgreSQL to a recent patch release (e.g., `postgres:16.10-alpine3.22`) and schedule monthly checks for upstream advisories.
 - Upgrade MinIO server and `mc` client to the latest security release pair, verifying bootstrap compatibility.
-- Move Node-based images to `node:24-bookworm` (or later supported base) and confirm the build pipeline still passes.
+- Move Node-based images to the latest supported LTS base (currently `node:22-bookworm` until the official `node:24-bookworm` image ships) and confirm the build pipeline still passes.
 - Record target versions and update cadence in `ops/` or `infra/` docs to keep the stack reproducible.
 
 ## Next Steps
