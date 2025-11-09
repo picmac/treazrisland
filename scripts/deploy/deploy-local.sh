@@ -234,12 +234,13 @@ ensure_database_url() {
   return 0
 }
 
-sync_database_url_env_files() {
-  local value="$1"
+sync_env_value() {
+  local key="$1"
+  local value="$2"
   local python_cmd="python3"
   local file="${ENV_FILE}"
 
-  if [[ -z "${value}" ]]; then
+  if [[ -z "${key}" || -z "${value}" ]]; then
     return 0
   fi
 
@@ -251,24 +252,24 @@ sync_database_url_env_files() {
     if command -v python >/dev/null 2>&1; then
       python_cmd="python"
     else
-      log "Python interpreter not found; skipping DATABASE_URL env file synchronisation"
+      log "Python interpreter not found; skipping ${key} env file synchronisation"
       return 0
     fi
   fi
 
   if [[ ! -w "${file}" ]]; then
-    log "Cannot update DATABASE_URL in ${file}; file is not writable"
+    log "Cannot update ${key} in ${file}; file is not writable"
     return 0
   fi
 
   local update_result
-  if ! update_result=$("${python_cmd}" - "${file}" "${value}" <<'PY'
+  if ! update_result=$("${python_cmd}" - "${file}" "${key}" "${value}" <<'PY'
 import sys
 from pathlib import Path
 
 path = Path(sys.argv[1])
-value = sys.argv[2]
-key = "DATABASE_URL"
+key = sys.argv[2]
+value = sys.argv[3]
 
 try:
     original = path.read_text(encoding="utf-8")
@@ -312,12 +313,37 @@ if changed:
 print("changed" if changed else "unchanged")
 PY
 ); then
-    log "Failed to update DATABASE_URL in ${file}"
+    log "Failed to update ${key} in ${file}"
     return 0
   fi
 
   if [[ "${update_result}" == "changed" ]]; then
-    log "Updated DATABASE_URL in ${file} to use postgres service host"
+    log "Updated ${key} in ${file}"
+  fi
+}
+
+ensure_storage_endpoint() {
+  if [[ "${STORAGE_DRIVER:-}" != "s3" ]]; then
+    return 0
+  fi
+
+  local endpoint="${STORAGE_ENDPOINT:-}"
+  local regex='^(https?://)?(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:[0-9]+)?(.*)$'
+
+  if [[ -z "${endpoint}" ]]; then
+    endpoint="http://minio:9000"
+    export STORAGE_ENDPOINT="${endpoint}"
+    log "STORAGE_ENDPOINT not provided; defaulting to MinIO service host"
+    sync_env_value "STORAGE_ENDPOINT" "${endpoint}"
+    return 0
+  fi
+
+  if [[ "${endpoint}" =~ ${regex} ]]; then
+    local suffix="${BASH_REMATCH[4]}"
+    endpoint="http://minio:9000${suffix}"
+    export STORAGE_ENDPOINT="${endpoint}"
+    log "STORAGE_ENDPOINT pointed at localhost; rewriting to MinIO service host"
+    sync_env_value "STORAGE_ENDPOINT" "${endpoint}"
   fi
 }
 
@@ -378,7 +404,9 @@ if ! ensure_database_url; then
   exit 1
 fi
 
-sync_database_url_env_files "${DATABASE_URL}"
+sync_env_value "DATABASE_URL" "${DATABASE_URL}"
+
+ensure_storage_endpoint
 
 export TREAZ_ENV_FILE="${ENV_FILE}"
 export COMPOSE_PROJECT_NAME="${PROJECT_NAME}"
