@@ -63,7 +63,7 @@ describe("MfaSettingsPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /confirm mfa/i }));
 
     await waitFor(() => expect(mockedConfirm).toHaveBeenCalledWith({ secretId: "secret-1", code: "123456" }));
-    expect(screen.getByText(/MFA enabled/i)).toBeInTheDocument();
+    expect(await screen.findByText(/MFA enabled/i)).toBeInTheDocument();
   });
 
   it("disables MFA with a code", async () => {
