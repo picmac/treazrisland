@@ -49,7 +49,7 @@ function needsNonce(pathname: string): boolean {
   return INLINE_SCRIPT_MATCHERS.some((regex) => regex.test(pathname));
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   if (!needsNonce(request.nextUrl.pathname)) {
     return NextResponse.next();
   }
