@@ -73,7 +73,7 @@ jobs:
 
       - name: Deploy to home infrastructure
         env:
-          TREAZ_ENV_FILE: /opt/treazrisland/config/compose.env
+          TREAZ_ENV_FILE: /opt/treazrisland/config/treaz.env
           TREAZ_COMPOSE_PROJECT_NAME: treazrisland
         run: |
           chmod +x scripts/deploy/deploy-local.sh
@@ -82,7 +82,7 @@ jobs:
       - name: Collect compose diagnostics
         if: failure()
         env:
-          TREAZ_ENV_FILE: /opt/treazrisland/config/compose.env
+          TREAZ_ENV_FILE: /opt/treazrisland/config/treaz.env
           TREAZ_COMPOSE_PROJECT_NAME: treazrisland
           STACK_FILE: ${{ github.workspace }}/infra/docker-compose.prod.yml
         run: |
