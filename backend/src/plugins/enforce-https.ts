@@ -1,6 +1,8 @@
 import fp from "fastify-plugin";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { env } from "../config/env.js";
+import type { Socket } from "net";
+import type { TLSSocket } from "tls";
 
 const LOCAL_HOSTNAMES = new Set([
   "localhost",
@@ -41,6 +43,10 @@ function resolveForwardedProtocol(request: FastifyRequest): string | null {
   return null;
 }
 
+function isEncryptedSocket(socket: Socket | undefined): socket is TLSSocket {
+  return Boolean(socket && (socket as TLSSocket).encrypted === true);
+}
+
 export default fp(async (app: FastifyInstance) => {
   if (env.TREAZ_TLS_MODE !== "https") {
     return;
@@ -56,7 +62,7 @@ export default fp(async (app: FastifyInstance) => {
       return;
     }
 
-    if (request.raw.socket?.encrypted) {
+    if (isEncryptedSocket(request.raw.socket)) {
       return;
     }
 
