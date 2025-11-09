@@ -56,7 +56,6 @@ export function validateSystemProfileSection(
   }
   if (baseUrl) {
     try {
-      // eslint-disable-next-line no-new
       new URL(baseUrl);
     } catch {
       errors.baseUrl = "Enter a valid URL.";
@@ -144,7 +143,6 @@ export function validateStorageSection(
       errors.s3Endpoint = "Endpoint is required.";
     } else {
       try {
-        // eslint-disable-next-line no-new
         new URL(endpoint);
       } catch {
         errors.s3Endpoint = "Enter a valid URL.";
@@ -347,7 +345,6 @@ export function validateScreenScraperSection(
   const baseUrl = values.baseUrl.trim();
   if (baseUrl) {
     try {
-      // eslint-disable-next-line no-new
       new URL(baseUrl);
     } catch {
       errors.baseUrl = "Enter a valid URL.";

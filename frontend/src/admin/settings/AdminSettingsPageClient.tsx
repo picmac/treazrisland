@@ -496,7 +496,6 @@ export function AdminSettingsPageClient({
   }, [
     applyStatus,
     handleSettingsUpdate,
-    screenScraperState.errors,
     screenScraperState.existingDevPassword,
     screenScraperState.existingPassword,
     screenScraperState.existingSecret,
