@@ -78,7 +78,9 @@ body {
 }
 
 .pixel-frame[data-tone="highlight"] {
-  @apply border-[color:color-mix(in srgb, var(--color-primary) 70%, transparent)] bg-[color:color-mix(in srgb, var(--color-primary) 18%, transparent)] text-[color:var(--color-primary)];
+  border-color: color-mix(in srgb, var(--color-primary) 70%, transparent);
+  background-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  color: var(--color-primary);
 }
 
 @utility pixel-grid {
