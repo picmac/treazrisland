@@ -4,7 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { createHash } from "node:crypto";
 import type { User, UserInvitation } from "@prisma/client";
 import argon2 from "argon2";
-import type { MfaService } from "../services/mfa/service.js";
+import type { MfaService } from "../src/services/mfa/service.js";
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
@@ -38,7 +38,7 @@ vi.mock("argon2", () => {
 
 const argon2Mock = vi.mocked(argon2, true);
 
-let buildServer: typeof import("../server.js").buildServer;
+let buildServer: typeof import("../src/server.js").buildServer;
 
 type MockFn = ReturnType<typeof vi.fn>;
 
@@ -86,7 +86,7 @@ describe("auth routes", () => {
   let mfaService: MfaService;
 
   beforeAll(async () => {
-    ({ buildServer } = await import("../server.js"));
+    ({ buildServer } = await import("../src/server.js"));
   });
 
   beforeEach(async () => {

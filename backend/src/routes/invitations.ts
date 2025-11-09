@@ -1,20 +1,9 @@
 import { FastifyInstance } from "fastify";
-import { z } from "zod";
 import { createHash, randomBytes } from "node:crypto";
 import argon2 from "argon2";
 import { env } from "../config/env.js";
 import { Role } from "../utils/prisma-enums.js";
-
-const createInvitationSchema = z.object({
-  email: z.string().email().optional(),
-  role: z.nativeEnum(Role).default(Role.USER),
-  expiresInHours: z
-    .number()
-    .int()
-    .positive()
-    .max(720)
-    .optional()
-});
+import { createInvitationSchema } from "../schemas/invitations.js";
 
 export async function registerInvitationRoutes(app: FastifyInstance) {
   app.get(

@@ -6,6 +6,7 @@ import {
   applyBackendCookies,
   buildCookieHeaderFromStore
 } from "@/src/lib/server/backend-cookies";
+import { loginSchema } from "@/lib/validation/auth";
 
 export type LoginActionInput = {
   identifier: string;
@@ -19,9 +20,26 @@ export type LoginActionResult =
   | { success: false; error: string; mfaRequired?: boolean };
 
 export async function performLogin(payload: LoginActionInput): Promise<LoginActionResult> {
+  const sanitizedPayload = {
+    identifier: payload.identifier.trim(),
+    password: payload.password,
+    mfaCode: payload.mfaCode?.trim() || undefined,
+    recoveryCode: payload.recoveryCode?.trim() || undefined,
+  };
+
+  const validation = loginSchema.safeParse(sanitizedPayload);
+  if (!validation.success) {
+    const [firstError] = validation.error.issues;
+    return {
+      success: false,
+      error: firstError?.message ?? "Check your credentials and try again.",
+      mfaRequired: Boolean(sanitizedPayload.mfaCode || sanitizedPayload.recoveryCode),
+    };
+  }
+
   try {
     const cookieHeader = await buildCookieHeaderFromStore();
-    const { payload: session, cookies } = await loginWithCookies(payload, {
+    const { payload: session, cookies } = await loginWithCookies(validation.data, {
       cookieHeader
     });
     await applyBackendCookies(cookies);

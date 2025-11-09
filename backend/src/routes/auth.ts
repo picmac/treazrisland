@@ -1,5 +1,4 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { z } from "zod";
 import { createHash, randomBytes } from "node:crypto";
 import argon2 from "argon2";
 import type { Prisma as PrismaNamespace } from "@prisma/client";
@@ -17,70 +16,21 @@ import {
 } from "../utils/tokens.js";
 import { env } from "../config/env.js";
 import {
+  invitationTokenSchema,
+  loginSchema,
+  signupSchema,
+  passwordResetRequestSchema,
+  passwordResetConfirmSchema,
+  mfaConfirmSchema,
+  mfaDisableSchema,
+} from "../schemas/auth.js";
+import {
   clearRefreshCookie,
   readRefreshCsrfHeader,
   readRefreshCsrfTokenFromRequest,
   readRefreshTokenFromRequest,
   setRefreshCookie
 } from "../utils/cookies.js";
-
-const invitationTokenSchema = z.object({
-  token: z.string().min(1)
-});
-
-const passwordSchema = z
-  .string()
-  .min(8)
-  .regex(/[A-Z]/, "Password must include an uppercase letter")
-  .regex(/[0-9]/, "Password must include a digit");
-
-const signupSchema = z.object({
-  token: z.string().min(1),
-  email: z.string().email().optional(),
-  nickname: z.string().min(3).max(32),
-  password: passwordSchema,
-  displayName: z.string().min(1).max(64).optional()
-});
-
-const loginSchema = z
-  .object({
-    identifier: z.string().min(1).max(128),
-    password: z.string().min(8),
-    mfaCode: z.string().trim().min(6).max(10).optional(),
-    recoveryCode: z.string().trim().min(6).max(128).optional()
-  })
-  .refine((value) => !(value.mfaCode && value.recoveryCode), {
-    message: "Provide either mfaCode or recoveryCode, not both",
-    path: ["mfaCode"]
-  });
-
-const passwordResetRequestSchema = z.object({
-  email: z.string().email()
-});
-
-const passwordResetConfirmSchema = z.object({
-  token: z.string().min(1),
-  password: passwordSchema
-});
-
-const mfaConfirmSchema = z.object({
-  secretId: z.string().min(1),
-  code: z.string().trim().min(6).max(10)
-});
-
-const mfaDisableSchema = z
-  .object({
-    mfaCode: z.string().trim().min(6).max(10).optional(),
-    recoveryCode: z.string().trim().min(6).max(128).optional()
-  })
-  .refine((value) => value.mfaCode || value.recoveryCode, {
-    message: "Provide either mfaCode or recoveryCode",
-    path: ["mfaCode"]
-  })
-  .refine((value) => !(value.mfaCode && value.recoveryCode), {
-    message: "Provide either mfaCode or recoveryCode, not both",
-    path: ["mfaCode"]
-  });
 
 const recordLoginAudit = async (
   app: FastifyInstance,

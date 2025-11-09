@@ -129,14 +129,29 @@ export async function requestPasswordReset(email: string): Promise<{ message: st
   });
 }
 
+export async function confirmPasswordResetWithCookies(
+  payload: {
+    token: string;
+    password: string;
+  },
+  options?: { cookieHeader?: string }
+): Promise<{ payload: SessionPayload; cookies: SetCookieHeader }> {
+  const response = await apiRequest("/auth/password/reset/confirm", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: options?.cookieHeader ? { cookie: options.cookieHeader } : undefined,
+  });
+
+  const data = (await response.json()) as SessionPayload;
+  return { payload: data, cookies: extractSetCookies(response) };
+}
+
 export async function confirmPasswordReset(payload: {
   token: string;
   password: string;
 }): Promise<SessionPayload> {
-  return apiFetch<SessionPayload>("/auth/password/reset/confirm", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
+  const { payload: data } = await confirmPasswordResetWithCookies(payload);
+  return data;
 }
 
 export async function redeemInvitation(
