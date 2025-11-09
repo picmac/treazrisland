@@ -119,6 +119,34 @@ services:
       timeout: 5s
       retries: 6
 
+  coturn:
+    image: coturn/coturn:4.6.3
+    container_name: treazrisland-coturn
+    restart: unless-stopped
+    env_file:
+      - ${TREAZ_ENV_FILE:-../.env}
+    command: >-
+      /bin/sh -c "EXTRA_FLAGS=''; if [ -n \"${TURN_EXTERNAL_IP:-}\" ]; then EXTRA_FLAGS=\"--external-ip=${TURN_EXTERNAL_IP}\"; fi; \
+      turnserver -n \
+        --log-file=stdout \
+        --realm=${TURN_REALM:-treazrisland.localhost} \
+        --lt-cred-mech \
+        --fingerprint \
+        --user=${NETPLAY_TURN_USERNAME:-treaz-turn}:${NETPLAY_TURN_PASSWORD:-treaz-turn-secret} \
+        --listening-port=${TURN_LISTEN_PORT:-3478} \
+        --tls-listening-port=${TURN_TLS_PORT:-5349} \
+        --min-port=${TURN_MIN_PORT:-49152} \
+        --max-port=${TURN_MAX_PORT:-49999} \
+        --no-cli \
+        --no-tls $EXTRA_FLAGS"
+    ports:
+      - "${TURN_LISTEN_PORT:-3478}:3478/udp"
+      - "${TURN_LISTEN_PORT:-3478}:3478/tcp"
+      - "${TURN_TLS_PORT:-5349}:5349/tcp"
+      - "${TURN_MIN_PORT:-49152}-${TURN_MAX_PORT:-49999}:${TURN_MIN_PORT:-49152}-${TURN_MAX_PORT:-49999}/udp"
+    networks:
+      - default
+
   backend-migrate:
     build:
       context: ../backend
