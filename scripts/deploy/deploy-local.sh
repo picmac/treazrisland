@@ -15,6 +15,7 @@ DOCKER_CONFIG_DIR="${TREAZ_DOCKER_CONFIG:-${REPO_ROOT}/.docker}"
 DEPLOY_DEBUG="${TREAZ_DEPLOY_DEBUG:-true}"
 COMPOSE_PROGRESS_MODE="${TREAZ_COMPOSE_PROGRESS:-plain}"
 LOG_DIR="${TREAZ_DEPLOY_LOG_DIR:-${REPO_ROOT}/diagnostics}"
+PYTHON_INTERPRETER=""
 
 ENV_FILE_TEMPLATE="${TREAZ_ENV_TEMPLATE:-${REPO_ROOT}/.env.example}"
 ENV_FILE_ORIGINAL="${ENV_FILE}"
@@ -209,7 +210,23 @@ run_all_probes() {
 ensure_database_url() {
   if [[ -z "${DATABASE_URL:-}" ]]; then
     if [[ -n "${POSTGRES_USER:-}" && -n "${POSTGRES_PASSWORD:-}" && -n "${POSTGRES_DB:-}" ]]; then
-      export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public"
+      local encoded_user
+      local encoded_password
+      local encoded_db
+
+      if ! encoded_user=$(percent_encode "${POSTGRES_USER}"); then
+        return 1
+      fi
+
+      if ! encoded_password=$(percent_encode "${POSTGRES_PASSWORD}"); then
+        return 1
+      fi
+
+      if ! encoded_db=$(percent_encode "${POSTGRES_DB}"); then
+        return 1
+      fi
+
+      export DATABASE_URL="postgresql://${encoded_user}:${encoded_password}@postgres:5432/${encoded_db}?schema=public"
       log "DATABASE_URL not provided; defaulting to postgres service host"
       return 0
     else
@@ -242,7 +259,7 @@ ensure_database_url() {
 sync_env_value() {
   local key="$1"
   local value="$2"
-  local python_cmd="python3"
+  local python_cmd
   local file="${ENV_FILE}"
 
   if [[ -z "${key}" || -z "${value}" ]]; then
@@ -253,13 +270,9 @@ sync_env_value() {
     return 0
   fi
 
-  if ! command -v "${python_cmd}" >/dev/null 2>&1; then
-    if command -v python >/dev/null 2>&1; then
-      python_cmd="python"
-    else
-      log "Python interpreter not found; skipping ${key} env file synchronisation"
-      return 0
-    fi
+  if ! python_cmd=$(select_python_interpreter); then
+    log "Python interpreter not found; skipping ${key} env file synchronisation"
+    return 0
   fi
 
   if [[ ! -w "${file}" ]]; then
@@ -358,6 +371,47 @@ log() {
     logger "TREAZRISLAND deploy: ${message}" || true
   fi
   printf '[deploy] %s\n' "${message}"
+}
+
+select_python_interpreter() {
+  if [[ -n "${PYTHON_INTERPRETER}" ]]; then
+    printf '%s' "${PYTHON_INTERPRETER}"
+    return 0
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    PYTHON_INTERPRETER="python3"
+  elif command -v python >/dev/null 2>&1; then
+    PYTHON_INTERPRETER="python"
+  else
+    return 1
+  fi
+
+  printf '%s' "${PYTHON_INTERPRETER}"
+}
+
+percent_encode() {
+  local value="$1"
+  local encoded=""
+  local i
+  local char
+  local hex
+  local LC_ALL=C
+
+  for ((i = 0; i < ${#value}; i++)); do
+    char="${value:i:1}"
+    case "${char}" in
+      [a-zA-Z0-9._~-])
+        encoded+="${char}"
+        ;;
+      *)
+        printf -v hex '%02X' "'${char}"
+        encoded+="%${hex}"
+        ;;
+    esac
+  done
+
+  printf '%s' "${encoded}"
 }
 
 compose_invoke() {
