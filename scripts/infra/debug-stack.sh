@@ -80,10 +80,18 @@ echo "[debug-stack] Compose project: ${PROJECT_NAME}"
 echo "[debug-stack] Stack file: ${STACK_FILE}"
 echo "[debug-stack] Environment file: ${ENV_FILE}"
 
-docker compose --project-name "${PROJECT_NAME}" --file "${STACK_FILE}" ps
+if ! docker compose --project-name "${PROJECT_NAME}" --file "${STACK_FILE}" ps --all; then
+  echo "[debug-stack] docker compose ps --all failed; falling back to running services" >&2
+  if ! docker compose --project-name "${PROJECT_NAME}" --file "${STACK_FILE}" ps; then
+    echo "[debug-stack] docker compose ps failed" >&2
+  fi
+fi
 
 if [[ ${#SERVICES[@]} -eq 0 ]]; then
-  mapfile -t SERVICES < <(docker compose --project-name "${PROJECT_NAME}" --file "${STACK_FILE}" ps --services)
+  if ! mapfile -t SERVICES < <(docker compose --project-name "${PROJECT_NAME}" --file "${STACK_FILE}" config --services); then
+    echo "[debug-stack] Unable to enumerate services via docker compose config --services" >&2
+    exit 1
+  fi
 fi
 
 if [[ ${#SERVICES[@]} -eq 0 ]]; then
