@@ -127,6 +127,8 @@ The GitHub workflow passes `TREAZ_ENV_FILE` and `TREAZ_COMPOSE_PROJECT_NAME` to 
    - Checks out the repo with full history (`fetch-depth: 0`).
    - Exports the env file paths mentioned earlier.
    - Calls `scripts/deploy/deploy-local.sh`.
+   - On failure the workflow automatically runs `scripts/infra/debug-stack.sh` with a longer log tail and uploads the resulting
+     diagnostics as a GitHub Actions artifact (`compose-diagnostics`).
 
 If any matrix job fails, the deploy job is skipped automatically. GitHub’s branch protection should require the matrix to finish before merging to `main`.
 

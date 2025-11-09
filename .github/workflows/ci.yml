@@ -74,3 +74,24 @@ jobs:
         run: |
           chmod +x scripts/deploy/deploy-local.sh
           scripts/deploy/deploy-local.sh
+
+      - name: Collect compose diagnostics
+        if: failure()
+        env:
+          TREAZ_ENV_FILE: /opt/treazrisland/config/compose.env
+          TREAZ_COMPOSE_PROJECT_NAME: treazrisland
+          STACK_FILE: ${{ github.workspace }}/infra/docker-compose.prod.yml
+        run: |
+          mkdir -p diagnostics
+          touch diagnostics/debug-stack.log
+          chmod +x scripts/infra/debug-stack.sh
+          if ! scripts/infra/debug-stack.sh --tail 200 > diagnostics/debug-stack.log 2>&1; then
+            echo "::warning::debug-stack.sh exited with a non-zero status. Check diagnostics/debug-stack.log for details."
+          fi
+
+      - name: Upload compose diagnostics artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compose-diagnostics
+          path: diagnostics/debug-stack.log
