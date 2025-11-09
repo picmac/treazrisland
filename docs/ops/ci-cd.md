@@ -125,7 +125,8 @@ The GitHub workflow passes `TREAZ_ENV_FILE` and `TREAZ_COMPOSE_PROJECT_NAME` to 
    - `npm run build`
 2. **`verify-deploy-runner`** on GitHub-hosted infrastructure for successful pushes to `main` only.
    - Uses the GitHub REST API to confirm at least one `self-hosted` runner with the `treaz-home` label is online.
-   - Fails fast with guidance if the runner is offline so the deploy job does not sit in the queue indefinitely.
+   - Provide a repository secret named `ACTIONS_ADMIN_TOKEN` that stores a classic PAT with the `admin:org` scope (or a fine-grained token with **Repository administration → Read** permission) so the workflow can call the self-hosted runner API. When the secret is absent—or set to a registration token without the necessary scope—the job logs a warning and skips the verification step because GitHub’s default workflow token (and registration tokens) cannot list runners.
+   - Fails fast with guidance if the runner is offline so the deploy job does not sit in the queue indefinitely when the API call succeeds.
 3. **`deploy`** on the self-hosted `treaz-home` runner once the verification job and the matrix both succeed.
    - Checks out the repo with full history (`fetch-depth: 0`).
    - Exports the env file paths mentioned earlier.
