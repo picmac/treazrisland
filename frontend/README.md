@@ -85,7 +85,7 @@ The App Router emits strict security headers for every route via [`next.config.t
 - `Strict-Transport-Security` (two-year TTL with subdomain coverage and preload hint).
 - `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and `Referrer-Policy: strict-origin-when-cross-origin`.
 
-Routes that still require inline scripts (for example, the EmulatorJS boot sequence under `/play/*`) receive a nonce-scoped CSP through [`middleware.ts`](./middleware.ts). Server components can read the nonce from the `x-csp-nonce` request header to attribute inline `<script>` tags without falling back to `unsafe-inline`.
+Routes that still require inline scripts (for example, the EmulatorJS boot sequence under `/play/*`) receive a nonce-scoped CSP through [`proxy.ts`](./proxy.ts). Server components can read the nonce from the `x-csp-nonce` request header to attribute inline `<script>` tags without falling back to `unsafe-inline`.
 
 When adding new external assets:
 
