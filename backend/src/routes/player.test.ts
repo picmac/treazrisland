@@ -176,6 +176,32 @@ describe("player routes", () => {
     expect(bodyBuffer).toEqual(binaryData);
   });
 
+  it("preserves query strings and range headers when proxying ROM downloads", async () => {
+    const injectSpy = vi.spyOn(app, "inject");
+    prismaMock.rom.findUnique.mockResolvedValue(null);
+
+    const token = app.jwt.sign({ sub: "user-1", role: "USER" });
+
+    try {
+      await request(app)
+        .get("/play/roms/rom-1/download?token=abc123")
+        .set("authorization", `Bearer ${token}`)
+        .set("Range", "bytes=0-1023")
+        .expect(404);
+
+      expect(injectSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: "/player/roms/rom-1/binary?token=abc123",
+          headers: expect.objectContaining({
+            range: "bytes=0-1023",
+          }),
+        }),
+      );
+    } finally {
+      injectSpy.mockRestore();
+    }
+  });
+
   it("returns recent play states with rom context", async () => {
     const now = new Date();
     prismaMock.playState.findMany.mockResolvedValueOnce([

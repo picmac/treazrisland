@@ -13,6 +13,13 @@ const HEADER_WHITELIST = new Set([
   "user-agent",
   "accept",
   "content-type",
+  "range",
+  "if-match",
+  "if-none-match",
+  "if-modified-since",
+  "if-unmodified-since",
+  "if-range",
+  "cache-control",
   "x-forwarded-for",
 ]);
 

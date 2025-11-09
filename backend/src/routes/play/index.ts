@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { forwardPlayerRequest } from "./proxy.js";
+import { appendQueryString, forwardPlayerRequest } from "./proxy.js";
 
 export async function registerPlayRoutes(app: FastifyInstance): Promise<void> {
   app.get(
@@ -8,7 +8,10 @@ export async function registerPlayRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [app.authenticate] },
     async (request, reply) => {
       const params = z.object({ id: z.string().min(1) }).parse(request.params);
-      const targetUrl = `/player/roms/${encodeURIComponent(params.id)}/binary`;
+      const targetUrl = appendQueryString(
+        `/player/roms/${encodeURIComponent(params.id)}/binary`,
+        request,
+      );
       return forwardPlayerRequest(app, request, reply, {
         method: "GET",
         url: targetUrl,
