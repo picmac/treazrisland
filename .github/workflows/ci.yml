@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read
     strategy:
       fail-fast: false
       matrix:
@@ -55,8 +54,13 @@ jobs:
           NEXT_TELEMETRY_DISABLED: 1
         run: npm run build
 
-      - name: Verify deploy runner availability
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.project == 'backend'
+  verify-deploy-runner:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      - name: Ensure treaz-home self-hosted runner is online
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -134,7 +138,9 @@ jobs:
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: lint-test-build
+    needs:
+      - lint-test-build
+      - verify-deploy-runner
     concurrency:
       group: deploy-${{ github.ref }}
       cancel-in-progress: true
