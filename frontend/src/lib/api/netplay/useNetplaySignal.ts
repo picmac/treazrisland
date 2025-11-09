@@ -65,12 +65,15 @@ export function useNetplaySignal(options: UseNetplaySignalOptions): UseNetplaySi
 
   useEffect(() => {
     if (!sessionId || !peerToken || !accessToken) {
-      teardownSocket();
-      return undefined;
+      return () => {
+        teardownSocket();
+      };
     }
 
     if (typeof window === "undefined") {
-      return undefined;
+      return () => {
+        teardownSocket();
+      };
     }
 
     const socket = io(API_BASE, {

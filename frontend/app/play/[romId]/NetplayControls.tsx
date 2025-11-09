@@ -48,6 +48,7 @@ export default function NetplayControls({ romId }: NetplayControlsProps) {
   const [inviteUserId, setInviteUserId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const sessionId = session?.id ?? null;
 
   const sortedParticipants = useMemo(() => {
     if (!session) {
@@ -124,7 +125,7 @@ export default function NetplayControls({ romId }: NetplayControlsProps) {
   }, [loadSessions]);
 
   useEffect(() => {
-    if (!session) {
+    if (!sessionId) {
       return;
     }
 
@@ -132,11 +133,11 @@ export default function NetplayControls({ romId }: NetplayControlsProps) {
       return;
     }
 
-    const stored = window.sessionStorage.getItem(`netplay:token:${session.id}`);
+    const stored = window.sessionStorage.getItem(`netplay:token:${sessionId}`);
     if (stored) {
       setPeerToken(stored);
     }
-  }, [session?.id]);
+  }, [sessionId]);
 
   const handleSessionClosed = useCallback(
     (payload: { sessionId: string; reason: "closed" | "expired" | "not_found" }) => {
@@ -155,7 +156,7 @@ export default function NetplayControls({ romId }: NetplayControlsProps) {
   );
 
   const { connected, latency } = useNetplaySignal({
-    sessionId: session?.id ?? null,
+    sessionId,
     peerToken: peerToken ?? null,
     accessToken: accessToken ?? undefined,
     onSessionUpdate: setSession,
@@ -164,25 +165,25 @@ export default function NetplayControls({ romId }: NetplayControlsProps) {
   });
 
   useEffect(() => {
-    if (!session || !peerToken) {
+    if (!sessionId || !peerToken) {
       return;
     }
 
-    sendNetplayHeartbeat(session.id, {
+    sendNetplayHeartbeat(sessionId, {
       peerToken,
       status: connected ? "connected" : "disconnected",
     }).catch(() => {
       /* heartbeat failures are logged server-side */
     });
-  }, [connected, session?.id, peerToken]);
+  }, [connected, peerToken, sessionId]);
 
   useEffect(() => {
-    if (!session || !peerToken) {
+    if (!sessionId || !peerToken) {
       return;
     }
 
     const interval = window.setInterval(() => {
-      sendNetplayHeartbeat(session.id, {
+      sendNetplayHeartbeat(sessionId, {
         peerToken,
         status: connected ? "connected" : "disconnected",
       }).catch(() => {
@@ -193,7 +194,7 @@ export default function NetplayControls({ romId }: NetplayControlsProps) {
     return () => {
       clearInterval(interval);
     };
-  }, [connected, peerToken, session?.id]);
+  }, [connected, peerToken, sessionId]);
 
   const handleCreateSession = useCallback(async () => {
     setError(null);
