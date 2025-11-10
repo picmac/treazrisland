@@ -1,16 +1,21 @@
-import { defineConfig } from "vitest/config";
+import type { UserConfig } from "vitest/config";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-export default defineConfig({
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
+
+const resolveFromRoot = (relativePath: string) => path.resolve(rootDir, relativePath);
+
+const config: UserConfig = {
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./"),
-      "@/src": path.resolve(__dirname, "./src"),
-      "@lib": path.resolve(__dirname, "./src/lib"),
-      "@components": path.resolve(__dirname, "./src/components"),
-      "@auth": path.resolve(__dirname, "./src/auth"),
-      "@onboarding": path.resolve(__dirname, "./src/onboarding"),
-      "@admin": path.resolve(__dirname, "./src/admin")
+      "@": resolveFromRoot("./"),
+      "@/src": resolveFromRoot("./src"),
+      "@lib": resolveFromRoot("./src/lib"),
+      "@components": resolveFromRoot("./src/components"),
+      "@auth": resolveFromRoot("./src/auth"),
+      "@onboarding": resolveFromRoot("./src/onboarding"),
+      "@admin": resolveFromRoot("./src/admin")
     }
   },
   test: {
@@ -25,4 +30,6 @@ export default defineConfig({
       "__tests__/**/*.test.{ts,tsx}"
     ]
   }
-});
+};
+
+export default config;
