@@ -57,18 +57,9 @@ CREATE INDEX "NetplayParticipant_userId_idx" ON "NetplayParticipant"("userId");
 -- CreateIndex
 CREATE INDEX "NetplayParticipant_status_idx" ON "NetplayParticipant"("status");
 
--- AddForeignKey
-ALTER TABLE "NetplaySession" ADD CONSTRAINT "NetplaySession_romId_fkey" FOREIGN KEY ("romId") REFERENCES "Rom"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "NetplaySession" ADD CONSTRAINT "NetplaySession_hostId_fkey" FOREIGN KEY ("hostId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "NetplaySession" ADD CONSTRAINT "NetplaySession_saveStateId_fkey" FOREIGN KEY ("saveStateId") REFERENCES "PlayState"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- Foreign keys to platform, user, and save state tables are added in 20251213090000_add_netplay_foreign_keys.
 
 -- AddForeignKey
 ALTER TABLE "NetplayParticipant" ADD CONSTRAINT "NetplayParticipant_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "NetplaySession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "NetplayParticipant" ADD CONSTRAINT "NetplayParticipant_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 -- privilege-reviewed: 2025-02-28 security hardening checklist automation
