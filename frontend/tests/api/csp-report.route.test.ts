@@ -1,10 +1,16 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { GET, POST } from "@/app/api/csp-report/route";
 
 describe("POST /api/csp-report", () => {
-  const originalFetch = globalThis.fetch;
+  let originalFetch: typeof globalThis.fetch;
   const originalEnv = { ...process.env };
+
+  beforeAll(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    originalFetch = globalThis.fetch;
+  });
 
   beforeEach(() => {
     vi.unstubAllGlobals();
