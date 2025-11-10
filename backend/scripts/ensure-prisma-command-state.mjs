@@ -5,7 +5,18 @@ import path from 'node:path';
 
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'prisma-nodejs');
 const COMMANDS_FILE = path.join(CONFIG_DIR, 'commands.json');
-const DEFAULT_CONTENT = JSON.stringify({ commands: {} }, null, 2) + '\n';
+function createDefaultContent() {
+  return (
+    JSON.stringify(
+      {
+        firstCommandTimestamp: new Date().toISOString(),
+        commands: {},
+      },
+      null,
+      2,
+    ) + '\n'
+  );
+}
 
 async function ensurePrismaCommandState() {
   await mkdir(CONFIG_DIR, { recursive: true });
@@ -17,7 +28,7 @@ async function ensurePrismaCommandState() {
     const raw = await readFile(COMMANDS_FILE, 'utf8');
     try {
       const parsed = JSON.parse(raw);
-      if (parsed === null || typeof parsed !== 'object') {
+      if (!isValidCommandState(parsed)) {
         needsWrite = true;
       }
     } catch (error) {
@@ -33,13 +44,21 @@ async function ensurePrismaCommandState() {
   }
 
   if (needsWrite) {
-    await writeFile(COMMANDS_FILE, DEFAULT_CONTENT, { encoding: 'utf8', mode: 0o600 });
+    await writeFile(COMMANDS_FILE, createDefaultContent(), { encoding: 'utf8', mode: 0o600 });
     console.info(`[prisma-cli] Initialized command state at ${COMMANDS_FILE}`);
   }
 }
 
 function isMissingFileError(error) {
   return Boolean(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT');
+}
+
+function isValidCommandState(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  return typeof value.firstCommandTimestamp === 'string';
 }
 
 ensurePrismaCommandState().catch((error) => {
