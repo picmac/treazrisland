@@ -21,7 +21,11 @@ USAGE
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+if REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel 2>/dev/null)"; then
+  REPO_ROOT="${REPO_ROOT%/}"
+else
+  REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+fi
 DEFAULT_STACK_FILE="${REPO_ROOT}/infra/docker-compose.yml"
 STACK_FILE="${STACK_FILE:-${DEFAULT_STACK_FILE}}"
 PROJECT_NAME="${TREAZ_COMPOSE_PROJECT_NAME:-treazrisland}"
