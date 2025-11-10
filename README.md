@@ -183,8 +183,7 @@ After configuring your environment file, run a quick end-to-end validation befor
    ```bash
    cd backend
    npm install
-   npx prisma migrate deploy
-   npm run prisma:seed:platforms
+   npm run db:prepare
    npm run dev
    ```
 

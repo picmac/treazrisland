@@ -580,6 +580,13 @@ if ! run_all_probes; then
   fi
 fi
 
+log "Resolving failed Prisma migrations (if any)"
+if ! docker compose -f "${COMPOSE_FILE}" exec backend env PRISMA_LOG_LEVEL=debug DEBUG="prisma:*" npm run prisma:repair 2>&1 \
+  | tee "${LOG_DIR}/prisma-repair.log"; then
+  log "Prisma migration repair failed. Review ${LOG_DIR}/prisma-repair.log for details"
+  exit 1
+fi
+
 log "Running database migrations with Prisma debug output"
 if ! docker compose -f "${COMPOSE_FILE}" exec backend env PRISMA_LOG_LEVEL=debug DEBUG="prisma:*" npx prisma migrate deploy 2>&1 \
   | tee "${LOG_DIR}/prisma-migrate.log"; then

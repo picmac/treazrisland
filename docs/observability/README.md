@@ -79,7 +79,7 @@ Use dashboards to correlate upload failure spikes with enrichment job queues and
 ### Health check or readiness alarms
 
 1. Hit `GET /health/ready` (or `/health`) on the Fastify service. The handler logs a `health.probe` event that includes component statuses and returns HTTP 503 only when the aggregate state is `fail`.
-2. If the payload reports a database warning (`details.reason === "system_settings_table_missing"`), run `docker compose -f infra/docker-compose.yml exec backend npx prisma migrate deploy` to apply migrations, then re-check the endpoint.
+2. If the payload reports a database warning (`details.reason === "system_settings_table_missing"`), run `docker compose -f infra/docker-compose.yml exec backend npm run db:prepare` to repair and apply migrations, then re-check the endpoint.
 3. When metrics are disabled or unreachable, inspect the backend logs with `docker compose -f infra/docker-compose.yml logs backend | jq '.message'` to confirm whether the `metrics` component is marked `enabled: false` (expected for local dev) or failing unexpectedly.
 
 ### Rate limit or 429 spike investigation
