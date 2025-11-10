@@ -6,9 +6,8 @@ const AUTH_API_BASE_URL =
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  typedRoutes: true,
   experimental: {
-    turbopackUseSystemTlsCerts: true
+    typedRoutes: true
   },
   env: {
     NEXT_PUBLIC_API_BASE_URL:
@@ -24,7 +23,6 @@ const nextConfig = {
       }
     ]
   },
-  turbopack: {},
   webpack: (config) => {
     config.experiments = {
       ...config.experiments,
