@@ -341,10 +341,13 @@ type CollapsibleSectionProps = {
 };
 
 function CollapsibleSection({ title, defaultOpen = true, children }: CollapsibleSectionProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
   return (
     <details
       className="rounded-lg border border-foreground/15 bg-foreground/[0.04] p-4 text-foreground"
-      open={defaultOpen}
+      open={isOpen}
+      onToggle={(event) => setIsOpen(event.currentTarget.open)}
     >
       <summary className="flex cursor-pointer items-center justify-between gap-2 text-sm font-semibold uppercase tracking-[0.35em] text-foreground/70">
         {title}
