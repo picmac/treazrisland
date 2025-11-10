@@ -1,6 +1,35 @@
 -- AddForeignKey
 DO $$
 BEGIN
+  -- Normalize legacy sessions that referenced seed states no longer available.
+  IF to_regclass('"NetplaySession"') IS NOT NULL THEN
+    IF to_regclass('"PlayState"') IS NOT NULL THEN
+      UPDATE "NetplaySession" AS s
+      SET "saveStateId" = NULL
+      WHERE "saveStateId" IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM "PlayState" AS ps WHERE ps."id" = s."saveStateId"
+        );
+    END IF;
+
+    -- Drop sessions pointing at missing ROM or host records to avoid inconsistent data.
+    DELETE FROM "NetplaySession" AS s
+    WHERE (to_regclass('"Rom"') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM "Rom" AS r WHERE r."id" = s."romId"
+          ))
+       OR (to_regclass('"User"') IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM "User" AS u WHERE u."id" = s."hostId"
+          ));
+  END IF;
+
+  -- Remove participants referencing users that were pruned from the platform.
+  IF to_regclass('"NetplayParticipant"') IS NOT NULL AND to_regclass('"User"') IS NOT NULL THEN
+    DELETE FROM "NetplayParticipant" AS p
+    WHERE NOT EXISTS (
+      SELECT 1 FROM "User" AS u WHERE u."id" = p."userId"
+    );
+  END IF;
+
   IF to_regclass('"Rom"') IS NULL THEN
     RAISE EXCEPTION 'Required table "Rom" does not exist for NetplaySession_romId_fkey';
   END IF;
