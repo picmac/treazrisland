@@ -1,26 +1,26 @@
 DO $$
 BEGIN
-    CREATE TYPE "NetplaySessionStatus" AS ENUM ('OPEN', 'ACTIVE', 'CLOSED');
-EXCEPTION
-    WHEN duplicate_object THEN NULL;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'NetplaySessionStatus') THEN
+        CREATE TYPE "NetplaySessionStatus" AS ENUM ('OPEN', 'ACTIVE', 'CLOSED');
+    END IF;
 END
 $$;
 
 -- CreateEnum
 DO $$
 BEGIN
-    CREATE TYPE "NetplayParticipantRole" AS ENUM ('HOST', 'PLAYER');
-EXCEPTION
-    WHEN duplicate_object THEN NULL;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'NetplayParticipantRole') THEN
+        CREATE TYPE "NetplayParticipantRole" AS ENUM ('HOST', 'PLAYER');
+    END IF;
 END
 $$;
 
 -- CreateEnum
 DO $$
 BEGIN
-    CREATE TYPE "NetplayParticipantStatus" AS ENUM ('INVITED', 'CONNECTED', 'DISCONNECTED');
-EXCEPTION
-    WHEN duplicate_object THEN NULL;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'NetplayParticipantStatus') THEN
+        CREATE TYPE "NetplayParticipantStatus" AS ENUM ('INVITED', 'CONNECTED', 'DISCONNECTED');
+    END IF;
 END
 $$;
 
@@ -71,11 +71,17 @@ CREATE INDEX IF NOT EXISTS "NetplayParticipant_status_idx" ON "NetplayParticipan
 
 DO $$
 BEGIN
-    ALTER TABLE "NetplayParticipant"
-    ADD CONSTRAINT "NetplayParticipant_sessionId_fkey"
-    FOREIGN KEY ("sessionId") REFERENCES "NetplaySession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-EXCEPTION
-    WHEN duplicate_object THEN NULL;
+    IF to_regclass('"NetplayParticipant"') IS NULL OR to_regclass('"NetplaySession"') IS NULL THEN
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'NetplayParticipant_sessionId_fkey'
+    ) THEN
+        ALTER TABLE "NetplayParticipant"
+        ADD CONSTRAINT "NetplayParticipant_sessionId_fkey"
+        FOREIGN KEY ("sessionId") REFERENCES "NetplaySession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
 END
 $$;
 
