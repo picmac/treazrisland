@@ -27,6 +27,7 @@ COPY package-lock.json ./package-lock.json
 RUN npm ci --omit=dev
 COPY prisma ./prisma
 COPY scripts/ensure-prisma-command-state.mjs ./scripts/ensure-prisma-command-state.mjs
+COPY scripts/run-platform-seed-if-available.mjs ./scripts/run-platform-seed-if-available.mjs
 ARG PRISMA_GENERATE_DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/treazrisland"
 RUN DATABASE_URL="$PRISMA_GENERATE_DATABASE_URL" npm run prisma:generate
 COPY --from=build /app/dist ./dist

@@ -596,7 +596,7 @@ fi
 
 if [[ "${SEED_PLATFORMS}" == "true" ]]; then
   log "Seeding reference platform data"
-  if ! docker compose -f "${COMPOSE_FILE}" exec backend env PRISMA_LOG_LEVEL=debug DEBUG="prisma:*" npm run prisma:seed:platforms 2>&1 \
+  if ! docker compose -f "${COMPOSE_FILE}" exec backend env PRISMA_LOG_LEVEL=debug DEBUG="prisma:*" npm run prisma:seed:platforms:if-available 2>&1 \
     | tee "${LOG_DIR}/prisma-seed.log"; then
     log "Prisma platform seed failed. Review ${LOG_DIR}/prisma-seed.log for details"
     exit 1
