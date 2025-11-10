@@ -13,7 +13,7 @@
     "format:check": "prettier --check \"src/config/env.ts\" \"src/routes/admin/romUploads.ts\" \"src/routes/player.ts\" \"src/routes/screenscraper.ts\" \"src/server.ts\" \"src/server.observability.test.ts\" \"src/types/fastify.d.ts\" \"src/plugins/metrics.ts\" \"src/plugins/health.ts\" \"src/plugins/logging.ts\"",
     "format:write": "prettier --write \"src/config/env.ts\" \"src/routes/admin/romUploads.ts\" \"src/routes/player.ts\" \"src/routes/screenscraper.ts\" \"src/server.ts\" \"src/server.observability.test.ts\" \"src/types/fastify.d.ts\" \"src/plugins/metrics.ts\" \"src/plugins/health.ts\" \"src/plugins/logging.ts\"",
     "test": "vitest",
-    "prisma:ensure-command-state": "tsx scripts/ensure-prisma-command-state.ts",
+    "prisma:ensure-command-state": "node scripts/ensure-prisma-command-state.mjs",
     "prisma:generate": "npm run prisma:ensure-command-state && prisma generate",
     "prisma:migrate": "npm run prisma:ensure-command-state && prisma migrate dev && tsx prisma/migrate-reencrypt-mfa-secrets.ts",
     "prisma:repair": "node prisma/scripts/resolve-failed-migrations.mjs",

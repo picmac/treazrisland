@@ -25,7 +25,7 @@ async function ensurePrismaCommandState() {
       needsWrite = true;
     }
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+    if (isMissingFileError(error)) {
       needsWrite = true;
     } else {
       throw error;
@@ -36,6 +36,10 @@ async function ensurePrismaCommandState() {
     await writeFile(COMMANDS_FILE, DEFAULT_CONTENT, { encoding: 'utf8', mode: 0o600 });
     console.info(`[prisma-cli] Initialized command state at ${COMMANDS_FILE}`);
   }
+}
+
+function isMissingFileError(error) {
+  return Boolean(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT');
 }
 
 ensurePrismaCommandState().catch((error) => {
