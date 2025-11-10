@@ -37,7 +37,7 @@ jobs:
         run: npm run lint
 
       - name: Unit tests
-        run: npm test -- --run
+        run: npm test
 
       - name: Build backend
         if: matrix.project == 'backend'
