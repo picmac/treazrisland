@@ -143,6 +143,7 @@ type NetplayServerToClientEvents = {
   "session:snapshot": (payload: {
     session: SerializedSession;
     peerToken: string;
+    iceServers: NetplayIceServerConfig[];
   }) => void;
   "session:update": (payload: { session: SerializedSession }) => void;
   "session:closed": (
@@ -445,6 +446,7 @@ const configureSignalServer = (
           socket.emit("session:snapshot", {
             session: serialized,
             peerToken: socket.data.peerToken,
+            iceServers: getIceServers(),
           });
 
           if (socket.data.refreshedToken) {

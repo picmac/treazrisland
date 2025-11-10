@@ -683,6 +683,14 @@ describe("netplay routes", () => {
       extraHeaders: { origin: "https://trusted.example" },
     });
 
+    const hostSnapshotPromise = new Promise<{
+      session: unknown;
+      peerToken: string;
+      iceServers: typeof expectedIceServers;
+    }>((resolve) => {
+      hostSocket.once("session:snapshot", resolve);
+    });
+
     await new Promise<void>((resolve, reject) => {
       hostSocket.on("connect", () => resolve());
       hostSocket.on("connect_error", reject);
@@ -699,10 +707,26 @@ describe("netplay routes", () => {
       extraHeaders: { origin: "https://trusted.example" },
     });
 
+    const guestSnapshotPromise = new Promise<{
+      session: unknown;
+      peerToken: string;
+      iceServers: typeof expectedIceServers;
+    }>((resolve) => {
+      guestSocket.once("session:snapshot", resolve);
+    });
+
     await new Promise<void>((resolve, reject) => {
       guestSocket.on("connect", () => resolve());
       guestSocket.on("connect_error", reject);
     });
+
+    const hostSnapshot = await hostSnapshotPromise;
+    const guestSnapshot = await guestSnapshotPromise;
+
+    expect(hostSnapshot.peerToken).toBe(hostPeerToken);
+    expect(hostSnapshot.iceServers).toEqual(expectedIceServers);
+    expect(guestSnapshot.peerToken).toBe(guestPeerToken);
+    expect(guestSnapshot.iceServers).toEqual(expectedIceServers);
 
     const messagePromise = new Promise<unknown>((resolve) => {
       guestSocket.on("signal:message", resolve);
