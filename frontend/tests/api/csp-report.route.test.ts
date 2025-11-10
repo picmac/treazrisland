@@ -1,30 +1,31 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { GET, POST } from "@/app/api/csp-report/route";
 
 describe("POST /api/csp-report", () => {
-  let originalFetch: typeof globalThis.fetch;
+  const originalFetch = globalThis.fetch;
   const originalEnv = { ...process.env };
 
-  beforeAll(() => {
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-    originalFetch = globalThis.fetch;
-  });
-
   beforeEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
-    globalThis.fetch = originalFetch;
     vi.restoreAllMocks();
+    globalThis.fetch = originalFetch;
     process.env = { ...originalEnv };
   });
 
   afterEach(() => {
     process.env = { ...originalEnv };
     vi.useRealTimers();
-    globalThis.fetch = originalFetch;
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    globalThis.fetch = originalFetch;
+  });
+
+  afterAll(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    globalThis.fetch = originalFetch;
   });
 
   test("forwards structured reports to the observability endpoint", async () => {
