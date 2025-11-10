@@ -2,33 +2,22 @@
 
 import type { ChangeEvent, DragEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import clsx from "clsx";
-import { listAdminPlatforms } from "@lib/api/admin/platforms";
-import {
-  uploadAdminArchive,
-  type UploadMetadata,
-  type UploadResponse
-} from "@lib/api/admin/uploads";
+
+import { listPlatforms } from "@lib/api/library";
+import { uploadRomArchive, type RomUploadMetadata } from "@lib/api/uploads";
 import { UploadQueue } from "@/src/uploads/UploadQueue";
 import { MAX_UPLOAD_SIZE_BYTES } from "@/src/uploads/constants";
 import type { UploadItem, UploadPlatform, UploadQueueStats } from "@/src/uploads/types";
 import { deriveRomTitle } from "@/src/uploads/utils";
 
-type RecentRom = {
-  id: string;
-  title: string;
-  platformSlug: string | null;
-};
-
-export function RomUploadManager() {
+export function UserRomUploadManager() {
   const [platforms, setPlatforms] = useState<UploadPlatform[]>([]);
   const [platformError, setPlatformError] = useState<string | null>(null);
   const [items, setItems] = useState<UploadItem[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [recentRoms, setRecentRoms] = useState<RecentRom[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -36,7 +25,7 @@ export function RomUploadManager() {
 
     async function fetchPlatforms() {
       try {
-        const response = await listAdminPlatforms();
+        const response = await listPlatforms({ includeEmpty: true });
         if (!cancelled) {
           setPlatforms(
             response.platforms.map((platform) => ({
@@ -87,9 +76,7 @@ export function RomUploadManager() {
         const next = [...previous];
         for (const file of list) {
           if (file.size > MAX_UPLOAD_SIZE_BYTES) {
-            setGlobalError(
-              `File ${file.name} exceeds the 1 GiB limit and was skipped.`
-            );
+            setGlobalError(`File ${file.name} exceeds the 1 GiB limit and was skipped.`);
             continue;
           }
 
@@ -188,32 +175,19 @@ export function RomUploadManager() {
       );
 
       try {
-        const metadata: UploadMetadata =
-          item.type === "rom"
-            ? {
-                clientId: item.id,
-                type: "rom",
-                originalFilename: item.file.name,
-                platformSlug: item.platformSlug ?? "",
-                romTitle: item.romTitle.trim() || undefined
-              }
-            : {
-                clientId: item.id,
-                type: "bios",
-                originalFilename: item.file.name,
-                biosCore: item.biosCore.trim(),
-                biosRegion: item.biosRegion.trim() || undefined
-              };
-
-        if (metadata.type === "rom" && metadata.platformSlug.length === 0) {
+        if (!item.platformSlug) {
           throw new Error("Please choose a platform before uploading this ROM.");
         }
 
-        if (metadata.type === "bios" && metadata.biosCore.length === 0) {
-          throw new Error("BIOS uploads require a core identifier.");
-        }
+        const metadata: RomUploadMetadata = {
+          clientId: item.id,
+          type: "rom",
+          originalFilename: item.file.name,
+          platformSlug: item.platformSlug,
+          romTitle: item.romTitle.trim() || undefined
+        };
 
-        const response: UploadResponse = await uploadAdminArchive(metadata, item.file);
+        const response = await uploadRomArchive(metadata, item.file);
         const { result } = response;
 
         setItems((current) =>
@@ -231,25 +205,6 @@ export function RomUploadManager() {
               : candidate
           )
         );
-
-        if (result.romId && (result.status === "success" || result.status === "duplicate")) {
-          const romTitle =
-            result.romTitle ??
-            (metadata.type === "rom"
-              ? metadata.romTitle ?? metadata.originalFilename
-              : metadata.originalFilename);
-          const platformSlug =
-            result.platformSlug ?? (metadata.type === "rom" ? metadata.platformSlug ?? null : null);
-          setRecentRoms((current) => {
-            const next: RecentRom = {
-              id: result.romId as string,
-              title: romTitle,
-              platformSlug
-            };
-            const deduped = current.filter((rom) => rom.id !== next.id);
-            return [next, ...deduped].slice(0, 8);
-          });
-        }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Upload failed";
         setItems((current) =>
@@ -289,7 +244,7 @@ export function RomUploadManager() {
         }}
       >
         <p className="text-center text-sm uppercase tracking-widest text-slate-200">
-          Drop ROM or BIOS archives here, or click to browse
+          Drop ROM archives here, or click to browse
         </p>
         <p className="text-xs text-slate-400">Supported formats: zip, 7z, chd, bin, iso (≤ 1 GiB)</p>
         <button
@@ -316,9 +271,7 @@ export function RomUploadManager() {
         <div className="space-y-4">
           <div className="flex items-center justify-between text-sm text-slate-200">
             <p>
-              Queue: {stats.total} files • {stats.success} uploaded • {stats.duplicate} duplicates •
-              {" "}
-              {stats.error} errors
+              Queue: {stats.total} files • {stats.success} uploaded • {stats.duplicate} duplicates • {stats.error} errors
             </p>
             <div className="flex gap-2">
               <button
@@ -350,42 +303,8 @@ export function RomUploadManager() {
             onChange={handleItemChange}
             onRemove={handleRemove}
             disabled={isUploading}
-            allowBios
+            allowBios={false}
           />
-        </div>
-      )}
-
-      {recentRoms.length > 0 && (
-        <div className="space-y-2 rounded border border-slate-700 bg-slate-900/70 p-4 text-sm text-slate-200">
-          <h3 className="text-xs uppercase tracking-widest text-primary/80">Recently ingested ROMs</h3>
-          <ul className="space-y-2">
-            {recentRoms.map((rom) => (
-              <li key={rom.id} className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <Link href={`/roms/${rom.id}`} className="text-primary hover:underline">
-                    {rom.title}
-                  </Link>
-                  {rom.platformSlug && (
-                    <span className="ml-2 text-xs uppercase tracking-widest text-slate-400">
-                      ({rom.platformSlug})
-                    </span>
-                  )}
-                </div>
-                {rom.platformSlug ? (
-                  <Link
-                    href={`/platforms/${rom.platformSlug}`}
-                    className="text-xs uppercase tracking-widest text-slate-300 hover:text-primary"
-                  >
-                    View platform
-                  </Link>
-                ) : (
-                  <span className="text-xs uppercase tracking-widest text-slate-500">
-                    Platform pending
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
         </div>
       )}
     </div>
