@@ -15,7 +15,7 @@
     "test": "vitest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev && tsx prisma/migrate-reencrypt-mfa-secrets.ts",
-    "prisma:repair": "tsx prisma/scripts/resolve-failed-migrations.ts",
+    "prisma:repair": "node prisma/scripts/resolve-failed-migrations.mjs",
     "db:prepare": "npm run prisma:repair && prisma migrate deploy && npm run prisma:seed:platforms",
     "screenscraper:encrypt": "tsx scripts/encrypt-screenscraper-secret.ts",
     "prisma:seed:platforms": "tsx prisma/seed/platforms.ts",
