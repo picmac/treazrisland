@@ -1,10 +1,10 @@
 # TREAZRISLAND Frontend
 
-Next.js 19 App Router client that renders the SNES-inspired experience described in [`TREAZRISLAND_PRD.md`](../TREAZRISLAND_PRD.md). The UI streams ROM binaries from the Fastify backend and runs EmulatorJS locally for fully self-hosted gameplay.
+Next.js 14 App Router client that renders the SNES-inspired experience described in [`TREAZRISLAND_PRD.md`](../TREAZRISLAND_PRD.md). The UI streams ROM binaries from the Fastify backend and runs EmulatorJS locally for fully self-hosted gameplay.
 
 ## Requirements
 
-- Node.js 20 LTS and npm 10.
+- Node.js 22.21.1 LTS and npm 10.
 - A running backend at `NEXT_PUBLIC_API_BASE_URL` (defaults to `http://localhost:3001`).
 
 ## Environment setup

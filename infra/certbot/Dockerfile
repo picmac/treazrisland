@@ -1,4 +1,4 @@
-FROM certbot/certbot:latest
+FROM certbot/certbot:v5.1.0
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends cron curl \
