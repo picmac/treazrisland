@@ -1,3 +1,12 @@
+import { useCallback, useEffect, useSyncExternalStore } from "react";
+import {
+  ensureCacheEntry,
+  mutateEntry,
+  revalidateEntry,
+  toSnapshot,
+  type SwrCacheEntry,
+  type SwrSnapshot
+} from "./cache";
 import { apiFetch, ApiError, API_BASE } from "./client";
 import type { AssetSummary } from "./library";
 
@@ -19,6 +28,104 @@ export async function listPlayStates(romId: string): Promise<PlayState[]> {
     `/play-states?${params.toString()}`
   );
   return response.playStates;
+}
+
+export function formatPlayStateLabel(state: PlayState): string {
+  const trimmed = state.label?.trim();
+  if (trimmed) {
+    return trimmed;
+  }
+  if (typeof state.slot === "number") {
+    return `Slot ${state.slot}`;
+  }
+  return "Quick save";
+}
+
+export function formatPlayStateTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString();
+}
+
+const playStateCache = new Map<string, SwrCacheEntry<PlayState[]>>();
+
+type UseRomPlayStatesResult = SwrSnapshot<PlayState[]> & {
+  refresh: () => Promise<void>;
+  mutate: (updater: (current: PlayState[] | null) => PlayState[] | null | undefined) => void;
+  key: string;
+};
+
+export function useRomPlayStates(
+  romId: string | null | undefined
+): UseRomPlayStatesResult {
+  const normalized = romId?.trim() ?? "";
+  const key = normalized.length > 0 ? `rom-play-states:${normalized}` : null;
+
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      if (!key) {
+        return () => {};
+      }
+      const entry = ensureCacheEntry(playStateCache, key);
+      entry.subscribers.add(onStoreChange);
+      return () => {
+        entry.subscribers.delete(onStoreChange);
+      };
+    },
+    [key]
+  );
+
+  const getSnapshot = useCallback((): SwrSnapshot<PlayState[]> => {
+    if (!key) {
+      return {
+        data: null,
+        error: null,
+        isLoading: false,
+        isValidating: false
+      };
+    }
+    return toSnapshot(ensureCacheEntry(playStateCache, key));
+  }, [key]);
+
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+
+  useEffect(() => {
+    if (!key) {
+      return;
+    }
+    const entry = ensureCacheEntry(playStateCache, key);
+    void revalidateEntry(entry, () => listPlayStates(normalized));
+  }, [key, normalized]);
+
+  const refresh = useCallback(async () => {
+    if (!key) {
+      return;
+    }
+    const entry = ensureCacheEntry(playStateCache, key);
+    await revalidateEntry(entry, () => listPlayStates(normalized));
+  }, [key, normalized]);
+
+  const mutate = useCallback(
+    (updater: (current: PlayState[] | null) => PlayState[] | null | undefined) => {
+      if (!key) {
+        return;
+      }
+      const entry = ensureCacheEntry(playStateCache, key);
+      mutateEntry(entry, updater);
+    },
+    [key]
+  );
+
+  return {
+    ...snapshot,
+    refresh: async () => {
+      await refresh();
+    },
+    mutate,
+    key: key ?? "rom-play-states:"
+  };
 }
 
 export type RecentPlayState = {

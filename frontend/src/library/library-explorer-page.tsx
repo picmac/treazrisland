@@ -4,6 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
+  useRomPlayStates,
+  type PlayState,
+  formatPlayStateLabel,
+  formatPlayStateTimestamp
+} from "@lib/api/player";
+import {
   usePlatformLibrary,
   useRomLibrary,
   type RomListItem
@@ -53,6 +59,15 @@ function RomRow({ rom, favorite, pending, onToggleFavorite }: RomRowProps) {
   const genre = Array.isArray(metadata) ? metadata[0]?.genre : metadata?.genre;
   const platformLabel = rom.platform.shortName ?? rom.platform.name ?? rom.platform.slug;
   const releaseYear = rom.releaseYear ?? "????";
+  const playStates = useRomPlayStates(rom.id);
+  const visiblePlayStates = useMemo(() => {
+    if (!playStates.data) {
+      return [] as PlayState[];
+    }
+    return [...playStates.data]
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .slice(0, 3);
+  }, [playStates.data]);
 
   return (
     <PixelFrame className="flex h-full flex-col gap-4 bg-night/80 p-4 text-sm text-parchment shadow-pixel">
@@ -81,9 +96,48 @@ function RomRow({ rom, favorite, pending, onToggleFavorite }: RomRowProps) {
         </div>
       </div>
 
-      <PixelNotice className="bg-ink/40 text-[0.7rem] uppercase tracking-widest">
-        Save-state sync coming soon — slots will appear here once linked.
-      </PixelNotice>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[0.65rem] uppercase tracking-[0.35em] text-lagoon/70">Cloud saves</p>
+          {playStates.isValidating && (
+            <span className="rounded-pixel bg-ink/60 px-2 py-1 text-[0.65rem] uppercase tracking-widest text-parchment/70">
+              Syncing…
+            </span>
+          )}
+        </div>
+        {playStates.error ? (
+          <PixelNotice tone="error">Failed to load cloud saves: {playStates.error.message}</PixelNotice>
+        ) : playStates.isLoading ? (
+          <p className="text-sm text-parchment/70">Mapping cloud saves…</p>
+        ) : visiblePlayStates.length === 0 ? (
+          <p className="text-sm text-parchment/60">No cloud saves yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {visiblePlayStates.map((state) => (
+              <li
+                key={state.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-pixel border border-ink/50 bg-ink/40 px-3 py-2"
+              >
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-parchment">
+                    {formatPlayStateLabel(state)}
+                  </p>
+                  <p className="text-[0.65rem] uppercase tracking-widest text-parchment/50">
+                    Updated {formatPlayStateTimestamp(state.updatedAt)}
+                  </p>
+                </div>
+                <Link
+                  href={`/play/${rom.id}?resume=${encodeURIComponent(state.id)}`}
+                  aria-label={`Resume ${rom.title} from ${formatPlayStateLabel(state)}`}
+                  className="rounded-pixel bg-kelp px-3 py-1 text-xs font-semibold uppercase tracking-widest text-night shadow-pixel transition hover:bg-lagoon"
+                >
+                  Resume
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <FavoriteToggle romId={rom.id} favorite={favorite} pending={pending} onToggle={onToggleFavorite} />

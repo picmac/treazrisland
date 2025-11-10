@@ -29,8 +29,19 @@ vi.mock("@/src/hooks/useFavorites", () => ({
   useFavorites: vi.fn()
 }));
 
+vi.mock("@lib/api/player", async () => {
+  const actual = await vi.importActual<typeof import("@lib/api/player")>(
+    "@lib/api/player"
+  );
+  return {
+    ...actual,
+    useRomPlayStates: vi.fn()
+  };
+});
+
 const { usePlatformLibrary, useRomLibrary } = await import("@lib/api/roms");
 const { useFavorites } = await import("@/src/hooks/useFavorites");
+const { useRomPlayStates } = await import("@lib/api/player");
 const { LibraryExplorerPage } = await import("@/src/library/library-explorer-page");
 
 describe("LibraryExplorerPage", () => {
@@ -116,18 +127,44 @@ describe("LibraryExplorerPage", () => {
       toggleFavorite,
       refresh: vi.fn()
     });
+
+    const playState = {
+      id: "state_1",
+      romId: "rom_chrono",
+      label: "Zeal Palace",
+      slot: 2,
+      size: 2048,
+      checksumSha256: "checksum",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      downloadUrl: "/play-states/state_1/binary"
+    };
+
+    vi.mocked(useRomPlayStates).mockReturnValue({
+      data: [playState],
+      error: null,
+      isLoading: false,
+      isValidating: false,
+      refresh: vi.fn(),
+      mutate: vi.fn(),
+      key: "rom-play-states:rom_chrono"
+    });
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it("renders platforms and virtualized ROM entries", () => {
+  it("renders platforms, ROM entries, and populated cloud saves", () => {
     render(<LibraryExplorerPage initialPlatformSlug="snes" />);
 
     expect(screen.getAllByText(/Super Nintendo/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Chrono Trigger/)).toBeInTheDocument();
-    expect(screen.getByText(/Save-state sync coming soon/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", {
+        name: /Resume Chrono Trigger from Zeal Palace/i
+      })
+    ).toBeInTheDocument();
   });
 
   it("allows toggling favorites via pixel button", async () => {
@@ -150,5 +187,37 @@ describe("LibraryExplorerPage", () => {
     expect(useRomLibrary).toHaveBeenLastCalledWith(
       expect.objectContaining({ favoritesOnly: true })
     );
+  });
+
+  it("shows empty cloud save messaging when no states exist", () => {
+    vi.mocked(useRomPlayStates).mockReturnValueOnce({
+      data: [],
+      error: null,
+      isLoading: false,
+      isValidating: false,
+      refresh: vi.fn(),
+      mutate: vi.fn(),
+      key: "rom-play-states:rom_chrono"
+    });
+
+    render(<LibraryExplorerPage initialPlatformSlug="snes" />);
+
+    expect(screen.getByText(/No cloud saves yet/i)).toBeInTheDocument();
+  });
+
+  it("surfaces cloud save errors", () => {
+    vi.mocked(useRomPlayStates).mockReturnValueOnce({
+      data: null,
+      error: new Error("network"),
+      isLoading: false,
+      isValidating: false,
+      refresh: vi.fn(),
+      mutate: vi.fn(),
+      key: "rom-play-states:rom_chrono"
+    });
+
+    render(<LibraryExplorerPage initialPlatformSlug="snes" />);
+
+    expect(screen.getByText(/Failed to load cloud saves/i)).toBeInTheDocument();
   });
 });
