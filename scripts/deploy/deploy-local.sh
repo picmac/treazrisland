@@ -15,6 +15,8 @@ DOCKER_CONFIG_DIR="${TREAZ_DOCKER_CONFIG:-${REPO_ROOT}/.docker}"
 DEPLOY_DEBUG="${TREAZ_DEPLOY_DEBUG:-true}"
 COMPOSE_PROGRESS_MODE="${TREAZ_COMPOSE_PROGRESS:-plain}"
 LOG_DIR="${TREAZ_DEPLOY_LOG_DIR:-${REPO_ROOT}/diagnostics}"
+RESET_BUILD_ON_FAILURE="${TREAZ_RESET_BUILD_ON_FAILURE:-true}"
+BUILD_MAX_ATTEMPTS="${TREAZ_BUILD_MAX_ATTEMPTS:-2}"
 
 ENV_FILE_TEMPLATE="${TREAZ_ENV_TEMPLATE:-${REPO_ROOT}/.env.example}"
 ENV_FILE_ORIGINAL="${ENV_FILE}"
@@ -425,6 +427,84 @@ compose_invoke() {
   docker "${docker_args[@]}" "${args[@]}"
 }
 
+cleanup_build_state() {
+  log "Cleaning docker resources after failed build"
+  local teardown_status=0
+
+  if ! compose_invoke down -v --remove-orphans; then
+    log "Failed to tear down docker compose project during build cleanup"
+    teardown_status=1
+  fi
+
+  if ! docker builder prune --force >/dev/null 2>&1; then
+    log "Docker builder prune failed; continuing with retry"
+  fi
+
+  if ! docker image prune --force >/dev/null 2>&1; then
+    log "Docker image prune failed; continuing with retry"
+  fi
+
+  if (( teardown_status != 0 )); then
+    return 1
+  fi
+
+  return 0
+}
+
+run_compose_build() {
+  local attempt=1
+  local max_attempts="${BUILD_MAX_ATTEMPTS}"
+
+  if [[ ! "${max_attempts}" =~ ^[0-9]+$ ]]; then
+    max_attempts=2
+  fi
+
+  if (( max_attempts < 1 )); then
+    max_attempts=2
+  fi
+
+  if [[ "$(to_lower "${RESET_BUILD_ON_FAILURE}")" != "true" ]]; then
+    max_attempts=1
+  elif (( max_attempts < 2 )); then
+    max_attempts=2
+  fi
+
+  while (( attempt <= max_attempts )); do
+    local attempt_log="${LOG_DIR}/compose-build-attempt${attempt}.log"
+    if compose_invoke build --pull 2>&1 | tee "${attempt_log}"; then
+      cp "${attempt_log}" "${LOG_DIR}/compose-build.log"
+      if (( attempt > 1 )); then
+        log "docker compose build succeeded on attempt ${attempt}/${max_attempts}"
+      else
+        log "docker compose build succeeded"
+      fi
+      return 0
+    fi
+
+    cp "${attempt_log}" "${LOG_DIR}/compose-build.log"
+    log "docker compose build failed on attempt ${attempt}/${max_attempts}. Review ${attempt_log} for details"
+
+    if (( attempt >= max_attempts )); then
+      return 1
+    fi
+
+    if [[ "$(to_lower "${RESET_BUILD_ON_FAILURE}")" != "true" ]]; then
+      return 1
+    fi
+
+    log "Resetting docker state before retrying build"
+    if ! cleanup_build_state; then
+      log "Build cleanup failed; aborting further retries"
+      return 1
+    fi
+
+    ((attempt++))
+    log "Retrying docker compose build (attempt ${attempt}/${max_attempts})"
+  done
+
+  return 1
+}
+
 resolve_env_file() {
   local requested_path="$1"
   local template_path="$2"
@@ -553,8 +633,8 @@ export DOCKER_BUILDKIT="${DOCKER_BUILDKIT:-1}"
 export COMPOSE_DOCKER_CLI_BUILD="${COMPOSE_DOCKER_CLI_BUILD:-1}"
 
 log "Building production images"
-if ! compose_invoke build --pull 2>&1 | tee "${LOG_DIR}/compose-build.log"; then
-  log "docker compose build failed. Review ${LOG_DIR}/compose-build.log for details"
+if ! run_compose_build; then
+  log "docker compose build failed after retries. Review ${LOG_DIR}/compose-build.log for details"
   exit 1
 fi
 
