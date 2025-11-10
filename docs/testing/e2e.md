@@ -4,7 +4,7 @@ The Playwright smoke suite validates the golden paths for onboarding, authentica
 
 ## Prerequisites
 
-- **Node.js 24 LTS and npm 10+** – match the versions used by the monorepo to avoid dependency resolution drift.
+- **Node.js 22.11.0 LTS and npm 10+** – match the versions used by the monorepo to avoid dependency resolution drift.
 - **Docker & Docker Compose** – required to launch the local stack defined in `infra/docker-compose.yml`.
 - **Playwright browsers** – install once per machine:
   

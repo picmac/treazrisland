@@ -4,7 +4,7 @@ Fastify + Prisma service powering authentication, library management, emulator s
 
 ## Requirements
 
-- Node.js 20 LTS and npm 10.
+- Node.js 22.11.0 LTS and npm 10.
 - PostgreSQL 15+ (the `infra/docker-compose.yml` file provisions `postgres` automatically).
 - MinIO or another S3-compatible object store for ROM/asset storage. Local development can fall back to the filesystem driver.
 

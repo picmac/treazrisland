@@ -2,7 +2,7 @@
 
 ## Rate-limit load test
 - **Scenario:** Exercised `/auth/login` with repeated credential failures to confirm the per-endpoint limiter enforces `RATE_LIMIT_AUTH_POINTS`.
-- **Method:** Added Vitest coverage in `backend/src/routes/auth.security.test.ts` and executed `npm test -- --run backend/src/routes/auth.security.test.ts`.
+- **Method:** Added Vitest coverage in `backend/src/routes/auth.security.test.ts` and executed `npm test -- backend/src/routes/auth.security.test.ts`.
 - **Result:** The first three attempts returned HTTP 401 while the fourth triggered HTTP 429, matching the configured threshold.
 
 ## Lockout drill logging

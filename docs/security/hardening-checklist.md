@@ -2,7 +2,7 @@
 
 This guide enumerates the operational controls required before promoting a TREAZRISLAND stack to staging or production. Pair it with `docs/security/threat-model.md` and the Coding Agents Playbook when reviewing new changes.
 
-_Latest validation:_ **2025-02-28** Vitest run `npm test -- --run` (31 files / 149 tests) confirming
+_Latest validation:_ **2025-02-28** Vitest run `npm test` (31 files / 149 tests) confirming
 enforced MFA challenges, ScreenScraper rotation automation, TLS/CSP headers, WebSocket origin
 pinning, log shipping safeguards, dependency audits, Docker base refresh automation, and Prisma
 privilege linting.

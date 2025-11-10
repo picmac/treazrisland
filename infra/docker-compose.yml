@@ -3,7 +3,7 @@ version: "3.9"
 # Base services supporting local TREAZRISLAND development.
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.10-alpine3.22
     container_name: treazrisland-postgres
     restart: unless-stopped
     env_file:
@@ -23,7 +23,7 @@ services:
       retries: 6
 
   minio:
-    image: minio/minio:RELEASE.2024-05-28T17-19-04Z
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: treazrisland-minio
     command: server /data
     restart: unless-stopped
@@ -48,7 +48,7 @@ services:
       retries: 6
 
   minio-setup:
-    image: minio/mc:RELEASE.2024-05-28T18-11-17Z
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
     container_name: treazrisland-minio-setup
     depends_on:
       minio:
@@ -71,7 +71,7 @@ services:
       - default
 
   postgres-exporter:
-    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.18.1
     container_name: treazrisland-postgres-exporter
     restart: unless-stopped
     environment:
@@ -196,7 +196,7 @@ services:
       retries: 6
 
   prometheus:
-    image: prom/prometheus:v2.53.0
+    image: prom/prometheus:v3.7.3
     container_name: treazrisland-prometheus
     restart: unless-stopped
     depends_on:
@@ -217,7 +217,7 @@ services:
       - --web.enable-lifecycle
 
   loki:
-    image: grafana/loki:3.1.0
+    image: grafana/loki:3.5.8
     container_name: treazrisland-loki
     restart: unless-stopped
     networks:
@@ -231,7 +231,7 @@ services:
       - -config.file=/etc/loki/config.yml
 
   promtail:
-    image: grafana/promtail:3.1.0
+    image: grafana/promtail:3.5.8
     container_name: treazrisland-promtail
     restart: unless-stopped
     depends_on:
@@ -247,7 +247,7 @@ services:
       - -config.file=/etc/promtail/config.yml
 
   alertmanager:
-    image: prom/alertmanager:v0.27.0
+    image: prom/alertmanager:v0.29.0
     container_name: treazrisland-alertmanager
     restart: unless-stopped
     depends_on:
@@ -262,7 +262,7 @@ services:
       - --config.file=/etc/alertmanager/alertmanager.yml
 
   grafana:
-    image: grafana/grafana:10.4.3
+    image: grafana/grafana:12.2.1
     container_name: treazrisland-grafana
     restart: unless-stopped
     depends_on:
@@ -282,7 +282,7 @@ services:
       - ./monitoring/dashboards:/var/lib/grafana/dashboards:ro
 
   node-exporter:
-    image: prom/node-exporter:v1.8.1
+    image: prom/node-exporter:v1.10.2
     container_name: treazrisland-node-exporter
     restart: unless-stopped
     networks:
@@ -298,7 +298,7 @@ services:
       - /:/host:ro,rslave
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.2
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
     container_name: treazrisland-cadvisor
     restart: unless-stopped
     networks:
@@ -311,7 +311,7 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
 
   nginx:
-    image: nginx:1.27-alpine
+    image: nginx:1.29.3-alpine3.22
     container_name: treazrisland-nginx
     depends_on:
       - frontend
@@ -350,7 +350,7 @@ services:
     restart: unless-stopped
 
   cloudflared:
-    image: cloudflare/cloudflared:2024.6.1
+    image: cloudflare/cloudflared:2025.11.1
     container_name: treazrisland-cloudflared
     profiles: ["cloudflared"]
     command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}

@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.10-alpine3.22
     restart: unless-stopped
     environment:
       POSTGRES_DB: treazrisland
@@ -65,7 +65,7 @@ services:
       - "${TURN_MIN_PORT:-49152}-${TURN_MAX_PORT:-49999}:${TURN_MIN_PORT:-49152}-${TURN_MAX_PORT:-49999}/udp"
 
   minio:
-    image: minio/minio:RELEASE.2024-05-28T17-19-04Z
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data
     restart: unless-stopped
     profiles: [object-storage]

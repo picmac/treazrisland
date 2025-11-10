@@ -3,7 +3,7 @@
 This document summarizes the key threats facing TREAZRISLAND and the mitigations required before
 shipping new features. Use it as a pre-flight checklist for reviews and release readiness.
 
-_Latest validation:_ Full Vitest security sweep on **2025-02-28** via `npm test -- --run`
+_Latest validation:_ Full Vitest security sweep on **2025-02-28** via `npm test`
 (31 files / 149 tests) covering MFA enrollment, HTTPS enforcement middleware, CSP/helmet headers,
 WebSocket origin pinning, ScreenScraper credential rotation tooling, log shipping redaction, and
 dependency/Prisma privilege hygiene.

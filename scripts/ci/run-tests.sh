@@ -11,7 +11,7 @@ for project in "${PROJECTS[@]}"; do
   pushd "${WORKDIR}" >/dev/null
   npm ci
   npm run lint
-  npm test -- --run
+  npm test
   PRISMA_LOG_LEVEL=debug DEBUG="prisma:*" NPM_CONFIG_LOGLEVEL=verbose npm run build
   popd >/dev/null
   printf '[ci] %s checks completed\n' "${project}"

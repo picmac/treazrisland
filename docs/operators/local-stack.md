@@ -5,7 +5,7 @@ This guide explains how to launch the developer stack defined in the repository 
 ## 1. Prerequisites
 
 - Docker Engine 24+ with the Compose plugin.
-- Node.js 20+ installed locally (only required if you prefer to run the apps on the host).
+- Node.js 22.11.0 LTS installed locally (only required if you prefer to run the apps on the host).
 - The environment variables from `.env.example` copied to a local `.env` file (or exported in your shell).
 
 Install dependencies once so the bind-mounted `node_modules/` folders exist before Compose starts:

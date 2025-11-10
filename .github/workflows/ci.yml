@@ -26,7 +26,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22.11.0
           cache: npm
           cache-dependency-path: ${{ matrix.project }}/package-lock.json
 
@@ -37,7 +37,7 @@ jobs:
         run: npm run lint
 
       - name: Unit tests
-        run: npm test -- --run
+        run: npm test
 
       - name: Build backend
         if: matrix.project == 'backend'

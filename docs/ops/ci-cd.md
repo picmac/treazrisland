@@ -60,7 +60,7 @@ chmod 600 /opt/treazrisland/app/infra/monitoring/secrets/metrics_token
 
 - `infra/docker-compose.prod.yml` defines the production stack: Postgres, MinIO, backend, frontend, and the full observability suite (Prometheus, Alertmanager, Grafana, node-exporter, cAdvisor, postgres-exporter). It references the unified env file and secrets prepared above.
 - `scripts/deploy/deploy-local.sh` executes the deployment end-to-end: fetches `origin/main`, rebuilds Docker images with `--pull`, applies the compose stack, runs Prisma migrations, and optionally seeds platform data when `TREAZ_RUN_PLATFORM_SEED=true`. The script maintains a manifest of health probes for the external services (`postgres`, `minio`, `backend`, `frontend`) and executes them with configurable retries/backoff. Use `TREAZ_HEALTH_MAX_ATTEMPTS` and `TREAZ_HEALTH_BACKOFF_SECONDS` to adjust the retry window when running on slower hardware.
-- `scripts/ci/run-tests.sh` mirrors the CI workflow locally (`npm ci`, `npm run lint`, `npm test -- --run`, `npm run build` for both backend and frontend).
+- `scripts/ci/run-tests.sh` mirrors the CI workflow locally (`npm ci`, `npm run lint`, `npm test`, `npm run build` for both backend and frontend).
 - `.github/workflows/ci.yml` ties everything together: the `lint-test-build` matrix runs on GitHub-hosted runners for every push/PR targeting `main` or `develop`; the `deploy` job triggers only for pushes to `main` after the matrix succeeds.
 
 ## 4. Register the self-hosted GitHub runner
@@ -121,7 +121,7 @@ The GitHub workflow passes `TREAZ_ENV_FILE` and `TREAZ_COMPOSE_PROJECT_NAME` to 
 1. **`lint-test-build`** (matrix of `backend`, `frontend`) on GitHub-hosted Ubuntu runners for pushes to `main` and `develop`, plus all pull requests.
    - `npm ci`
    - `npm run lint`
-   - `npm test -- --run`
+   - `npm test`
    - `npm run build`
 2. **`verify-deploy-runner`** on GitHub-hosted infrastructure for successful pushes to `main` only.
    - Uses the GitHub REST API to confirm at least one `self-hosted` runner with the `treaz-home` label is online.
