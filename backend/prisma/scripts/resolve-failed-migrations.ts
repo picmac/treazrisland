@@ -1,10 +1,16 @@
 import { spawnSync } from 'node:child_process';
 
 const AUTO_ROLLBACK_MIGRATIONS = new Set([
+  '202502030001_create_netplay_core',
   '202502040001_add_netplay_signal_messages',
 ]);
 
-function runPrisma(args: string[], options?: { inheritStdout?: boolean }) {
+type RunPrismaOptions = {
+  inheritStdout?: boolean;
+  allowNonZeroExit?: boolean;
+};
+
+function runPrisma(args: string[], options?: RunPrismaOptions) {
   const stdio: any = options?.inheritStdout
     ? ['inherit', 'inherit', 'inherit']
     : ['ignore', 'pipe', 'pipe'];
@@ -19,30 +25,55 @@ function runPrisma(args: string[], options?: { inheritStdout?: boolean }) {
     throw result.error;
   }
 
-  if (result.status !== 0) {
+  if (result.status !== 0 && !options?.allowNonZeroExit) {
     const stderr = result.stderr || '';
     throw new Error(`Failed to run prisma ${args.join(' ')}: ${stderr}`.trim());
   }
 
-  return result.stdout ?? '';
+  return {
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '',
+    status: result.status ?? 0,
+  };
 }
 
-function parseStatus(output: string) {
-  try {
-    return JSON.parse(output);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Unable to parse prisma migrate status JSON output: ${message}`);
+function parseFailedMigrations(output: string) {
+  const lines = output.split(/\r?\n/);
+  const failed: string[] = [];
+  let inFailedSection = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!inFailedSection) {
+      if (/^Following migrations? have failed:$/i.test(line)) {
+        inFailedSection = true;
+      }
+      continue;
+    }
+
+    if (line === '') {
+      if (failed.length > 0) {
+        break;
+      }
+      continue;
+    }
+
+    if (/^(During development|The failed migration)/i.test(line)) {
+      break;
+    }
+
+    failed.push(line);
   }
+
+  return failed;
 }
 
 async function main() {
-  const statusOutput = runPrisma(['migrate', 'status', '--json']);
-  const status = parseStatus(statusOutput) as {
-    failedMigrationNames?: string[];
-  };
-
-  const failedMigrations = status.failedMigrationNames ?? [];
+  const statusResult = runPrisma(['migrate', 'status'], { allowNonZeroExit: true });
+  const combinedOutput = [statusResult.stdout, statusResult.stderr]
+    .filter((value) => value && value.length > 0)
+    .join('\n');
+  const failedMigrations = parseFailedMigrations(combinedOutput);
   if (failedMigrations.length === 0) {
     console.log('[prisma:resolve] No failed migrations detected.');
     return;
