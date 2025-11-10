@@ -42,7 +42,7 @@ docker compose up --build
 
 The Compose file performs the following bootstrapping steps automatically:
 
-1. **Database migrations:** `backend-migrate` runs `prisma migrate deploy` against the `db` service.
+1. **Database migrations:** `backend-migrate` runs `npm run db:prepare` (repair, migrate, seed) against the `db` service.
 2. **Seed data:** the same job upserts the reference platform list via `npm run prisma:seed:platforms`.
 3. **MinIO provisioning:** `minio-setup` creates the `treaz-assets`, `treaz-roms`, and `treaz-bios` buckets, attaches lifecycle policies, and reuses the configured credentials.
 

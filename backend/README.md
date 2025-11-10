@@ -32,11 +32,14 @@ Prisma migrations live under `prisma/migrations/`. Keep the schema in sync with:
 
 ```bash
 npm run prisma:migrate      # prisma migrate dev
+npm run prisma:repair       # mark supported failed migrations as rolled back
 npx prisma migrate deploy   # apply migrations in CI/production
 npm run prisma:generate     # regenerate the Prisma client
 npm run prisma:seed:platforms
 npm run prisma:seed:roms
 ```
+
+`npm run db:prepare` chains the repair, deploy, and platform seed steps together for automation scripts and Docker Compose jobs.
 
 `npm run prisma:seed:platforms` loads the canonical platform catalogue required by the frontend to render browse views.
 `npm run prisma:seed:roms` enriches that catalogue with representative ROM metadata, artwork, and curated top lists.

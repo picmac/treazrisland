@@ -73,7 +73,7 @@ services:
       minio-setup:
         condition: service_completed_successfully
     command: >-
-      sh -c "npx prisma migrate deploy && npm run prisma:seed:platforms"
+      sh -c "npm run db:prepare"
     restart: "no"
 
   backend:
