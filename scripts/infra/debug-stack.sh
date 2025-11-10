@@ -26,6 +26,7 @@ DEFAULT_STACK_FILE="${REPO_ROOT}/infra/docker-compose.yml"
 STACK_FILE="${STACK_FILE:-${DEFAULT_STACK_FILE}}"
 PROJECT_NAME="${TREAZ_COMPOSE_PROJECT_NAME:-treazrisland}"
 ENV_FILE="${TREAZ_ENV_FILE:-${REPO_ROOT}/.env}"
+ENV_FILE_ORIGINAL="${ENV_FILE}"
 TAIL_LINES=100
 SERVICES=()
 
@@ -68,12 +69,43 @@ if [[ ! -f "${STACK_FILE}" ]]; then
   exit 1
 fi
 
+ENV_FILE_IS_TEMP="false"
+TEMP_ENV_FILE=""
 if [[ ! -f "${ENV_FILE}" ]]; then
-  cat <<MSG >&2
-[debug-stack] Environment file not found at ${ENV_FILE}.
-[debug-stack] Copy .env.example to ${ENV_FILE} (or set TREAZ_ENV_FILE) before debugging the stack.
+  FALLBACK_ENV_FILE="${REPO_ROOT}/.env.example"
+  if [[ -f "${FALLBACK_ENV_FILE}" ]]; then
+    if TEMP_ENV_FILE=$(mktemp 2>/dev/null); then
+      cp "${FALLBACK_ENV_FILE}" "${TEMP_ENV_FILE}"
+      ENV_FILE="${TEMP_ENV_FILE}"
+      ENV_FILE_IS_TEMP="true"
+      cat <<MSG >&2
+[debug-stack] Environment file not found at ${ENV_FILE_ORIGINAL:-${TREAZ_ENV_FILE:-${REPO_ROOT}/.env}}.
+[debug-stack] Using temporary copy of ${FALLBACK_ENV_FILE} instead.
 MSG
-  exit 1
+    else
+      ENV_FILE="${FALLBACK_ENV_FILE}"
+      cat <<MSG >&2
+[debug-stack] Environment file not found at ${ENV_FILE_ORIGINAL:-${TREAZ_ENV_FILE:-${REPO_ROOT}/.env}}.
+[debug-stack] Falling back to ${FALLBACK_ENV_FILE} (unable to create temporary copy).
+MSG
+    fi
+  else
+    cat <<MSG >&2
+[debug-stack] Environment file not found at ${ENV_FILE_ORIGINAL:-${TREAZ_ENV_FILE:-${REPO_ROOT}/.env}}.
+[debug-stack] Proceeding without an env file; docker compose commands may fail if services rely on it.
+MSG
+  fi
+fi
+
+if [[ -n "${ENV_FILE}" && -f "${ENV_FILE}" ]]; then
+  export TREAZ_ENV_FILE="${ENV_FILE}"
+fi
+
+if [[ "${ENV_FILE_IS_TEMP}" == "true" && -n "${TEMP_ENV_FILE}" ]]; then
+  cleanup_temp_env() {
+    rm -f "${TEMP_ENV_FILE}"
+  }
+  trap cleanup_temp_env EXIT
 fi
 
 echo "[debug-stack] Compose project: ${PROJECT_NAME}"
