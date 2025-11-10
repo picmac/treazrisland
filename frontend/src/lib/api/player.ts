@@ -68,6 +68,50 @@ export async function createPlayState(payload: {
   });
 }
 
+export type UpdatePlayStatePayload = {
+  label?: string;
+  slot?: number;
+  data?: ArrayBuffer;
+};
+
+export async function updatePlayState(
+  id: string,
+  payload: UpdatePlayStatePayload
+): Promise<PlayState> {
+  if (!id) {
+    throw new Error("id is required to update a play state");
+  }
+
+  const body: Record<string, unknown> = {};
+
+  if (payload.label !== undefined) {
+    body.label = payload.label;
+  }
+
+  if (payload.slot !== undefined) {
+    body.slot = payload.slot;
+  }
+
+  if (payload.data !== undefined) {
+    body.data = arrayBufferToBase64(payload.data);
+  }
+
+  return apiFetch<PlayState>(`/play-states/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function deletePlayState(id: string): Promise<void> {
+  if (!id) {
+    throw new Error("id is required to delete a play state");
+  }
+
+  await apiFetch<void>(`/play-states/${encodeURIComponent(id)}`, {
+    method: "DELETE"
+  });
+}
+
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
