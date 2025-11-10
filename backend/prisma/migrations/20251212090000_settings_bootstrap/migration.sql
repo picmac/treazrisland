@@ -1,7 +1,12 @@
 -- Introduce runtime system settings storage and setup state tracking.
-CREATE TYPE "SetupStepStatus" AS ENUM ('PENDING', 'COMPLETED', 'SKIPPED');
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'SetupStepStatus') THEN
+    CREATE TYPE "SetupStepStatus" AS ENUM ('PENDING', 'COMPLETED', 'SKIPPED');
+  END IF;
+END $$;
 
-CREATE TABLE "SystemSetting" (
+CREATE TABLE IF NOT EXISTS "SystemSetting" (
   "id" TEXT NOT NULL,
   "key" TEXT NOT NULL,
   "value" JSONB NOT NULL,
@@ -12,11 +17,27 @@ CREATE TABLE "SystemSetting" (
   CONSTRAINT "SystemSetting_key_key" UNIQUE ("key")
 );
 
-ALTER TABLE "SystemSetting"
-  ADD CONSTRAINT "SystemSetting_updatedById_fkey"
-  FOREIGN KEY ("updatedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF to_regclass('"SystemSetting"') IS NULL THEN
+    RAISE EXCEPTION 'Required table "SystemSetting" does not exist for SystemSetting_updatedById_fkey';
+  END IF;
 
-CREATE TABLE "SetupState" (
+  IF to_regclass('"User"') IS NULL THEN
+    RAISE EXCEPTION 'Required table "User" does not exist for SystemSetting_updatedById_fkey';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'SystemSetting_updatedById_fkey'
+  ) THEN
+    ALTER TABLE "SystemSetting"
+      ADD CONSTRAINT "SystemSetting_updatedById_fkey"
+      FOREIGN KEY ("updatedById") REFERENCES "User"("id")
+      ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS "SetupState" (
   "id" INTEGER NOT NULL DEFAULT 1,
   "setupComplete" BOOLEAN NOT NULL DEFAULT false,
   "steps" JSONB,
