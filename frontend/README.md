@@ -4,7 +4,7 @@ Next.js 14 App Router client that renders the SNES-inspired experience described
 
 ## Requirements
 
-- Node.js 22.21.1 LTS and npm 10.
+- Node.js 22.11.0 LTS and npm 10.
 - A running backend at `NEXT_PUBLIC_API_BASE_URL` (defaults to `http://localhost:3001`).
 
 ## Environment setup
