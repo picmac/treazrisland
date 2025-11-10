@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
+import {
+  useRomPlayStates,
+  type PlayState,
+  formatPlayStateLabel,
+  formatPlayStateTimestamp
+} from "@lib/api/player";
 import { useRomDetail } from "@lib/api/roms";
 import { PixelFrame } from "@/src/components/pixel/frame";
 import { PixelNotice } from "@/src/components/pixel/notice";
@@ -15,9 +21,18 @@ type LibraryRomDetailShellProps = {
 export function LibraryRomDetailShell({ romId }: LibraryRomDetailShellProps) {
   const { data, error, isLoading, isValidating, refresh } = useRomDetail(romId);
   const { isFavorite, toggleFavorite, isPending } = useFavorites();
+  const playStates = useRomPlayStates(romId);
 
   const primaryMetadata = useMemo(() => data?.metadata?.[0] ?? null, [data?.metadata]);
   const platformLabel = data?.platform.shortName ?? data?.platform.name ?? data?.platform.slug;
+  const sortedPlayStates = useMemo(() => {
+    if (!playStates.data) {
+      return [] as PlayState[];
+    }
+    return [...playStates.data].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+  }, [playStates.data]);
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 text-parchment">
@@ -107,9 +122,60 @@ export function LibraryRomDetailShell({ romId }: LibraryRomDetailShellProps) {
               )}
             </section>
 
-            <PixelNotice className="bg-ink/40 text-[0.7rem] uppercase tracking-widest">
-              Save-state slots will appear here once cloud sync is enabled for this ROM.
-            </PixelNotice>
+            <section className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold text-parchment">Cloud saves</h2>
+                {playStates.isValidating && (
+                  <span className="rounded-pixel bg-ink/60 px-2 py-1 text-xs uppercase tracking-widest text-parchment/70">
+                    Syncing…
+                  </span>
+                )}
+              </div>
+              {playStates.error && (
+                <PixelNotice tone="error">
+                  Failed to load save slots: {playStates.error.message}
+                </PixelNotice>
+              )}
+              {playStates.isLoading && (
+                <p className="text-sm text-parchment/70">Mapping save slots…</p>
+              )}
+              {!playStates.isLoading && !playStates.error && sortedPlayStates.length === 0 && (
+                <PixelNotice className="bg-ink/40 text-[0.7rem] uppercase tracking-widest">
+                  No cloud saves yet. Launch the emulator to create your first save.
+                </PixelNotice>
+              )}
+              {sortedPlayStates.length > 0 && (
+                <ul className="grid gap-3 sm:grid-cols-2">
+                  {sortedPlayStates.map((state) => (
+                    <li key={state.id}>
+                      <div className="flex h-full flex-col gap-3 rounded-pixel border border-ink/50 bg-ink/50 p-3 shadow-pixel">
+                        <div>
+                          <p className="text-sm font-semibold text-parchment">
+                            {formatPlayStateLabel(state)}
+                          </p>
+                          <p className="text-xs uppercase tracking-widest text-parchment/60">
+                            Updated {formatPlayStateTimestamp(state.updatedAt)}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs uppercase tracking-widest text-parchment/60">
+                          <span>
+                            Slot: {typeof state.slot === "number" ? state.slot : "—"}
+                          </span>
+                          <span>{formatBytes(state.size)}</span>
+                        </div>
+                        <Link
+                          href={`/play/${romId}?resume=${encodeURIComponent(state.id)}`}
+                          aria-label={`Resume ${data?.title ?? "this ROM"} from ${formatPlayStateLabel(state)}`}
+                          className="inline-flex items-center justify-center rounded-pixel bg-kelp px-3 py-2 text-xs font-semibold uppercase tracking-widest text-night shadow-pixel transition hover:bg-lagoon"
+                        >
+                          Resume
+                        </Link>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
             <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-widest text-lagoon">
               <Link href={`/library`} className="hover:underline">

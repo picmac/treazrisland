@@ -9,8 +9,19 @@ vi.mock("@/src/hooks/useFavorites", () => ({
   useFavorites: vi.fn()
 }));
 
+vi.mock("@lib/api/player", async () => {
+  const actual = await vi.importActual<typeof import("@lib/api/player")>(
+    "@lib/api/player"
+  );
+  return {
+    ...actual,
+    useRomPlayStates: vi.fn()
+  };
+});
+
 const { useRomDetail } = await import("@lib/api/roms");
 const { useFavorites } = await import("@/src/hooks/useFavorites");
+const { useRomPlayStates } = await import("@lib/api/player");
 const { LibraryRomDetailShell } = await import("@/src/library/library-rom-detail-shell");
 
 describe("LibraryRomDetailShell", () => {
@@ -101,18 +112,44 @@ describe("LibraryRomDetailShell", () => {
       toggleFavorite,
       refresh: vi.fn()
     });
+
+    const playState = {
+      id: "state_1",
+      romId: "rom_chrono",
+      label: "End of Time",
+      slot: 1,
+      size: 4096,
+      checksumSha256: "checksum",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      downloadUrl: "/play-states/state_1/binary"
+    };
+
+    vi.mocked(useRomPlayStates).mockReturnValue({
+      data: [playState],
+      error: null,
+      isLoading: false,
+      isValidating: false,
+      refresh: vi.fn(),
+      mutate: vi.fn(),
+      key: "rom-play-states:rom_chrono"
+    });
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it("surfaces metadata and save-state placeholder", () => {
+  it("renders metadata and populated cloud saves", () => {
     render(<LibraryRomDetailShell romId="rom_chrono" />);
 
     expect(screen.getByText(/Chrono Trigger/)).toBeInTheDocument();
     expect(screen.getByText(/Guard the flow of time/)).toBeInTheDocument();
-    expect(screen.getByText(/Save-state slots will appear here/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", {
+        name: /Resume Chrono Trigger from End of Time/i
+      })
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Launch Emulator/i })).toHaveAttribute(
       "href",
       "/play/rom_chrono"
@@ -130,5 +167,37 @@ describe("LibraryRomDetailShell", () => {
     const favoriteButton = screen.getByRole("button", { name: /Favorite/i });
     await user.click(favoriteButton);
     expect(toggleFavorite).toHaveBeenCalledWith("rom_chrono");
+  });
+
+  it("shows empty state messaging when no cloud saves are present", () => {
+    vi.mocked(useRomPlayStates).mockReturnValueOnce({
+      data: [],
+      error: null,
+      isLoading: false,
+      isValidating: false,
+      refresh: vi.fn(),
+      mutate: vi.fn(),
+      key: "rom-play-states:rom_chrono"
+    });
+
+    render(<LibraryRomDetailShell romId="rom_chrono" />);
+
+    expect(screen.getByText(/No cloud saves yet/i)).toBeInTheDocument();
+  });
+
+  it("surfaces error state when cloud save loading fails", () => {
+    vi.mocked(useRomPlayStates).mockReturnValueOnce({
+      data: null,
+      error: new Error("kaboom"),
+      isLoading: false,
+      isValidating: false,
+      refresh: vi.fn(),
+      mutate: vi.fn(),
+      key: "rom-play-states:rom_chrono"
+    });
+
+    render(<LibraryRomDetailShell romId="rom_chrono" />);
+
+    expect(screen.getByText(/Failed to load save slots/i)).toBeInTheDocument();
   });
 });
