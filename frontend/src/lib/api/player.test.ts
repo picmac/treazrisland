@@ -14,6 +14,8 @@ import { apiFetch } from "./client";
 import {
   listPlayStates,
   createPlayState,
+  updatePlayState,
+  deletePlayState,
   listRecentPlayStates,
   requestRomBinary,
   type PlayState,
@@ -97,6 +99,72 @@ describe("player api", () => {
       }),
     );
     expect(result).toBe(created);
+  });
+
+  it("updates a play state with partial payload", async () => {
+    const updated: PlayState = {
+      id: "state-1",
+      romId: "rom-1",
+      label: "Renamed",
+      slot: 1,
+      size: 1024,
+      checksumSha256: "def",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      downloadUrl: "/play-states/state-1/binary",
+    };
+
+    vi.mocked(apiFetch).mockResolvedValueOnce(updated);
+
+    const result = await updatePlayState("state-1", { label: "Renamed", slot: 1 });
+
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/play-states/state-1",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ label: "Renamed", slot: 1 }),
+      }),
+    );
+    expect(result).toBe(updated);
+  });
+
+  it("encodes binary data when updating a play state", async () => {
+    const buffer = new Uint8Array([9, 8, 7]).buffer;
+    const expectedBase64 = Buffer.from([9, 8, 7]).toString("base64");
+    const updated: PlayState = {
+      id: "state-2",
+      romId: "rom-1",
+      label: null,
+      slot: 0,
+      size: 3,
+      checksumSha256: "ghi",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      downloadUrl: "/play-states/state-2/binary",
+    };
+
+    vi.mocked(apiFetch).mockResolvedValueOnce(updated);
+
+    await updatePlayState("state-2", { data: buffer });
+
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/play-states/state-2",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ data: expectedBase64 }),
+      }),
+    );
+  });
+
+  it("deletes a play state", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(undefined);
+
+    await deletePlayState("state-3");
+
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/play-states/state-3",
+      expect.objectContaining({ method: "DELETE" }),
+    );
   });
 
   it("fetches recent play states with rom context", async () => {
