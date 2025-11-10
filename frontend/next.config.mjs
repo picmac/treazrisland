@@ -1,4 +1,9 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { buildSecurityHeaders } from "./security-headers.mjs";
+
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const AUTH_API_BASE_URL =
   process.env.AUTH_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
@@ -34,6 +39,17 @@ const nextConfig = {
       test: /\.wasm$/i,
       type: "asset/resource"
     });
+
+    config.resolve = config.resolve ?? {};
+    config.resolve.alias = {
+      ...(config.resolve.alias ?? {}),
+      "@": path.resolve(projectRoot),
+      "@admin": path.resolve(projectRoot, "src/admin"),
+      "@auth": path.resolve(projectRoot, "src/auth"),
+      "@components": path.resolve(projectRoot, "src/components"),
+      "@lib": path.resolve(projectRoot, "src/lib"),
+      "@onboarding": path.resolve(projectRoot, "src/onboarding")
+    };
 
     return config;
   },
