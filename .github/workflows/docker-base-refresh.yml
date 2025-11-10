@@ -13,8 +13,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Pull Node base images
         run: |
-          docker pull node:24-bullseye
-          docker image inspect node:24-bullseye --format 'Digest: {{index .RepoDigests 0}}'
+          docker pull node:22.21.1-bullseye
+          docker image inspect node:22.21.1-bullseye --format 'Digest: {{index .RepoDigests 0}}'
       - name: Pull supporting runtime images
         run: |
           docker pull postgres:16-alpine
