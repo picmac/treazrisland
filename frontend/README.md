@@ -79,7 +79,7 @@ See [`docs/testing/e2e.md`](../docs/testing/e2e.md) for Playwright prerequisites
 
 ## Security headers & CSP maintenance
 
-The App Router emits strict security headers for every route via [`next.config.ts`](./next.config.ts). The baseline policy enforces:
+The App Router emits strict security headers for every route via [`next.config.mjs`](./next.config.mjs). The baseline policy enforces:
 
 - `Content-Security-Policy` with `default-src 'self'`, ROM/media allowances, `report-uri /api/csp-report`, and automatic upgrades for mixed content.
 - `Strict-Transport-Security` (two-year TTL with subdomain coverage and preload hint).
@@ -89,7 +89,7 @@ Routes that still require inline scripts (for example, the EmulatorJS boot seque
 
 When adding new external assets:
 
-1. Update [`security-headers.ts`](./security-headers.ts) with the additional `img-src`, `connect-src`, or `media-src` directives, avoiding wildcards when possible.
+1. Update [`security-headers.mjs`](./security-headers.mjs) with the additional `img-src`, `connect-src`, or `media-src` directives, avoiding wildcards when possible.
 2. Extend the Vitest suite in [`tests/security/security-headers.test.ts`](./tests/security/security-headers.test.ts) to cover the new directive so regressions are caught automatically.
 3. Run `npm test` to confirm the integration coverage passes before shipping.
 

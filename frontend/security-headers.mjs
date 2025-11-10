@@ -1,12 +1,18 @@
-export type ContentSecurityPolicyOptions = {
-  nonce?: string;
-  mediaCdn?: string | null;
-};
+// @ts-check
+
+/**
+ * @typedef {Object} ContentSecurityPolicyOptions
+ * @property {string=} nonce
+ * @property {string|null=} mediaCdn
+ */
 
 const TLS_ENABLED_VALUES = new Set(["https", "true", "1", "on"]);
 const TLS_DISABLED_VALUES = new Set(["http", "false", "0", "off"]);
 
-function isTlsEnabled(): boolean {
+/**
+ * @returns {boolean}
+ */
+function isTlsEnabled() {
   const raw = process.env.TREAZ_TLS_MODE;
   if (!raw || raw.trim().length === 0) {
     return true;
@@ -31,7 +37,11 @@ function isTlsEnabled(): boolean {
   return true;
 }
 
-function normalizeOrigin(value?: string | null): string | null {
+/**
+ * @param {string | null | undefined} value
+ * @returns {string | null}
+ */
+function normalizeOrigin(value) {
   if (!value) {
     return null;
   }
@@ -49,12 +59,21 @@ function normalizeOrigin(value?: string | null): string | null {
   }
 }
 
-function serializeDirective(name: string, sources: Iterable<string>): string {
+/**
+ * @param {string} name
+ * @param {Iterable<string>} sources
+ * @returns {string}
+ */
+function serializeDirective(name, sources) {
   const sourceList = Array.from(new Set(sources)).filter(Boolean);
   return `${name} ${sourceList.join(" ")}`.trim();
 }
 
-export function createContentSecurityPolicy(options: ContentSecurityPolicyOptions = {}): string {
+/**
+ * @param {ContentSecurityPolicyOptions=} options
+ * @returns {string}
+ */
+export function createContentSecurityPolicy(options = {}) {
   const tlsEnabled = isTlsEnabled();
   const { nonce, mediaCdn = process.env.NEXT_PUBLIC_MEDIA_CDN ?? null } = options;
   const mediaCdnOrigin = normalizeOrigin(mediaCdn);
@@ -109,7 +128,11 @@ export function createContentSecurityPolicy(options: ContentSecurityPolicyOption
   return directives.join("; ");
 }
 
-export function buildSecurityHeaders(options?: ContentSecurityPolicyOptions) {
+/**
+ * @param {ContentSecurityPolicyOptions=} options
+ * @returns {{ key: string, value: string }[]}
+ */
+export function buildSecurityHeaders(options) {
   const tlsEnabled = isTlsEnabled();
   const headers = [
     {
