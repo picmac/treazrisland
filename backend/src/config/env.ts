@@ -367,9 +367,7 @@ const envSchema = z.object({
   NETPLAY_TURN_PASSWORD: z
     .string()
     .optional()
-    .transform((value) =>
-      value && value.length > 0 ? value : undefined,
-    ),
+    .transform((value) => (value && value.length > 0 ? value : undefined)),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -511,7 +509,10 @@ if (parsed.data.NETPLAY_MAX_CONCURRENT_SESSIONS <= 0) {
 }
 
 if (netplayTurnUris.length > 0) {
-  if (!parsed.data.NETPLAY_TURN_USERNAME || !parsed.data.NETPLAY_TURN_PASSWORD) {
+  if (
+    !parsed.data.NETPLAY_TURN_USERNAME ||
+    !parsed.data.NETPLAY_TURN_PASSWORD
+  ) {
     throw new Error(
       "NETPLAY_TURN_URIS requires NETPLAY_TURN_USERNAME and NETPLAY_TURN_PASSWORD",
     );
