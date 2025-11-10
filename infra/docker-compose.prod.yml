@@ -1,5 +1,3 @@
-version: "3.9"
-
 # Production-grade stack for the home deployment executed by the GitHub Actions runner.
 services:
   postgres:
