@@ -1,14 +1,31 @@
--- CreateEnum
-CREATE TYPE "NetplaySessionStatus" AS ENUM ('OPEN', 'ACTIVE', 'CLOSED');
+DO $$
+BEGIN
+    CREATE TYPE "NetplaySessionStatus" AS ENUM ('OPEN', 'ACTIVE', 'CLOSED');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "NetplayParticipantRole" AS ENUM ('HOST', 'PLAYER');
+DO $$
+BEGIN
+    CREATE TYPE "NetplayParticipantRole" AS ENUM ('HOST', 'PLAYER');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "NetplayParticipantStatus" AS ENUM ('INVITED', 'CONNECTED', 'DISCONNECTED');
+DO $$
+BEGIN
+    CREATE TYPE "NetplayParticipantStatus" AS ENUM ('INVITED', 'CONNECTED', 'DISCONNECTED');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- CreateTable
-CREATE TABLE "NetplaySession" (
+CREATE TABLE IF NOT EXISTS "NetplaySession" (
     "id" TEXT NOT NULL,
     "romId" TEXT NOT NULL,
     "hostId" TEXT NOT NULL,
@@ -22,8 +39,7 @@ CREATE TABLE "NetplaySession" (
     CONSTRAINT "NetplaySession_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "NetplayParticipant" (
+CREATE TABLE IF NOT EXISTS "NetplayParticipant" (
     "id" TEXT NOT NULL,
     "sessionId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -39,27 +55,28 @@ CREATE TABLE "NetplayParticipant" (
     CONSTRAINT "NetplayParticipant_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE INDEX "NetplaySession_hostId_idx" ON "NetplaySession"("hostId");
+CREATE INDEX IF NOT EXISTS "NetplaySession_hostId_idx" ON "NetplaySession"("hostId");
 
--- CreateIndex
-CREATE INDEX "NetplaySession_status_idx" ON "NetplaySession"("status");
+CREATE INDEX IF NOT EXISTS "NetplaySession_status_idx" ON "NetplaySession"("status");
 
--- CreateIndex
-CREATE INDEX "NetplaySession_expiresAt_idx" ON "NetplaySession"("expiresAt");
+CREATE INDEX IF NOT EXISTS "NetplaySession_expiresAt_idx" ON "NetplaySession"("expiresAt");
 
--- CreateIndex
-CREATE UNIQUE INDEX "NetplayParticipant_sessionId_userId_key" ON "NetplayParticipant"("sessionId", "userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "NetplayParticipant_sessionId_userId_key" ON "NetplayParticipant"("sessionId", "userId");
 
--- CreateIndex
-CREATE INDEX "NetplayParticipant_userId_idx" ON "NetplayParticipant"("userId");
+CREATE INDEX IF NOT EXISTS "NetplayParticipant_userId_idx" ON "NetplayParticipant"("userId");
 
--- CreateIndex
-CREATE INDEX "NetplayParticipant_status_idx" ON "NetplayParticipant"("status");
+CREATE INDEX IF NOT EXISTS "NetplayParticipant_status_idx" ON "NetplayParticipant"("status");
 
 -- Foreign keys to platform, user, and save state tables are added in 20251213090000_add_netplay_foreign_keys.
 
--- AddForeignKey
-ALTER TABLE "NetplayParticipant" ADD CONSTRAINT "NetplayParticipant_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "NetplaySession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    ALTER TABLE "NetplayParticipant"
+    ADD CONSTRAINT "NetplayParticipant_sessionId_fkey"
+    FOREIGN KEY ("sessionId") REFERENCES "NetplaySession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- privilege-reviewed: 2025-02-28 security hardening checklist automation
