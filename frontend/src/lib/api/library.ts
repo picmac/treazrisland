@@ -237,8 +237,21 @@ export async function listRoms(params: ListRomsParams = {}): Promise<RomListResp
   return apiFetch(path);
 }
 
-export async function getRom(id: string): Promise<RomDetail> {
-  return apiFetch(`/roms/${encodeURIComponent(id)}`);
+export type GetRomParams = {
+  includeHistory?: boolean;
+};
+
+export async function getRom(id: string, params: GetRomParams = {}): Promise<RomDetail> {
+  const query = new URLSearchParams();
+  if (params.includeHistory) {
+    query.set("includeHistory", "true");
+  }
+  const suffix = query.toString();
+  const path =
+    suffix.length > 0
+      ? `/roms/${encodeURIComponent(id)}?${suffix}`
+      : `/roms/${encodeURIComponent(id)}`;
+  return apiFetch(path);
 }
 
 export async function listRomAssets(
@@ -491,9 +504,13 @@ type UseRomDetailResult = SwrSnapshot<RomDetail> & {
 
 const romDetailCache = new Map<string, SwrCacheEntry<RomDetail>>();
 
-export function useRomDetail(id: string | null | undefined): UseRomDetailResult {
+export function useRomDetail(
+  id: string | null | undefined,
+  params: GetRomParams = {}
+): UseRomDetailResult {
   const romId = id?.trim() ?? "";
-  const key = romId.length > 0 ? `rom:${romId}` : null;
+  const includeHistory = Boolean(params.includeHistory);
+  const key = romId.length > 0 ? `rom:${romId}:history:${includeHistory ? "1" : "0"}` : null;
 
   const subscribe = useCallback(
     (onStoreChange: () => void) => {
@@ -528,16 +545,20 @@ export function useRomDetail(id: string | null | undefined): UseRomDetailResult 
       return;
     }
     const entry = ensureCacheEntry(romDetailCache, key);
-    void revalidateEntry(entry, () => getRom(romId));
-  }, [key, romId]);
+    void revalidateEntry(entry, () =>
+      getRom(romId, includeHistory ? { includeHistory: true } : {})
+    );
+  }, [includeHistory, key, romId]);
 
   const refresh = useCallback(async () => {
     if (!key) {
       return;
     }
     const entry = ensureCacheEntry(romDetailCache, key);
-    await revalidateEntry(entry, () => getRom(romId));
-  }, [key, romId]);
+    await revalidateEntry(entry, () =>
+      getRom(romId, includeHistory ? { includeHistory: true } : {})
+    );
+  }, [includeHistory, key, romId]);
 
   const mutate = useCallback(
     (updater: (current: RomDetail | null) => RomDetail | null | undefined) => {

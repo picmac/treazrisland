@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { getRom, type RomDetail } from "@lib/api/roms";
 import { PixelButton, PixelFrame } from "@/src/components/pixel";
@@ -31,7 +31,7 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
       setState("loading");
       setError(null);
       try {
-        const detail = await getRom(id);
+        const detail = await getRom(id, isAdmin ? { includeHistory: true } : {});
         if (!cancelled) {
           setRom(detail);
           setState("loaded");
@@ -48,10 +48,13 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, isAdmin]);
 
   const metadata = rom?.metadata ?? [];
   const primary = metadata[0] ?? null;
+  const enrichmentJobs = rom?.enrichmentJobs ?? [];
+  const uploadAudits = rom?.uploadAudits ?? [];
+
 
   const handleEnrichment = async () => {
     if (!rom) {
@@ -156,20 +159,141 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
               )}
             </section>
 
-            <section className="space-y-2 text-sm text-foreground/70">
-              <h2 className="text-lg font-semibold text-foreground">Recent uploads</h2>
-              {rom.uploadAudits.length === 0 ? (
-                <p>No upload activity recorded.</p>
-              ) : (
-                <ul className="space-y-1">
-                  {rom.uploadAudits.map((audit) => (
-                    <li key={audit.id}>
-                      {new Date(audit.createdAt).toLocaleString()} • {audit.status} • {audit.originalFilename}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            {isAdmin && (
+              <Fragment>
+                <CollapsibleSection title="Metadata timeline" defaultOpen>
+                  {metadata.length === 0 ? (
+                    <p className="text-sm text-foreground/60">No metadata history recorded.</p>
+                  ) : (
+                    <ol className="space-y-3">
+                      {metadata.map((entry) => (
+                        <li
+                          key={`${entry.id}-${entry.createdAt}`}
+                          className="space-y-2 rounded-lg border border-foreground/10 bg-foreground/5 p-3"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-xs uppercase tracking-[0.25em] text-foreground/50">
+                            <span>{entry.source ?? "Unknown source"}</span>
+                            <span>{formatDateTime(entry.createdAt)}</span>
+                          </div>
+                          <div className="space-y-1 text-sm text-foreground/80">
+                            {entry.summary && <p>{entry.summary}</p>}
+                            <dl className="grid gap-x-4 gap-y-1 text-xs uppercase tracking-[0.25em] text-foreground/50 sm:grid-cols-2">
+                              {entry.language && (
+                                <DescriptionRow label="Language" value={entry.language} />
+                              )}
+                              {entry.region && <DescriptionRow label="Region" value={entry.region} />}
+                              {entry.developer && (
+                                <DescriptionRow label="Developer" value={entry.developer} />
+                              )}
+                              {entry.publisher && (
+                                <DescriptionRow label="Publisher" value={entry.publisher} />
+                              )}
+                              {entry.genre && <DescriptionRow label="Genre" value={entry.genre} />}
+                              {typeof entry.rating === "number" && (
+                                <DescriptionRow label="Rating" value={entry.rating.toFixed(1)} />
+                              )}
+                            </dl>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </CollapsibleSection>
+
+                <CollapsibleSection title="Enrichment jobs" defaultOpen>
+                  {enrichmentJobs.length === 0 ? (
+                    <p className="text-sm text-foreground/60">No enrichment jobs run yet.</p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {enrichmentJobs.map((job) => (
+                        <li
+                          key={job.id}
+                          className="space-y-2 rounded-lg border border-foreground/10 bg-foreground/5 p-3"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-xs uppercase tracking-[0.25em] text-foreground/50">
+                            <span>{job.provider}</span>
+                            <span>
+                              Queued {formatDateTime(job.createdAt)}
+                              {job.updatedAt && job.updatedAt !== job.createdAt
+                                ? ` • Updated ${formatDateTime(job.updatedAt)}`
+                                : ""}
+                            </span>
+                          </div>
+                          <dl className="grid gap-x-4 gap-y-1 text-xs uppercase tracking-[0.25em] text-foreground/50 sm:grid-cols-2">
+                            <DescriptionRow label="Status" value={job.status} />
+                            {job.providerRomId && (
+                              <DescriptionRow label="Remote ID" value={job.providerRomId} />
+                            )}
+                          </dl>
+                          {job.errorMessage && (
+                            <p className="text-sm text-[color:var(--color-danger)]">{job.errorMessage}</p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CollapsibleSection>
+
+                <CollapsibleSection title="Upload audit log" defaultOpen>
+                  {uploadAudits.length === 0 ? (
+                    <p className="text-sm text-foreground/60">No upload activity recorded.</p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {uploadAudits.map((audit) => (
+                        <li
+                          key={audit.id}
+                          className="space-y-2 rounded-lg border border-foreground/10 bg-foreground/5 p-3"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-xs uppercase tracking-[0.25em] text-foreground/50">
+                            <span>{audit.status}</span>
+                            <span>{formatDateTime(audit.createdAt)}</span>
+                          </div>
+                          <dl className="grid gap-x-4 gap-y-1 text-xs uppercase tracking-[0.25em] text-foreground/50 sm:grid-cols-2">
+                            <DescriptionRow label="Kind" value={audit.kind} />
+                            <DescriptionRow
+                              label="Filename"
+                              value={audit.originalFilename ?? "Unknown"}
+                            />
+                            <DescriptionRow
+                              label="Storage key"
+                              value={audit.storageKey ?? "Not persisted"}
+                            />
+                            <DescriptionRow
+                              label="Archive type"
+                              value={audit.archiveMimeType ?? "Unknown"}
+                            />
+                            <DescriptionRow
+                              label="Archive size"
+                              value={
+                                typeof audit.archiveSize === "number"
+                                  ? formatBytes(audit.archiveSize)
+                                  : "Unknown"
+                              }
+                            />
+                            <DescriptionRow
+                              label="SHA-256"
+                              value={audit.checksumSha256 ?? "N/A"}
+                            />
+                            {audit.checksumSha1 && (
+                              <DescriptionRow label="SHA-1" value={audit.checksumSha1} />
+                            )}
+                            {audit.checksumMd5 && (
+                              <DescriptionRow label="MD5" value={audit.checksumMd5} />
+                            )}
+                            {audit.checksumCrc32 && (
+                              <DescriptionRow label="CRC32" value={audit.checksumCrc32} />
+                            )}
+                          </dl>
+                          {audit.errorMessage && (
+                            <p className="text-sm text-[color:var(--color-danger)]">{audit.errorMessage}</p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CollapsibleSection>
+              </Fragment>
+            )}
 
             <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-widest text-foreground/60">
               <Link href={`/platforms/${rom.platform.slug}`} className="text-primary hover:underline">
@@ -191,4 +315,42 @@ function formatBytes(size: number): string {
   const index = Math.min(units.length - 1, Math.floor(Math.log(size) / Math.log(1024)));
   const value = size / Math.pow(1024, index);
   return `${value.toFixed(1)} ${units[index]}`;
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString();
+}
+
+function DescriptionRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <span>{label}</span>
+      <span className="text-foreground/80">{value}</span>
+    </div>
+  );
+}
+
+type CollapsibleSectionProps = {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+};
+
+function CollapsibleSection({ title, defaultOpen = true, children }: CollapsibleSectionProps) {
+  return (
+    <details
+      className="rounded-lg border border-foreground/15 bg-foreground/[0.04] p-4 text-foreground"
+      open={defaultOpen}
+    >
+      <summary className="flex cursor-pointer items-center justify-between gap-2 text-sm font-semibold uppercase tracking-[0.35em] text-foreground/70">
+        {title}
+        <span className="text-xs font-normal tracking-[0.3em] text-foreground/40">Toggle</span>
+      </summary>
+      <div className="mt-3 space-y-2 text-sm text-foreground/80">{children}</div>
+    </details>
+  );
 }
