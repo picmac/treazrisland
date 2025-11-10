@@ -14,7 +14,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    href: "/",
+    href: "/" as Route,
     label: "Dashboard",
     description: "Stats & save states"
   },
@@ -50,8 +50,8 @@ const NAV_ITEMS: NavItem[] = [
   }
 ];
 
-function isActivePath(pathname: string, target: Route) {
-  if (target === "/") {
+function isActivePath(pathname: string, target: NavItem["href"]) {
+  if (target === ("/" as Route)) {
     return pathname === "/";
   }
   return pathname === target || pathname.startsWith(`${target}/`);
@@ -64,7 +64,7 @@ export function AppNav() {
     <PixelFrame className="relative flex flex-col gap-4 bg-night/80 p-4 shadow-pixel sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-1">
         <Link
-          href="/"
+          href={"/" as Route}
           className="text-sm font-semibold uppercase tracking-[0.5em] text-lagoon transition hover:text-parchment"
         >
           Treazrisland
