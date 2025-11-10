@@ -1,33 +1,14 @@
 import Link from "next/link";
 import EmulatorPlayer from "./[romId]/EmulatorPlayer";
 import { getRomMetadata } from "./getRomMetadata";
-import { PixelButton, PixelFrame, PixelInput } from "@/src/components/pixel";
+import { RomLookupForm } from "./RomLookupForm";
+import { PixelButton, PixelFrame } from "@/src/components/pixel";
 
 type PlayLandingPageProps = {
   searchParams?: {
     romId?: string;
   };
 };
-
-export function RomLookupForm({ defaultValue }: { defaultValue?: string }) {
-  return (
-    <form className="flex flex-col gap-2" method="get">
-      <label htmlFor="rom-id" className="text-sm font-semibold uppercase tracking-widest text-foreground/70">
-        Load by ROM ID
-      </label>
-      <div className="flex flex-wrap gap-2 sm:flex-nowrap">
-        <PixelInput
-          id="rom-id"
-          name="romId"
-          defaultValue={defaultValue}
-          placeholder="ex: rom-1234"
-          className="flex-1"
-        />
-        <PixelButton type="submit">Load ROM</PixelButton>
-      </div>
-    </form>
-  );
-}
 
 export default async function PlayLandingPage({ searchParams }: PlayLandingPageProps) {
   const romId = searchParams?.romId?.trim();

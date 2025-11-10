@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
-import { RomLookupForm } from "../page";
+import { RomLookupForm } from "../RomLookupForm";
 
 async function expectAccessible(container: HTMLElement) {
   const results = await axe.run(container);

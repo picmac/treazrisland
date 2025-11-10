@@ -1,11 +1,10 @@
-import type { NextConfig } from "next";
-
-import { buildSecurityHeaders } from "./security-headers";
+import { buildSecurityHeaders } from "./security-headers.mjs";
 
 const AUTH_API_BASE_URL =
   process.env.AUTH_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 
-const nextConfig: NextConfig = {
+/** @type {import("next").NextConfig} */
+const nextConfig = {
   reactStrictMode: true,
   typedRoutes: true,
   experimental: {

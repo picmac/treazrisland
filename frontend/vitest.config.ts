@@ -24,7 +24,10 @@ const config: UserConfig = {
   },
   test: {
     maxWorkers,
-    environment: "jsdom",
+    // jsdom's CommonJS bundle currently fails to load in Node 22 because it
+    // synchronously requires the ESM-only parse5 package. happy-dom provides
+    // the DOM APIs our tests exercise without tripping that loader error.
+    environment: "happy-dom",
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
     include: [

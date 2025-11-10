@@ -39,12 +39,13 @@
     "eslint": "8.57.1",
     "eslint-config-next": "14.2.33",
     "extract-zip": "2.0.1",
+    "happy-dom": "20.0.10",
     "jsdom": "27.1.0",
     "postcss": "8.5.6",
     "tailwindcss": "4.1.17",
     "tsx": "4.20.6",
     "typescript": "5.9.3",
-    "vitest": "4.0.8"
+    "vitest": "4.0.5"
   },
   "overrides": {
     "@adobe/css-tools": "4.4.3"
