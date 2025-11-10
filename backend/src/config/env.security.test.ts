@@ -171,3 +171,56 @@ describe("env TLS mode validation", () => {
     );
   });
 });
+
+describe("netplay ice configuration", () => {
+  let snapshot: EnvSnapshot;
+
+  beforeEach(() => {
+    vi.resetModules();
+    snapshot = { ...process.env };
+
+    seedRequiredEnv();
+    delete process.env.NETPLAY_STUN_URIS;
+    delete process.env.NETPLAY_TURN_URIS;
+    delete process.env.NETPLAY_TURN_USERNAME;
+    delete process.env.NETPLAY_TURN_PASSWORD;
+  });
+
+  afterEach(() => {
+    vi.resetModules();
+    restoreEnv(snapshot);
+  });
+
+  it("allows startup without ICE overrides", async () => {
+    const module = await import("./env.js");
+
+    expect(module.env.NETPLAY_STUN_URIS).toEqual([]);
+    expect(module.env.NETPLAY_TURN_URIS).toEqual([]);
+  });
+
+  it("requires credentials when TURN URIs are provided", async () => {
+    process.env.NETPLAY_TURN_URIS = "turn:turn.example:3478";
+
+    await expect(import("./env.js")).rejects.toThrow(
+      "NETPLAY_TURN_URIS requires NETPLAY_TURN_USERNAME and NETPLAY_TURN_PASSWORD",
+    );
+  });
+
+  it("parses STUN and TURN configuration", async () => {
+    process.env.NETPLAY_STUN_URIS = "stun:turn.example:3478";
+    process.env.NETPLAY_TURN_URIS = "turn:turn.example:3478?transport=udp";
+    process.env.NETPLAY_TURN_USERNAME = "turn-user";
+    process.env.NETPLAY_TURN_PASSWORD = "turn-secret";
+
+    const module = await import("./env.js");
+
+    expect(module.env.NETPLAY_STUN_URIS).toEqual([
+      "stun:turn.example:3478",
+    ]);
+    expect(module.env.NETPLAY_TURN_URIS).toEqual([
+      "turn:turn.example:3478?transport=udp",
+    ]);
+    expect(module.env.NETPLAY_TURN_USERNAME).toBe("turn-user");
+    expect(module.env.NETPLAY_TURN_PASSWORD).toBe("turn-secret");
+  });
+});

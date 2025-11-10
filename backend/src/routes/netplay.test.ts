@@ -23,6 +23,10 @@ process.env.SMTP_SECURE = "none";
 process.env.SMTP_FROM_EMAIL = "no-reply@example.com";
 process.env.SMTP_FROM_NAME = "TREAZ";
 process.env.NETPLAY_SIGNAL_ALLOWED_ORIGINS = "https://trusted.example";
+process.env.NETPLAY_STUN_URIS = "stun:turn.treazrisland.localhost:3478";
+process.env.NETPLAY_TURN_URIS = "turn:turn.treazrisland.localhost:3478?transport=udp";
+process.env.NETPLAY_TURN_USERNAME = "turn-user";
+process.env.NETPLAY_TURN_PASSWORD = "turn-secret";
 process.env.TREAZ_TLS_MODE = "http";
 
 let buildServer: typeof import("../server.js").buildServer;
@@ -55,6 +59,16 @@ beforeAll(async () => {
 
 describe("netplay routes", () => {
   let app: FastifyInstance;
+  const expectedIceServers = [
+    {
+      urls: ["stun:turn.treazrisland.localhost:3478"],
+    },
+    {
+      urls: ["turn:turn.treazrisland.localhost:3478?transport=udp"],
+      username: "turn-user",
+      credential: "turn-secret",
+    },
+  ];
   const prismaMock: PrismaMock = {
     netplaySession: {
       count: vi.fn(),
@@ -205,6 +219,7 @@ describe("netplay routes", () => {
       id: "session_active",
       status: "OPEN",
     });
+    expect(response.body.iceServers).toEqual(expectedIceServers);
 
     const [findManyArgs] = prismaMock.netplaySession.findMany.mock.calls[0];
     expect(findManyArgs.where?.expiresAt?.gt).toBeInstanceOf(Date);
@@ -227,6 +242,7 @@ describe("netplay routes", () => {
     });
     expect(typeof response.body.peerToken).toBe("string");
     expect(response.body.peerToken).toHaveLength(64);
+    expect(response.body.iceServers).toEqual(expectedIceServers);
 
     const createCall = prismaMock.netplaySession.create.mock.calls[0][0];
     expect(createCall.data.rom.connect).toEqual({ id: "rom_1" });
@@ -313,6 +329,7 @@ describe("netplay routes", () => {
       },
     });
     expect(response.body.session.participants).toHaveLength(2);
+    expect(response.body.iceServers).toEqual(expectedIceServers);
   });
 
   it("allows an invited participant to join and receive a peer token", async () => {
@@ -366,6 +383,7 @@ describe("netplay routes", () => {
     expect(typeof response.body.peerToken).toBe("string");
     expect(prismaMock.netplayParticipant.update).toHaveBeenCalled();
     expect(prismaMock.$transaction).toHaveBeenCalled();
+    expect(response.body.iceServers).toEqual(expectedIceServers);
   });
 
   it("records heartbeat updates", async () => {
@@ -665,6 +683,14 @@ describe("netplay routes", () => {
       extraHeaders: { origin: "https://trusted.example" },
     });
 
+    const hostSnapshotPromise = new Promise<{
+      session: unknown;
+      peerToken: string;
+      iceServers: typeof expectedIceServers;
+    }>((resolve) => {
+      hostSocket.once("session:snapshot", resolve);
+    });
+
     await new Promise<void>((resolve, reject) => {
       hostSocket.on("connect", () => resolve());
       hostSocket.on("connect_error", reject);
@@ -681,10 +707,26 @@ describe("netplay routes", () => {
       extraHeaders: { origin: "https://trusted.example" },
     });
 
+    const guestSnapshotPromise = new Promise<{
+      session: unknown;
+      peerToken: string;
+      iceServers: typeof expectedIceServers;
+    }>((resolve) => {
+      guestSocket.once("session:snapshot", resolve);
+    });
+
     await new Promise<void>((resolve, reject) => {
       guestSocket.on("connect", () => resolve());
       guestSocket.on("connect_error", reject);
     });
+
+    const hostSnapshot = await hostSnapshotPromise;
+    const guestSnapshot = await guestSnapshotPromise;
+
+    expect(hostSnapshot.peerToken).toBe(hostPeerToken);
+    expect(hostSnapshot.iceServers).toEqual(expectedIceServers);
+    expect(guestSnapshot.peerToken).toBe(guestPeerToken);
+    expect(guestSnapshot.iceServers).toEqual(expectedIceServers);
 
     const messagePromise = new Promise<unknown>((resolve) => {
       guestSocket.on("signal:message", resolve);

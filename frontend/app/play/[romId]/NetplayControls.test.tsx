@@ -50,7 +50,7 @@ describe("NetplayControls", () => {
       close: vi.fn(),
     });
 
-    vi.mocked(listNetplaySessions).mockResolvedValue({ sessions: [] });
+    vi.mocked(listNetplaySessions).mockResolvedValue({ sessions: [], iceServers: [] });
     vi.mocked(createNetplaySession).mockResolvedValue({
       session: {
         id: "session_1",
@@ -77,6 +77,7 @@ describe("NetplayControls", () => {
         ],
       },
       peerToken: "peer-host",
+      iceServers: [],
     });
     vi.mocked(joinNetplaySession).mockResolvedValue({
       session: {
@@ -115,6 +116,7 @@ describe("NetplayControls", () => {
         ],
       },
       peerToken: "peer-guest",
+      iceServers: [],
     });
     vi.mocked(sendNetplayHeartbeat).mockResolvedValue(undefined);
     vi.mocked(closeNetplaySession).mockResolvedValue(undefined);
@@ -177,6 +179,7 @@ describe("NetplayControls", () => {
           ],
         },
       ],
+      iceServers: [],
     });
 
     render(<NetplayControls romId="rom_1" />);

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { API_BASE } from "@lib/api/client";
-import type { NetplaySession } from "./types";
+import type { NetplayIceServer, NetplaySession } from "./types";
 
 type SignalAck = { status: "ok"; id: string } | { status: "error"; message?: string };
 
@@ -96,10 +96,17 @@ export function useNetplaySignal(options: UseNetplaySignalOptions): UseNetplaySi
       setConnected(false);
     });
 
-    socket.on("session:snapshot", (payload: { session: NetplaySession; peerToken: string }) => {
-      onSessionUpdate?.(payload.session);
-      onPeerToken?.(payload.session.id, payload.peerToken);
-    });
+    socket.on(
+      "session:snapshot",
+      (payload: {
+        session: NetplaySession;
+        peerToken: string;
+        iceServers: NetplayIceServer[];
+      }) => {
+        onSessionUpdate?.(payload.session);
+        onPeerToken?.(payload.session.id, payload.peerToken);
+      },
+    );
 
     socket.on("session:update", (payload: { session: NetplaySession }) => {
       onSessionUpdate?.(payload.session);

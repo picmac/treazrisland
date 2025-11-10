@@ -143,6 +143,7 @@ type NetplayServerToClientEvents = {
   "session:snapshot": (payload: {
     session: SerializedSession;
     peerToken: string;
+    iceServers: NetplayIceServerConfig[];
   }) => void;
   "session:update": (payload: { session: SerializedSession }) => void;
   "session:closed": (
@@ -190,6 +191,51 @@ type NetplaySignalServer = SocketIOServer<
 >;
 
 const configuredSignalServers = new WeakSet<NetplaySignalServer>();
+
+type NetplayIceServerConfig = {
+  urls: string[];
+  username?: string;
+  credential?: string;
+};
+
+const ICE_SERVER_CONFIG: NetplayIceServerConfig[] = (() => {
+  const entries: NetplayIceServerConfig[] = [];
+
+  if (env.NETPLAY_STUN_URIS.length > 0) {
+    entries.push({ urls: [...env.NETPLAY_STUN_URIS] });
+  }
+
+  if (env.NETPLAY_TURN_URIS.length > 0) {
+    const entry: NetplayIceServerConfig = {
+      urls: [...env.NETPLAY_TURN_URIS],
+    };
+
+    if (env.NETPLAY_TURN_USERNAME && env.NETPLAY_TURN_PASSWORD) {
+      entry.username = env.NETPLAY_TURN_USERNAME;
+      entry.credential = env.NETPLAY_TURN_PASSWORD;
+    }
+
+    entries.push(entry);
+  }
+
+  return entries;
+})();
+
+const cloneIceServerConfig = (
+  server: NetplayIceServerConfig,
+): NetplayIceServerConfig => {
+  const cloned: NetplayIceServerConfig = { urls: [...server.urls] };
+  if (server.username) {
+    cloned.username = server.username;
+  }
+  if (server.credential) {
+    cloned.credential = server.credential;
+  }
+  return cloned;
+};
+
+const getIceServers = (): NetplayIceServerConfig[] =>
+  ICE_SERVER_CONFIG.map(cloneIceServerConfig);
 
 const sessionRoomId = (sessionId: string) => `netplay-session:${sessionId}`;
 
@@ -400,6 +446,7 @@ const configureSignalServer = (
           socket.emit("session:snapshot", {
             session: serialized,
             peerToken: socket.data.peerToken,
+            iceServers: getIceServers(),
           });
 
           if (socket.data.refreshedToken) {
@@ -637,6 +684,7 @@ export async function registerNetplayRoutes(app: FastifyInstance) {
         sessions: sessions
           .filter((session) => !isExpired(session))
           .map(serializeSession),
+        iceServers: getIceServers(),
       };
     });
 
@@ -718,6 +766,7 @@ export async function registerNetplayRoutes(app: FastifyInstance) {
         return reply.status(201).send({
           session: serializeSession(session),
           peerToken,
+          iceServers: getIceServers(),
         });
       } catch (error) {
         if (error instanceof PrismaClientKnownRequestError) {
@@ -813,6 +862,7 @@ export async function registerNetplayRoutes(app: FastifyInstance) {
 
         return reply.status(200).send({
           session: serialized,
+          iceServers: getIceServers(),
         });
       },
     );
@@ -901,6 +951,7 @@ export async function registerNetplayRoutes(app: FastifyInstance) {
         return reply.status(200).send({
           session: serialized,
           peerToken: token,
+          iceServers: getIceServers(),
         });
       },
     );

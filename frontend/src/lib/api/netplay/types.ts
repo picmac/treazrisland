@@ -23,12 +23,20 @@ export interface NetplaySession {
   participants: NetplayParticipant[];
 }
 
+export interface NetplayIceServer {
+  urls: string[];
+  username?: string;
+  credential?: string;
+}
+
 export interface NetplaySessionListResponse {
   sessions: NetplaySession[];
+  iceServers: NetplayIceServer[];
 }
 
 export interface NetplaySessionResponse {
   session: NetplaySession;
+  iceServers: NetplayIceServer[];
 }
 
 export interface NetplaySessionWithTokenResponse extends NetplaySessionResponse {
