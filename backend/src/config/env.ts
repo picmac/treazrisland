@@ -346,6 +346,30 @@ const envSchema = z.object({
     .transform((value) =>
       value && value.trim().length > 0 ? value.trim() : undefined,
     ),
+  NETPLAY_STUN_URIS: z
+    .string()
+    .optional()
+    .transform((value) =>
+      value && value.trim().length > 0 ? value.trim() : undefined,
+    ),
+  NETPLAY_TURN_URIS: z
+    .string()
+    .optional()
+    .transform((value) =>
+      value && value.trim().length > 0 ? value.trim() : undefined,
+    ),
+  NETPLAY_TURN_USERNAME: z
+    .string()
+    .optional()
+    .transform((value) =>
+      value && value.trim().length > 0 ? value.trim() : undefined,
+    ),
+  NETPLAY_TURN_PASSWORD: z
+    .string()
+    .optional()
+    .transform((value) =>
+      value && value.length > 0 ? value : undefined,
+    ),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -365,6 +389,12 @@ const signedUrlTtlMs = parsed.data.STORAGE_SIGNED_URL_TTL
   : undefined;
 const tlsEnabled = parsed.data.TREAZ_TLS_MODE === "https";
 const netplayIdleMs = ms(parsed.data.NETPLAY_IDLE_TIMEOUT as StringValue);
+const netplayStunUris = parsed.data.NETPLAY_STUN_URIS
+  ? splitCsv(parsed.data.NETPLAY_STUN_URIS)
+  : [];
+const netplayTurnUris = parsed.data.NETPLAY_TURN_URIS
+  ? splitCsv(parsed.data.NETPLAY_TURN_URIS)
+  : [];
 if (typeof accessMs !== "number" || accessMs <= 0) {
   throw new Error("JWT_ACCESS_TTL must be a positive duration string");
 }
@@ -480,6 +510,14 @@ if (parsed.data.NETPLAY_MAX_CONCURRENT_SESSIONS <= 0) {
   throw new Error("NETPLAY_MAX_CONCURRENT_SESSIONS must be greater than zero");
 }
 
+if (netplayTurnUris.length > 0) {
+  if (!parsed.data.NETPLAY_TURN_USERNAME || !parsed.data.NETPLAY_TURN_PASSWORD) {
+    throw new Error(
+      "NETPLAY_TURN_URIS requires NETPLAY_TURN_USERNAME and NETPLAY_TURN_PASSWORD",
+    );
+  }
+}
+
 function splitCsv(value: string): string[] {
   return value
     .split(",")
@@ -543,4 +581,8 @@ export const env = {
   NETPLAY_SIGNAL_ALLOWED_ORIGINS: parsed.data.NETPLAY_SIGNAL_ALLOWED_ORIGINS
     ? splitCsv(parsed.data.NETPLAY_SIGNAL_ALLOWED_ORIGINS)
     : [],
+  NETPLAY_STUN_URIS: netplayStunUris,
+  NETPLAY_TURN_URIS: netplayTurnUris,
+  NETPLAY_TURN_USERNAME: parsed.data.NETPLAY_TURN_USERNAME,
+  NETPLAY_TURN_PASSWORD: parsed.data.NETPLAY_TURN_PASSWORD,
 };
