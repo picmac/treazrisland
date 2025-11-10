@@ -143,6 +143,73 @@ describe("netplay routes", () => {
     expect(response.status).toBe(401);
   });
 
+  it("lists only active netplay sessions for the user", async () => {
+    const token = app.jwt.sign({ sub: "user_1", role: "ADMIN" });
+
+    const activeSession = {
+      id: "session_active",
+      romId: "rom_1",
+      hostId: "user_1",
+      saveStateId: null,
+      status: "OPEN" as const,
+      expiresAt: new Date(Date.now() + 60_000),
+      lastActivityAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      participants: [
+        {
+          id: "participant_host",
+          userId: "user_1",
+          role: "HOST",
+          status: "CONNECTED",
+          lastHeartbeatAt: new Date(),
+          connectedAt: new Date(),
+          disconnectedAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+    };
+
+    const expiredSession = {
+      ...activeSession,
+      id: "session_expired",
+      expiresAt: new Date(Date.now() - 60_000),
+      participants: [
+        {
+          id: "participant_host",
+          userId: "user_1",
+          role: "HOST",
+          status: "CONNECTED",
+          lastHeartbeatAt: new Date(Date.now() - 120_000),
+          connectedAt: new Date(Date.now() - 300_000),
+          disconnectedAt: null,
+          createdAt: new Date(Date.now() - 300_000),
+          updatedAt: new Date(Date.now() - 120_000),
+        },
+      ],
+    };
+
+    prismaMock.netplaySession.findMany.mockResolvedValueOnce([
+      activeSession,
+      expiredSession,
+    ]);
+
+    const response = await request(app)
+      .get("/netplay/sessions")
+      .set("authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.sessions).toHaveLength(1);
+    expect(response.body.sessions[0]).toMatchObject({
+      id: "session_active",
+      status: "OPEN",
+    });
+
+    const [findManyArgs] = prismaMock.netplaySession.findMany.mock.calls[0];
+    expect(findManyArgs.where?.expiresAt?.gt).toBeInstanceOf(Date);
+  });
+
   it("creates a netplay session for the host", async () => {
     const token = app.jwt.sign({ sub: "user_1", role: "ADMIN" });
 

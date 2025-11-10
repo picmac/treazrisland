@@ -621,17 +621,22 @@ export async function registerNetplayRoutes(app: FastifyInstance) {
     }
 
     instance.get("/netplay/sessions", async (request) => {
+      const now = new Date();
+
       const sessions = await instance.prisma.netplaySession.findMany({
         where: {
           participants: { some: { userId: request.user.sub } },
           status: { not: "CLOSED" },
+          expiresAt: { gt: now },
         },
         orderBy: { createdAt: "desc" },
         include: { participants: true },
       });
 
       return {
-        sessions: sessions.map(serializeSession),
+        sessions: sessions
+          .filter((session) => !isExpired(session))
+          .map(serializeSession),
       };
     });
 
