@@ -80,7 +80,7 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
       <PixelFrame className="space-y-4 p-6" tone="raised">
         {state === "loading" && <p className="text-sm text-foreground/80">Charting ROM manifest…</p>}
         {state === "error" && error && (
-          <p className="text-sm text-[color:var(--color-danger)]">{error}</p>
+          <p className="text-sm text-[var(--color-danger)]">{error}</p>
         )}
         {state === "loaded" && rom && (
           <div className="space-y-4">
@@ -107,7 +107,7 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
                     <span
                       className={
                         enrichmentStatus === "error"
-                          ? "text-[color:var(--color-danger)]"
+                          ? "text-[var(--color-danger)]"
                           : "text-foreground/70"
                       }
                     >
@@ -226,7 +226,7 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
                             )}
                           </dl>
                           {job.errorMessage && (
-                            <p className="text-sm text-[color:var(--color-danger)]">{job.errorMessage}</p>
+                            <p className="text-sm text-[var(--color-danger)]">{job.errorMessage}</p>
                           )}
                         </li>
                       ))}
@@ -285,7 +285,7 @@ export function RomDetailSheet({ id }: RomDetailSheetProps) {
                             )}
                           </dl>
                           {audit.errorMessage && (
-                            <p className="text-sm text-[color:var(--color-danger)]">{audit.errorMessage}</p>
+                            <p className="text-sm text-[var(--color-danger)]">{audit.errorMessage}</p>
                           )}
                         </li>
                       ))}

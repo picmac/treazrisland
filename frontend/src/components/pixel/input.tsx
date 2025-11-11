@@ -14,8 +14,8 @@ export const PixelInput = forwardRef<HTMLInputElement, PixelInputProps>(
         className={clsx(
           "w-full rounded-pixel border px-3 py-2 text-sm text-foreground shadow-inner transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-night",
           invalid
-            ? "border-[color:color-mix(in srgb, var(--color-danger) 70%, transparent)] focus:border-danger focus:ring-danger"
-            : "border-[color:var(--surface-outline-subtle)] focus:border-primary focus:ring-primary",
+            ? "border-[color-mix(in_srgb,_var(--color-danger)_70%,_transparent)] focus:border-danger focus:ring-danger"
+            : "border-[var(--surface-outline-subtle)] focus:border-primary focus:ring-primary",
           "bg-surface-sunken placeholder:text-foreground/45",
           className
         )}
