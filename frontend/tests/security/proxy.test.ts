@@ -1,0 +1,48 @@
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { NextRequest } from "next/server";
+
+import { proxy } from "@/proxy";
+
+const ORIGINAL_CRYPTO = globalThis.crypto;
+
+function mockRandomValues(bytes: Uint8Array) {
+  for (let index = 0; index < bytes.length; index += 1) {
+    bytes[index] = index;
+  }
+  return bytes;
+}
+
+describe("proxy", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    if (ORIGINAL_CRYPTO) {
+      vi.spyOn(ORIGINAL_CRYPTO, "getRandomValues").mockImplementation(mockRandomValues);
+    }
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test("injects a nonce-backed CSP for admin routes", () => {
+    const request = new NextRequest(new URL("https://treazris.land/admin/uploads"));
+
+    const response = proxy(request);
+
+    const nonce = response.headers.get("x-csp-nonce");
+    const csp = response.headers.get("content-security-policy");
+
+    expect(nonce).toMatch(/^[A-Za-z0-9+/=]+$/);
+    expect(csp).toContain("'nonce-");
+    expect(csp).toContain("'strict-dynamic'");
+  });
+
+  test("falls back to baseline headers for other routes", () => {
+    const request = new NextRequest(new URL("https://treazris.land/library"));
+
+    const response = proxy(request);
+
+    expect(response.headers.get("content-security-policy")).toBeNull();
+    expect(response.headers.get("x-csp-nonce")).toBeNull();
+  });
+});

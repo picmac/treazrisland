@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { buildSecurityHeaders } from "./security-headers";
 
-const INLINE_SCRIPT_MATCHERS = [/^\/play\//];
+const INLINE_SCRIPT_MATCHERS = [/^\/play\//, /^\/admin(?:\/|$)/];
 
 const BASE64_ALPHABET =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -74,5 +74,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/play/:path*"]
+  matcher: ["/play/:path*", "/admin/:path*"]
 };
