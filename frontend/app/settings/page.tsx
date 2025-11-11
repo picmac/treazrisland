@@ -1,26 +1,33 @@
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import SettingsPageClient from "./SettingsPageClient";
 import type { UserProfileResponse } from "@/src/lib/api/user";
 import { resolveApiBase } from "@/src/lib/api/client";
 import { PixelFrame } from "@/src/components/pixel-frame";
+import { refreshSessionFromCookies } from "@/src/lib/server/session";
 
-async function fetchProfile(): Promise<UserProfileResponse> {
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore
-    .getAll()
-    .map((entry) => `${entry.name}=${entry.value}`)
-    .join("; ");
-
+export async function fetchProfile(): Promise<UserProfileResponse> {
   const headerStore = headers();
   const apiBase = resolveApiBase(headerStore);
+
+  let accessToken: string | null = null;
+  try {
+    const session = await refreshSessionFromCookies();
+    accessToken = session.accessToken;
+  } catch {
+    redirect("/login");
+  }
+
+  if (!accessToken) {
+    redirect("/login");
+  }
 
   const response = await fetch(`${apiBase}/users/me`, {
     method: "GET",
     headers: {
       Accept: "application/json",
-      ...(cookieHeader.length > 0 ? { cookie: cookieHeader } : {}),
+      Authorization: `Bearer ${accessToken}`,
     },
     cache: "no-store",
   });

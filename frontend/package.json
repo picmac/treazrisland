@@ -8,7 +8,7 @@
     "start": "node ./scripts/start-http.mjs",
     "start:lan": "node ./scripts/start-http.mjs",
     "lint": "eslint . --max-warnings=0",
-    "test": "vitest run",
+    "test": "node ./scripts/run-vitest.mjs",
     "test:watch": "vitest watch",
     "test:e2e": "playwright test",
     "test:e2e:smoke": "RUN_SMOKE_E2E=1 playwright test --project=chromium",
