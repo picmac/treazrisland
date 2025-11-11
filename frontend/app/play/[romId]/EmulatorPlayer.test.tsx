@@ -90,6 +90,27 @@ describe("EmulatorPlayer", () => {
     (window as typeof window & { EJS_player?: ReturnType<typeof vi.fn> }).EJS_player = vi.fn();
   });
 
+  it("shows the preparing message while the bundle is loading", async () => {
+    let resolveBundle: (() => void) | undefined;
+    const bundlePromise = new Promise<void>((resolve) => {
+      resolveBundle = resolve;
+    });
+
+    vi.mocked(loadEmulatorBundle).mockReturnValueOnce(bundlePromise);
+
+    render(<EmulatorPlayer romId="rom-1" romName="Chrono Trigger" platform="snes" />);
+
+    expect(screen.getByText("Preparing emulator…")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveBundle?.();
+    });
+
+    await waitFor(() => {
+      expect(window.EJS_player).toHaveBeenCalled();
+    });
+  });
+
   it("boots EmulatorJS with a signed ROM URL and loads recent play state", async () => {
     const playState = {
       id: "state-1",

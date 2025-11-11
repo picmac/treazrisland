@@ -78,7 +78,7 @@ export default function EmulatorPlayer({
   onSaveState
 }: EmulatorPlayerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
   const [playStates, setPlayStates] = useState<PlayState[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<number>(0);
