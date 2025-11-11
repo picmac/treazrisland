@@ -1,5 +1,3 @@
-"use server";
-
 import { cookies } from "next/headers";
 
 type SameSite = "lax" | "strict" | "none";
@@ -93,6 +91,7 @@ export function extractSetCookieHeaders(response: Response): readonly string[] {
 }
 
 export async function applyBackendCookies(setCookieHeaders: readonly string[]) {
+  "use server";
   const store = await cookies();
   for (const header of setCookieHeaders) {
     const parsed = parseSetCookie(header);
@@ -105,6 +104,7 @@ export async function applyBackendCookies(setCookieHeaders: readonly string[]) {
 }
 
 export async function buildCookieHeaderFromStore(): Promise<string | undefined> {
+  "use server";
   const store = await cookies();
   const all = store.getAll();
   if (all.length === 0) {
