@@ -2,6 +2,10 @@
 
 TREAZRISLAND is a self-hosted retro gaming portal that blends a Fastify backend, a Next.js 14 LTS frontend, and SNES-inspired artwork. This repository also contains documentation and infrastructure helpers required to run the stack locally or on a home server.
 
+> **Project status: work in progress.**
+> 
+> The public repository intentionally ships an incomplete, self-hosted prototype. Expect breaking changes, placeholder secrets, and missing polish while the team hardens core flows. Production deployments must review the docs below, replace every placeholder credential, and add the missing operational guardrails before inviting real players.
+
 ## Architecture overview
 
 | Layer      | Location          | Summary |
