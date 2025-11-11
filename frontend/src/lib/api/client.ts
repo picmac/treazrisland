@@ -57,13 +57,10 @@ function isLoopbackHost(host?: string | null): boolean {
   return false;
 }
 
-function chooseEffectivePort(port?: string | null, host?: string | null): string | undefined {
+function chooseEffectivePort(port?: string | null): string | undefined {
   const sanitizedPort = sanitizePort(port);
   const overridePort = selectDevPortOverride();
-  const shouldPreferDevPort =
-    sanitizedPort === "3000" && (host === undefined || isLoopbackHost(host));
-
-  if (shouldPreferDevPort) {
+  if (sanitizedPort === "3000") {
     return overridePort ?? DEFAULT_DEV_API_PORT;
   }
 
@@ -108,6 +105,10 @@ function extractProtocol(candidate?: string | null): string {
 
 function splitHostAndPort(host: string): { host: string; port?: string } {
   const trimmed = host.trim();
+  if (!trimmed) {
+    return { host: trimmed };
+  }
+
   if (trimmed.startsWith("[")) {
     const closing = trimmed.indexOf("]");
     if (closing !== -1) {
@@ -124,6 +125,11 @@ function splitHostAndPort(host: string): { host: string; port?: string } {
     }
   }
 
+  const colonCount = (trimmed.match(/:/g) ?? []).length;
+  if (colonCount > 1) {
+    return { host: trimmed };
+  }
+
   const lastColon = trimmed.lastIndexOf(":");
   if (lastColon === -1) {
     return { host: trimmed };
@@ -136,6 +142,39 @@ function splitHostAndPort(host: string): { host: string; port?: string } {
   }
 
   return { host: trimmed.slice(0, lastColon), port: sanitized };
+}
+
+function normalizeHeaderValue(value?: string | null): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const first = value.split(",")[0]?.trim();
+  return first ? first : undefined;
+}
+
+function pickPreferredHost(
+  forwardedHost?: string | null,
+  fallbackHost?: string | null
+): string | undefined {
+  const forwarded = normalizeHeaderValue(forwardedHost);
+  const fallback = normalizeHeaderValue(fallbackHost);
+
+  if (forwarded && fallback) {
+    const forwardedParts = splitHostAndPort(forwarded);
+    const fallbackParts = splitHostAndPort(fallback);
+
+    if (
+      forwardedParts.host &&
+      fallbackParts.host &&
+      isLoopbackHost(forwardedParts.host) &&
+      !isLoopbackHost(fallbackParts.host)
+    ) {
+      return fallback;
+    }
+  }
+
+  return forwarded ?? fallback;
 }
 
 function normalizeHost(host: string): string {
@@ -158,7 +197,10 @@ function inferOriginFromHeaders(requestHeaders?: HeaderGetter): string | undefin
     return undefined;
   }
 
-  const rawHost = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  const rawHost = pickPreferredHost(
+    requestHeaders.get("x-forwarded-host"),
+    requestHeaders.get("host")
+  );
   if (!rawHost) {
     return undefined;
   }
@@ -169,7 +211,7 @@ function inferOriginFromHeaders(requestHeaders?: HeaderGetter): string | undefin
   }
 
   const protocol = extractProtocol(requestHeaders.get("x-forwarded-proto"));
-  const effectivePort = chooseEffectivePort(port, host);
+  const effectivePort = chooseEffectivePort(port);
 
   return buildOrigin(protocol, host, effectivePort);
 }
@@ -207,18 +249,23 @@ function inferOriginFromRuntime(): string | undefined {
   }
 
   const protocol = extractProtocol(locationLike.protocol);
-  const rawHost = locationLike.hostname ?? locationLike.host ?? "";
-  if (!rawHost) {
-    return locationLike.origin ?? undefined;
+
+  const explicitHost = normalizeHeaderValue(locationLike.host);
+  if (explicitHost) {
+    const { host, port } = splitHostAndPort(explicitHost);
+    if (host) {
+      const effectivePort = chooseEffectivePort(locationLike.port ?? port);
+      return buildOrigin(protocol, host, effectivePort);
+    }
   }
 
-  const { host, port } = splitHostAndPort(rawHost);
-  if (!host) {
-    return locationLike.origin ?? undefined;
+  const hostname = normalizeHeaderValue(locationLike.hostname);
+  if (hostname) {
+    const effectivePort = chooseEffectivePort(locationLike.port);
+    return buildOrigin(protocol, hostname, effectivePort);
   }
 
-  const effectivePort = chooseEffectivePort(locationLike.port ?? port, host);
-  return buildOrigin(protocol, host, effectivePort);
+  return locationLike.origin ?? undefined;
 }
 
 function readConfiguredBase(): string | undefined {
