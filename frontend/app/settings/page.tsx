@@ -1,9 +1,9 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import SettingsPageClient from "./SettingsPageClient";
 import type { UserProfileResponse } from "@/src/lib/api/user";
-import { API_BASE } from "@/src/lib/api/client";
+import { resolveApiBase } from "@/src/lib/api/client";
 import { PixelFrame } from "@/src/components/pixel-frame";
 
 async function fetchProfile(): Promise<UserProfileResponse> {
@@ -13,7 +13,10 @@ async function fetchProfile(): Promise<UserProfileResponse> {
     .map((entry) => `${entry.name}=${entry.value}`)
     .join("; ");
 
-  const response = await fetch(`${API_BASE}/users/me`, {
+  const headerStore = headers();
+  const apiBase = resolveApiBase(headerStore);
+
+  const response = await fetch(`${apiBase}/users/me`, {
     method: "GET",
     headers: {
       Accept: "application/json",

@@ -1,8 +1,8 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { RomDetail } from "@lib/api/roms";
-import { API_BASE } from "@lib/api/client";
+import { resolveApiBase } from "@lib/api/client";
 
 export async function getRomMetadata(romId: string): Promise<RomDetail | null> {
   if (!romId) {
@@ -15,7 +15,10 @@ export async function getRomMetadata(romId: string): Promise<RomDetail | null> {
     .map((entry) => `${entry.name}=${entry.value}`)
     .join("; ");
 
-  const response = await fetch(`${API_BASE}/roms/${encodeURIComponent(romId)}`, {
+  const headerStore = headers();
+  const apiBase = resolveApiBase(headerStore);
+
+  const response = await fetch(`${apiBase}/roms/${encodeURIComponent(romId)}`, {
     headers: {
       Accept: "application/json",
       ...(cookieHeader.length > 0 ? { cookie: cookieHeader } : {})
