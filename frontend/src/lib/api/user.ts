@@ -77,3 +77,7 @@ export async function updateUserProfile(
     body: JSON.stringify(body),
   });
 }
+
+export async function deleteCurrentUser(): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>("/users/me", { method: "DELETE" });
+}

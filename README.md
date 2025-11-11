@@ -146,6 +146,25 @@ docker run --rm -p 3000:3000 treazrisland/frontend
 Override `TREAZ_TLS_MODE` at runtime (`http` for LAN testing, `https` for hardened deployments) and the helper applies the
 correct security headers while binding to `0.0.0.0` for you.
 
+## Account settings controls
+
+The `/settings` page now mirrors the two-column wireframe from `docs/ui/wireframes.md`, combining profile editing with
+account safety controls:
+
+- **Password reset launcher** – Sends the standard `/auth/password/reset/request` email to the signed-in address. Ensure SMTP
+  credentials are configured (`EMAIL_PROVIDER=smtp` and the `SMTP_*` keys) before exposing the control to real players. The UI
+  surfaces backend success/error payloads so misconfiguration is obvious to operators.
+- **API token manager placeholder** – Highlights the upcoming personal-access-token flow. Wire up the backend token-signing
+  configuration called out in future release notes when the issuance route lands so the panel can promote it automatically.
+- **Notification toggles** – Persisted in the browser via `localStorage` until the notification preferences API ships. They
+  default to sign-in alerts enabled and product updates disabled; clearing the browser storage restores those defaults.
+- **Danger zone** – Invokes the new `DELETE /users/me` endpoint, which immediately removes the user record, linked refresh
+  tokens, and MFA secrets. The frontend requires typing `DELETE` before calling the route and relays the server message on
+  success or failure so operators can spot permission issues.
+
+Keep these controls behind authentication and confirm your SMTP + API token settings in lower environments before inviting
+players.
+
 ## Self-hosted smoke checks
 
 After configuring your environment file, run a quick end-to-end validation before inviting real players:

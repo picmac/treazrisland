@@ -36,6 +36,7 @@ type PrismaMock = {
   user: {
     findUnique: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
   };
   mfaSecret: {
     findFirst: ReturnType<typeof vi.fn>;
@@ -63,6 +64,7 @@ describe("user profile routes", () => {
       user: {
         findUnique: vi.fn(),
         update: vi.fn(),
+        delete: vi.fn(),
       },
       mfaSecret: {
         findFirst: vi.fn(),
@@ -411,5 +413,63 @@ describe("user profile routes", () => {
     expect(response.status).toBe(200);
     expect(response.headers["content-type"]).toBe("image/png");
     expect(response.text).toBe("avatar");
+  });
+
+  it("requires authentication to delete the account", async () => {
+    const response = await request(app).delete("/users/me");
+    expect(response.status).toBe(401);
+    expect(prisma.user.delete).not.toHaveBeenCalled();
+  });
+
+  it("deletes the authenticated user and removes their avatar", async () => {
+    prisma.user.findUnique.mockResolvedValueOnce({
+      id: "user_1",
+      email: "player@example.com",
+      nickname: "pirate",
+      displayName: "Pirate",
+      role: "USER",
+      avatarStorageKey: "avatars/user_1/avatar.png",
+      avatarMimeType: "image/png",
+      avatarFileSize: 6,
+      avatarUpdatedAt: new Date("2025-01-01T00:00:00Z"),
+    });
+    prisma.user.delete.mockResolvedValueOnce({
+      id: "user_1",
+      email: "player@example.com",
+      nickname: "pirate",
+      displayName: "Pirate",
+      role: "USER",
+      passwordHash: "hash",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      avatarStorageKey: null,
+      avatarMimeType: null,
+      avatarFileSize: null,
+      avatarUpdatedAt: null,
+    });
+
+    const token = app.jwt.sign({ sub: "user_1", role: "USER" });
+    const response = await request(app)
+      .delete("/users/me")
+      .set("authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ message: "Account deleted" });
+    expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: "user_1" } });
+    expect(storage.deleteAssetObject).toHaveBeenCalledWith(
+      "avatars/user_1/avatar.png",
+    );
+  });
+
+  it("returns 404 when the authenticated user is missing", async () => {
+    prisma.user.findUnique.mockResolvedValueOnce(null);
+
+    const token = app.jwt.sign({ sub: "user_1", role: "USER" });
+    const response = await request(app)
+      .delete("/users/me")
+      .set("authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(404);
+    expect(prisma.user.delete).not.toHaveBeenCalled();
   });
 });

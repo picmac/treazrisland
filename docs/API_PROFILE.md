@@ -85,6 +85,27 @@ Streams the current avatar or redirects to a signed URL when available.
 
 Use this route for `<img>` tags when the profile payload exposes a relative `fallbackPath`.
 
+## `DELETE /users/me`
+
+Deletes the authenticated user and clears associated refresh tokens, MFA secrets, and profile metadata. The avatar object is
+removed from storage asynchronously.
+
+**Success (200)**
+
+```json
+{
+  "message": "Account deleted"
+}
+```
+
+**Errors**
+
+- **401** – Missing or invalid access token.
+- **404** – Account already removed.
+- **500** – Unexpected deletion failure.
+
+Clients should clear cached credentials and redirect the player to the login flow after a successful deletion.
+
 ## Validation & Limits
 
 - Avatar uploads are limited to PNG, JPEG, or WEBP content up to **5 MB** (`USER_AVATAR_MAX_BYTES`).

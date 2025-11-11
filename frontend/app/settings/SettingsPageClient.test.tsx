@@ -3,6 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/src/lib/api/user", () => ({
   updateUserProfile: vi.fn(),
+  deleteCurrentUser: vi.fn(),
+}));
+
+vi.mock("@/src/lib/api/auth", () => ({
+  requestPasswordReset: vi.fn(),
 }));
 
 vi.mock("@/src/auth/mfa-settings", () => ({
@@ -12,8 +17,9 @@ vi.mock("@/src/auth/mfa-settings", () => ({
 }));
 
 import type { UserProfile } from "@/src/lib/api/user";
-import { updateUserProfile } from "@/src/lib/api/user";
+import { deleteCurrentUser, updateUserProfile } from "@/src/lib/api/user";
 import { ApiError } from "@/src/lib/api/client";
+import { requestPasswordReset } from "@/src/lib/api/auth";
 import SettingsPageClient from "./SettingsPageClient";
 
 describe("SettingsPageClient", () => {
@@ -34,6 +40,11 @@ describe("SettingsPageClient", () => {
     },
     mfaEnabled: false,
   };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+  });
 
   it("submits profile changes", async () => {
     vi.mocked(updateUserProfile).mockResolvedValueOnce({
@@ -88,5 +99,77 @@ describe("SettingsPageClient", () => {
         expect.objectContaining({ removeAvatar: true }),
       );
     });
+  });
+
+  it("requests a password reset and surfaces the response", async () => {
+    vi.mocked(requestPasswordReset).mockResolvedValueOnce({
+      message: "Reset email dispatched",
+    });
+
+    render(<SettingsPageClient initialProfile={baseProfile} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
+
+    await waitFor(() => {
+      expect(requestPasswordReset).toHaveBeenCalledWith(baseProfile.email);
+    });
+
+    expect(
+      await screen.findByText(/reset email dispatched/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows password reset errors", async () => {
+    vi.mocked(requestPasswordReset).mockRejectedValueOnce(
+      new ApiError("Server exploded", 500, { message: "boom" }),
+    );
+
+    render(<SettingsPageClient initialProfile={baseProfile} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
+
+    expect(
+      await screen.findByText(/500: server exploded/i),
+    ).toBeInTheDocument();
+  });
+
+  it("persists notification toggles to localStorage", async () => {
+    render(<SettingsPageClient initialProfile={baseProfile} />);
+
+    const checkbox = screen.getByLabelText(/email sign-in alerts/i) as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+
+    fireEvent.click(checkbox);
+
+    await waitFor(() => {
+      const stored = window.localStorage.getItem("treaz.settings.notifications");
+      expect(stored).toBeTruthy();
+      const parsed = stored ? JSON.parse(stored) : {};
+      expect(parsed).toMatchObject({ emailAlerts: false });
+    });
+
+    expect(
+      await screen.findByText(/notification preferences saved locally/i),
+    ).toBeInTheDocument();
+  });
+
+  it("confirms account deletion before calling the API", async () => {
+    vi.mocked(deleteCurrentUser).mockResolvedValueOnce({
+      message: "Account deleted",
+    });
+
+    render(<SettingsPageClient initialProfile={baseProfile} />);
+
+    const confirmInput = screen.getByLabelText(/confirm account deletion/i);
+    fireEvent.change(confirmInput, { target: { value: "DELETE" } });
+    fireEvent.click(screen.getByRole("button", { name: /delete account/i }));
+
+    await waitFor(() => {
+      expect(deleteCurrentUser).toHaveBeenCalledTimes(1);
+    });
+
+    expect(
+      await screen.findByText(/account deleted/i),
+    ).toBeInTheDocument();
   });
 });
