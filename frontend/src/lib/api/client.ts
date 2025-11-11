@@ -20,12 +20,26 @@ export async function apiRequest(path: string, init?: RequestInit): Promise<Resp
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    cache: "no-store",
-    credentials: "include",
-    headers
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      cache: "no-store",
+      credentials: "include",
+      headers
+    });
+  } catch (error) {
+    const cause =
+      error instanceof Error
+        ? { name: error.name, message: error.message }
+        : { message: "Unknown error" };
+
+    throw new ApiError(
+      "Unable to reach the TREAZRISLAND backend API. Please verify the backend service is running and accessible.",
+      503,
+      { cause }
+    );
+  }
 
   if (!response.ok) {
     let parsedBody: unknown = null;
