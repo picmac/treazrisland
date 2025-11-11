@@ -13,7 +13,7 @@ const EmulatorCanvas = forwardRef<HTMLDivElement, EmulatorCanvasProps>(
       ref={ref}
       className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-pixel border border-ink/80 bg-night"
     >
-      {status === "loading" && (
+      {(status === "loading" || status === "idle") && (
         <span className="text-sm uppercase tracking-widest text-parchment/70">
           Preparing emulator…
         </span>
