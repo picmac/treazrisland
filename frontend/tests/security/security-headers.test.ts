@@ -135,18 +135,20 @@ describe("next.config headers integration", () => {
 
     const headerConfig = await nextConfig.headers?.();
 
-    expect(headerConfig).toEqual(
+    const headerEntry = headerConfig?.find((entry) => entry.source === "/(.*)");
+
+    expect(headerEntry).toBeDefined();
+    expect(headerEntry?.headers).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          source: "/(.*)",
-          headers: expect.arrayContaining([
-            expect.objectContaining({ key: "Content-Security-Policy" }),
-            expect.objectContaining({ key: "Strict-Transport-Security" }),
-            expect.objectContaining({ key: "X-Content-Type-Options" }),
-            expect.objectContaining({ key: "X-Frame-Options" }),
-            expect.objectContaining({ key: "Referrer-Policy" })
-          ])
-        })
+        expect.objectContaining({ key: "Strict-Transport-Security" }),
+        expect.objectContaining({ key: "X-Content-Type-Options" }),
+        expect.objectContaining({ key: "X-Frame-Options" }),
+        expect.objectContaining({ key: "Referrer-Policy" })
+      ])
+    );
+    expect(headerEntry?.headers).toEqual(
+      expect.not.arrayContaining([
+        expect.objectContaining({ key: "Content-Security-Policy" })
       ])
     );
   });
@@ -161,6 +163,11 @@ describe("next.config headers integration", () => {
     expect(headerEntry?.headers).toEqual(
       expect.not.arrayContaining([
         expect.objectContaining({ key: "Strict-Transport-Security" })
+      ])
+    );
+    expect(headerEntry?.headers).toEqual(
+      expect.not.arrayContaining([
+        expect.objectContaining({ key: "Content-Security-Policy" })
       ])
     );
   });
