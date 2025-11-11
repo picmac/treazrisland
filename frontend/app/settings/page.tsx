@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isRedirectError } from "next/dist/client/components/redirect";
 import SettingsPageClient from "./SettingsPageClient";
 import { PixelFrame } from "@/src/components/pixel-frame";
 import type { UserProfileResponse } from "@/src/lib/api/user";
@@ -11,6 +12,10 @@ export default async function SettingsPage() {
   try {
     profile = await fetchProfile();
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
     if (error instanceof Error) {
       errorMessage = error.message;
     } else {
