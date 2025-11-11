@@ -2,6 +2,7 @@ import Link from "next/link";
 import EmulatorPlayer from "./[romId]/EmulatorPlayer";
 import { getRomMetadata } from "./getRomMetadata";
 import { RomLookupForm } from "./RomLookupForm";
+import { PlayFallbackFrame } from "./PlayFallbackFrame";
 import { PixelButton, PixelFrame } from "@/src/components/pixel";
 
 type PlayLandingPageProps = {
@@ -35,7 +36,32 @@ export default async function PlayLandingPage({ searchParams }: PlayLandingPageP
     );
   }
 
-  const rom = await getRomMetadata(romId);
+  let rom;
+
+  try {
+    rom = await getRomMetadata(romId);
+  } catch (error) {
+    console.error("Failed to load ROM metadata", { romId, error });
+
+    return (
+      <PlayFallbackFrame
+        heading="We couldn&apos;t load that ROM just now"
+        description={
+          <>
+            The squall around TREAZRISLAND knocked our ROM scanner offline while loading
+            <span className="mx-1 font-mono text-foreground">{romId}</span>. Give it another go in a moment or sail
+            back to the library to chart a new adventure.
+          </>
+        }
+        romIdDefault={romId}
+        retry={{
+          type: "link",
+          href: `/play?romId=${encodeURIComponent(romId)}`,
+          prefetch: false,
+        }}
+      />
+    );
+  }
 
   if (!rom) {
     return (
