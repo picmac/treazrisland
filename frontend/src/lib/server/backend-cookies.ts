@@ -1,5 +1,3 @@
-"use server";
-
 import { cookies } from "next/headers";
 
 type SameSite = "lax" | "strict" | "none";
@@ -79,7 +77,21 @@ function parseSetCookie(header: string): ParsedCookie | null {
   return cookie;
 }
 
+export function extractSetCookieHeaders(response: Response): readonly string[] {
+  const headerBag = response.headers as unknown as {
+    getSetCookie?: () => string[];
+  };
+
+  if (typeof headerBag.getSetCookie === "function") {
+    return headerBag.getSetCookie();
+  }
+
+  const single = response.headers.get("set-cookie");
+  return single ? [single] : [];
+}
+
 export async function applyBackendCookies(setCookieHeaders: readonly string[]) {
+  "use server";
   const store = await cookies();
   for (const header of setCookieHeaders) {
     const parsed = parseSetCookie(header);
@@ -92,6 +104,7 @@ export async function applyBackendCookies(setCookieHeaders: readonly string[]) {
 }
 
 export async function buildCookieHeaderFromStore(): Promise<string | undefined> {
+  "use server";
   const store = await cookies();
   const all = store.getAll();
   if (all.length === 0) {

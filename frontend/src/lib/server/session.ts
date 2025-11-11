@@ -4,30 +4,27 @@ import { cookies, headers } from "next/headers";
 
 import { resolveApiBase } from "@/src/lib/api/client";
 import type { SessionPayload } from "@/src/lib/api/auth";
-import { applyBackendCookies, buildCookieHeaderFromStore } from "./backend-cookies";
+import {
+  applyBackendCookies,
+  buildCookieHeaderFromStore,
+  extractSetCookieHeaders,
+} from "./backend-cookies";
 
 const REFRESH_CSRF_COOKIE_NAME = "treaz_refresh_csrf";
 const REFRESH_CSRF_HEADER = "x-refresh-csrf";
-
-function extractSetCookies(response: Response): readonly string[] {
-  const headerBag = response.headers as unknown as {
-    getSetCookie?: () => string[];
-  };
-
-  if (typeof headerBag.getSetCookie === "function") {
-    return headerBag.getSetCookie();
-  }
-
-  const single = response.headers.get("set-cookie");
-  return single ? [single] : [];
-}
 
 async function readRefreshCsrfToken(): Promise<string | undefined> {
   const store = await cookies();
   return store.get(REFRESH_CSRF_COOKIE_NAME)?.value;
 }
 
-export async function refreshSessionFromCookies(): Promise<SessionPayload> {
+export type RefreshSessionResult = {
+  accessToken: string;
+  payload: SessionPayload;
+  cookies: readonly string[];
+};
+
+export async function refreshAccessTokenFromCookies(): Promise<RefreshSessionResult> {
   const apiBase = resolveApiBase(headers());
   const [cookieHeader, csrfToken] = await Promise.all([
     buildCookieHeaderFromStore(),
@@ -56,10 +53,16 @@ export async function refreshSessionFromCookies(): Promise<SessionPayload> {
     throw new Error(`Failed to refresh session: ${response.status}`);
   }
 
-  const setCookieHeaders = extractSetCookies(response);
-  if (setCookieHeaders.length > 0) {
-    await applyBackendCookies(setCookieHeaders);
+  const payload = (await response.json()) as SessionPayload;
+  const cookies = extractSetCookieHeaders(response);
+
+  if (cookies.length > 0) {
+    await applyBackendCookies(cookies);
   }
 
-  return (await response.json()) as SessionPayload;
+  return {
+    accessToken: payload.accessToken,
+    payload,
+    cookies
+  };
 }
