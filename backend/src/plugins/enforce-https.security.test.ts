@@ -54,6 +54,34 @@ describe("HTTPS enforcement middleware", () => {
     });
   });
 
+  it("allows non-TLS requests from private IPv4 networks", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/secure",
+      headers: {
+        host: "192.168.12.5:3001",
+        "x-forwarded-proto": "http",
+      },
+      remoteAddress: "192.168.12.5",
+    });
+
+    expect(response.statusCode).toBe(200);
+  });
+
+  it("allows non-TLS requests from unique local IPv6 networks", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/secure",
+      headers: {
+        host: "[fd00::1234]:3001",
+        "x-forwarded-proto": "http",
+      },
+      remoteAddress: "fd00::1234",
+    });
+
+    expect(response.statusCode).toBe(200);
+  });
+
   it("allows local or TLS-forwarded requests", async () => {
     const localResponse = await app.inject({ method: "GET", url: "/secure" });
     expect(localResponse.statusCode).toBe(200);

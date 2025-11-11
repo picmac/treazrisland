@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { env } from "../config/env.js";
 import type { Socket } from "net";
 import type { TLSSocket } from "tls";
+import ipaddr from "ipaddr.js";
 
 const LOCAL_HOSTNAMES = new Set([
   "localhost",
@@ -10,19 +11,80 @@ const LOCAL_HOSTNAMES = new Set([
   "::1",
 ]);
 
-function isLocalRequest(request: FastifyRequest): boolean {
-  if (LOCAL_HOSTNAMES.has(request.hostname ?? "")) {
+type IpRange =
+  | "loopback"
+  | "linkLocal"
+  | "private"
+  | "uniqueLocal"
+  | "carrierGradeNat";
+
+function isTrustedRange(range: string): range is IpRange {
+  return (
+    range === "loopback" ||
+    range === "linkLocal" ||
+    range === "private" ||
+    range === "uniqueLocal" ||
+    range === "carrierGradeNat"
+  );
+}
+
+function stripPort(host: string): string {
+  if (host.startsWith("[") && host.includes("]")) {
+    return host.slice(1, host.indexOf("]"));
+  }
+
+  const segments = host.split(":");
+  if (segments.length === 2) {
+    return segments[0];
+  }
+
+  return host;
+}
+
+function isTrustedAddress(value: string | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+
+  const normalized = value.toLowerCase();
+  if (LOCAL_HOSTNAMES.has(normalized)) {
     return true;
   }
 
-  if (LOCAL_HOSTNAMES.has(request.ip)) {
+  const candidate = stripPort(normalized);
+
+  if (LOCAL_HOSTNAMES.has(candidate)) {
+    return true;
+  }
+
+  try {
+    let parsed = ipaddr.parse(candidate);
+
+    if (parsed.kind() === "ipv6") {
+      const parsedV6 = parsed as ipaddr.IPv6;
+      if (parsedV6.isIPv4MappedAddress()) {
+        parsed = parsedV6.toIPv4Address();
+      }
+    }
+
+    return isTrustedRange(parsed.range());
+  } catch {
+    return false;
+  }
+}
+
+function isLocalRequest(request: FastifyRequest): boolean {
+  if (isTrustedAddress(request.hostname)) {
+    return true;
+  }
+
+  if (isTrustedAddress(request.ip)) {
     return true;
   }
 
   const hostHeader = request.headers.host;
   if (typeof hostHeader === "string") {
-    const host = hostHeader.split(":")[0];
-    if (LOCAL_HOSTNAMES.has(host)) {
+    if (isTrustedAddress(hostHeader)) {
       return true;
     }
   }
