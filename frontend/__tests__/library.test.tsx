@@ -10,7 +10,8 @@ describe("library filters", () => {
     publisher: "",
     year: "",
     sort: "title",
-    direction: "asc"
+    direction: "asc",
+    assetTypes: []
   };
 
   it("notifies parent when filters change", () => {
@@ -35,6 +36,16 @@ describe("library filters", () => {
       target: { value: "chrono" }
     });
     expect(onFiltersChange).toHaveBeenCalledWith({ search: "chrono" });
+
+    onFiltersChange.mockClear();
+
+    fireEvent.click(screen.getByRole("button", { name: /Covers/i }));
+    expect(onFiltersChange).toHaveBeenCalledWith({ assetTypes: ["COVER"] });
+
+    onFiltersChange.mockClear();
+
+    fireEvent.click(screen.getByRole("button", { name: /All assets/i }));
+    expect(onFiltersChange).toHaveBeenCalledWith({ assetTypes: [] });
 
     fireEvent.click(screen.getByLabelText(/Show empty platforms/i));
     expect(onIncludeEmptyChange).toHaveBeenCalledWith(true);

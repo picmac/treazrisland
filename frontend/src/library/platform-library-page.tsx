@@ -18,7 +18,8 @@ const DEFAULT_FILTERS: LibraryFilterState = {
   publisher: "",
   year: "",
   sort: "title",
-  direction: "asc"
+  direction: "asc",
+  assetTypes: []
 };
 
 type FetchState = "idle" | "loading" | "error" | "loaded";

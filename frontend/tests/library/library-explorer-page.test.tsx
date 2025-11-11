@@ -185,7 +185,23 @@ describe("LibraryExplorerPage", () => {
 
     expect(checkbox).toBeChecked();
     expect(useRomLibrary).toHaveBeenLastCalledWith(
-      expect.objectContaining({ favoritesOnly: true })
+      expect.objectContaining({ favoritesOnly: true, assetTypes: [] })
+    );
+  });
+
+  it("requests ROMs for the selected asset types", async () => {
+    const user = userEvent.setup();
+    render(<LibraryExplorerPage initialPlatformSlug="snes" />);
+
+    expect(useRomLibrary).toHaveBeenCalledWith(
+      expect.objectContaining({ assetTypes: [] })
+    );
+
+    const coversButton = screen.getByRole("button", { name: /Covers/i });
+    await user.click(coversButton);
+
+    expect(useRomLibrary).toHaveBeenLastCalledWith(
+      expect.objectContaining({ assetTypes: ["COVER"] })
     );
   });
 

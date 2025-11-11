@@ -17,7 +17,8 @@ const DEFAULT_FILTERS: LibraryFilterState = {
   publisher: "",
   year: "",
   sort: "createdAt",
-  direction: "desc"
+  direction: "desc",
+  assetTypes: []
 };
 
 const PAGE_SIZE = 60;
