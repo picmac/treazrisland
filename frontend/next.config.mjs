@@ -9,6 +9,42 @@ const AUTH_API_BASE_URL =
   process.env.AUTH_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 
 /** @type {import("next").NextConfig} */
+const imageRemotePatterns = [
+  {
+    protocol: "https",
+    hostname: "assets.treazris.land",
+    pathname: "/**"
+  }
+];
+
+try {
+  const apiUrl = new URL(AUTH_API_BASE_URL);
+  const protocol = apiUrl.protocol.replace(":", "");
+
+  if ((protocol === "http" || protocol === "https") && apiUrl.hostname) {
+    const pattern = {
+      protocol,
+      hostname: apiUrl.hostname,
+      pathname: "/**",
+      ...(apiUrl.port ? { port: apiUrl.port } : {})
+    };
+
+    const hasPattern = imageRemotePatterns.some((existing) => {
+      return (
+        existing.protocol === pattern.protocol &&
+        existing.hostname === pattern.hostname &&
+        (existing.port ?? "") === (pattern.port ?? "")
+      );
+    });
+
+    if (!hasPattern) {
+      imageRemotePatterns.push(pattern);
+    }
+  }
+} catch {
+  // Ignore malformed AUTH_API_BASE_URL values and fall back to default patterns
+}
+
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
@@ -20,13 +56,7 @@ const nextConfig = {
     AUTH_API_BASE_URL
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "assets.treazris.land",
-        pathname: "/**"
-      }
-    ]
+    remotePatterns: imageRemotePatterns
   },
   webpack: (config) => {
     config.experiments = {
