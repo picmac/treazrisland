@@ -32,11 +32,38 @@ function selectDevPortOverride(): string | undefined {
   return undefined;
 }
 
-function chooseEffectivePort(port?: string | null): string | undefined {
+function isLoopbackHost(host?: string | null): boolean {
+  if (!host) {
+    return false;
+  }
+
+  const normalized = host.replace(/^\[|\]$/g, "").trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+
+  if (normalized === "localhost" || normalized === "::1") {
+    return true;
+  }
+
+  if (normalized === "127.0.0.1") {
+    return true;
+  }
+
+  if (normalized.startsWith("127.")) {
+    return true;
+  }
+
+  return false;
+}
+
+function chooseEffectivePort(port?: string | null, host?: string | null): string | undefined {
   const sanitizedPort = sanitizePort(port);
   const overridePort = selectDevPortOverride();
+  const shouldPreferDevPort =
+    sanitizedPort === "3000" && (host === undefined || isLoopbackHost(host));
 
-  if (sanitizedPort === "3000") {
+  if (shouldPreferDevPort) {
     return overridePort ?? DEFAULT_DEV_API_PORT;
   }
 
@@ -142,7 +169,7 @@ function inferOriginFromHeaders(requestHeaders?: HeaderGetter): string | undefin
   }
 
   const protocol = extractProtocol(requestHeaders.get("x-forwarded-proto"));
-  const effectivePort = chooseEffectivePort(port);
+  const effectivePort = chooseEffectivePort(port, host);
 
   return buildOrigin(protocol, host, effectivePort);
 }
@@ -180,13 +207,18 @@ function inferOriginFromRuntime(): string | undefined {
   }
 
   const protocol = extractProtocol(locationLike.protocol);
-  const hostname = locationLike.hostname ?? locationLike.host ?? "";
-  if (!hostname) {
+  const rawHost = locationLike.hostname ?? locationLike.host ?? "";
+  if (!rawHost) {
     return locationLike.origin ?? undefined;
   }
 
-  const effectivePort = chooseEffectivePort(locationLike.port);
-  return buildOrigin(protocol, hostname, effectivePort);
+  const { host, port } = splitHostAndPort(rawHost);
+  if (!host) {
+    return locationLike.origin ?? undefined;
+  }
+
+  const effectivePort = chooseEffectivePort(locationLike.port ?? port, host);
+  return buildOrigin(protocol, host, effectivePort);
 }
 
 function readConfiguredBase(): string | undefined {
