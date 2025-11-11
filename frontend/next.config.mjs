@@ -90,10 +90,14 @@ const nextConfig = {
     return config;
   },
   async headers() {
+    const securityHeaders = buildSecurityHeaders().filter(
+      (header) => header.key !== "Content-Security-Policy"
+    );
+
     return [
       {
         source: "/(.*)",
-        headers: buildSecurityHeaders()
+        headers: securityHeaders
       }
     ];
   }

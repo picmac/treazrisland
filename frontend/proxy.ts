@@ -50,29 +50,34 @@ function needsNonce(pathname: string): boolean {
 }
 
 export function proxy(request: NextRequest) {
-  if (!needsNonce(request.nextUrl.pathname)) {
-    return NextResponse.next();
+  const nonceRequired = needsNonce(request.nextUrl.pathname);
+  const init: Parameters<typeof NextResponse.next>[0] = {};
+  let nonce: string | null = null;
+
+  if (nonceRequired) {
+    nonce = generateNonce();
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-csp-nonce", nonce);
+    init.request = { headers: requestHeaders };
   }
 
-  const nonce = generateNonce();
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-csp-nonce", nonce);
+  const response = NextResponse.next(init);
 
-  const response = NextResponse.next({
-    request: {
-      headers: requestHeaders
-    }
-  });
+  const securityHeaders = nonce
+    ? buildSecurityHeaders({ nonce })
+    : buildSecurityHeaders();
 
-  for (const header of buildSecurityHeaders({ nonce })) {
+  for (const header of securityHeaders) {
     response.headers.set(header.key, header.value);
   }
 
-  response.headers.set("x-csp-nonce", nonce);
+  if (nonce) {
+    response.headers.set("x-csp-nonce", nonce);
+  }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/play/:path*", "/admin/:path*"]
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"]
 };
