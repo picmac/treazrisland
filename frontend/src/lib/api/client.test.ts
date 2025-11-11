@@ -9,6 +9,9 @@ const ENV_KEYS = [
   "NEXT_PUBLIC_API_BASE_URL",
   "VERCEL_URL",
   "NEXT_PUBLIC_SITE_URL",
+  "NEXT_PUBLIC_DEV_API_PORT",
+  "NEXT_PUBLIC_BACKEND_PORT",
+  "NEXT_PUBLIC_API_PORT",
 ] as const;
 
 describe("apiRequest", () => {
@@ -68,5 +71,59 @@ describe("apiRequest", () => {
       "https://runtime.test/status",
       expect.objectContaining({ credentials: "include" })
     );
+  });
+
+  it("switches dev port 3000 to 3001 when inferred from runtime location", async () => {
+    Object.defineProperty(globalThis, "location", {
+      configurable: true,
+      value: {
+        protocol: "http:",
+        hostname: "192.168.1.42",
+        port: "3000",
+      },
+    });
+
+    const { resolveApiBase } = await import("./client");
+
+    expect(resolveApiBase()).toBe("http://192.168.1.42:3001");
+  });
+
+  it("derives backend port from forwarded headers in dev", async () => {
+    const headers = new Headers({
+      "x-forwarded-host": "pirate.lan:3000",
+      "x-forwarded-proto": "http",
+    });
+
+    const { resolveApiBase } = await import("./client");
+
+    expect(resolveApiBase(headers)).toBe("http://pirate.lan:3001");
+  });
+
+  it("honours NEXT_PUBLIC_DEV_API_PORT overrides when mapping dev requests", async () => {
+    process.env.NEXT_PUBLIC_DEV_API_PORT = "4000";
+
+    const headers = new Headers({
+      host: "captains.cove:3000",
+      "x-forwarded-proto": "http",
+    });
+
+    const { resolveApiBase } = await import("./client");
+
+    expect(resolveApiBase(headers)).toBe("http://captains.cove:4000");
+  });
+
+  it("wraps IPv6 hosts when constructing the origin", async () => {
+    Object.defineProperty(globalThis, "location", {
+      configurable: true,
+      value: {
+        protocol: "http:",
+        hostname: "::1",
+        port: "3000",
+      },
+    });
+
+    const { resolveApiBase } = await import("./client");
+
+    expect(resolveApiBase()).toBe("http://[::1]:3001");
   });
 });

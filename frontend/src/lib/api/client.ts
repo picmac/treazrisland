@@ -1,20 +1,150 @@
 type HeaderGetter = Pick<Headers, "get"> | null | undefined;
 
+const DEFAULT_DEV_API_PORT = "3001";
+
+const DEV_PORT_ENV_CANDIDATES = [
+  "NEXT_PUBLIC_DEV_API_PORT",
+  "NEXT_PUBLIC_BACKEND_PORT",
+  "NEXT_PUBLIC_API_PORT",
+] as const;
+
+function sanitizePort(port: string | undefined | null): string | undefined {
+  if (!port) {
+    return undefined;
+  }
+
+  const trimmed = port.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  return /^\d+$/.test(trimmed) ? trimmed : undefined;
+}
+
+function selectDevPortOverride(): string | undefined {
+  for (const key of DEV_PORT_ENV_CANDIDATES) {
+    const value = sanitizePort(process.env[key]);
+    if (value) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+function chooseEffectivePort(port?: string | null): string | undefined {
+  const sanitizedPort = sanitizePort(port);
+  const overridePort = selectDevPortOverride();
+
+  if (sanitizedPort === "3000") {
+    return overridePort ?? DEFAULT_DEV_API_PORT;
+  }
+
+  if (sanitizedPort) {
+    return sanitizedPort;
+  }
+
+  return overridePort;
+}
+
+function dropDefaultPort(protocol: string, port?: string): string | undefined {
+  if (!port) {
+    return undefined;
+  }
+
+  const normalizedProtocol = protocol.replace(/:$/, "").toLowerCase();
+  if ((normalizedProtocol === "http" && port === "80") || (normalizedProtocol === "https" && port === "443")) {
+    return undefined;
+  }
+
+  return port;
+}
+
+function extractProtocol(candidate?: string | null): string {
+  const fallback = process.env.NODE_ENV === "production" ? "https" : "http";
+  if (!candidate) {
+    return fallback;
+  }
+
+  const first = candidate.split(",")[0]?.trim();
+  if (!first) {
+    return fallback;
+  }
+
+  const normalized = first.replace(/:$/, "").toLowerCase();
+  if (normalized === "http" || normalized === "https") {
+    return normalized;
+  }
+
+  return fallback;
+}
+
+function splitHostAndPort(host: string): { host: string; port?: string } {
+  const trimmed = host.trim();
+  if (trimmed.startsWith("[")) {
+    const closing = trimmed.indexOf("]");
+    if (closing !== -1) {
+      const address = trimmed.slice(0, closing + 1);
+      const remainder = trimmed.slice(closing + 1);
+      if (remainder.startsWith(":")) {
+        const portCandidate = remainder.slice(1);
+        const sanitized = sanitizePort(portCandidate);
+        if (sanitized) {
+          return { host: address, port: sanitized };
+        }
+      }
+      return { host: address };
+    }
+  }
+
+  const lastColon = trimmed.lastIndexOf(":");
+  if (lastColon === -1) {
+    return { host: trimmed };
+  }
+
+  const portCandidate = trimmed.slice(lastColon + 1);
+  const sanitized = sanitizePort(portCandidate);
+  if (!sanitized) {
+    return { host: trimmed };
+  }
+
+  return { host: trimmed.slice(0, lastColon), port: sanitized };
+}
+
+function normalizeHost(host: string): string {
+  const trimmed = host.trim();
+  if (trimmed.startsWith("[") || !trimmed.includes(":")) {
+    return trimmed;
+  }
+
+  return `[${trimmed}]`;
+}
+
+function buildOrigin(protocol: string, host: string, port?: string): string {
+  const effectivePort = dropDefaultPort(protocol, port);
+  const normalizedHost = normalizeHost(host);
+  return `${protocol.replace(/:$/, "")}://${normalizedHost}${effectivePort ? `:${effectivePort}` : ""}`;
+}
+
 function inferOriginFromHeaders(requestHeaders?: HeaderGetter): string | undefined {
   if (!requestHeaders) {
     return undefined;
   }
 
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  const rawHost = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  if (!rawHost) {
+    return undefined;
+  }
+
+  const { host, port } = splitHostAndPort(rawHost);
   if (!host) {
     return undefined;
   }
 
-  const protocol =
-    requestHeaders.get("x-forwarded-proto") ??
-    (process.env.NODE_ENV === "production" ? "https" : "http");
+  const protocol = extractProtocol(requestHeaders.get("x-forwarded-proto"));
+  const effectivePort = chooseEffectivePort(port);
 
-  return `${protocol}://${host}`;
+  return buildOrigin(protocol, host, effectivePort);
 }
 
 function inferOriginFromProcessEnv(): string | undefined {
@@ -36,16 +166,40 @@ function inferOriginFromRuntime(): string | undefined {
     return undefined;
   }
 
-  const locationLike = (globalThis as { location?: { origin?: string } }).location;
-  if (locationLike?.origin) {
-    return locationLike.origin;
+  const locationLike = (globalThis as {
+    location?: {
+      protocol?: string;
+      hostname?: string;
+      host?: string;
+      port?: string;
+    } & { origin?: string };
+  }).location;
+
+  if (!locationLike) {
+    return undefined;
   }
 
-  return undefined;
+  const protocol = extractProtocol(locationLike.protocol);
+  const hostname = locationLike.hostname ?? locationLike.host ?? "";
+  if (!hostname) {
+    return locationLike.origin ?? undefined;
+  }
+
+  const effectivePort = chooseEffectivePort(locationLike.port);
+  return buildOrigin(protocol, hostname, effectivePort);
+}
+
+function readConfiguredBase(): string | undefined {
+  const isServer = typeof window === "undefined";
+  if (isServer) {
+    return process.env.AUTH_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+
+  return process.env.NEXT_PUBLIC_API_BASE_URL;
 }
 
 export function resolveApiBase(requestHeaders?: HeaderGetter): string {
-  const configuredBase = process.env.AUTH_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL;
+  const configuredBase = readConfiguredBase();
   if (configuredBase) {
     return configuredBase;
   }

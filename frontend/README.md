@@ -22,6 +22,9 @@ Next.js 14 App Router client that renders the SNES-inspired experience described
 
    - `NEXT_PUBLIC_API_BASE_URL`: URL that proxies API calls in the browser and server components. If left undefined alongside
      `AUTH_API_BASE_URL`, API calls default to the browser origin.
+   - `NEXT_PUBLIC_DEV_API_PORT`: optional override for the inferred backend port when the frontend runs on
+     `http://<host>:3000`. Defaults to `3001` so phones and tablets on your LAN can reach the Fastify API without additional
+     configuration.
    - `NEXT_PUBLIC_PIXEL_THEME`: selects the pixel-art theme tokens. Keep `monkey-island` for the canonical SNES look.
    - `NEXT_PUBLIC_MEDIA_CDN`: optional absolute URL for serving artwork/ROM assets (defaults to the MinIO bucket from Docker Compose).
 
@@ -109,6 +112,8 @@ client-side requests and server components resolve the correct origin:
   the frontend domain but server components need an absolute backend host.
 
 If neither variable is present, API calls default to `window.location.origin` in the browser and derive the absolute host from
-incoming request headers during server rendering. Set one of the explicit variables above when the backend lives on another
-machine or listens on a non-standard port so uploads, authentication, and server-rendered pages continue working.
+incoming request headers during server rendering. When the frontend is served from `:3000` in development, the client
+automatically rewrites requests to `:3001` so other devices on the network can reach the Fastify backend without further setup.
+Set one of the explicit variables above when the backend lives on another machine or listens on a non-standard port so
+uploads, authentication, and server-rendered pages continue working.
 

@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
+import { resolveApiBase } from "@/src/lib/api/client";
 
 type RouteParams = {
   params: Promise<{
@@ -18,12 +18,14 @@ type SignedUrlPayload = {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { stateId } = await params;
   const backendPath = `/play-states/${encodeURIComponent(stateId)}/binary`;
-  return proxyBinaryRequest(request, backendPath);
+  const apiBase = resolveApiBase(request.headers);
+  return proxyBinaryRequest(request, backendPath, apiBase);
 }
 
 async function proxyBinaryRequest(
   request: NextRequest,
-  backendPath: string
+  backendPath: string,
+  apiBase: string
 ): Promise<Response> {
   const cookieHeader = request.headers.get("cookie");
   const headers = new Headers();
@@ -32,7 +34,7 @@ async function proxyBinaryRequest(
     headers.set("cookie", cookieHeader);
   }
 
-  const backendUrl = `${API_BASE}${backendPath}`;
+  const backendUrl = `${apiBase}${backendPath}`;
 
   let backendResponse: Response;
   try {
