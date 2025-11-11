@@ -1,3 +1,5 @@
+import { headers } from "next/headers";
+
 import { FirstAdminForm } from "@/src/onboarding/sections/first-admin-form";
 import { PixelFrame } from "@/src/components/pixel-frame";
 import { SetupWizard } from "@/src/onboarding/setup-wizard";
@@ -6,7 +8,7 @@ import { fetchOnboardingStatus, type OnboardingStatus } from "@lib/api/onboardin
 export default async function OnboardingEntry() {
   let status: OnboardingStatus | null = null;
   try {
-    status = await fetchOnboardingStatus();
+    status = await fetchOnboardingStatus({ requestHeaders: headers() });
   } catch (error) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-white">
