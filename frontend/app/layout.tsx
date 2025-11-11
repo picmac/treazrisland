@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Press_Start_2P } from "next/font/google";
 import type { ReactNode } from "react";
 import { AuthProvider } from "@/src/auth/session-provider";
@@ -21,9 +22,14 @@ export default function RootLayout({
 }: {
   children: ReactNode;
 }) {
+  const nonce = headers().get("x-csp-nonce");
+
   return (
     <html lang="en" className={`${pressStart.variable} bg-background text-foreground`}>
-      <body className="min-h-screen bg-background font-sans antialiased text-foreground">
+      <body
+        className="min-h-screen bg-background font-sans antialiased text-foreground"
+        data-csp-nonce={nonce ?? undefined}
+      >
         <AuthProvider>
           <AppShell>{children}</AppShell>
         </AuthProvider>
