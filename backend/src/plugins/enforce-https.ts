@@ -60,8 +60,11 @@ function isTrustedAddress(value: string | undefined): boolean {
   try {
     let parsed = ipaddr.parse(candidate);
 
-    if (parsed.kind() === "ipv6" && parsed.isIPv4MappedAddress()) {
-      parsed = parsed.toIPv4Address();
+    if (parsed.kind() === "ipv6") {
+      const parsedV6 = parsed as ipaddr.IPv6;
+      if (parsedV6.isIPv4MappedAddress()) {
+        parsed = parsedV6.toIPv4Address();
+      }
     }
 
     return isTrustedRange(parsed.range());
