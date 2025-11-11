@@ -5,7 +5,8 @@ Next.js 14 App Router client that renders the SNES-inspired experience described
 ## Requirements
 
 - Node.js 22.11.0 LTS and npm 10.
-- A running backend at `NEXT_PUBLIC_API_BASE_URL` (defaults to `http://localhost:3001`).
+- A running backend reachable from the browser. When no API host is configured, requests fall back to the page origin (e.g. the
+  hostname serving the Next.js app).
 
 ## Environment setup
 
@@ -19,7 +20,8 @@ Next.js 14 App Router client that renders the SNES-inspired experience described
 
 2. Adjust the following keys when required:
 
-   - `NEXT_PUBLIC_API_BASE_URL`: URL that proxies API calls in the browser and server components.
+   - `NEXT_PUBLIC_API_BASE_URL`: URL that proxies API calls in the browser and server components. If left undefined alongside
+     `AUTH_API_BASE_URL`, API calls default to the browser origin.
    - `NEXT_PUBLIC_PIXEL_THEME`: selects the pixel-art theme tokens. Keep `monkey-island` for the canonical SNES look.
    - `NEXT_PUBLIC_MEDIA_CDN`: optional absolute URL for serving artwork/ROM assets (defaults to the MinIO bucket from Docker Compose).
 
@@ -96,3 +98,17 @@ When adding new external assets:
 ## API utilities
 
 Client-side data fetching helpers live in `src/lib/api/`. Reuse these hooks before introducing new fetch logic to benefit from shared error handling and revalidation policies.
+### Running the backend on another machine
+
+When the backend API is hosted on a different device or hostname, define one of the following environment variables so both
+client-side requests and server components resolve the correct origin:
+
+- `NEXT_PUBLIC_API_BASE_URL` – recommended when the frontend must communicate with the backend from the browser. This value is
+  exposed to client bundles.
+- `AUTH_API_BASE_URL` – server-only equivalent used by the Next.js runtime. Use this when the browser should keep proxying via
+  the frontend domain but server components need an absolute backend host.
+
+If neither variable is present, API calls default to `window.location.origin` in the browser and derive the absolute host from
+incoming request headers during server rendering. Set one of the explicit variables above when the backend lives on another
+machine or listens on a non-standard port so uploads, authentication, and server-rendered pages continue working.
+

@@ -1,7 +1,74 @@
-export const API_BASE =
-  process.env.AUTH_API_BASE_URL ??
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  "http://localhost:3001";
+type HeaderGetter = Pick<Headers, "get"> | null | undefined;
+
+function inferOriginFromHeaders(requestHeaders?: HeaderGetter): string | undefined {
+  if (!requestHeaders) {
+    return undefined;
+  }
+
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  if (!host) {
+    return undefined;
+  }
+
+  const protocol =
+    requestHeaders.get("x-forwarded-proto") ??
+    (process.env.NODE_ENV === "production" ? "https" : "http");
+
+  return `${protocol}://${host}`;
+}
+
+function inferOriginFromProcessEnv(): string | undefined {
+  const vercelUrl = process.env.VERCEL_URL ?? process.env.NEXT_PUBLIC_SITE_URL;
+  if (!vercelUrl) {
+    return undefined;
+  }
+
+  if (/^https?:\/\//i.test(vercelUrl)) {
+    return vercelUrl;
+  }
+
+  const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
+  return `${protocol}://${vercelUrl}`;
+}
+
+function inferOriginFromRuntime(): string | undefined {
+  if (typeof globalThis === "undefined") {
+    return undefined;
+  }
+
+  const locationLike = (globalThis as { location?: { origin?: string } }).location;
+  if (locationLike?.origin) {
+    return locationLike.origin;
+  }
+
+  return undefined;
+}
+
+export function resolveApiBase(requestHeaders?: HeaderGetter): string {
+  const configuredBase = process.env.AUTH_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (configuredBase) {
+    return configuredBase;
+  }
+
+  const inferredFromHeaders = inferOriginFromHeaders(requestHeaders);
+  if (inferredFromHeaders) {
+    return inferredFromHeaders;
+  }
+
+  const inferredFromRuntime = inferOriginFromRuntime();
+  if (inferredFromRuntime) {
+    return inferredFromRuntime;
+  }
+
+  const inferredFromEnv = inferOriginFromProcessEnv();
+  if (inferredFromEnv) {
+    return inferredFromEnv;
+  }
+
+  return "http://localhost:3001";
+}
+
+export const API_BASE = resolveApiBase();
 
 export class ApiError extends Error {
   constructor(message: string, readonly status: number, readonly body?: unknown) {
