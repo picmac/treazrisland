@@ -534,4 +534,42 @@ export async function registerUserRoutes(app: FastifyInstance) {
       return { user: { ...profile, mfaEnabled: Boolean(activeMfa) } };
     },
   );
+
+  app.delete(
+    "/users/me",
+    {
+      preHandler: app.authenticate,
+    },
+    async (request, reply) => {
+      if (!request.user) {
+        throw app.httpErrors.unauthorized();
+      }
+
+      const user = await app.prisma.user.findUnique({
+        where: { id: request.user.sub },
+        select: { id: true, avatarStorageKey: true },
+      });
+
+      if (!user) {
+        throw app.httpErrors.notFound("User not found");
+      }
+
+      try {
+        await app.prisma.user.delete({ where: { id: user.id } });
+      } catch (error) {
+        normalizePrismaError(error, app);
+      }
+
+      if (user.avatarStorageKey) {
+        void app.storage.deleteAssetObject(user.avatarStorageKey).catch((error) => {
+          request.log.warn(
+            { err: error, key: user.avatarStorageKey },
+            "Failed to remove avatar during account deletion",
+          );
+        });
+      }
+
+      return reply.status(200).send({ message: "Account deleted" });
+    },
+  );
 }
