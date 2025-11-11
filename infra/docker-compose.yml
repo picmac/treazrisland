@@ -178,6 +178,8 @@ services:
     container_name: treazrisland-frontend
     env_file:
       - ${TREAZ_ENV_FILE:-../.env}
+    environment:
+      AUTH_API_BASE_URL: http://backend:3001
     depends_on:
       backend:
         condition: service_healthy

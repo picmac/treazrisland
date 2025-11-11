@@ -37,6 +37,7 @@ services:
     depends_on:
       - backend
     environment:
+      AUTH_API_BASE_URL: http://backend:3001
       NEXT_PUBLIC_API_BASE_URL: http://backend:3001
     ports:
       - "3000:3000"
