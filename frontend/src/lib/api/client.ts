@@ -57,11 +57,20 @@ function isLoopbackHost(host?: string | null): boolean {
   return false;
 }
 
-function chooseEffectivePort(port?: string | null): string | undefined {
+function chooseEffectivePort(host?: string, port?: string | null): string | undefined {
   const sanitizedPort = sanitizePort(port);
   const overridePort = selectDevPortOverride();
   if (sanitizedPort === "3000") {
-    return overridePort ?? DEFAULT_DEV_API_PORT;
+    if (overridePort) {
+      return overridePort;
+    }
+
+    const devLikeEnvironment = process.env.NODE_ENV !== "production";
+    const loopbackHost = host ? isLoopbackHost(host) : false;
+
+    if (devLikeEnvironment || loopbackHost) {
+      return DEFAULT_DEV_API_PORT;
+    }
   }
 
   if (sanitizedPort) {
@@ -211,7 +220,7 @@ function inferOriginFromHeaders(requestHeaders?: HeaderGetter): string | undefin
   }
 
   const protocol = extractProtocol(requestHeaders.get("x-forwarded-proto"));
-  const effectivePort = chooseEffectivePort(port);
+  const effectivePort = chooseEffectivePort(host, port);
 
   return buildOrigin(protocol, host, effectivePort);
 }
@@ -254,14 +263,14 @@ function inferOriginFromRuntime(): string | undefined {
   if (explicitHost) {
     const { host, port } = splitHostAndPort(explicitHost);
     if (host) {
-      const effectivePort = chooseEffectivePort(locationLike.port ?? port);
+      const effectivePort = chooseEffectivePort(host, locationLike.port ?? port);
       return buildOrigin(protocol, host, effectivePort);
     }
   }
 
   const hostname = normalizeHeaderValue(locationLike.hostname);
   if (hostname) {
-    const effectivePort = chooseEffectivePort(locationLike.port);
+    const effectivePort = chooseEffectivePort(hostname, locationLike.port);
     return buildOrigin(protocol, hostname, effectivePort);
   }
 

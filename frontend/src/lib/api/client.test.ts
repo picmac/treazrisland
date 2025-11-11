@@ -12,6 +12,7 @@ const ENV_KEYS = [
   "NEXT_PUBLIC_DEV_API_PORT",
   "NEXT_PUBLIC_BACKEND_PORT",
   "NEXT_PUBLIC_API_PORT",
+  "NODE_ENV",
 ] as const;
 
 describe("apiRequest", () => {
@@ -97,6 +98,19 @@ describe("apiRequest", () => {
     const { resolveApiBase } = await import("./client");
 
     expect(resolveApiBase(headers)).toBe("http://pirate.lan:3001");
+  });
+
+  it("preserves forwarded port 3000 for non-loopback hosts in production", async () => {
+    process.env.NODE_ENV = "production";
+
+    const headers = new Headers({
+      "x-forwarded-host": "runner.treaz.lan:3000",
+      "x-forwarded-proto": "http",
+    });
+
+    const { resolveApiBase } = await import("./client");
+
+    expect(resolveApiBase(headers)).toBe("http://runner.treaz.lan:3000");
   });
 
   it("honours NEXT_PUBLIC_DEV_API_PORT overrides when mapping dev requests", async () => {
