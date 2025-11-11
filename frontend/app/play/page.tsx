@@ -35,7 +35,39 @@ export default async function PlayLandingPage({ searchParams }: PlayLandingPageP
     );
   }
 
-  const rom = await getRomMetadata(romId);
+  let rom;
+
+  try {
+    rom = await getRomMetadata(romId);
+  } catch (error) {
+    console.error("Failed to load ROM metadata", { romId, error });
+
+    return (
+      <main className="flex flex-1 flex-col gap-6">
+        <PixelFrame className="flex flex-col gap-5 p-6" tone="raised">
+          <h1 className="text-3xl font-bold text-primary">We couldn&apos;t load that ROM just now</h1>
+          <p className="text-base leading-relaxed text-foreground/80">
+            The squall around TREAZRISLAND knocked our ROM scanner offline while loading
+            <span className="mx-1 font-mono text-foreground">{romId}</span>. Give it another go in a moment or sail
+            back to the library to chart a new adventure.
+          </p>
+          <RomLookupForm defaultValue={romId} />
+          <div className="flex flex-wrap gap-3">
+            <Link href={`/play?romId=${encodeURIComponent(romId)}`} prefetch={false}>
+              <PixelButton asChild>
+                <span>Try again</span>
+              </PixelButton>
+            </Link>
+            <Link href="/platforms">
+              <PixelButton asChild>
+                <span>Explore the library</span>
+              </PixelButton>
+            </Link>
+          </div>
+        </PixelFrame>
+      </main>
+    );
+  }
 
   if (!rom) {
     return (
