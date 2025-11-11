@@ -126,4 +126,28 @@ describe("apiRequest", () => {
 
     expect(resolveApiBase()).toBe("http://[::1]:3001");
   });
+
+  it("derives API base from request headers when provided", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(null, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const forwardedHeaders = new Headers({
+      "x-forwarded-host": "runner.treaz.lan:3000",
+      "x-forwarded-proto": "http",
+    });
+
+    const { apiRequest } = await import("./client");
+
+    await apiRequest("/status", { requestHeaders: forwardedHeaders });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://runner.treaz.lan:3001/status",
+      expect.objectContaining({ credentials: "include" })
+    );
+  });
 });
