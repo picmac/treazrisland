@@ -96,9 +96,22 @@ export async function registerRomUploadRoutes(
     done(null, payload);
   };
 
-  app.addContentTypeParser("application/octet-stream", streamParser);
-  app.addContentTypeParser("application/zip", streamParser);
-  app.addContentTypeParser("application/x-zip-compressed", streamParser);
+  const binaryContentTypes = [
+    "application/octet-stream",
+    "application/zip",
+    "application/x-zip-compressed",
+    "application/x-7z-compressed",
+    "application/x-rar-compressed",
+    "application/vnd.rar",
+    "application/x-chd",
+    "application/x-iso9660-image",
+    "application/x-cd-image",
+    "application/x-msdownload",
+  ];
+
+  for (const type of binaryContentTypes) {
+    app.addContentTypeParser(type, streamParser);
+  }
 
   app.post("/roms/uploads", async (request, reply) => {
     const metadataHeader = request.headers["x-treaz-upload-metadata"];
