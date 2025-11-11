@@ -15,6 +15,7 @@ vi.mock("@/src/lib/server/backend-cookies", async () => {
 
   return {
     ...actual,
+    applyBackendCookies: vi.fn(),
     buildCookieHeaderFromStore: vi.fn(),
   };
 });
@@ -25,11 +26,15 @@ vi.mock("next/headers", () => ({
 }));
 
 import { resolveApiBase } from "@/src/lib/api/client";
-import { buildCookieHeaderFromStore } from "@/src/lib/server/backend-cookies";
+import {
+  applyBackendCookies,
+  buildCookieHeaderFromStore,
+} from "@/src/lib/server/backend-cookies";
 import { refreshAccessTokenFromCookies } from "@/src/lib/server/session";
 
 const mockResolveApiBase = vi.mocked(resolveApiBase);
 const mockBuildCookieHeaderFromStore = vi.mocked(buildCookieHeaderFromStore);
+const mockApplyBackendCookies = vi.mocked(applyBackendCookies);
 const fetchMock = vi.fn<
   Parameters<typeof fetch>,
   Promise<Response>
@@ -41,6 +46,7 @@ describe("refreshAccessTokenFromCookies", () => {
     mockResolveApiBase.mockClear();
     mockResolveApiBase.mockReturnValue("http://backend.test");
     mockBuildCookieHeaderFromStore.mockReset();
+    mockApplyBackendCookies.mockReset();
     cookieStore.get.mockReset();
     mockBuildCookieHeaderFromStore.mockResolvedValue(undefined);
     cookieStore.get.mockReturnValue(undefined);
@@ -103,6 +109,11 @@ describe("refreshAccessTokenFromCookies", () => {
       payload: responseBody,
       cookies: ["treaz_refresh=new-token; Path=/; HttpOnly"],
     });
+
+    expect(mockApplyBackendCookies).toHaveBeenCalledTimes(1);
+    expect(mockApplyBackendCookies).toHaveBeenCalledWith([
+      "treaz_refresh=new-token; Path=/; HttpOnly",
+    ]);
   });
 
   it("throws when the refresh endpoint fails", async () => {

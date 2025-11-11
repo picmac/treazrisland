@@ -4,7 +4,11 @@ import { cookies, headers } from "next/headers";
 
 import { resolveApiBase } from "@/src/lib/api/client";
 import type { SessionPayload } from "@/src/lib/api/auth";
-import { buildCookieHeaderFromStore, extractSetCookieHeaders } from "./backend-cookies";
+import {
+  applyBackendCookies,
+  buildCookieHeaderFromStore,
+  extractSetCookieHeaders,
+} from "./backend-cookies";
 
 const REFRESH_CSRF_COOKIE_NAME = "treaz_refresh_csrf";
 const REFRESH_CSRF_HEADER = "x-refresh-csrf";
@@ -51,6 +55,10 @@ export async function refreshAccessTokenFromCookies(): Promise<RefreshSessionRes
 
   const payload = (await response.json()) as SessionPayload;
   const cookies = extractSetCookieHeaders(response);
+
+  if (cookies.length > 0) {
+    await applyBackendCookies(cookies);
+  }
 
   return {
     accessToken: payload.accessToken,

@@ -18,9 +18,6 @@ export async function fetchProfile(): Promise<UserProfileResponse> {
     const session = await refreshAccessTokenFromCookies();
     accessToken = session.accessToken;
 
-    if (session.cookies.length > 0) {
-      await applyBackendCookies(session.cookies);
-    }
   } catch {
     redirect("/login");
   }

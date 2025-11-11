@@ -112,11 +112,8 @@ describe("fetchProfile", () => {
       user: { id: "user-1", email: "pirate@island.tld", nickname: "Pirate", role: "USER" },
     });
 
-    expect(mockApplyBackendCookies).toHaveBeenCalledTimes(2);
-    expect(mockApplyBackendCookies).toHaveBeenNthCalledWith(1, [
-      "treaz_refresh=new-token; Path=/; HttpOnly",
-    ]);
-    expect(mockApplyBackendCookies).toHaveBeenNthCalledWith(2, [
+    expect(mockApplyBackendCookies).toHaveBeenCalledTimes(1);
+    expect(mockApplyBackendCookies).toHaveBeenCalledWith([
       "treaz_session=profile-token; Path=/; HttpOnly",
     ]);
   });
@@ -150,11 +147,8 @@ describe("fetchProfile", () => {
 
     await expect(fetchProfile()).rejects.toThrow("REDIRECT:/login");
     expect(mockRedirect).toHaveBeenCalledWith("/login");
-    expect(mockApplyBackendCookies).toHaveBeenCalledTimes(2);
-    expect(mockApplyBackendCookies).toHaveBeenNthCalledWith(1, [
-      "treaz_refresh=new-token; Path=/; HttpOnly",
-    ]);
-    expect(mockApplyBackendCookies).toHaveBeenNthCalledWith(2, [
+    expect(mockApplyBackendCookies).toHaveBeenCalledTimes(1);
+    expect(mockApplyBackendCookies).toHaveBeenCalledWith([
       "treaz_session=profile-token; Path=/; HttpOnly",
     ]);
   });
