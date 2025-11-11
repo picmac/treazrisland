@@ -6,31 +6,31 @@ exports[`pixel components > renders button variants accessibly 1`] = `
     class="flex flex-col gap-3"
   >
     <button
-      class="inline-flex items-center justify-center gap-2 rounded-pixel font-semibold uppercase tracking-widest shadow-pixel transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-night disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none bg-primary text-night hover:bg-primary-strong focus-visible:ring-primary border border-[color:color-mix(in srgb, var(--color-primary) 60%, transparent)] px-4 py-2 text-xs"
+      class="inline-flex items-center justify-center gap-2 rounded-pixel font-semibold uppercase tracking-widest shadow-pixel transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-night disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none bg-primary text-night hover:bg-primary-strong focus-visible:ring-primary border border-[color-mix(in_srgb,_var(--color-primary)_60%,_transparent)] px-4 py-2 text-xs"
       type="button"
     >
       Primary
     </button>
     <button
-      class="inline-flex items-center justify-center gap-2 rounded-pixel font-semibold uppercase tracking-widest shadow-pixel transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-night disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none bg-surface-translucent border border-[color:var(--surface-outline-subtle)] text-primary hover:bg-surface-raised focus-visible:ring-primary px-4 py-2 text-xs"
+      class="inline-flex items-center justify-center gap-2 rounded-pixel font-semibold uppercase tracking-widest shadow-pixel transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-night disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none bg-surface-translucent border border-[var(--surface-outline-subtle)] text-primary hover:bg-surface-raised focus-visible:ring-primary px-4 py-2 text-xs"
       type="button"
     >
       Secondary
     </button>
     <button
-      class="inline-flex items-center justify-center gap-2 rounded-pixel font-semibold uppercase tracking-widest shadow-pixel transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-night disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none bg-danger text-night hover:bg-[color:color-mix(in srgb, var(--color-danger) 78%, transparent)] focus-visible:ring-danger border border-[color:color-mix(in srgb, var(--color-danger) 70%, transparent)] px-4 py-2 text-xs"
+      class="inline-flex items-center justify-center gap-2 rounded-pixel font-semibold uppercase tracking-widest shadow-pixel transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-night disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none bg-danger text-night hover:bg-[color-mix(in_srgb,_var(--color-danger)_78%,_transparent)] focus-visible:ring-danger border border-[color-mix(in_srgb,_var(--color-danger)_70%,_transparent)] px-4 py-2 text-xs"
       type="button"
     >
       Danger
     </button>
     <button
-      class="inline-flex items-center justify-center gap-2 rounded-pixel font-semibold uppercase tracking-widest shadow-pixel transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-night disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none bg-transparent border border-[color:var(--surface-outline-subtle)] text-foreground hover:bg-surface-translucent focus-visible:ring-primary px-3 py-1.5 text-[11px]"
+      class="inline-flex items-center justify-center gap-2 rounded-pixel font-semibold uppercase tracking-widest shadow-pixel transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-night disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none bg-transparent border border-[var(--surface-outline-subtle)] text-foreground hover:bg-surface-translucent focus-visible:ring-primary px-3 py-1.5 text-[11px]"
       type="button"
     >
       Ghost
     </button>
     <button
-      class="inline-flex items-center justify-center gap-2 rounded-pixel font-semibold uppercase tracking-widest shadow-pixel transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-night disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none bg-primary text-night hover:bg-primary-strong focus-visible:ring-primary border border-[color:color-mix(in srgb, var(--color-primary) 60%, transparent)] px-5 py-3 text-sm w-full"
+      class="inline-flex items-center justify-center gap-2 rounded-pixel font-semibold uppercase tracking-widest shadow-pixel transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-night disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none bg-primary text-night hover:bg-primary-strong focus-visible:ring-primary border border-[color-mix(in_srgb,_var(--color-primary)_60%,_transparent)] px-5 py-3 text-sm w-full"
       type="button"
     >
       Full width
@@ -56,22 +56,22 @@ exports[`pixel components > renders frame and notice pair accessibly 1`] = `
       PixelFrame uses semantic tone tokens so notices and nested buttons inherit consistent contrast.
     </p>
     <p
-      class="rounded-pixel border px-3 py-2 text-xs tracking-wide border-[color:color-mix(in srgb, var(--color-info) 70%, transparent)] text-[color:var(--color-info)]"
+      class="rounded-pixel border px-3 py-2 text-xs tracking-wide border-[color-mix(in_srgb,_var(--color-info)_70%,_transparent)] text-[var(--color-info)]"
     >
       Informational tone
     </p>
     <p
-      class="rounded-pixel border px-3 py-2 text-xs tracking-wide border-[color:color-mix(in srgb, var(--color-success) 70%, transparent)] text-[color:var(--color-success)]"
+      class="rounded-pixel border px-3 py-2 text-xs tracking-wide border-[color-mix(in_srgb,_var(--color-success)_70%,_transparent)] text-[var(--color-success)]"
     >
       Success tone
     </p>
     <p
-      class="rounded-pixel border px-3 py-2 text-xs tracking-wide border-[color:color-mix(in srgb, var(--color-warning) 75%, transparent)] text-[color:var(--color-warning)]"
+      class="rounded-pixel border px-3 py-2 text-xs tracking-wide border-[color-mix(in_srgb,_var(--color-warning)_75%,_transparent)] text-[var(--color-warning)]"
     >
       Warning tone
     </p>
     <p
-      class="rounded-pixel border px-3 py-2 text-xs tracking-wide border-[color:color-mix(in srgb, var(--color-danger) 70%, transparent)] text-[color:var(--color-danger)]"
+      class="rounded-pixel border px-3 py-2 text-xs tracking-wide border-[color-mix(in_srgb,_var(--color-danger)_70%,_transparent)] text-[var(--color-danger)]"
     >
       Error tone
     </p>

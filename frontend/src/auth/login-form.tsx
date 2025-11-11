@@ -112,7 +112,7 @@ export function LoginForm() {
       </div>
 
       {mfaRequired && (
-        <div className="space-y-3 rounded-pixel border border-[color:var(--surface-outline-subtle)] bg-surface-translucent p-3">
+        <div className="space-y-3 rounded-pixel border border-[var(--surface-outline-subtle)] bg-surface-translucent p-3">
           <div className="space-y-1">
             <label className="block text-xs uppercase tracking-widest text-foreground/70" htmlFor="mfaCode">
               MFA Code

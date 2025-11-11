@@ -13,13 +13,13 @@ type BaseButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-night hover:bg-primary-strong focus-visible:ring-primary border border-[color:color-mix(in srgb, var(--color-primary) 60%, transparent)]",
+    "bg-primary text-night hover:bg-primary-strong focus-visible:ring-primary border border-[color-mix(in_srgb,_var(--color-primary)_60%,_transparent)]",
   secondary:
-    "bg-surface-translucent border border-[color:var(--surface-outline-subtle)] text-primary hover:bg-surface-raised focus-visible:ring-primary",
+    "bg-surface-translucent border border-[var(--surface-outline-subtle)] text-primary hover:bg-surface-raised focus-visible:ring-primary",
   danger:
-    "bg-danger text-night hover:bg-[color:color-mix(in srgb, var(--color-danger) 78%, transparent)] focus-visible:ring-danger border border-[color:color-mix(in srgb, var(--color-danger) 70%, transparent)]",
+    "bg-danger text-night hover:bg-[color-mix(in_srgb,_var(--color-danger)_78%,_transparent)] focus-visible:ring-danger border border-[color-mix(in_srgb,_var(--color-danger)_70%,_transparent)]",
   ghost:
-    "bg-transparent border border-[color:var(--surface-outline-subtle)] text-foreground hover:bg-surface-translucent focus-visible:ring-primary"
+    "bg-transparent border border-[var(--surface-outline-subtle)] text-foreground hover:bg-surface-translucent focus-visible:ring-primary"
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

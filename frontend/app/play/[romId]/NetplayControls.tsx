@@ -291,7 +291,7 @@ export default function NetplayControls({ romId }: NetplayControlsProps) {
   );
 
   return (
-    <section className="rounded-3xl border border-[color:var(--surface-outline-subtle)] bg-surface-sunken/70 p-4 shadow-inner">
+    <section className="rounded-3xl border border-[var(--surface-outline-subtle)] bg-surface-sunken/70 p-4 shadow-inner">
       <header className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold uppercase tracking-widest text-lagoon">
@@ -303,20 +303,20 @@ export default function NetplayControls({ romId }: NetplayControlsProps) {
         </div>
         <div className="text-xs text-parchment/70">
           {connected ? (
-            <span className="text-[color:var(--color-primary)]">
+            <span className="text-[var(--color-primary)]">
               Signal connected
               {typeof latency === "number" && Number.isFinite(latency)
                 ? ` • ${Math.round(latency)}ms`
                 : ""}
             </span>
           ) : (
-            <span className="text-[color:var(--color-danger)]">Signal offline</span>
+            <span className="text-[var(--color-danger)]">Signal offline</span>
           )}
         </div>
       </header>
 
       {error && (
-        <p className="mt-3 text-sm text-[color:var(--color-danger)]">{error}</p>
+        <p className="mt-3 text-sm text-[var(--color-danger)]">{error}</p>
       )}
 
       {loading ? (
@@ -338,7 +338,7 @@ export default function NetplayControls({ romId }: NetplayControlsProps) {
                   Copy
                 </PixelButton>
                 {copied && (
-                  <span className="text-xs text-[color:var(--color-primary)]">Copied!</span>
+                  <span className="text-xs text-[var(--color-primary)]">Copied!</span>
                 )}
               </div>
             </div>
@@ -348,7 +348,7 @@ export default function NetplayControls({ romId }: NetplayControlsProps) {
             <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-parchment/70">
               Participants
             </h3>
-            <ul className="mt-2 divide-y divide-[color:var(--surface-outline-subtle)] border border-[color:var(--surface-outline-subtle)] bg-surface-translucent">
+            <ul className="mt-2 divide-y divide-[var(--surface-outline-subtle)] border border-[var(--surface-outline-subtle)] bg-surface-translucent">
               {sortedParticipants.map((participant) => {
                 const isSelf = participant.userId === user?.id;
                 const label = isSelf ? "You" : participant.userId;
@@ -362,7 +362,7 @@ export default function NetplayControls({ romId }: NetplayControlsProps) {
                     <div className="flex flex-col gap-0.5">
                       <span className="font-semibold text-parchment">
                         {label}
-                        <span className="ml-2 text-[color:var(--surface-outline-strong)]">{roleLabel}</span>
+                        <span className="ml-2 text-[var(--surface-outline-strong)]">{roleLabel}</span>
                       </span>
                       <span className="uppercase tracking-[0.3em] text-parchment/60">
                         {formatStatus(participant.status)}

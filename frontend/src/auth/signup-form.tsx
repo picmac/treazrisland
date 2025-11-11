@@ -86,7 +86,7 @@ export default function SignupForm({ token, invitationEmail, role }: SignupFormP
       {invitationEmail ? (
         <div className="space-y-1">
           <label className="block text-xs uppercase tracking-widest text-foreground/70">Email</label>
-          <p className="rounded-pixel border border-[color:var(--surface-outline-subtle)] bg-surface-sunken px-3 py-2 text-sm text-foreground/85">
+          <p className="rounded-pixel border border-[var(--surface-outline-subtle)] bg-surface-sunken px-3 py-2 text-sm text-foreground/85">
             {invitationEmail}
           </p>
           <p className="text-xs text-foreground/60">This invitation is locked to the email above.</p>

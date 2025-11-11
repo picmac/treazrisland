@@ -58,23 +58,23 @@ body {
 }
 
 .pixel-frame {
-  @apply rounded-pixel border border-[color:var(--surface-outline-subtle)] bg-[color:var(--surface-raised)] text-foreground shadow-pixel;
+  @apply rounded-pixel border border-[var(--surface-outline-subtle)] bg-[var(--surface-raised)] text-foreground shadow-pixel;
 }
 
 .pixel-frame[data-tone="default"] {
-  @apply border-[color:var(--surface-outline-subtle)] bg-[color:var(--surface-default)];
+  @apply border-[var(--surface-outline-subtle)] bg-[var(--surface-default)];
 }
 
 .pixel-frame[data-tone="raised"] {
-  @apply border-[color:var(--surface-outline-strong)] bg-[color:var(--surface-raised)] shadow-pixel;
+  @apply border-[var(--surface-outline-strong)] bg-[var(--surface-raised)] shadow-pixel;
 }
 
 .pixel-frame[data-tone="sunken"] {
-  @apply border-[color:var(--surface-outline-strong)] bg-[color:var(--surface-sunken)] shadow-inner-pixel;
+  @apply border-[var(--surface-outline-strong)] bg-[var(--surface-sunken)] shadow-inner-pixel;
 }
 
 .pixel-frame[data-tone="translucent"] {
-  @apply border-[color:var(--surface-outline-subtle)] bg-[color:var(--surface-translucent)];
+  @apply border-[var(--surface-outline-subtle)] bg-[var(--surface-translucent)];
 }
 
 .pixel-frame[data-tone="highlight"] {

@@ -10,10 +10,10 @@ type PixelNoticeProps = {
 };
 
 const toneClasses: Record<NoticeTone, string> = {
-  info: "border-[color:color-mix(in srgb, var(--color-info) 70%, transparent)] text-[color:var(--color-info)]",
-  success: "border-[color:color-mix(in srgb, var(--color-success) 70%, transparent)] text-[color:var(--color-success)]",
-  error: "border-[color:color-mix(in srgb, var(--color-danger) 70%, transparent)] text-[color:var(--color-danger)]",
-  warning: "border-[color:color-mix(in srgb, var(--color-warning) 75%, transparent)] text-[color:var(--color-warning)]"
+  info: "border-[color-mix(in_srgb,_var(--color-info)_70%,_transparent)] text-[var(--color-info)]",
+  success: "border-[color-mix(in_srgb,_var(--color-success)_70%,_transparent)] text-[var(--color-success)]",
+  error: "border-[color-mix(in_srgb,_var(--color-danger)_70%,_transparent)] text-[var(--color-danger)]",
+  warning: "border-[color-mix(in_srgb,_var(--color-warning)_75%,_transparent)] text-[var(--color-warning)]"
 };
 
 export function PixelNotice({ tone = "info", children, className }: PixelNoticeProps) {

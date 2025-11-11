@@ -77,7 +77,7 @@ export default function HomePage() {
             <Link
               key={link.href}
               href={link.href}
-              className="group flex flex-col gap-2 rounded-pixel border border-[color:var(--surface-outline-subtle)] bg-surface-translucent p-4 transition hover:border-[color:var(--surface-outline-strong)] hover:bg-surface-raised"
+              className="group flex flex-col gap-2 rounded-pixel border border-[var(--surface-outline-subtle)] bg-surface-translucent p-4 transition hover:border-[var(--surface-outline-strong)] hover:bg-surface-raised"
             >
               <span className="text-sm uppercase tracking-[0.3em] text-primary/70">
                 {link.eyebrow}
