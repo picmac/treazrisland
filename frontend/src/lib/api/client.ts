@@ -1,4 +1,4 @@
-type HeaderGetter = Pick<Headers, "get"> | null | undefined;
+export type HeaderGetter = Pick<Headers, "get"> | null | undefined;
 
 const DEFAULT_DEV_API_PORT = "3001";
 
@@ -57,11 +57,20 @@ function isLoopbackHost(host?: string | null): boolean {
   return false;
 }
 
-function chooseEffectivePort(port?: string | null): string | undefined {
+function chooseEffectivePort(host?: string, port?: string | null): string | undefined {
   const sanitizedPort = sanitizePort(port);
   const overridePort = selectDevPortOverride();
   if (sanitizedPort === "3000") {
-    return overridePort ?? DEFAULT_DEV_API_PORT;
+    if (overridePort) {
+      return overridePort;
+    }
+
+    const devLikeEnvironment = process.env.NODE_ENV !== "production";
+    const loopbackHost = host ? isLoopbackHost(host) : false;
+
+    if (devLikeEnvironment || loopbackHost) {
+      return DEFAULT_DEV_API_PORT;
+    }
   }
 
   if (sanitizedPort) {
@@ -211,7 +220,7 @@ function inferOriginFromHeaders(requestHeaders?: HeaderGetter): string | undefin
   }
 
   const protocol = extractProtocol(requestHeaders.get("x-forwarded-proto"));
-  const effectivePort = chooseEffectivePort(port);
+  const effectivePort = chooseEffectivePort(host, port);
 
   return buildOrigin(protocol, host, effectivePort);
 }
@@ -254,14 +263,14 @@ function inferOriginFromRuntime(): string | undefined {
   if (explicitHost) {
     const { host, port } = splitHostAndPort(explicitHost);
     if (host) {
-      const effectivePort = chooseEffectivePort(locationLike.port ?? port);
+      const effectivePort = chooseEffectivePort(host, locationLike.port ?? port);
       return buildOrigin(protocol, host, effectivePort);
     }
   }
 
   const hostname = normalizeHeaderValue(locationLike.hostname);
   if (hostname) {
-    const effectivePort = chooseEffectivePort(locationLike.port);
+    const effectivePort = chooseEffectivePort(hostname, locationLike.port);
     return buildOrigin(protocol, hostname, effectivePort);
   }
 
@@ -303,16 +312,22 @@ export function resolveApiBase(requestHeaders?: HeaderGetter): string {
 
 export const API_BASE = resolveApiBase();
 
+export interface ApiRequestInit extends RequestInit {
+  baseUrl?: string;
+  requestHeaders?: HeaderGetter;
+}
+
 export class ApiError extends Error {
   constructor(message: string, readonly status: number, readonly body?: unknown) {
     super(message);
   }
 }
 
-export async function apiRequest(path: string, init?: RequestInit): Promise<Response> {
-  const headers = new Headers(init?.headers ?? {});
+export async function apiRequest(path: string, init?: ApiRequestInit): Promise<Response> {
+  const { baseUrl, requestHeaders, ...fetchInit } = init ?? {};
+  const headers = new Headers(fetchInit.headers ?? {});
   const isFormData =
-    typeof FormData !== "undefined" && init?.body instanceof FormData;
+    typeof FormData !== "undefined" && fetchInit.body instanceof FormData;
 
   if (isFormData) {
     headers.delete("Content-Type");
@@ -322,10 +337,11 @@ export async function apiRequest(path: string, init?: RequestInit): Promise<Resp
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      cache: "no-store",
-      credentials: "include",
+    const resolvedBase = baseUrl ?? (requestHeaders ? resolveApiBase(requestHeaders) : API_BASE);
+    response = await fetch(`${resolvedBase}${path}`, {
+      ...fetchInit,
+      cache: fetchInit.cache ?? "no-store",
+      credentials: fetchInit.credentials ?? "include",
       headers
     });
   } catch (error) {
@@ -368,7 +384,7 @@ export async function apiRequest(path: string, init?: RequestInit): Promise<Resp
   return response;
 }
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<T> {
   const response = await apiRequest(path, init);
 
   if (response.status === 204 || response.status === 205) {

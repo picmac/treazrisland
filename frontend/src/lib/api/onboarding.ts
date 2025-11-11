@@ -1,4 +1,4 @@
-import { apiFetch, ApiError } from "@lib/api/client";
+import { apiFetch, ApiError, type ApiRequestInit } from "@lib/api/client";
 import type { SessionPayload } from "@lib/api/auth";
 
 export type OnboardingStepKey =
@@ -86,8 +86,10 @@ export interface CreateFirstAdminPayload {
   password: string;
 }
 
-export async function fetchOnboardingStatus(): Promise<OnboardingStatus> {
-  return apiFetch<OnboardingStatus>("/onboarding/status");
+export async function fetchOnboardingStatus(
+  init?: ApiRequestInit
+): Promise<OnboardingStatus> {
+  return apiFetch<OnboardingStatus>("/onboarding/status", init);
 }
 
 export async function createFirstAdmin(
