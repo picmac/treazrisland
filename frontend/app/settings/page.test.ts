@@ -19,7 +19,7 @@ vi.mock("next/headers", () => ({
 import { resolveApiBase } from "@/src/lib/api/client";
 import { refreshSessionFromCookies } from "@/src/lib/server/session";
 import { redirect } from "next/navigation";
-import { fetchProfile } from "./page";
+import { fetchProfile } from "./fetch-profile";
 
 const mockResolveApiBase = vi.mocked(resolveApiBase);
 const mockRefreshSessionFromCookies = vi.mocked(refreshSessionFromCookies);
