@@ -3,7 +3,11 @@ import { redirect } from "next/navigation";
 
 import type { UserProfileResponse } from "@/src/lib/api/user";
 import { resolveApiBase } from "@/src/lib/api/client";
-import { refreshSessionFromCookies } from "@/src/lib/server/session";
+import {
+  applyBackendCookies,
+  extractSetCookieHeaders,
+} from "@/src/lib/server/backend-cookies";
+import { refreshAccessTokenFromCookies } from "@/src/lib/server/session";
 
 export async function fetchProfile(): Promise<UserProfileResponse> {
   const headerStore = headers();
@@ -11,8 +15,12 @@ export async function fetchProfile(): Promise<UserProfileResponse> {
 
   let accessToken: string | null = null;
   try {
-    const session = await refreshSessionFromCookies();
+    const session = await refreshAccessTokenFromCookies();
     accessToken = session.accessToken;
+
+    if (session.cookies.length > 0) {
+      await applyBackendCookies(session.cookies);
+    }
   } catch {
     redirect("/login");
   }
@@ -29,6 +37,11 @@ export async function fetchProfile(): Promise<UserProfileResponse> {
     },
     cache: "no-store",
   });
+
+  const profileCookies = extractSetCookieHeaders(response);
+  if (profileCookies.length > 0) {
+    await applyBackendCookies(profileCookies);
+  }
 
   if (response.status === 401) {
     redirect("/login");

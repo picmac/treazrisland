@@ -8,10 +8,16 @@ vi.mock("@/src/lib/api/client", () => ({
   resolveApiBase: vi.fn(),
 }));
 
-vi.mock("@/src/lib/server/backend-cookies", () => ({
-  buildCookieHeaderFromStore: vi.fn(),
-  applyBackendCookies: vi.fn(),
-}));
+vi.mock("@/src/lib/server/backend-cookies", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/src/lib/server/backend-cookies")
+  >("@/src/lib/server/backend-cookies");
+
+  return {
+    ...actual,
+    buildCookieHeaderFromStore: vi.fn(),
+  };
+});
 
 vi.mock("next/headers", () => ({
   headers: () => new Headers(),
@@ -19,29 +25,22 @@ vi.mock("next/headers", () => ({
 }));
 
 import { resolveApiBase } from "@/src/lib/api/client";
-import {
-  applyBackendCookies,
-  buildCookieHeaderFromStore,
-} from "@/src/lib/server/backend-cookies";
-import { refreshSessionFromCookies } from "@/src/lib/server/session";
+import { buildCookieHeaderFromStore } from "@/src/lib/server/backend-cookies";
+import { refreshAccessTokenFromCookies } from "@/src/lib/server/session";
 
 const mockResolveApiBase = vi.mocked(resolveApiBase);
 const mockBuildCookieHeaderFromStore = vi.mocked(buildCookieHeaderFromStore);
-const mockApplyBackendCookies = vi.mocked(applyBackendCookies);
-
 const fetchMock = vi.fn<
   Parameters<typeof fetch>,
   Promise<Response>
 >();
 
-describe("refreshSessionFromCookies", () => {
+describe("refreshAccessTokenFromCookies", () => {
   beforeEach(() => {
     fetchMock.mockReset();
     mockResolveApiBase.mockClear();
     mockResolveApiBase.mockReturnValue("http://backend.test");
     mockBuildCookieHeaderFromStore.mockReset();
-    mockApplyBackendCookies.mockReset();
-    mockApplyBackendCookies.mockResolvedValue(undefined);
     cookieStore.get.mockReset();
     mockBuildCookieHeaderFromStore.mockResolvedValue(undefined);
     cookieStore.get.mockReturnValue(undefined);
@@ -85,7 +84,7 @@ describe("refreshSessionFromCookies", () => {
       json: async () => responseBody,
     } as unknown as Response);
 
-    const payload = await refreshSessionFromCookies();
+    const payload = await refreshAccessTokenFromCookies();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];
@@ -99,10 +98,11 @@ describe("refreshSessionFromCookies", () => {
     expect(headers.get("cookie")).toBe("treaz_refresh=old-token");
     expect(headers.get("x-refresh-csrf")).toBe("csrf-token");
 
-    expect(mockApplyBackendCookies).toHaveBeenCalledWith([
-      "treaz_refresh=new-token; Path=/; HttpOnly",
-    ]);
-    expect(payload.accessToken).toBe("new-access");
+    expect(payload).toEqual({
+      accessToken: "new-access",
+      payload: responseBody,
+      cookies: ["treaz_refresh=new-token; Path=/; HttpOnly"],
+    });
   });
 
   it("throws when the refresh endpoint fails", async () => {
@@ -113,7 +113,8 @@ describe("refreshSessionFromCookies", () => {
       })
     );
 
-    await expect(refreshSessionFromCookies()).rejects.toThrow("Failed to refresh session: 401");
-    expect(mockApplyBackendCookies).not.toHaveBeenCalled();
+    await expect(refreshAccessTokenFromCookies()).rejects.toThrow(
+      "Failed to refresh session: 401"
+    );
   });
 });

@@ -5,7 +5,12 @@ vi.mock("@/src/lib/api/client", () => ({
 }));
 
 vi.mock("@/src/lib/server/session", () => ({
-  refreshSessionFromCookies: vi.fn(),
+  refreshAccessTokenFromCookies: vi.fn(),
+}));
+
+vi.mock("@/src/lib/server/backend-cookies", () => ({
+  applyBackendCookies: vi.fn(),
+  extractSetCookieHeaders: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -17,12 +22,18 @@ vi.mock("next/headers", () => ({
 }));
 
 import { resolveApiBase } from "@/src/lib/api/client";
-import { refreshSessionFromCookies } from "@/src/lib/server/session";
+import { refreshAccessTokenFromCookies } from "@/src/lib/server/session";
+import {
+  applyBackendCookies,
+  extractSetCookieHeaders,
+} from "@/src/lib/server/backend-cookies";
 import { redirect } from "next/navigation";
 import { fetchProfile } from "./fetch-profile";
 
 const mockResolveApiBase = vi.mocked(resolveApiBase);
-const mockRefreshSessionFromCookies = vi.mocked(refreshSessionFromCookies);
+const mockRefreshAccessTokenFromCookies = vi.mocked(refreshAccessTokenFromCookies);
+const mockApplyBackendCookies = vi.mocked(applyBackendCookies);
+const mockExtractSetCookieHeaders = vi.mocked(extractSetCookieHeaders);
 const mockRedirect = vi.mocked(redirect);
 
 const fetchMock = vi.fn<
@@ -41,7 +52,9 @@ describe("fetchProfile", () => {
     fetchMock.mockReset();
     mockResolveApiBase.mockClear();
     mockResolveApiBase.mockReturnValue("http://backend.test");
-    mockRefreshSessionFromCookies.mockReset();
+    mockRefreshAccessTokenFromCookies.mockReset();
+    mockApplyBackendCookies.mockReset();
+    mockExtractSetCookieHeaders.mockReset();
     mockRedirect.mockReset();
     mockRedirect.mockImplementation(redirectError);
     vi.stubGlobal("fetch", fetchMock);
@@ -52,11 +65,24 @@ describe("fetchProfile", () => {
   });
 
   it("uses a refreshed access token when requesting the profile", async () => {
-    mockRefreshSessionFromCookies.mockResolvedValue({
+    mockRefreshAccessTokenFromCookies.mockResolvedValue({
       accessToken: "fresh-token",
-      refreshExpiresAt: "2099-01-01T00:00:00Z",
-      user: { id: "user-1", email: "pirate@island.tld", nickname: "Pirate", role: "USER" },
+      payload: {
+        accessToken: "fresh-token",
+        refreshExpiresAt: "2099-01-01T00:00:00Z",
+        user: {
+          id: "user-1",
+          email: "pirate@island.tld",
+          nickname: "Pirate",
+          role: "USER",
+        },
+      },
+      cookies: ["treaz_refresh=new-token; Path=/; HttpOnly"],
     });
+
+    mockExtractSetCookieHeaders.mockReturnValueOnce([
+      "treaz_session=profile-token; Path=/; HttpOnly",
+    ]);
 
     fetchMock.mockResolvedValue(
       new Response(
@@ -85,14 +111,35 @@ describe("fetchProfile", () => {
     expect(response).toEqual({
       user: { id: "user-1", email: "pirate@island.tld", nickname: "Pirate", role: "USER" },
     });
+
+    expect(mockApplyBackendCookies).toHaveBeenCalledTimes(2);
+    expect(mockApplyBackendCookies).toHaveBeenNthCalledWith(1, [
+      "treaz_refresh=new-token; Path=/; HttpOnly",
+    ]);
+    expect(mockApplyBackendCookies).toHaveBeenNthCalledWith(2, [
+      "treaz_session=profile-token; Path=/; HttpOnly",
+    ]);
   });
 
   it("redirects to /login when the profile request is unauthorized", async () => {
-    mockRefreshSessionFromCookies.mockResolvedValue({
+    mockRefreshAccessTokenFromCookies.mockResolvedValue({
       accessToken: "fresh-token",
-      refreshExpiresAt: "2099-01-01T00:00:00Z",
-      user: { id: "user-1", email: "pirate@island.tld", nickname: "Pirate", role: "USER" },
+      payload: {
+        accessToken: "fresh-token",
+        refreshExpiresAt: "2099-01-01T00:00:00Z",
+        user: {
+          id: "user-1",
+          email: "pirate@island.tld",
+          nickname: "Pirate",
+          role: "USER",
+        },
+      },
+      cookies: ["treaz_refresh=new-token; Path=/; HttpOnly"],
     });
+
+    mockExtractSetCookieHeaders.mockReturnValueOnce([
+      "treaz_session=profile-token; Path=/; HttpOnly",
+    ]);
 
     fetchMock.mockResolvedValue(
       new Response("unauthorized", {
@@ -103,10 +150,19 @@ describe("fetchProfile", () => {
 
     await expect(fetchProfile()).rejects.toThrow("REDIRECT:/login");
     expect(mockRedirect).toHaveBeenCalledWith("/login");
+    expect(mockApplyBackendCookies).toHaveBeenCalledTimes(2);
+    expect(mockApplyBackendCookies).toHaveBeenNthCalledWith(1, [
+      "treaz_refresh=new-token; Path=/; HttpOnly",
+    ]);
+    expect(mockApplyBackendCookies).toHaveBeenNthCalledWith(2, [
+      "treaz_session=profile-token; Path=/; HttpOnly",
+    ]);
   });
 
   it("redirects to /login when the refresh call fails", async () => {
-    mockRefreshSessionFromCookies.mockRejectedValue(new Error("session expired"));
+    mockRefreshAccessTokenFromCookies.mockRejectedValue(
+      new Error("session expired")
+    );
 
     await expect(fetchProfile()).rejects.toThrow("REDIRECT:/login");
     expect(mockRedirect).toHaveBeenCalledWith("/login");

@@ -79,6 +79,19 @@ function parseSetCookie(header: string): ParsedCookie | null {
   return cookie;
 }
 
+export function extractSetCookieHeaders(response: Response): readonly string[] {
+  const headerBag = response.headers as unknown as {
+    getSetCookie?: () => string[];
+  };
+
+  if (typeof headerBag.getSetCookie === "function") {
+    return headerBag.getSetCookie();
+  }
+
+  const single = response.headers.get("set-cookie");
+  return single ? [single] : [];
+}
+
 export async function applyBackendCookies(setCookieHeaders: readonly string[]) {
   const store = await cookies();
   for (const header of setCookieHeaders) {
