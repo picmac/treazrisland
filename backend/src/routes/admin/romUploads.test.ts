@@ -172,6 +172,63 @@ describe("admin rom upload routes", () => {
     expect(storage.putRomObject).toHaveBeenCalledWith("roms/snes/chrono-trigger.zip", expect.any(Object));
   });
 
+  it("accepts ROM uploads with alternate archive MIME types", async () => {
+    prismaMock.platform.findUnique.mockResolvedValueOnce({
+      id: "platform_psx",
+      slug: "psx",
+      name: "PlayStation",
+      shortName: "PSX"
+    });
+    prismaMock.romBinary.findFirst.mockResolvedValueOnce(null);
+    prismaMock.rom.findFirst.mockResolvedValueOnce(null);
+    prismaMock.rom.create.mockResolvedValueOnce({
+      id: "rom_psx",
+      platformId: "platform_psx",
+      title: "Final Fantasy VII"
+    });
+    prismaMock.romBinary.upsert.mockResolvedValueOnce({
+      id: "binary_psx",
+      romId: "rom_psx"
+    });
+    prismaMock.romUploadAudit.create.mockResolvedValueOnce({ id: "audit_psx" });
+
+    const token = app.jwt.sign({ sub: "admin-1", role: "ADMIN" });
+    const body = Buffer.from("pretend iso image");
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/admin/roms/uploads",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/x-iso9660-image",
+        "x-treaz-upload-metadata": JSON.stringify({
+          clientId: "test-iso",
+          type: "rom",
+          originalFilename: "final-fantasy-vii.iso",
+          platformSlug: "psx",
+          romTitle: "Final Fantasy VII"
+        })
+      },
+      payload: body
+    });
+
+    expect(response.statusCode).toBe(201);
+    const payload = await response.json();
+    expect(payload.result).toMatchObject({
+      status: "success",
+      romId: "rom_psx",
+      platformSlug: "psx",
+      uploadAuditId: "audit_psx",
+      storageKey: "roms/psx/final-fantasy-vii.iso"
+    });
+
+    const storage = app.storage as unknown as { putRomObject: ReturnType<typeof vi.fn> };
+    expect(storage.putRomObject).toHaveBeenCalledWith(
+      "roms/psx/final-fantasy-vii.iso",
+      expect.objectContaining({ contentType: "application/x-iso9660-image" })
+    );
+  });
+
   it("returns duplicate status when ROM checksum already exists", async () => {
     prismaMock.platform.findUnique.mockResolvedValueOnce({
       id: "platform_snes",

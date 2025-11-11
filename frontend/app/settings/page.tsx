@@ -1,8 +1,10 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import SettingsPageClient from "./SettingsPageClient";
 import type { UserProfileResponse } from "@/src/lib/api/user";
 import { API_BASE } from "@/src/lib/api/client";
+import { PixelFrame } from "@/src/components/pixel-frame";
 
 async function fetchProfile(): Promise<UserProfileResponse> {
   const cookieStore = await cookies();
@@ -32,7 +34,44 @@ async function fetchProfile(): Promise<UserProfileResponse> {
 }
 
 export default async function SettingsPage() {
-  const profile = await fetchProfile();
+  let profile: UserProfileResponse | null = null;
+  let errorMessage: string | null = null;
+
+  try {
+    profile = await fetchProfile();
+  } catch (error) {
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else {
+      errorMessage = "Unable to load your profile.";
+    }
+  }
+
+  if (!profile) {
+    return (
+      <main className="flex flex-1 flex-col items-center justify-center">
+        <PixelFrame className="max-w-xl space-y-4 p-6 text-parchment" tone="sunken">
+          <header className="space-y-2 text-center">
+            <h1 className="text-2xl font-semibold text-lagoon">Captain&apos;s quarters are adrift</h1>
+            <p className="text-sm text-parchment/80">
+              We couldn&apos;t retrieve your profile details from the API, so the settings dock is temporarily unavailable.
+            </p>
+          </header>
+          <p className="rounded-pixel border border-ink/40 bg-night/70 px-3 py-2 text-xs uppercase tracking-widest text-parchment/70">
+            {errorMessage ?? "Unexpected error."}
+          </p>
+          <div className="flex justify-center">
+            <Link
+              href="/settings"
+              className="rounded-pixel bg-kelp px-4 py-2 text-xs font-semibold uppercase tracking-widest text-night shadow-pixel transition hover:bg-lagoon"
+            >
+              Try again
+            </Link>
+          </div>
+        </PixelFrame>
+      </main>
+    );
+  }
 
   return (
     <main className="flex flex-1 flex-col gap-6">
