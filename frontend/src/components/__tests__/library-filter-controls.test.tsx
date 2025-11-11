@@ -10,7 +10,8 @@ const DEFAULT_FILTERS: LibraryFilterState = {
   publisher: "",
   year: "",
   sort: "title",
-  direction: "asc"
+  direction: "asc",
+  assetTypes: []
 };
 
 describe("LibraryFilterControls", () => {

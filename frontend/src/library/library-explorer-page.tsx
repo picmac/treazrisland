@@ -26,7 +26,8 @@ const DEFAULT_FILTERS: LibraryFilterState = {
   publisher: "",
   year: "",
   sort: "title",
-  direction: "asc"
+  direction: "asc",
+  assetTypes: []
 };
 
 type LibraryExplorerState = {
@@ -185,6 +186,7 @@ export function LibraryExplorerPage({ initialPlatformSlug = null }: LibraryExplo
     year: parsedYear,
     sort: filters.sort,
     direction: filters.direction,
+    assetTypes: filters.assetTypes,
     favoritesOnly: state.favoritesOnly
   });
 

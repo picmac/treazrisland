@@ -3,12 +3,24 @@
 import type { ChangeEvent } from "react";
 import clsx from "clsx";
 
+export type LibraryAssetType =
+  | "COVER"
+  | "LOGO"
+  | "SCREENSHOT"
+  | "VIDEO"
+  | "MANUAL"
+  | "WHEEL"
+  | "MARQUEE"
+  | "MAP"
+  | "OTHER";
+
 export type LibraryFilterState = {
   search: string;
   publisher: string;
   year: string;
   sort: "title" | "releaseYear" | "publisher" | "createdAt";
   direction: "asc" | "desc";
+  assetTypes: LibraryAssetType[];
 };
 
 type LibraryFilterControlsProps = {
