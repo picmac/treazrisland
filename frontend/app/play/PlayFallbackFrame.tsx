@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
+import Link, { type LinkProps } from "next/link";
 
 import { PixelButton, PixelFrame } from "@/src/components/pixel";
 
@@ -9,8 +9,8 @@ import { RomLookupForm } from "./RomLookupForm";
 
 type RetryLinkConfig = {
   type: "link";
-  href: string;
-  prefetch?: boolean;
+  href: LinkProps<"a">["href"];
+  prefetch?: LinkProps<"a">["prefetch"];
 };
 
 type RetryActionConfig = {

@@ -56,7 +56,10 @@ export default async function PlayLandingPage({ searchParams }: PlayLandingPageP
         romIdDefault={romId}
         retry={{
           type: "link",
-          href: `/play?romId=${encodeURIComponent(romId)}`,
+          href: {
+            pathname: "/play",
+            query: { romId },
+          },
           prefetch: false,
         }}
       />
