@@ -45,16 +45,22 @@ try {
   // Ignore malformed AUTH_API_BASE_URL values and fall back to default patterns
 }
 
+const env = {};
+
+if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+  env.NEXT_PUBLIC_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+}
+
+if (process.env.AUTH_API_BASE_URL) {
+  env.AUTH_API_BASE_URL = process.env.AUTH_API_BASE_URL;
+}
+
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
     typedRoutes: true
   },
-  env: {
-    NEXT_PUBLIC_API_BASE_URL:
-      process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001",
-    AUTH_API_BASE_URL
-  },
+  env,
   images: {
     remotePatterns: imageRemotePatterns
   },

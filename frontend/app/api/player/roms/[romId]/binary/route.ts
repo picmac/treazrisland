@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
+import { resolveApiBase } from "@/src/lib/api/client";
 
 type RouteParams = {
   params: Promise<{
@@ -18,10 +18,15 @@ type SignedUrlPayload = {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { romId } = await params;
   const backendPath = `/play/roms/${encodeURIComponent(romId)}/download`;
-  return proxyBinaryRequest(request, backendPath);
+  const apiBase = resolveApiBase(request.headers);
+  return proxyBinaryRequest(request, backendPath, apiBase);
 }
 
-async function proxyBinaryRequest(request: NextRequest, backendPath: string): Promise<Response> {
+async function proxyBinaryRequest(
+  request: NextRequest,
+  backendPath: string,
+  apiBase: string
+): Promise<Response> {
   const cookieHeader = request.headers.get("cookie");
   const headers = new Headers();
   headers.set("accept", request.headers.get("accept") ?? "application/octet-stream");
@@ -29,7 +34,7 @@ async function proxyBinaryRequest(request: NextRequest, backendPath: string): Pr
     headers.set("cookie", cookieHeader);
   }
 
-  const backendUrl = `${API_BASE}${backendPath}`;
+  const backendUrl = `${apiBase}${backendPath}`;
 
   let backendResponse: Response;
   try {
