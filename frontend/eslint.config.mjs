@@ -31,6 +31,28 @@ if (!reactHooks.rules?.["incompatible-library"]) {
 
 const config = [
   ...compat.extends("next/core-web-vitals"),
+  {
+    name: "treazrisland/temporary-eslint-rule-stubs",
+    plugins: {
+      "@typescript-eslint": {
+        rules: {
+          "no-dynamic-delete": {
+            meta: {
+              docs: {
+                description:
+                  "Temporary stub to avoid lint crashes when @typescript-eslint/no-dynamic-delete is not bundled",
+              },
+              schema: [],
+            },
+            create: () => ({}),
+          },
+        },
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-dynamic-delete": "off",
+    },
+  },
 ];
 
 export default config;
