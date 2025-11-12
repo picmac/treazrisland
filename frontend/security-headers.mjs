@@ -53,11 +53,15 @@ function resolveRuntimeStage() {
   }
 
   const rawNodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
-  if (rawNodeEnv === "development" || rawNodeEnv === "test") {
+  if (rawNodeEnv === "production" || rawNodeEnv === "development") {
     return rawNodeEnv;
   }
 
-  return "production";
+  if (rawNodeEnv === "test") {
+    return "test";
+  }
+
+  return "development";
 }
 
 /**

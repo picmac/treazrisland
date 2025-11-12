@@ -195,6 +195,19 @@ describe("env TLS mode validation", () => {
     expect(module.env.RUNTIME_STAGE).toBe("development");
   });
 
+  it("falls back to LAN-friendly defaults when NODE_ENV is missing", async () => {
+    process.env.TREAZ_TLS_MODE = "auto";
+    delete process.env.NODE_ENV;
+    delete process.env.TREAZ_RUNTIME_ENV;
+    delete process.env.GITHUB_ACTIONS;
+
+    const module = await import("./env.js");
+
+    expect(module.env.TREAZ_TLS_MODE).toBe("http");
+    expect(module.env.TLS_ENABLED).toBe(false);
+    expect(module.env.RUNTIME_STAGE).toBe("development");
+  });
+
   it("prefers TREAZ_RUNTIME_ENV when resolving automatic mode", async () => {
     process.env.TREAZ_TLS_MODE = "auto";
     process.env.NODE_ENV = "development";

@@ -47,11 +47,7 @@ function normalizeRuntimeStage(
   return resolved;
 }
 
-function resolveRuntimeStage():
-  | "production"
-  | "development"
-  | "test"
-  | "unknown" {
+function resolveRuntimeStage(): "production" | "development" | "test" {
   const runtimeEnv = normalizeRuntimeStage(process.env.TREAZ_RUNTIME_ENV);
   if (runtimeEnv) {
     return runtimeEnv;
@@ -63,25 +59,20 @@ function resolveRuntimeStage():
   }
 
   const rawNodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
-  if (
-    rawNodeEnv === "production" ||
-    rawNodeEnv === "development" ||
-    rawNodeEnv === "test"
-  ) {
+  if (rawNodeEnv === "production" || rawNodeEnv === "development") {
     return rawNodeEnv;
   }
 
-  return "unknown";
+  if (rawNodeEnv === "test") {
+    return "test";
+  }
+
+  return "development";
 }
 
 function resolveAutomaticTlsMode(): "https" | "http" {
   const stage = resolveRuntimeStage();
-
-  if (stage === "production" || stage === "unknown") {
-    return "https";
-  }
-
-  return "http";
+  return stage === "production" ? "https" : "http";
 }
 
 function isValidIp(value: string): boolean {

@@ -113,6 +113,21 @@ describe("createContentSecurityPolicy", () => {
     expect(connectDirective).toContain("ws:");
   });
 
+  test("defaults to LAN-friendly directives when NODE_ENV is missing", () => {
+    process.env.TREAZ_TLS_MODE = "auto";
+    delete process.env.NODE_ENV;
+    delete process.env.GITHUB_ACTIONS;
+
+    const csp = createContentSecurityPolicy();
+    const connectDirective = csp
+      .split("; ")
+      .find((directive) => directive.startsWith("connect-src"));
+
+    expect(csp).not.toContain("upgrade-insecure-requests");
+    expect(connectDirective).toContain("http:");
+    expect(connectDirective).toContain("ws:");
+  });
+
   test("allows forcing LAN mode with TREAZ_RUNTIME_ENV aliases", () => {
     process.env.TREAZ_TLS_MODE = "auto";
     process.env.NODE_ENV = "production";
@@ -222,6 +237,17 @@ describe("buildSecurityHeaders", () => {
     process.env.TREAZ_TLS_MODE = "auto";
     process.env.NODE_ENV = "production";
     process.env.GITHUB_ACTIONS = "true";
+
+    const headers = buildSecurityHeaders();
+    const headerKeys = headers.map((header) => header.key);
+
+    expect(headerKeys).not.toContain("Strict-Transport-Security");
+  });
+
+  test("omits Strict-Transport-Security when NODE_ENV is missing", () => {
+    process.env.TREAZ_TLS_MODE = "auto";
+    delete process.env.NODE_ENV;
+    delete process.env.GITHUB_ACTIONS;
 
     const headers = buildSecurityHeaders();
     const headerKeys = headers.map((header) => header.key);
