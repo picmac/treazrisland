@@ -159,6 +159,21 @@ describe("apiRequest", () => {
     expect(resolveApiBase()).toBe("http://192.168.1.42:3001");
   });
 
+  it("keeps loopback dev hosts on port 3000", async () => {
+    Object.defineProperty(globalThis, "location", {
+      configurable: true,
+      value: {
+        protocol: "http:",
+        hostname: "localhost",
+        port: "3000",
+      },
+    });
+
+    const { resolveApiBase } = await import("./client");
+
+    expect(resolveApiBase()).toBe("http://localhost:3000");
+  });
+
   it("treats RFC1918 hosts as private networks even in production", async () => {
     process.env.NODE_ENV = "production";
 
@@ -225,7 +240,7 @@ describe("apiRequest", () => {
 
     const { resolveApiBase } = await import("./client");
 
-    expect(resolveApiBase()).toBe("http://[::1]:3001");
+    expect(resolveApiBase()).toBe("http://[::1]:3000");
   });
 
   it("derives API base from request headers when provided", async () => {
@@ -257,6 +272,35 @@ describe("apiRequest", () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       "http://runner.treaz.lan:3001/status",
+      expect.objectContaining({ credentials: "include" })
+    );
+  });
+
+  it("preserves path prefixes when probing internal API health", async () => {
+    process.env.AUTH_API_BASE_URL = "http://localhost:3000/api";
+
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete (globalThis as { window?: unknown }).window;
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(null, { status: 200, headers: { "content-type": "application/json" } })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { apiRequest } = await import("./client");
+
+    await apiRequest("/status");
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:3000/api/health/ready",
+      expect.objectContaining({ method: "GET" })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:3000/api/status",
       expect.objectContaining({ credentials: "include" })
     );
   });
