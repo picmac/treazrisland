@@ -7,7 +7,8 @@ import { ApiError } from "@/src/lib/api/client";
 import {
   fetchOnboardingStatus,
   type OnboardingStatus,
-  type OnboardingStepKey
+  type OnboardingStepKey,
+  type OnboardingStepState
 } from "@lib/api/onboarding";
 
 const ONBOARDING_STEP_KEYS: readonly OnboardingStepKey[] = [
@@ -19,7 +20,10 @@ const ONBOARDING_STEP_KEYS: readonly OnboardingStepKey[] = [
 
 function buildFallbackStatus(): OnboardingStatus {
   const timestamp = new Date().toISOString();
-  const buildStep = () => ({ status: "PENDING", updatedAt: timestamp });
+  const buildStep = (): OnboardingStepState => ({
+    status: "PENDING",
+    updatedAt: timestamp
+  });
 
   return {
     needsSetup: true,
