@@ -47,6 +47,8 @@ describe("createContentSecurityPolicy", () => {
   });
 
   test("adds nonce directives when provided", () => {
+    process.env.TREAZ_RUNTIME_ENV = "production";
+
     const csp = createContentSecurityPolicy({ nonce: "nonce-value" });
     const scriptDirective = csp
       .split("; ")
@@ -55,6 +57,19 @@ describe("createContentSecurityPolicy", () => {
     expect(scriptDirective).toContain("'nonce-nonce-value'");
     expect(scriptDirective).toContain("'strict-dynamic'");
     expect(scriptDirective).not.toContain("'unsafe-inline'");
+  });
+
+  test("keeps inline script allowance with nonce outside production", () => {
+    process.env.TREAZ_RUNTIME_ENV = "development";
+
+    const csp = createContentSecurityPolicy({ nonce: "nonce-value" });
+    const scriptDirective = csp
+      .split("; ")
+      .find((directive) => directive.startsWith("script-src"));
+
+    expect(scriptDirective).toContain("'nonce-nonce-value'");
+    expect(scriptDirective).toContain("'unsafe-inline'");
+    expect(scriptDirective).not.toContain("'strict-dynamic'");
   });
 
   test("whitelists the media CDN origin when present", () => {

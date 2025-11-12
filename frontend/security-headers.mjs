@@ -135,13 +135,18 @@ function serializeDirective(name, sources) {
  */
 export function createContentSecurityPolicy(options = {}) {
   const tlsEnabled = isTlsEnabled();
+  const runtimeStage = resolveRuntimeStage();
   const { nonce, mediaCdn = process.env.NEXT_PUBLIC_MEDIA_CDN ?? null } = options;
   const mediaCdnOrigin = normalizeOrigin(mediaCdn);
 
   const scriptSrc = new Set(["'self'", "https:", "blob:"]);
   if (nonce) {
     scriptSrc.add(`'nonce-${nonce}'`);
-    scriptSrc.add("'strict-dynamic'");
+    if (runtimeStage === "production") {
+      scriptSrc.add("'strict-dynamic'");
+    } else {
+      scriptSrc.add("'unsafe-inline'");
+    }
   } else {
     scriptSrc.add("'unsafe-inline'");
   }
