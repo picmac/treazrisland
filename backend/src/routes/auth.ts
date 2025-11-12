@@ -4,8 +4,6 @@ import argon2 from "argon2";
 import type { Prisma as PrismaNamespace } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { LoginAuditEvent } from "../utils/prisma-enums.js";
-
-type LoginAuditEventValue = (typeof LoginAuditEvent)[keyof typeof LoginAuditEvent];
 import {
   issueSessionTokens,
   rotateRefreshToken,
@@ -26,43 +24,15 @@ import {
 } from "../schemas/auth.js";
 import {
   clearRefreshCookie,
-  readRefreshCsrfHeader,
-  readRefreshCsrfTokenFromRequest,
-  readRefreshTokenFromRequest,
-  setRefreshCookie
+  readRefreshTokenFromRequest
 } from "../utils/cookies.js";
-
-const recordLoginAudit = async (
-  app: FastifyInstance,
-  request: FastifyRequest,
-  data: {
-    userId?: string;
-    emailAttempted?: string;
-    event: LoginAuditEventValue;
-    reason?: string;
-  }
-) => {
-  try {
-    await app.prisma.loginAudit.create({
-      data: {
-        userId: data.userId,
-        emailAttempted: data.emailAttempted,
-        event: data.event,
-        reason: data.reason ?? null,
-        ipAddress: request.ip,
-        userAgent: request.headers["user-agent"] ?? null
-      }
-    });
-  } catch (error) {
-    request.log.warn({ err: error }, "Failed to record login audit event");
-  }
-};
-
-const extractHashedRecoveryCodes = (raw: string): string[] =>
-  raw
-    .split("\n")
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
+import {
+  applySessionTokens,
+  recordLoginAudit,
+  verifyRefreshCsrf
+} from "../utils/authResponse.js";
+import { LoginService, LoginServiceError } from "../services/auth/loginService.js";
+import { extractHashedRecoveryCodes } from "../services/auth/mfaHelpers.js";
 
 const RECOVERY_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -87,6 +57,7 @@ const generateRecoveryCodes = (count: number, length: number): string[] => {
 };
 
 export async function registerAuthRoutes(app: FastifyInstance) {
+  const loginService = new LoginService(app);
   app.post(
     "/auth/invitations/preview",
     {
@@ -222,7 +193,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           return { user, tokens };
         });
 
-      setRefreshCookie(reply, result.tokens.refreshToken, result.tokens.refreshExpiresAt);
+      applySessionTokens(reply, result.tokens);
 
       void recordLoginAudit(app, request, {
         userId: result.user.id,
@@ -561,145 +532,37 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       }
 
       const { identifier, password, mfaCode, recoveryCode } = parsed.data;
-      const normalizedEmail = identifier.toLowerCase();
 
-      const user = await app.prisma.user.findFirst({
-        where: {
-          OR: [{ email: normalizedEmail }, { nickname: identifier }]
-        },
-        include: {
-          mfaSecrets: {
-            where: { disabledAt: null, confirmedAt: { not: null } },
-            orderBy: { createdAt: "desc" }
-          }
-        }
-      });
-
-      if (!user) {
-        await recordLoginAudit(app, request, {
-          emailAttempted: identifier,
-          event: LoginAuditEvent.FAILURE,
-          reason: "user_not_found"
+      try {
+        const result = await loginService.execute(request, {
+          identifier,
+          password,
+          mfaCode,
+          recoveryCode
         });
-        return reply.status(401).send({ message: "Invalid credentials" });
-      }
 
-      const passwordValid = await argon2.verify(user.passwordHash, password);
-      if (!passwordValid) {
-        await recordLoginAudit(app, request, {
-          userId: user.id,
-          emailAttempted: identifier,
-          event: LoginAuditEvent.FAILURE,
-          reason: "invalid_password"
-        });
-        return reply.status(401).send({ message: "Invalid credentials" });
-      }
-
-      const activeSecret = user.mfaSecrets.find(
-        (secret) => !secret.disabledAt && secret.confirmedAt
-      );
-      if (activeSecret) {
-        if (!mfaCode && !recoveryCode) {
-          await recordLoginAudit(app, request, {
-            userId: user.id,
-            event: LoginAuditEvent.MFA_REQUIRED,
-            reason: "challenge"
-          });
+        if (result.status === "mfa-required") {
           return reply.status(401).send({
             message: "MFA challenge required",
             mfaRequired: true
           });
         }
 
-        let mfaSatisfied = false;
-        let decryptedSecretForLogin: ReturnType<typeof app.mfaService.decryptSecret> | null = null;
+        applySessionTokens(reply, result.tokens);
 
-        if (mfaCode) {
-          try {
-            decryptedSecretForLogin = app.mfaService.decryptSecret(activeSecret.secret);
-          } catch (error) {
-            request.log.error({ err: error, userId: user.id }, "Failed to decrypt MFA secret");
-            return reply.status(500).send({ message: "Unable to verify MFA challenge" });
-          }
-
-          try {
-            mfaSatisfied = await app.mfaService.verifyTotp(
-              decryptedSecretForLogin.secret,
-              mfaCode,
-            );
-          } catch (error) {
-            request.log.error({ err: error, userId: user.id }, "Failed to verify MFA code");
-            return reply.status(500).send({ message: "Unable to verify MFA challenge" });
-          }
+        return reply.send({
+          user: result.user,
+          accessToken: result.tokens.accessToken,
+          refreshExpiresAt: result.tokens.refreshExpiresAt.toISOString()
+        });
+      } catch (error) {
+        if (error instanceof LoginServiceError) {
+          return reply.status(error.statusCode).send(error.response);
         }
 
-        if (!mfaSatisfied && recoveryCode) {
-          try {
-            const hashedCodes = extractHashedRecoveryCodes(activeSecret.recoveryCodes);
-            const matchIndex = await app.mfaService.findMatchingRecoveryCode(
-              hashedCodes,
-              recoveryCode
-            );
-
-            if (matchIndex !== null) {
-              mfaSatisfied = true;
-              hashedCodes.splice(matchIndex, 1);
-              await app.prisma.mfaSecret.update({
-                where: { id: activeSecret.id },
-                data: {
-                  recoveryCodes: hashedCodes.join("\n"),
-                  rotatedAt: new Date()
-                }
-              });
-            }
-          } catch (error) {
-            request.log.error({ err: error, userId: user.id }, "Failed to verify recovery code");
-            return reply.status(500).send({ message: "Unable to verify MFA challenge" });
-          }
-        }
-
-        if (!mfaSatisfied) {
-          await recordLoginAudit(app, request, {
-            userId: user.id,
-            event: LoginAuditEvent.FAILURE,
-            reason: "mfa_failed"
-          });
-          return reply.status(401).send({ message: "Invalid multi-factor credentials" });
-        }
-
-        if (decryptedSecretForLogin?.needsRotation) {
-          try {
-            await app.prisma.mfaSecret.update({
-              where: { id: activeSecret.id },
-              data: {
-                secret: app.mfaService.encryptSecret(decryptedSecretForLogin.secret),
-                rotatedAt: new Date()
-              }
-            });
-          } catch (error) {
-            request.log.error({ err: error, userId: user.id }, "Failed to rotate MFA secret after challenge");
-          }
-        }
+        request.log.error({ err: error }, "Unexpected error during login");
+        return reply.status(500).send({ message: "Unable to complete login" });
       }
-
-      const tokens = await issueSessionTokens(app, user.id, user.role);
-      setRefreshCookie(reply, tokens.refreshToken, tokens.refreshExpiresAt);
-
-      await recordLoginAudit(app, request, {
-        userId: user.id,
-        event: LoginAuditEvent.SUCCESS
-      });
-
-      return reply.send({
-        user: {
-          id: user.id,
-          email: user.email,
-          nickname: user.nickname,
-          role: user.role
-        },
-        accessToken: tokens.accessToken,
-        refreshExpiresAt: tokens.refreshExpiresAt.toISOString()
-      });
     }
   );
 
@@ -719,16 +582,13 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         return reply.status(401).send({ message: "Refresh token missing" });
       }
 
-      const csrfCookie = readRefreshCsrfTokenFromRequest(request);
-      const csrfHeader = readRefreshCsrfHeader(request);
-      if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
-        clearRefreshCookie(reply);
+      if (!verifyRefreshCsrf(request, reply)) {
         return reply.status(403).send({ message: "CSRF token missing or invalid" });
       }
 
       try {
         const result = await rotateRefreshToken(app, refreshToken);
-        setRefreshCookie(reply, result.refreshToken, result.refreshExpiresAt);
+        applySessionTokens(reply, result);
 
       return reply.send({
         user: result.user,
@@ -749,14 +609,9 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
   app.post("/auth/logout", async (request, reply) => {
     const refreshToken = readRefreshTokenFromRequest(request);
-    const csrfCookie = readRefreshCsrfTokenFromRequest(request);
-    const csrfHeader = readRefreshCsrfHeader(request);
 
-    if (refreshToken) {
-      if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
-        clearRefreshCookie(reply);
-        return reply.status(403).send({ message: "CSRF token missing or invalid" });
-      }
+    if (refreshToken && !verifyRefreshCsrf(request, reply)) {
+      return reply.status(403).send({ message: "CSRF token missing or invalid" });
     }
 
     clearRefreshCookie(reply);
@@ -920,7 +775,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         return { updatedUser, tokens };
       });
 
-      setRefreshCookie(reply, tokens.refreshToken, tokens.refreshExpiresAt);
+      applySessionTokens(reply, tokens);
 
       await recordLoginAudit(app, request, {
         userId: updatedUser.id,
