@@ -11,6 +11,7 @@ const ORIGINAL_ENV = { ...process.env };
 beforeEach(() => {
   process.env = { ...ORIGINAL_ENV };
   delete process.env.TREAZ_RUNTIME_ENV;
+  delete process.env.GITHUB_ACTIONS;
 });
 
 afterEach(() => {
