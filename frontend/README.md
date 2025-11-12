@@ -106,14 +106,16 @@ Client-side data fetching helpers live in `src/lib/api/`. Reuse these hooks befo
 When the backend API is hosted on a different device or hostname, define one of the following environment variables so both
 client-side requests and server components resolve the correct origin:
 
-- `NEXT_PUBLIC_API_BASE_URL` – recommended when the frontend must communicate with the backend from the browser. This value is
-  exposed to client bundles.
-- `AUTH_API_BASE_URL` – server-only equivalent used by the Next.js runtime. Use this when the browser should keep proxying via
-  the frontend domain but server components need an absolute backend host.
+- `NEXT_PUBLIC_API_BASE_URL` – recommended only for development or when you intentionally expose the backend on a public host.
+  The value is embedded in client bundles, so production stacks that rely on the ingress proxy should leave it undefined.
+- `AUTH_API_BASE_URL` – server-only equivalent used by the Next.js runtime. Keep this pointing at the private Fastify service
+  (for example `http://backend:3001`) so server components and API rewrites can reach the backend without disclosing its address
+  to browsers.
 
 If neither variable is present, API calls default to `window.location.origin` in the browser and derive the absolute host from
-incoming request headers during server rendering. When the frontend is served from `:3000` in development, the client
-automatically rewrites requests to `:3001` so other devices on the network can reach the Fastify backend without further setup.
-Set one of the explicit variables above when the backend lives on another machine or listens on a non-standard port so
-uploads, authentication, and server-rendered pages continue working.
+incoming request headers during server rendering. The production Next.js server also rewrites `/api/*` requests to the private
+backend, so browsers keep talking to the ingress host while the application fan-outs internally. When the frontend is served from
+`:3000` in development, the client automatically rewrites requests to `:3001` so other devices on the network can reach the
+Fastify backend without further setup. Set one of the explicit variables above when the backend lives on another machine or
+listens on a non-standard port so uploads, authentication, and server-rendered pages continue working.
 

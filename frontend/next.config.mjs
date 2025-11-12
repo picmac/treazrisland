@@ -8,6 +8,27 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const AUTH_API_BASE_URL =
   process.env.AUTH_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 
+function buildApiRewrites() {
+  try {
+    const apiUrl = new URL(AUTH_API_BASE_URL);
+    if (apiUrl.protocol !== "http:" && apiUrl.protocol !== "https:") {
+      return [];
+    }
+
+    const normalizedPath = apiUrl.pathname.replace(/\/$/, "");
+    const destinationBase = `${apiUrl.origin}${normalizedPath}`;
+
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${destinationBase}/:path*`
+      }
+    ];
+  } catch {
+    return [];
+  }
+}
+
 /** @type {import("next").NextConfig} */
 const imageRemotePatterns = [
   {
@@ -88,6 +109,9 @@ const nextConfig = {
     };
 
     return config;
+  },
+  async rewrites() {
+    return buildApiRewrites();
   },
   async headers() {
     const securityHeaders = buildSecurityHeaders().filter(

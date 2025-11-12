@@ -10,6 +10,8 @@ Home for Docker Compose definitions, deployment manifests, and helper scripts th
 | MinIO          | `minio`            | S3-compatible object storage for ROM binaries, BIOS archives, artwork, and save states. |
 | Backend        | `backend`          | Fastify API container that mounts the project source during development. |
 | Frontend       | `frontend`         | Next.js dev server with Playwright-friendly configuration. |
+| Nginx          | `nginx`            | Edge reverse proxy that terminates TLS, enforces HTTPS, and forwards traffic to the frontend. |
+| Certbot        | `certbot`          | Renews Let's Encrypt certificates automatically and reloads Nginx when new material is issued. |
 | Prometheus     | `prometheus`       | Scrapes internal metrics and evaluates alert rules defined in `infra/monitoring/rules/`. |
 | Alertmanager   | `alertmanager`     | Routes alert notifications (webhook placeholder by default—replace with your paging system). |
 | Grafana        | `grafana`          | Renders the dashboards in `infra/monitoring/dashboards/` and wires the Prometheus datasource automatically. |
@@ -21,11 +23,18 @@ All services live in [`docker-compose.yml`](./docker-compose.yml). Production ov
 
 ### API network isolation
 
-The development stack keeps the Fastify API off the host network. The `backend` service no longer publishes port `3001`; instead
-it sits behind an internal bridge network (`backend_private`) that is only shared with the reverse proxies and web frontends
-(`frontend`, `nginx`, and `cloudflared`). Supporting dependencies such as PostgreSQL and MinIO stay reachable through the default
-network, mirroring a private LAN segment. This layout prevents accidental exposure of administrative endpoints while preserving
-the ergonomic developer experience of `docker compose up`.
+Both the development and production stacks keep the Fastify API off the host network. The `backend` service never publishes port
+`3001`; instead it sits behind the internal `backend_private` bridge network that is only shared with the reverse proxies and web
+frontends (`frontend`, `nginx`, and `cloudflared`). Supporting dependencies such as PostgreSQL and MinIO stay reachable through the
+default network, mirroring a private LAN segment. This layout prevents accidental exposure of administrative endpoints while
+preserving the ergonomic developer experience of `docker compose up`.
+
+### HTTPS edge termination
+
+`infra/docker-compose.prod.yml` now ships with an opinionated edge stack: Nginx serves as the public ingress controller and
+terminates TLS on ports 80/443 while the companion `certbot` container renews Let's Encrypt certificates automatically. The Nginx
+template enforces HTTP→HTTPS redirects, injects HSTS headers, and only proxies requests to the Next.js frontend; the frontend
+rewrites `/api/*` calls back to the private Fastify service so the backend never sits on a public listener.
 
 ## Minimal Docker Hub stack
 
