@@ -1,4 +1,4 @@
-import { apiFetch, apiRequest } from "@lib/api/client";
+import { apiFetch, apiRequest, type HeaderGetter } from "@lib/api/client";
 
 type SetCookieHeader = string[];
 
@@ -98,7 +98,7 @@ export async function loginWithCookies(
     mfaCode?: string;
     recoveryCode?: string;
   },
-  options?: { cookieHeader?: string }
+  options?: { cookieHeader?: string; requestHeaders?: HeaderGetter }
 ): Promise<{ payload: LoginResponse; cookies: SetCookieHeader }> {
   const response = await apiRequest("/auth/login", {
     method: "POST",
@@ -107,7 +107,8 @@ export async function loginWithCookies(
       ? {
           cookie: options.cookieHeader
         }
-      : undefined
+      : undefined,
+    requestHeaders: options?.requestHeaders
   });
 
   const data = (await response.json()) as LoginResponse;
