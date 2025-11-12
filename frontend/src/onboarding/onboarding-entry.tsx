@@ -4,14 +4,18 @@ import { FirstAdminForm } from "@/src/onboarding/sections/first-admin-form";
 import { PixelFrame } from "@/src/components/pixel-frame";
 import { SetupWizard } from "@/src/onboarding/setup-wizard";
 import { ApiError } from "@/src/lib/api/client";
-import { fetchOnboardingStatus, type OnboardingStatus } from "@lib/api/onboarding";
+import {
+  fetchOnboardingStatus,
+  type OnboardingStatus,
+  type OnboardingStepKey
+} from "@lib/api/onboarding";
 
-const ONBOARDING_STEP_KEYS = [
+const ONBOARDING_STEP_KEYS: readonly OnboardingStepKey[] = [
   "first-admin",
   "system-profile",
   "integrations",
   "personalization"
-] as const satisfies ReadonlyArray<keyof OnboardingStatus["steps"]>;
+];
 
 function buildFallbackStatus(): OnboardingStatus {
   const timestamp = new Date().toISOString();
@@ -39,9 +43,13 @@ export default async function OnboardingEntry() {
     if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
       status = buildFallbackStatus();
       const reason = error.message?.trim();
-      onboardingWarning = `Continuing onboarding despite ${error.status} response${
-        reason ? `: ${reason}` : ""
-      }.`;
+      onboardingWarning = [
+        `We couldn't confirm the onboarding status (${error.status}).`,
+        reason ? `API response: ${reason}.` : null,
+        "You can still forge the inaugural admin, but double-check your backend auth chart." 
+      ]
+        .filter(Boolean)
+        .join(" ");
     } else {
       return (
         <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-white">
