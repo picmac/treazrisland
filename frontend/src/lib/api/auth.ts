@@ -163,7 +163,7 @@ export async function redeemInvitation(
     password: string;
     displayName?: string;
   },
-  options?: { cookieHeader?: string }
+  options?: { cookieHeader?: string; requestHeaders?: HeaderGetter }
 ): Promise<{ payload: SignupResponse; cookies: SetCookieHeader }> {
   const response = await apiRequest("/auth/signup", {
     method: "POST",
@@ -172,7 +172,8 @@ export async function redeemInvitation(
       ? {
           cookie: options.cookieHeader
         }
-      : undefined
+      : undefined,
+    requestHeaders: options?.requestHeaders
   });
 
   const data = (await response.json()) as SignupResponse;

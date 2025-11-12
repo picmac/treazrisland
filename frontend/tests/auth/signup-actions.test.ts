@@ -9,19 +9,31 @@ vi.mock("@/src/lib/server/backend-cookies", () => ({
   buildCookieHeaderFromStore: vi.fn()
 }));
 
+vi.mock("next/headers", () => ({
+  headers: vi.fn()
+}));
+
 import { ApiError } from "@/src/lib/api/client";
+import type { HeaderGetter } from "@/src/lib/api/client";
 import { redeemInvitation } from "@/src/lib/api/auth";
 import {
   applyBackendCookies,
   buildCookieHeaderFromStore
 } from "@/src/lib/server/backend-cookies";
 import { redeemInvitationAction } from "@/app/(auth)/signup/actions";
+import { headers } from "next/headers";
 
 describe("redeemInvitationAction", () => {
+  let headerStore: HeaderGetter;
+
   beforeEach(() => {
+    vi.mocked(headers).mockReset();
+    headerStore = { get: vi.fn() } as HeaderGetter;
+    vi.mocked(headers).mockReturnValue(headerStore as unknown as Headers);
     vi.mocked(redeemInvitation).mockReset();
     vi.mocked(applyBackendCookies).mockReset();
     vi.mocked(buildCookieHeaderFromStore).mockReset();
+    vi.mocked(buildCookieHeaderFromStore).mockResolvedValue(undefined);
   });
 
   it("passes through invitation payload", async () => {
@@ -51,7 +63,10 @@ describe("redeemInvitationAction", () => {
         password: "Password1",
         displayName: "Crew"
       },
-      { cookieHeader: "treaz_refresh=abc" }
+      expect.objectContaining({
+        cookieHeader: "treaz_refresh=abc",
+        requestHeaders: headerStore
+      })
     );
     expect(applyBackendCookies).toHaveBeenCalledWith([
       "treaz_refresh=abc; Path=/; HttpOnly"
@@ -79,6 +94,16 @@ describe("redeemInvitationAction", () => {
 
     expect(result).toEqual({ success: false, error: "nickname taken" });
     expect(applyBackendCookies).not.toHaveBeenCalled();
+    expect(redeemInvitation).toHaveBeenCalledWith(
+      {
+        token: "token-abc",
+        email: undefined,
+        nickname: "crew",
+        password: "Password1",
+        displayName: "crew"
+      },
+      expect.objectContaining({ requestHeaders: headerStore })
+    );
   });
 
   it("coalesces unknown errors", async () => {
@@ -91,5 +116,15 @@ describe("redeemInvitationAction", () => {
     });
 
     expect(result).toEqual({ success: false, error: "network" });
+    expect(redeemInvitation).toHaveBeenCalledWith(
+      {
+        token: "token-abc",
+        email: undefined,
+        nickname: "crew",
+        password: "Password1",
+        displayName: "crew"
+      },
+      expect.objectContaining({ requestHeaders: headerStore })
+    );
   });
 });
