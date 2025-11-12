@@ -102,8 +102,6 @@ services:
         condition: service_completed_successfully
       backend-migrate:
         condition: service_completed_successfully
-    ports:
-      - "${BACKEND_PORT:-3001}:3001"
     volumes:
       - ../backend:/app
       - backend-node-modules:/app/node_modules
@@ -111,6 +109,7 @@ services:
     command: npm run dev
     restart: unless-stopped
     networks:
+      - backend_private
       - default
       - monitoring
     healthcheck:
@@ -191,6 +190,9 @@ services:
       - frontend-next:/app/.next
     command: npm run dev
     restart: unless-stopped
+    networks:
+      - default
+      - backend_private
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 10s
@@ -332,6 +334,9 @@ services:
     command: >-
       /bin/sh -c "envsubst '\$${NGINX_SERVER_NAME} \$${LETSENCRYPT_PRIMARY_DOMAIN}' < /etc/nginx/templates/treazrisland.conf.template > /etc/nginx/conf.d/treazrisland.conf && nginx -g 'daemon off;'"
     restart: unless-stopped
+    networks:
+      - default
+      - backend_private
 
   certbot:
     build:
@@ -364,6 +369,9 @@ services:
       - frontend
       - backend
     restart: unless-stopped
+    networks:
+      - default
+      - backend_private
 
 volumes:
   postgres-data:
@@ -377,6 +385,9 @@ volumes:
   loki-data:
 
 networks:
+  backend_private:
+    driver: bridge
+    internal: true
   monitoring:
     driver: bridge
 
