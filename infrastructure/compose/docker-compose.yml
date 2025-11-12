@@ -1,0 +1,138 @@
+version: "3.9"
+
+x-backend-environment: &backend-environment
+  NODE_ENV: ${NODE_ENV:-development}
+  PORT: ${BACKEND_PORT:-4000}
+  DATABASE_URL: ${DATABASE_URL:-postgresql://treazr:treazr@postgres:5432/treazr}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://minio:9000}
+  STORAGE_BUCKET: ${STORAGE_BUCKET:-treazr-assets}
+  STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-treazr}
+  STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-treazr_secret}
+  EMULATOR_HOST: ${EMULATOR_HOST:-emulator}
+  EMULATOR_PORT: ${EMULATOR_PORT:-4566}
+
+services:
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+    command: ${FRONTEND_COMMAND:-npm run dev -- --host 0.0.0.0 --port 5173}
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://backend:4000}
+      VITE_STORAGE_ENDPOINT: ${VITE_STORAGE_ENDPOINT:-http://minio:9000}
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ../../frontend:/app:delegated
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5173/health || curl -f http://localhost:5173 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  backend:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    command: ${BACKEND_COMMAND:-npm run start:dev}
+    environment:
+      <<: *backend-environment
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
+    volumes:
+      - ../../backend:/app:delegated
+      - backend_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      emulator:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-treazr}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-treazr}
+      POSTGRES_DB: ${POSTGRES_DB:-treazr}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-treazr}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  minio:
+    image: minio/minio:RELEASE.2024-05-10T01-41-38Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-treazr}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-treazr_secret}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  emulator:
+    image: localstack/localstack:3.5
+    environment:
+      SERVICES: ${LOCALSTACK_SERVICES:-sns,sqs}
+      DEBUG: ${LOCALSTACK_DEBUG:-0}
+      AWS_DEFAULT_REGION: ${LOCALSTACK_REGION:-us-east-1}
+      EDGE_PORT: ${LOCALSTACK_EDGE_PORT:-4566}
+    ports:
+      - "${LOCALSTACK_EDGE_PORT:-4566}:4566"
+    volumes:
+      - localstack_data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4566/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  frontend_node_modules:
+  backend_node_modules:
+  postgres_data:
+  minio_data:
+  localstack_data:
