@@ -89,6 +89,23 @@ describe("apiRequest", () => {
     expect(resolveApiBase()).toBe("http://192.168.1.42:3001");
   });
 
+  it("treats RFC1918 hosts as private networks even in production", async () => {
+    process.env.NODE_ENV = "production";
+
+    Object.defineProperty(globalThis, "location", {
+      configurable: true,
+      value: {
+        protocol: "http:",
+        hostname: "192.168.50.2",
+        port: "3000",
+      },
+    });
+
+    const { resolveApiBase } = await import("./client");
+
+    expect(resolveApiBase()).toBe("http://192.168.50.2:3001");
+  });
+
   it("derives backend port from forwarded headers in dev", async () => {
     const headers = new Headers({
       "x-forwarded-host": "pirate.lan:3000",

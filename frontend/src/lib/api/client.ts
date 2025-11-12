@@ -32,12 +32,17 @@ function selectDevPortOverride(): string | undefined {
   return undefined;
 }
 
-function isLoopbackHost(host?: string | null): boolean {
+function normalizeHostCandidate(host?: string | null): string | undefined {
   if (!host) {
-    return false;
+    return undefined;
   }
 
   const normalized = host.replace(/^\[|\]$/g, "").trim().toLowerCase();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function isLoopbackHost(host?: string | null): boolean {
+  const normalized = normalizeHostCandidate(host);
   if (!normalized) {
     return false;
   }
@@ -57,6 +62,35 @@ function isLoopbackHost(host?: string | null): boolean {
   return false;
 }
 
+function isPrivateNetworkHost(host?: string | null): boolean {
+  const normalized = normalizeHostCandidate(host);
+  if (!normalized) {
+    return false;
+  }
+
+  if (/^10\./.test(normalized)) {
+    return true;
+  }
+
+  if (/^192\.168\./.test(normalized)) {
+    return true;
+  }
+
+  if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(normalized)) {
+    return true;
+  }
+
+  if (/^169\.254\./.test(normalized)) {
+    return true;
+  }
+
+  if (normalized.startsWith("fc") || normalized.startsWith("fd")) {
+    return normalized.includes(":");
+  }
+
+  return false;
+}
+
 function chooseEffectivePort(host?: string, port?: string | null): string | undefined {
   const sanitizedPort = sanitizePort(port);
   const overridePort = selectDevPortOverride();
@@ -67,8 +101,9 @@ function chooseEffectivePort(host?: string, port?: string | null): string | unde
 
     const devLikeEnvironment = process.env.NODE_ENV !== "production";
     const loopbackHost = host ? isLoopbackHost(host) : false;
+    const privateNetworkHost = host ? isPrivateNetworkHost(host) : false;
 
-    if (devLikeEnvironment || loopbackHost) {
+    if (devLikeEnvironment || loopbackHost || privateNetworkHost) {
       return DEFAULT_DEV_API_PORT;
     }
   }
