@@ -8,14 +8,70 @@
 
 const TLS_ENABLED_VALUES = new Set(["https", "true", "1", "on"]);
 const TLS_DISABLED_VALUES = new Set(["http", "false", "0", "off"]);
+const TLS_AUTOMATIC_VALUES = new Set(["auto", "automatic", "lan"]);
+
+const RUNTIME_STAGE_ALIASES = new Map([
+  ["production", "production"],
+  ["prod", "production"],
+  ["internet", "production"],
+  ["external", "production"],
+  ["public", "production"],
+  ["development", "development"],
+  ["dev", "development"],
+  ["lan", "development"],
+  ["local", "development"],
+  ["test", "test"],
+]);
+
+/**
+ * @returns {"production" | "development" | "test"}
+ */
+function resolveRuntimeStage() {
+  const rawStage = process.env.TREAZ_RUNTIME_ENV;
+  if (rawStage && rawStage.trim().length > 0) {
+    const normalized = rawStage.trim().toLowerCase();
+    const stage = RUNTIME_STAGE_ALIASES.get(normalized);
+    if (stage) {
+      return stage;
+    }
+
+    const message =
+      `Unsupported TREAZ_RUNTIME_ENV value "${rawStage}". Accepted values: production, prod, internet, external, public, development, dev, lan, local, test.`;
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(message);
+    }
+
+    console.warn(
+      `[security-headers] ${message} Defaulting to production-mode directives.`,
+    );
+    return "production";
+  }
+
+  const githubActionsFlag = process.env.GITHUB_ACTIONS?.trim().toLowerCase();
+  if (githubActionsFlag === "true") {
+    return "development";
+  }
+
+  const rawNodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
+  if (rawNodeEnv === "production" || rawNodeEnv === "development") {
+    return rawNodeEnv;
+  }
+
+  if (rawNodeEnv === "test") {
+    return "test";
+  }
+
+  return "development";
+}
 
 /**
  * @returns {boolean}
  */
 function isTlsEnabled() {
   const raw = process.env.TREAZ_TLS_MODE;
+  const runtimeStage = resolveRuntimeStage();
   if (!raw || raw.trim().length === 0) {
-    return true;
+    return runtimeStage === "production";
   }
 
   const normalized = raw.trim().toLowerCase();
@@ -27,8 +83,12 @@ function isTlsEnabled() {
     return false;
   }
 
+  if (TLS_AUTOMATIC_VALUES.has(normalized)) {
+    return runtimeStage === "production";
+  }
+
   const message =
-    `Unsupported TREAZ_TLS_MODE value "${raw}". Accepted values: https, http, true, false, 1, 0.`;
+    `Unsupported TREAZ_TLS_MODE value "${raw}". Accepted values: https, http, true, false, 1, 0, auto.`;
   if (process.env.NODE_ENV === "production") {
     throw new Error(message);
   }
