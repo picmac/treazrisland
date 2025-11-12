@@ -1,1 +1,0 @@
-export const MAX_UPLOAD_SIZE_BYTES = 1024 * 1024 * 1024; // 1 GiB
