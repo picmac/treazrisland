@@ -8,6 +8,7 @@ Deliver a self-hosted retro gaming island where players can onboard quickly, bro
 2. **Delightful nostalgia:** Interfaces embrace a 16-bit, Monkey Island–inspired aesthetic with readable typography and playful copy.
 3. **Player trust:** All gameplay happens locally with transparent data practices and strong authentication flows.
 4. **Pixellab.ai-driven theming:** Every visual asset in the MVP is sourced through Pixellab.ai so the experience feels cohesive and professional from the first boot.
+5. **State-of-the-art engineering:** The platform adopts the latest LTS releases for every core dependency (Node.js, TypeScript, PostgreSQL, Redis, Docker, etc.) and enforces immaculate code quality through formatting, linting, and automated review gates.
 
 ## Non-Goals
 - Real-money transactions or marketplace features.
@@ -51,6 +52,7 @@ Deliver a self-hosted retro gaming island where players can onboard quickly, bro
 - Rate limiting on auth and upload endpoints with alerting hooks.
 - Basic metrics dashboard (health checks, ROM count, active sessions).
 - Secure development lifecycle with documented coding guidelines and mandatory peer reviews before merges.
+- Enforce opinionated tooling (ESLint, Prettier, Prisma format, Playwright codegen) configured for the latest LTS runtime versions so code stays clean and maintainable.
 
 ## Release Criteria
 - Documented installation guide validated on macOS and Linux hosts.
@@ -60,6 +62,7 @@ Deliver a self-hosted retro gaming island where players can onboard quickly, bro
 - Launch readiness checklist completed, covering bootstrap automation, observability dashboards, documentation updates, and green status on all gating pipelines.
 - Operator onboarding pack reviewed and rehearsed (runbook dry run, disaster recovery drill, and EmulatorJS UX walkthrough recorded).
 - Product owner approval that Pixellab.ai assets, copy, and localization strings meet the desired "day-one" quality bar.
+- Dependency matrix validated to confirm every service runs on the latest vendor-supported LTS versions, with automated CI checks blocking drift.
 
 ## Future Considerations
 - Netplay lobby and peer-to-peer session orchestration.

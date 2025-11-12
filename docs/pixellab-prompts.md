@@ -10,6 +10,7 @@ Curate reusable prompt templates that yield cohesive 16-bit assets for Treazrisl
 - Submit prompt additions or edits through peer review to ensure adherence to secure coding and theming guidelines, and update related documentation immediately after changes land.
 - Run each new asset through the accessibility gate (WCAG AA contrast check, color-blind simulation) and record the results in the manifest for future audits.
 - Store low-resolution previews (webp or gif) alongside prompts for reviewers; full-resolution binaries remain in artifact storage per repository policy.
+- Ensure automation scripts interacting with Pixellab.ai target the latest Node.js LTS release and pass linting/formatting checks before merging.
 
 ## Prompt Templates
 ### 1. Island Background Hero
@@ -65,3 +66,4 @@ Notes: request alternate wordmark variants (horizontal, stacked) for responsive 
 - Establish review checkpoints for accessibility (contrast, legibility) and localisation readiness.
 - Create a recurring task to audit this catalogue and associated manifests so documentation stays current with the generated asset set.
 - Draft a launch-day art QA script (visual smoke test, theming spot check in EmulatorJS) and reference it in the launch readiness checklist.
+- Document the runtime dependency matrix (Node.js, package managers, supporting CLIs) alongside the script to guarantee upgrades stay aligned with the latest LTS releases.

@@ -17,6 +17,7 @@ This checklist guarantees a flawless first impression when unveiling Treazrislan
 - [ ] Local runner profile verified to auto-launch EmulatorJS with seeded ROM after bootstrap.
 - [ ] Backups configured for PostgreSQL and object storage volumes; restoration test documented.
 - [ ] Monitoring dashboard (logs, metrics) bookmarked and shared with the team.
+- [ ] Dependency matrix reviewed to confirm every container, runtime, and database is on the most recent LTS release.
 
 ### 2. Pixellab.ai Theming
 - [ ] Pixellab.ai API token stored securely (e.g., `.env.local` template references secret manager path).
@@ -31,6 +32,7 @@ This checklist guarantees a flawless first impression when unveiling Treazrislan
 - [ ] Pen-test or threat modelling session completed; action items tracked.
 - [ ] Secrets inventory documented with rotation cadence.
 - [ ] Incident response playbook rehearsed with at least one simulated outage.
+- [ ] Code style automation (Prettier, ESLint, Prisma format) confirmed as blocking checks in CI and run locally before release.
 
 ### 4. Quality Assurance
 - [ ] Automated test suite (unit, integration, Playwright smoke) passes in CI and locally.
@@ -38,6 +40,7 @@ This checklist guarantees a flawless first impression when unveiling Treazrislan
 - [ ] Manual exploratory checklist executed on desktop, tablet, and mobile breakpoints.
 - [ ] Localization strings proofread (even if English-only) to catch typos and tone issues.
 - [ ] Performance smoke test run (library load under 2 seconds for seeded data set).
+- [ ] Release notes document the validated LTS versions so future upgrades have a clear baseline.
 
 ### 5. Documentation & Communication
 - [ ] README and installation guide updated with latest commands and troubleshooting tips.

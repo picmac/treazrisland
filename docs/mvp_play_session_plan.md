@@ -9,14 +9,15 @@ This plan outlines the fastest path to deliver a professional, self-hosted retro
 3. **Professional-grade developer experience:** Tooling, documentation, and automation need to mirror production-quality workflows so the MVP can evolve without rework.
 4. **Security-first delivery:** Every change must follow secure coding guidelines and receive peer review before landing on the main branch.
 5. **Documentation as a product:** Keep setup guides, architecture notes, and runbooks updated alongside code changes to avoid drift.
+6. **State-of-the-art stack:** Default to the most recent LTS releases for runtimes, frameworks, and databases, and keep formatting/linting automation mandatory to maintain pristine code quality.
 
 ## Delivery Tracks
 ### 1. Local Runner Foundation
-- Provide a Docker Compose stack with services for frontend, backend API, PostgreSQL, Redis (for sessions/job queues), and a minio-compatible object store for ROM binaries and generated art.
+- Provide a Docker Compose stack with services for frontend, backend API, PostgreSQL, Redis (for sessions/job queues), and a minio-compatible object store for ROM binaries and generated art, each pinned to the current LTS tag.
 - Offer a `./scripts/bootstrap.sh` that installs dependencies, copies `.env.example`, and invokes `docker compose up --build`.
-- Include health checks and readiness probes for each container to prevent race conditions during the first boot.
+- Include health checks and readiness probes for each container to prevent race conditions during the first boot, plus a dependency matrix that records the exact LTS version selected.
 - Document hardware requirements (CPU, RAM, disk) and expected start-up time budgets so operators can validate their environment before starting.
-- Publish a "first 10 minutes" screencast script to ensure walk-through parity across trainers and reviewers.
+- Publish a "first 10 minutes" screencast script to ensure walk-through parity across trainers and reviewers, and incorporate a quick verification step that the developer environment matches the documented LTS versions.
 
 ### 2. EmulatorJS Experience (ROMM-inspired)
 - Embed EmulatorJS in a dedicated React route (`/play/:romId`) with a responsive layout that mirrors ROMM’s mobile view: toolbar pinned to the bottom, translucent overlay controls, and quick access to save/load state.
@@ -40,7 +41,7 @@ This plan outlines the fastest path to deliver a professional, self-hosted retro
 ### 5. Observability, Security & QA
 - Integrate structured logging (Pino) and request tracing (OpenTelemetry) with exporters disabled by default but ready for production.
 - Ship Playwright smoke tests covering: admin login, ROM upload, launch EmulatorJS, save state confirmation.
-- Provide GitHub Actions workflows for linting, type-checking, and smoke tests on pull requests.
+- Provide GitHub Actions workflows for linting, type-checking, and smoke tests on pull requests, with matrix jobs for each supported LTS runtime to flag drift immediately.
 - Enforce a secure code review checklist covering dependency provenance, input validation, secret management, and infrastructure hardening before merges.
 - Publish a changelog entry and update living documentation (architecture diagrams, ops runbooks) with every release candidate.
 - Schedule weekly documentation hygiene reviews to keep setup guides, prompt catalogues, and architecture diagrams aligned.
