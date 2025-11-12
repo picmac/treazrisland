@@ -79,15 +79,27 @@ function withRefreshCsrf(init?: RequestInit): RequestInit {
   return { ...baseInit, headers };
 }
 
-export async function login(payload: {
-  identifier: string;
-  password: string;
-  mfaCode?: string;
-  recoveryCode?: string;
-}): Promise<LoginResponse> {
+/**
+ * Authenticate a user via the TREAZRISLAND backend.
+ *
+ * @param payload - Credential payload to submit to `/auth/login`.
+ * @param options.requestHeaders - Optional header store from `next/headers()` when
+ *   calling on the server. Passing the request headers allows `apiFetch` to infer
+ *   the correct backend origin when running outside the default hostname.
+ */
+export async function login(
+  payload: {
+    identifier: string;
+    password: string;
+    mfaCode?: string;
+    recoveryCode?: string;
+  },
+  options?: { requestHeaders?: HeaderGetter }
+): Promise<LoginResponse> {
   return apiFetch<LoginResponse>("/auth/login", {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    requestHeaders: options?.requestHeaders
   });
 }
 
