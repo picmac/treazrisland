@@ -3,8 +3,6 @@ import { NextResponse } from "next/server";
 
 import { buildSecurityHeaders } from "./security-headers";
 
-const INLINE_SCRIPT_MATCHERS = [/^\/play\//, /^\/admin(?:\/|$)/];
-
 const BASE64_ALPHABET =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -45,35 +43,24 @@ function generateNonce(): string {
   return encodeBase64(bytes);
 }
 
-function needsNonce(pathname: string): boolean {
-  return INLINE_SCRIPT_MATCHERS.some((regex) => regex.test(pathname));
-}
-
 export function proxy(request: NextRequest) {
-  const nonceRequired = needsNonce(request.nextUrl.pathname);
-  const init: Parameters<typeof NextResponse.next>[0] = {};
-  let nonce: string | null = null;
+  const nonce = generateNonce();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-csp-nonce", nonce);
 
-  if (nonceRequired) {
-    nonce = generateNonce();
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-csp-nonce", nonce);
-    init.request = { headers: requestHeaders };
-  }
+  const init: Parameters<typeof NextResponse.next>[0] = {
+    request: { headers: requestHeaders }
+  };
 
   const response = NextResponse.next(init);
 
-  const securityHeaders = nonce
-    ? buildSecurityHeaders({ nonce })
-    : buildSecurityHeaders();
+  const securityHeaders = buildSecurityHeaders({ nonce });
 
   for (const header of securityHeaders) {
     response.headers.set(header.key, header.value);
   }
 
-  if (nonce) {
-    response.headers.set("x-csp-nonce", nonce);
-  }
+  response.headers.set("x-csp-nonce", nonce);
 
   return response;
 }

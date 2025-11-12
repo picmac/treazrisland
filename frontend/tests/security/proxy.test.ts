@@ -44,19 +44,22 @@ describe("proxy", () => {
     const csp = response.headers.get("content-security-policy");
 
     expect(nonce).toMatch(/^[A-Za-z0-9+/=]+$/);
-    expect(csp).toContain("'nonce-");
+    expect(csp).toContain(`'nonce-${nonce}'`);
     expect(csp).toContain("'strict-dynamic'");
   });
 
-  test("applies baseline headers for other routes", () => {
+  test("injects nonce-backed CSP headers for all routed paths", () => {
     const request = new NextRequest(new URL("https://treazris.land/library"));
 
     const response = proxy(request);
 
+    const nonce = response.headers.get("x-csp-nonce");
     const csp = response.headers.get("content-security-policy");
+
+    expect(nonce).toMatch(/^[A-Za-z0-9+/=]+$/);
+    expect(csp).toContain(`'nonce-${nonce}'`);
+    expect(csp).toContain("'strict-dynamic'");
     expect(csp).toContain("default-src 'self'");
-    expect(csp).not.toContain("'nonce-");
-    expect(response.headers.get("x-csp-nonce")).toBeNull();
     expect(response.headers.get("strict-transport-security")).toMatch(/max-age=/);
   });
 });
