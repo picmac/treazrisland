@@ -61,6 +61,10 @@ describe("apiRequest", () => {
   });
 
   it("falls back to window location when explicit API base env vars are missing", async () => {
+    // Simulate the Next.js server runtime which lacks a window global.
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete (globalThis as { window?: unknown }).window;
+
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(null, {
         status: 200,
@@ -78,10 +82,55 @@ describe("apiRequest", () => {
 
     await apiRequest("/status");
 
-    expect(fetchMock).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "https://runtime.test/health/ready",
+      expect.objectContaining({ method: "GET" })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
       "https://runtime.test/status",
       expect.objectContaining({ credentials: "include" })
     );
+  });
+
+  it("fails closed on the server when only a public browser base URL is configured", async () => {
+    const { ApiConfigurationError } = await import("./client");
+    vi.resetModules();
+
+    process.env.NEXT_PUBLIC_API_BASE_URL = "https://api.public.example";
+
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete (globalThis as { window?: unknown }).window;
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete (globalThis as { location?: unknown }).location;
+
+    await expect(import("./client")).rejects.toThrow(
+      /Configured API base https:\/\/api\.public\.example is not private/
+    );
+  });
+
+  it("allows public browser base URLs when running in the browser", async () => {
+    process.env.NEXT_PUBLIC_API_BASE_URL = "https://api.public.example";
+
+    Object.defineProperty(globalThis, "window", { configurable: true, value: {} });
+
+    const { resolveApiBase } = await import("./client");
+
+    expect(resolveApiBase()).toBe("https://api.public.example");
+  });
+
+  it("defaults to the internal service DNS name in production when nothing is configured", async () => {
+    process.env.NODE_ENV = "production";
+
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete (globalThis as { window?: unknown }).window;
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete (globalThis as { location?: unknown }).location;
+
+    const { resolveApiBase } = await import("./client");
+
+    expect(resolveApiBase(undefined, { requirePrivate: true })).toBe("http://api.internal.svc");
   });
 
   it("prefers AUTH_API_BASE_URL when NEXT_PUBLIC_API_BASE_URL is undefined in browsers", async () => {
@@ -180,6 +229,9 @@ describe("apiRequest", () => {
   });
 
   it("derives API base from request headers when provided", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete (globalThis as { window?: unknown }).window;
+
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(null, {
         status: 200,
@@ -197,9 +249,50 @@ describe("apiRequest", () => {
 
     await apiRequest("/status", { requestHeaders: forwardedHeaders });
 
-    expect(fetchMock).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://runner.treaz.lan:3001/health/ready",
+      expect.objectContaining({ method: "GET" })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
       "http://runner.treaz.lan:3001/status",
       expect.objectContaining({ credentials: "include" })
+    );
+  });
+
+  it("caches internal health checks to avoid duplicate probes", async () => {
+    process.env.AUTH_API_BASE_URL = "http://backend.internal";
+
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete (globalThis as { window?: unknown }).window;
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(null, { status: 200, headers: { "content-type": "application/json" } })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { apiRequest } = await import("./client");
+
+    await apiRequest("/status");
+    await apiRequest("/profile");
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://backend.internal/health/ready",
+      expect.objectContaining({ method: "GET" })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://backend.internal/status",
+      expect.any(Object)
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      "http://backend.internal/profile",
+      expect.any(Object)
     );
   });
 });

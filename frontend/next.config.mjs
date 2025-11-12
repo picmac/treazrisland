@@ -5,8 +5,11 @@ import { buildSecurityHeaders } from "./security-headers.mjs";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
+const DEFAULT_PRIVATE_API_BASE =
+  process.env.NODE_ENV === "production" ? "http://api.internal.svc" : "http://localhost:3001";
+
 const AUTH_API_BASE_URL =
-  process.env.AUTH_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
+  process.env.AUTH_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_PRIVATE_API_BASE;
 
 function buildApiRewrites() {
   try {
