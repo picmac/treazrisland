@@ -63,7 +63,6 @@ pnpm install
 # Prepare environment files
 copy_env_template "$REPO_ROOT/.env.example" "$REPO_ROOT/.env"
 copy_env_template "$REPO_ROOT/backend/.env.example" "$REPO_ROOT/backend/.env"
-copy_env_template "$REPO_ROOT/frontend/.env.example" "$REPO_ROOT/frontend/.env.local"
 
 # Start Docker services
 inform "Building and starting Docker services (docker compose up --build)..."

@@ -1,41 +1,53 @@
 # Configuration Overview
 
-This document lists the environment variables used by the Treazr Island services and points to the sample configuration files included in the repository.
+This document lists the environment variables currently used by the Treazr Island development stack and points to the sample configuration files included in the repository.
 
 ## Templates
 
 Two template files provide safe defaults for local development:
 
+- `.env.example`
 - `backend/.env.example`
-- `frontend/.env.example`
 
-Copy them to `.env` (backend) or `.env.local` (frontend) before running the bootstrap script or starting the services.
+Copy them to `.env` (repository root) or `backend/.env` before running the bootstrap script or starting the services.
 
-## Backend (`backend/.env`)
+## Root (`.env`)
 
 | Variable | Description |
 | --- | --- |
-| `NODE_ENV` | Execution environment for the Node.js backend (default `development`). |
-| `PORT` | Port exposed by the backend service. |
-| `DATABASE_URL` | PostgreSQL connection string used by the backend. |
-| `REDIS_URL` | Redis connection string for caching and job queues. |
+| `NODE_ENV` | Execution environment shared by Docker Compose services (default `development`). |
+| `BACKEND_PORT` | Port exposed by the backend container. |
+| `DATABASE_URL` | PostgreSQL connection string used by the backend container. |
+| `REDIS_URL` | Redis connection string exposed to the backend container. |
 | `STORAGE_ENDPOINT` | Base URL for the MinIO object storage service. |
 | `STORAGE_BUCKET` | MinIO bucket where generated assets are stored. |
 | `STORAGE_ACCESS_KEY` | MinIO access key for the application. |
 | `STORAGE_SECRET_KEY` | MinIO secret key for the application. |
 | `EMULATOR_HOST` | Hostname for the LocalStack (AWS emulator) bridge. |
 | `EMULATOR_PORT` | Port for the LocalStack (AWS emulator) bridge. |
-| `PIXELLAB_API_TOKEN` | Token used by backend automations to call the Pixellab.ai API. |
+| `FRONTEND_PORT` | Port exposed by the frontend container. |
+| `VITE_API_BASE_URL` | HTTP base URL for API requests made from the frontend container. |
+| `VITE_STORAGE_ENDPOINT` | HTTP endpoint that serves MinIO-hosted assets to the frontend container. |
+| `POSTGRES_USER` | Username configured for the PostgreSQL service. |
+| `POSTGRES_PASSWORD` | Password configured for the PostgreSQL service. |
+| `POSTGRES_DB` | Default database created for development. |
+| `POSTGRES_PORT` | Host port published by the PostgreSQL container. |
+| `REDIS_PORT` | Host port published by the Redis container. |
+| `MINIO_ROOT_USER` | Administrative user configured for the MinIO service. |
+| `MINIO_ROOT_PASSWORD` | Administrative password configured for the MinIO service. |
+| `MINIO_PORT` | Host port published by the MinIO API. |
+| `MINIO_CONSOLE_PORT` | Host port published by the MinIO console. |
+| `LOCALSTACK_SERVICES` | Comma-separated list of LocalStack services to enable. |
+| `LOCALSTACK_DEBUG` | Enables verbose logging for LocalStack when set to `1`. |
+| `LOCALSTACK_REGION` | AWS region emulated by LocalStack. |
+| `LOCALSTACK_EDGE_PORT` | Host port published by the LocalStack edge endpoint. |
 
-## Frontend (`frontend/.env.local`)
+## Backend (`backend/.env`)
 
 | Variable | Description |
 | --- | --- |
-| `VITE_API_BASE_URL` | HTTP base URL for API requests made from the web client. |
-| `VITE_STATUS_PAGE_URL` | URL exposed by the backend that reports database and cache health. |
-| `VITE_STORAGE_ENDPOINT` | HTTP endpoint that serves MinIO-hosted assets to the browser. |
-| `VITE_STORAGE_BUCKET` | Asset bucket name expected by frontend storage helpers. |
-| `VITE_PIXELLAB_PREVIEW_TOKEN` | Non-production token for previewing Pixellab.ai assets during development. |
+| `NODE_ENV` | Execution environment for the Node.js backend (default `development`). |
+| `PORT` | Port exposed by the backend service when running outside Docker Compose. |
 
 ## Bootstrap integration
 
