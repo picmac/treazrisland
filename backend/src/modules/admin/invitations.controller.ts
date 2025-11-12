@@ -1,8 +1,30 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
 import { z } from 'zod';
 
 import { invitationService } from '../../services/invitations';
 import { renderInviteTemplate } from '../../services/mailer/templates/invite';
+
+type AccessTokenPayload = {
+  sub: string;
+  email?: string;
+};
+
+const ensureAdminSession: preHandlerHookHandler = async (request, reply) => {
+  try {
+    const payload = await request.jwtVerify<AccessTokenPayload>();
+
+    if (!payload.email) {
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+
+    request.user = {
+      id: payload.sub,
+      email: payload.email,
+    };
+  } catch {
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+};
 
 const inviteRequestSchema = z.object({
   email: z.string().email(),
@@ -10,7 +32,7 @@ const inviteRequestSchema = z.object({
 });
 
 export const adminInvitationsController: FastifyPluginAsync = async (fastify) => {
-  fastify.post('/invitations', async (request, reply) => {
+  fastify.post('/invitations', { preHandler: ensureAdminSession }, async (request, reply) => {
     const parsed = inviteRequestSchema.safeParse(request.body);
 
     if (!parsed.success) {
