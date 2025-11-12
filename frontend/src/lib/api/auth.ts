@@ -106,9 +106,9 @@ export async function loginWithCookies(
     requestHeaders: options?.requestHeaders,
     headers: options?.cookieHeader
       ? {
-          cookie: options.cookieHeader
+          cookie: options.cookieHeader,
         }
-      : undefined
+      : undefined,
   });
 
   const data = (await response.json()) as LoginResponse;

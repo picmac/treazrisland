@@ -44,7 +44,7 @@ export async function performLogin(payload: LoginActionInput): Promise<LoginActi
     const cookieHeader = await buildCookieHeaderFromStore();
     const { payload: session, cookies } = await loginWithCookies(validation.data, {
       cookieHeader,
-      requestHeaders
+      requestHeaders,
     });
     await applyBackendCookies(cookies);
     return { success: true, payload: session };
@@ -59,7 +59,7 @@ export async function performLogin(payload: LoginActionInput): Promise<LoginActi
       return {
         success: false,
         error: message,
-        mfaRequired
+        mfaRequired,
       };
     }
 
