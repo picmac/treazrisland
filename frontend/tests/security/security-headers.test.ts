@@ -10,6 +10,7 @@ const ORIGINAL_ENV = { ...process.env };
 
 beforeEach(() => {
   process.env = { ...ORIGINAL_ENV };
+  delete process.env.TREAZ_RUNTIME_ENV;
 });
 
 afterEach(() => {
@@ -60,6 +61,7 @@ describe("createContentSecurityPolicy", () => {
   test("enables strict directives by default when TLS mode is unset", () => {
     delete process.env.TREAZ_TLS_MODE;
     process.env.NODE_ENV = "production";
+    delete process.env.TREAZ_RUNTIME_ENV;
 
     const csp = createContentSecurityPolicy();
     const connectDirective = csp
@@ -84,6 +86,7 @@ describe("createContentSecurityPolicy", () => {
   test("treats automatic TLS mode as disabled outside production", () => {
     process.env.TREAZ_TLS_MODE = "auto";
     process.env.NODE_ENV = "development";
+    delete process.env.TREAZ_RUNTIME_ENV;
 
     const csp = createContentSecurityPolicy();
     const connectDirective = csp
@@ -93,6 +96,60 @@ describe("createContentSecurityPolicy", () => {
     expect(csp).not.toContain("upgrade-insecure-requests");
     expect(connectDirective).toContain("http:");
     expect(connectDirective).toContain("ws:");
+  });
+
+  test("allows forcing LAN mode with TREAZ_RUNTIME_ENV aliases", () => {
+    process.env.TREAZ_TLS_MODE = "auto";
+    process.env.NODE_ENV = "production";
+    process.env.TREAZ_RUNTIME_ENV = "lan";
+
+    const csp = createContentSecurityPolicy();
+    const connectDirective = csp
+      .split("; ")
+      .find((directive) => directive.startsWith("connect-src"));
+
+    expect(csp).not.toContain("upgrade-insecure-requests");
+    expect(connectDirective).toContain("http:");
+    expect(connectDirective).toContain("ws:");
+  });
+
+  test("honours production aliases from TREAZ_RUNTIME_ENV", () => {
+    delete process.env.TREAZ_TLS_MODE;
+    process.env.NODE_ENV = "development";
+    process.env.TREAZ_RUNTIME_ENV = "internet";
+
+    const csp = createContentSecurityPolicy();
+    const connectDirective = csp
+      .split("; ")
+      .find((directive) => directive.startsWith("connect-src"));
+
+    expect(csp).toContain("upgrade-insecure-requests");
+    expect(connectDirective).not.toContain("http:");
+    expect(connectDirective).toContain("wss:");
+  });
+
+  test("throws in production when TREAZ_RUNTIME_ENV is invalid", () => {
+    delete process.env.TREAZ_TLS_MODE;
+    process.env.NODE_ENV = "production";
+    process.env.TREAZ_RUNTIME_ENV = "unknown-stage";
+
+    expect(() => createContentSecurityPolicy()).toThrow(
+      /Unsupported TREAZ_RUNTIME_ENV value/,
+    );
+  });
+
+  test("logs a warning for invalid runtime stages outside production", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    delete process.env.TREAZ_TLS_MODE;
+    process.env.NODE_ENV = "development";
+    process.env.TREAZ_RUNTIME_ENV = "mars";
+
+    const csp = createContentSecurityPolicy();
+    expect(csp).toContain("upgrade-insecure-requests");
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Unsupported TREAZ_RUNTIME_ENV value"),
+    );
+    warnSpy.mockRestore();
   });
 });
 
@@ -125,9 +182,10 @@ describe("buildSecurityHeaders", () => {
     expect(headerKeys).not.toContain("Strict-Transport-Security");
   });
 
-  test("resolves automatic TLS mode based on NODE_ENV", () => {
+  test("resolves automatic TLS mode based on runtime stage", () => {
     process.env.TREAZ_TLS_MODE = "auto";
     process.env.NODE_ENV = "development";
+    delete process.env.TREAZ_RUNTIME_ENV;
 
     const devHeaders = buildSecurityHeaders();
     const devKeys = devHeaders.map((header) => header.key);
@@ -137,6 +195,12 @@ describe("buildSecurityHeaders", () => {
     const prodHeaders = buildSecurityHeaders();
     const prodKeys = prodHeaders.map((header) => header.key);
     expect(prodKeys).toContain("Strict-Transport-Security");
+
+    process.env.NODE_ENV = "development";
+    process.env.TREAZ_RUNTIME_ENV = "prod";
+    const forcedProdHeaders = buildSecurityHeaders();
+    const forcedProdKeys = forcedProdHeaders.map((header) => header.key);
+    expect(forcedProdKeys).toContain("Strict-Transport-Security");
   });
 
   test("logs a warning and falls back to HTTPS headers for invalid mode in non-production", () => {

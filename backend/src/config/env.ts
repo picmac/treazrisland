@@ -12,18 +12,63 @@ const TLS_ENABLED_VALUES = new Set(["https", "true", "1", "on"]);
 const TLS_DISABLED_VALUES = new Set(["http", "false", "0", "off"]);
 const TLS_AUTOMATIC_VALUES = new Set(["auto", "automatic", "lan"]);
 
-function resolveAutomaticTlsMode(): "https" | "http" {
-  const rawNodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
+const RUNTIME_STAGE_ALIASES = new Map<
+  string,
+  "production" | "development" | "test"
+>([
+  ["production", "production"],
+  ["prod", "production"],
+  ["internet", "production"],
+  ["external", "production"],
+  ["public", "production"],
+  ["development", "development"],
+  ["dev", "development"],
+  ["lan", "development"],
+  ["local", "development"],
+  ["test", "test"],
+]);
 
-  if (rawNodeEnv === "production") {
+function normalizeRuntimeStage(
+  value?: string | null,
+): "production" | "development" | "test" | undefined {
+  if (!value || value.trim().length === 0) {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  const resolved = RUNTIME_STAGE_ALIASES.get(normalized);
+
+  if (!resolved) {
+    throw new Error(
+      "TREAZ_RUNTIME_ENV must be one of production, prod, internet, external, public, development, dev, lan, local, test",
+    );
+  }
+
+  return resolved;
+}
+
+function resolveRuntimeStage(): "production" | "development" | "test" | "unknown" {
+  const runtimeEnv = normalizeRuntimeStage(process.env.TREAZ_RUNTIME_ENV);
+  if (runtimeEnv) {
+    return runtimeEnv;
+  }
+
+  const rawNodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
+  if (rawNodeEnv === "production" || rawNodeEnv === "development" || rawNodeEnv === "test") {
+    return rawNodeEnv;
+  }
+
+  return "unknown";
+}
+
+function resolveAutomaticTlsMode(): "https" | "http" {
+  const stage = resolveRuntimeStage();
+
+  if (stage === "production" || stage === "unknown") {
     return "https";
   }
 
-  if (rawNodeEnv === "development" || rawNodeEnv === "test") {
-    return "http";
-  }
-
-  return "https";
+  return "http";
 }
 
 function isValidIp(value: string): boolean {
@@ -62,6 +107,10 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
+  TREAZ_RUNTIME_ENV: z
+    .string()
+    .optional()
+    .transform((value) => normalizeRuntimeStage(value)),
   PORT: z.string().regex(/^\d+$/).default("3001").transform(Number),
   TREAZ_TLS_MODE: z
     .string()
@@ -405,6 +454,13 @@ const signedUrlTtlMs = parsed.data.STORAGE_SIGNED_URL_TTL
   ? ms(parsed.data.STORAGE_SIGNED_URL_TTL as StringValue)
   : undefined;
 const tlsEnabled = parsed.data.TREAZ_TLS_MODE === "https";
+const runtimeStage =
+  parsed.data.TREAZ_RUNTIME_ENV ??
+  (parsed.data.NODE_ENV === "production"
+    ? "production"
+    : parsed.data.NODE_ENV === "test"
+      ? "test"
+      : "development");
 const netplayIdleMs = ms(parsed.data.NETPLAY_IDLE_TIMEOUT as StringValue);
 const netplayStunUris = parsed.data.NETPLAY_STUN_URIS
   ? splitCsv(parsed.data.NETPLAY_STUN_URIS)
@@ -547,6 +603,8 @@ function splitCsv(value: string): string[] {
 
 export const env = {
   ...parsed.data,
+  TREAZ_RUNTIME_ENV: runtimeStage,
+  RUNTIME_STAGE: runtimeStage,
   LOG_LEVEL:
     parsed.data.LOG_LEVEL ??
     (parsed.data.NODE_ENV === "production" ? "info" : "debug"),
