@@ -51,7 +51,8 @@ Do not bump these packages or their transitive LTS peers without written confirm
 
    The frontend reads only `NEXT_PUBLIC_*` variables; adjust `NEXT_PUBLIC_API_BASE_URL` if your backend runs on a non-default
    host/port. `NEXT_PUBLIC_API_BASE_URL` and `STORAGE_ENDPOINT` default to `http://localhost` so the stack works without TLS in
-   development.
+   development. When `NEXT_PUBLIC_API_BASE_URL` is omitted, the browser build reuses `AUTH_API_BASE_URL`, so either variable
+   keeps the client pointed at the backend.
 
 3. Replace all placeholder secrets before exposing the stack to real users. The most important keys are summarised below:
 
