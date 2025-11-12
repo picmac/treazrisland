@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { FirstAdminForm } from "@/src/onboarding/sections/first-admin-form";
 import { PixelFrame } from "@/src/components/pixel-frame";
 import { SetupWizard } from "@/src/onboarding/setup-wizard";
-import { ApiError } from "@/src/lib/api/client";
+import { ApiError, resolveApiBase } from "@/src/lib/api/client";
 import {
   fetchOnboardingStatus,
   type OnboardingStatus,
@@ -39,10 +39,12 @@ function buildFallbackStatus(): OnboardingStatus {
 }
 
 export default async function OnboardingEntry() {
+  const requestHeaders = headers();
+  const resolvedApiBase = resolveApiBase(requestHeaders);
   let status: OnboardingStatus | null = null;
   let onboardingWarning: string | null = null;
   try {
-    status = await fetchOnboardingStatus({ requestHeaders: headers() });
+    status = await fetchOnboardingStatus({ requestHeaders });
   } catch (error) {
     if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
       status = buildFallbackStatus();
@@ -61,11 +63,24 @@ export default async function OnboardingEntry() {
             <h1 className="text-lg uppercase tracking-widest text-primary">
               Onboarding temporarily unavailable
             </h1>
-            <p className="text-sm text-slate-200">
-              {error instanceof Error
-                ? error.message
-                : "An unexpected error occurred while contacting the backend."}
-            </p>
+            <div className="space-y-3 text-sm text-slate-200">
+              <p>
+                {error instanceof Error
+                  ? error.message
+                  : "An unexpected error occurred while contacting the backend."}
+              </p>
+              <p className="text-xs text-slate-300">
+                {`We attempted to reach the TREAZRISLAND API at ${resolvedApiBase}.`}
+              </p>
+              <div className="space-y-2 text-xs text-slate-300">
+                <p className="uppercase text-slate-100">Troubleshooting checklist</p>
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>Ensure the backend server is running: <code className="rounded bg-slate-800 px-1 py-0.5">npm run dev --workspace backend</code>.</li>
+                  <li>Or start the stack via Docker Compose: <code className="rounded bg-slate-800 px-1 py-0.5">docker compose up backend frontend</code>.</li>
+                  <li>Confirm <code className="rounded bg-slate-800 px-1 py-0.5">NEXT_PUBLIC_API_BASE_URL</code> (or <code className="rounded bg-slate-800 px-1 py-0.5">AUTH_API_BASE_URL</code>) points to your backend.</li>
+                </ul>
+              </div>
+            </div>
           </PixelFrame>
         </main>
       );
