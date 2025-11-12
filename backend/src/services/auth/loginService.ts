@@ -55,8 +55,11 @@ export class LoginServiceError extends Error {
     public readonly response: { message: string },
     options?: { cause?: unknown }
   ) {
-    super(response.message, options);
+    super(response.message);
     this.name = "LoginServiceError";
+    if (options?.cause !== undefined) {
+      (this as { cause?: unknown }).cause = options.cause;
+    }
   }
 }
 
