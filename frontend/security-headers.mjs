@@ -142,6 +142,8 @@ export function createContentSecurityPolicy(options = {}) {
   if (nonce) {
     scriptSrc.add(`'nonce-${nonce}'`);
     scriptSrc.add("'strict-dynamic'");
+  } else {
+    scriptSrc.add("'unsafe-inline'");
   }
 
   const styleSrc = new Set(["'self'", "'unsafe-inline'"]);

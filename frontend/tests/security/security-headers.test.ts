@@ -39,7 +39,7 @@ describe("createContentSecurityPolicy", () => {
 
     expect(csp).toContain("default-src 'self'");
     expect(csp).toContain("report-uri /api/csp-report");
-    expect(scriptDirective).toBe("script-src 'self' https: blob:");
+    expect(scriptDirective).toBe("script-src 'self' https: blob: 'unsafe-inline'");
     expect(connectDirective).toContain("http:");
     expect(connectDirective).toContain("ws:");
     expect(connectDirective).toContain("wss:");
