@@ -9,3 +9,123 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum RomAssetType {
+  ROM
+  COVER
+  ARTWORK
+  MANUAL
+}
+
+enum SessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+model Platform {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roms Rom[]
+}
+
+model Rom {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  releaseYear Int?
+  platformId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  platform  Platform    @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  assets    RomAsset[]
+  saves     SaveState[]
+  favorites Favorite[]
+}
+
+model RomAsset {
+  id        String       @id @default(cuid())
+  romId     String
+  type      RomAssetType
+  uri       String
+  checksum  String?
+  createdAt DateTime     @default(now())
+
+  rom Rom @relation(fields: [romId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  username     String    @unique
+  displayName  String?
+  passwordHash String
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions        Session[]
+  invites         Invite[]    @relation("InviteCreatedBy")
+  redeemedInvites Invite[]    @relation("InviteRedeemedBy")
+  saveStates      SaveState[]
+  favorites       Favorite[]
+}
+
+model Invite {
+  id           String    @id @default(cuid())
+  code         String    @unique
+  email        String?
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime?
+  redeemedAt   DateTime?
+  redeemedById String?
+
+  createdBy  User? @relation("InviteCreatedBy", fields: [createdById], references: [id])
+  redeemedBy User? @relation("InviteRedeemedBy", fields: [redeemedById], references: [id])
+}
+
+model Session {
+  id           String        @id @default(cuid())
+  userId       String
+  sessionToken String        @unique
+  status       SessionStatus @default(ACTIVE)
+  createdAt    DateTime      @default(now())
+  expiresAt    DateTime?
+  revokedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SaveState {
+  id        String   @id @default(cuid())
+  userId    String
+  romId     String
+  slot      Int      @default(0)
+  label     String?
+  data      Bytes
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rom  Rom  @relation(fields: [romId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, romId, slot])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  romId     String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rom  Rom  @relation(fields: [romId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, romId])
+}
