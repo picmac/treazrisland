@@ -91,6 +91,11 @@ export async function login(payload: {
   });
 }
 
+type LoginWithCookiesOptions = {
+  cookieHeader?: string;
+  requestHeaders?: HeaderGetter;
+};
+
 export async function loginWithCookies(
   payload: {
     identifier: string;
@@ -98,15 +103,17 @@ export async function loginWithCookies(
     mfaCode?: string;
     recoveryCode?: string;
   },
-  options?: { cookieHeader?: string; requestHeaders?: HeaderGetter }
+  options?: LoginWithCookiesOptions
 ): Promise<{ payload: LoginResponse; cookies: SetCookieHeader }> {
+  const { cookieHeader, requestHeaders } = options ?? {};
+
   const response = await apiRequest("/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),
-    requestHeaders: options?.requestHeaders,
-    headers: options?.cookieHeader
+    requestHeaders,
+    headers: cookieHeader
       ? {
-          cookie: options.cookieHeader,
+          cookie: cookieHeader,
         }
       : undefined,
   });
