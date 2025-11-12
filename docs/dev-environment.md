@@ -80,3 +80,34 @@ This guide standardises the local development toolchain so that future bootstrap
 - When infrastructure requirements change, update `.tool-versions`, `package.json` `engines`, and this document in the same commit.
 - After updating any version, validate `./scripts/bootstrap.sh` on both macOS (Intel and Apple Silicon) and Ubuntu LTS to prevent drift.
 - Document successful validation runs in PR descriptions as part of the "Documentation Drift" checks outlined in `docs/perfect_start_checklist.md`.
+
+## JavaScript and TypeScript tooling
+
+The repository standardises code quality tooling across the monorepo root so that frontend and backend packages stay aligned.
+
+### Editor and formatting configuration
+
+- `.editorconfig` enforces UTF-8 encoding, LF line endings, two-space indentation, and trailing newline insertion across supported editors.
+- `.prettierrc` aligns Prettier behaviour (print width, quote style, trailing commas) between contributors to minimise diff noise.
+
+### Linting and formatting commands
+
+Install dependencies with pnpm to pick up the ESLint and Prettier configuration:
+
+```bash
+pnpm install
+```
+
+Available scripts:
+
+- `pnpm lint` — runs ESLint across `backend` and `frontend` TypeScript/JavaScript sources with zero tolerated warnings.
+- `pnpm format` — formats common source and config files in place using Prettier.
+- `pnpm format:check` — verifies formatting without writing changes (used by automated checks).
+
+> **Tip:** Run `pnpm format` before committing to keep diffs lean; CI and the pre-commit hook will use `pnpm format:check`.
+
+### Husky git hooks
+
+- Husky is installed as a development dependency and initialised via the automatic `prepare` script after `pnpm install`.
+- The `.husky/pre-commit` hook runs `pnpm lint` and `pnpm format:check`. Commits will fail until lint and formatting pass locally, preventing inconsistent code from entering the repository.
+- If Git hooks are not running (for example after cloning), run `pnpm install` or `pnpm exec husky install` to reinstall them.
