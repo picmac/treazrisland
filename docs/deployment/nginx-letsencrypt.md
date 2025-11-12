@@ -26,12 +26,12 @@ Populate the following keys (see `.env.example` for defaults) in an `.env` file 
 | `LETSENCRYPT_EMAIL` | Email address used for ACME registration and expiry alerts. |
 | `LETSENCRYPT_STAGING` | Set to `true` while testing to avoid Let's Encrypt production rate limits. Flip to `false` for live certificates. |
 | `NGINX_CONTAINER_NAME` | (Optional) Override when the Nginx container name is customized; defaults to `treazrisland-nginx`. |
-| `TREAZ_TLS_MODE` | Defaults to `https` so the frontend emits HSTS/`upgrade-insecure-requests` headers once the proxy terminates TLS. Override to `http` only for HTTP-only development. |
+| `TREAZ_TLS_MODE` | Defaults to `auto` so the frontend emits HSTS/`upgrade-insecure-requests` headers when `TREAZ_RUNTIME_ENV` resolves to production but stays HTTP-friendly on LAN builds. Override to `https` to harden previews or `http` for explicit plaintext. |
 
 ## One-time bootstrap
 
 1. Copy `.env.example` to `.env`, customise the values above, and share it with `backend/.env` and `frontend/.env.local` (symlink or copy) so Docker Compose and local commands agree on production URLs.
-2. Confirm `TREAZ_TLS_MODE=https` (the default), set `NEXT_PUBLIC_API_BASE_URL`/`CORS_ALLOWED_ORIGINS` to their `https://` hostnames, and update `STORAGE_ENDPOINT` if you proxy MinIO or another S3-compatible service through TLS.
+2. Confirm `TREAZ_TLS_MODE=https` (or leave `auto` with `TREAZ_RUNTIME_ENV=production`), set `NEXT_PUBLIC_API_BASE_URL`/`CORS_ALLOWED_ORIGINS` to their `https://` hostnames, and update `STORAGE_ENDPOINT` if you proxy MinIO or another S3-compatible service through TLS.
 3. Start the stack and tail the logs:
    ```bash
    docker compose --project-directory infra up -d postgres minio

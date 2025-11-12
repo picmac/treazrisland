@@ -113,6 +113,8 @@ describe("env TLS mode validation", () => {
 
     seedRequiredEnv();
     delete process.env.TREAZ_TLS_MODE;
+    delete process.env.TREAZ_RUNTIME_ENV;
+    delete process.env.GITHUB_ACTIONS;
   });
 
   afterEach(() => {
@@ -120,11 +122,11 @@ describe("env TLS mode validation", () => {
     restoreEnv(snapshot);
   });
 
-  it("defaults to https when TREAZ_TLS_MODE is unset", async () => {
+  it("defaults to automatic mode when TREAZ_TLS_MODE is unset", async () => {
     const module = await import("./env.js");
 
-    expect(module.env.TREAZ_TLS_MODE).toBe("https");
-    expect(module.env.TLS_ENABLED).toBe(true);
+    expect(module.env.TREAZ_TLS_MODE).toBe("http");
+    expect(module.env.TLS_ENABLED).toBe(false);
   });
 
   it.each([
@@ -163,11 +165,90 @@ describe("env TLS mode validation", () => {
     }
   );
 
+  it("treats automatic mode as HTTP outside production", async () => {
+    process.env.TREAZ_TLS_MODE = "auto";
+    process.env.NODE_ENV = "development";
+
+    const module = await import("./env.js");
+
+    expect(module.env.TREAZ_TLS_MODE).toBe("http");
+    expect(module.env.TLS_ENABLED).toBe(false);
+  });
+
+  it("treats automatic mode as HTTPS in production", async () => {
+    process.env.TREAZ_TLS_MODE = "auto";
+    process.env.NODE_ENV = "production";
+
+    const module = await import("./env.js");
+
+    expect(module.env.TREAZ_TLS_MODE).toBe("https");
+    expect(module.env.TLS_ENABLED).toBe(true);
+  });
+
+  it("treats GitHub Actions as development for automatic TLS", async () => {
+    process.env.TREAZ_TLS_MODE = "auto";
+    process.env.NODE_ENV = "production";
+    process.env.GITHUB_ACTIONS = "true";
+
+    const module = await import("./env.js");
+
+    expect(module.env.TREAZ_TLS_MODE).toBe("http");
+    expect(module.env.TLS_ENABLED).toBe(false);
+    expect(module.env.RUNTIME_STAGE).toBe("development");
+  });
+
+  it("falls back to LAN-friendly defaults when NODE_ENV is missing", async () => {
+    process.env.TREAZ_TLS_MODE = "auto";
+    delete process.env.NODE_ENV;
+    delete process.env.TREAZ_RUNTIME_ENV;
+    delete process.env.GITHUB_ACTIONS;
+
+    const module = await import("./env.js");
+
+    expect(module.env.TREAZ_TLS_MODE).toBe("http");
+    expect(module.env.TLS_ENABLED).toBe(false);
+    expect(module.env.RUNTIME_STAGE).toBe("development");
+  });
+
+  it("prefers TREAZ_RUNTIME_ENV when resolving automatic mode", async () => {
+    process.env.TREAZ_TLS_MODE = "auto";
+    process.env.NODE_ENV = "development";
+    process.env.TREAZ_RUNTIME_ENV = "internet";
+
+    const module = await import("./env.js");
+
+    expect(module.env.TREAZ_TLS_MODE).toBe("https");
+    expect(module.env.TLS_ENABLED).toBe(true);
+    expect(module.env.TREAZ_RUNTIME_ENV).toBe("production");
+    expect(module.env.RUNTIME_STAGE).toBe("production");
+  });
+
+  it("allows opting into LAN mode via TREAZ_RUNTIME_ENV", async () => {
+    process.env.TREAZ_TLS_MODE = "auto";
+    process.env.NODE_ENV = "production";
+    process.env.TREAZ_RUNTIME_ENV = "lan";
+
+    const module = await import("./env.js");
+
+    expect(module.env.TREAZ_TLS_MODE).toBe("http");
+    expect(module.env.TLS_ENABLED).toBe(false);
+    expect(module.env.TREAZ_RUNTIME_ENV).toBe("development");
+    expect(module.env.RUNTIME_STAGE).toBe("development");
+  });
+
   it("rejects unsupported TLS modes", async () => {
     process.env.TREAZ_TLS_MODE = "maybe";
 
     await expect(import("./env.js")).rejects.toThrow(
       /TREAZ_TLS_MODE must be one of/,
+    );
+  });
+
+  it("rejects unsupported runtime stages", async () => {
+    process.env.TREAZ_RUNTIME_ENV = "space";
+
+    await expect(import("./env.js")).rejects.toThrow(
+      /TREAZ_RUNTIME_ENV must be one of/,
     );
   });
 });

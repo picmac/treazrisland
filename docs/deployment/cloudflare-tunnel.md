@@ -37,7 +37,7 @@ Update the hostnames if your domain differs. Additional services can be appended
 Even though `cloudflared` connects to the local services over HTTP, visitors reach the tunnel using HTTPS. Update the shared
 `.env` file accordingly before exposing the stack:
 
-- Ensure `TREAZ_TLS_MODE=https` (default) so the frontend emits HSTS/`upgrade-insecure-requests` headers.
+- Ensure `TREAZ_TLS_MODE=https` (or leave `auto` with `TREAZ_RUNTIME_ENV=production`) so the frontend emits HSTS/`upgrade-insecure-requests` headers.
 - Replace `NEXT_PUBLIC_API_BASE_URL` and `CORS_ALLOWED_ORIGINS` with the public `https://` hostnames served by your tunnel.
 - If MinIO or another object store is reachable over HTTPS, point `STORAGE_ENDPOINT` at that URL (otherwise leave the local HTTP
   endpoint for development).

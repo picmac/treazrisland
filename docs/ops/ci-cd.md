@@ -42,6 +42,8 @@ sudo chown treaz:treaz /opt/treazrisland/config
 ```
 
 - `/opt/treazrisland/config/treaz.env` — copy `.env.example` from the repository root, populate **all** backend/frontend/infra variables, and treat it as the single source of truth. Symlink it to `/opt/treazrisland/app/backend/.env` and `/opt/treazrisland/app/frontend/.env.local` so local commands match what Docker Compose receives. Include database credentials, JWT secrets, email provider tokens, storage configuration, ScreenScraper credentials, monitoring toggles, and any overrides consumed by `infra/docker-compose.prod.yml` (such as `POSTGRES_EXPORTER_SOURCE` or custom project names).
+- Set `TREAZ_RUNTIME_ENV=production` (or an alias such as `prod`/`internet`) inside the shared env file whenever the deployment should emit strict HTTPS headers. Keep it on `development`/`lan` for runner-only stacks that must stay HTTP.
+- When the workflow runs without an explicit `TREAZ_RUNTIME_ENV`, both the backend and frontend treat the GitHub Actions environment as `development` so automatic TLS resolves to HTTP for LAN previews.
 - Export `TREAZ_ENV_FILE=/opt/treazrisland/config/treaz.env` for any shell that runs deployment scripts or Docker Compose directly. The CI workflow sets the same variable before calling `scripts/deploy/deploy-local.sh`.
 - Compose-specific one-off overrides (for example, generating a new database password during bootstrap) can be exported inline: `export POSTGRES_PASSWORD="$(openssl rand -base64 24)"`.
 
