@@ -18,9 +18,18 @@ describe('config/env', () => {
     const result = parseEnv({
       NODE_ENV: 'development',
       PORT: '4000',
+      JWT_SECRET: 'test-secret-value-123456789012345678',
     } as NodeJS.ProcessEnv);
 
-    expect(result).toEqual({ NODE_ENV: 'development', PORT: 4000 });
+    expect(result).toMatchObject({
+      NODE_ENV: 'development',
+      PORT: 4000,
+      JWT_SECRET: 'test-secret-value-123456789012345678',
+      JWT_ACCESS_TOKEN_TTL: 900,
+      JWT_REFRESH_TOKEN_TTL: 604800,
+      MAGIC_LINK_TOKEN_TTL: 300,
+      REDIS_URL: undefined,
+    });
   });
 
   it('throws an error when required variables are missing', async () => {
@@ -29,6 +38,7 @@ describe('config/env', () => {
     expect(() =>
       parseEnv({
         NODE_ENV: 'development',
+        PORT: '3000',
       } as NodeJS.ProcessEnv),
     ).toThrowError('Invalid environment configuration');
   });
@@ -40,6 +50,7 @@ describe('config/env', () => {
       parseEnv({
         NODE_ENV: 'development',
         PORT: '0',
+        JWT_SECRET: 'test-secret-value-123456789012345678',
       } as NodeJS.ProcessEnv),
     ).toThrowError('Invalid environment configuration');
   });
@@ -47,6 +58,7 @@ describe('config/env', () => {
   it('caches parsed configuration through getEnv', async () => {
     process.env.NODE_ENV = 'production';
     process.env.PORT = '5050';
+    process.env.JWT_SECRET = 'test-secret-value-123456789012345678';
 
     const { getEnv } = await import('../../src/config/env');
 
