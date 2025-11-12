@@ -59,6 +59,7 @@ describe("createContentSecurityPolicy", () => {
 
   test("enables strict directives by default when TLS mode is unset", () => {
     delete process.env.TREAZ_TLS_MODE;
+    process.env.NODE_ENV = "production";
 
     const csp = createContentSecurityPolicy();
     const connectDirective = csp
@@ -76,8 +77,22 @@ describe("createContentSecurityPolicy", () => {
     process.env.NODE_ENV = "production";
 
     expect(() => createContentSecurityPolicy()).toThrow(
-      /Unsupported TREAZ_TLS_MODE value/, 
+      /Unsupported TREAZ_TLS_MODE value/,
     );
+  });
+
+  test("treats automatic TLS mode as disabled outside production", () => {
+    process.env.TREAZ_TLS_MODE = "auto";
+    process.env.NODE_ENV = "development";
+
+    const csp = createContentSecurityPolicy();
+    const connectDirective = csp
+      .split("; ")
+      .find((directive) => directive.startsWith("connect-src"));
+
+    expect(csp).not.toContain("upgrade-insecure-requests");
+    expect(connectDirective).toContain("http:");
+    expect(connectDirective).toContain("ws:");
   });
 });
 
@@ -110,6 +125,20 @@ describe("buildSecurityHeaders", () => {
     expect(headerKeys).not.toContain("Strict-Transport-Security");
   });
 
+  test("resolves automatic TLS mode based on NODE_ENV", () => {
+    process.env.TREAZ_TLS_MODE = "auto";
+    process.env.NODE_ENV = "development";
+
+    const devHeaders = buildSecurityHeaders();
+    const devKeys = devHeaders.map((header) => header.key);
+    expect(devKeys).not.toContain("Strict-Transport-Security");
+
+    process.env.NODE_ENV = "production";
+    const prodHeaders = buildSecurityHeaders();
+    const prodKeys = prodHeaders.map((header) => header.key);
+    expect(prodKeys).toContain("Strict-Transport-Security");
+  });
+
   test("logs a warning and falls back to HTTPS headers for invalid mode in non-production", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     process.env.TREAZ_TLS_MODE = "invalid";
@@ -132,6 +161,7 @@ describe("buildSecurityHeaders", () => {
 describe("next.config headers integration", () => {
   test("applies the security headers to all routes", async () => {
     process.env.TREAZ_TLS_MODE = "https";
+    process.env.NODE_ENV = "production";
 
     const headerConfig = await nextConfig.headers?.();
 
@@ -155,6 +185,7 @@ describe("next.config headers integration", () => {
 
   test("omits Strict-Transport-Security when TLS mode is http", async () => {
     process.env.TREAZ_TLS_MODE = "http";
+    process.env.NODE_ENV = "development";
 
     const headerConfig = await nextConfig.headers?.();
     const headerEntry = headerConfig?.find((entry) => entry.source === "/(.*)");

@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { proxy } from "@/proxy";
 
 const ORIGINAL_CRYPTO = globalThis.crypto;
+const ORIGINAL_ENV = { ...process.env };
 
 function mockRandomValues(bytes: Uint8Array) {
   for (let index = 0; index < bytes.length; index += 1) {
@@ -15,6 +16,7 @@ function mockRandomValues(bytes: Uint8Array) {
 describe("proxy", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    process.env = { ...ORIGINAL_ENV, TREAZ_TLS_MODE: "https", NODE_ENV: "production" };
     if (ORIGINAL_CRYPTO) {
       vi.spyOn(ORIGINAL_CRYPTO, "getRandomValues").mockImplementation(mockRandomValues);
     }
@@ -22,6 +24,7 @@ describe("proxy", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    process.env = { ...ORIGINAL_ENV };
   });
 
   test("injects a nonce-backed CSP for admin routes", () => {

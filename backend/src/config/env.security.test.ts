@@ -120,11 +120,11 @@ describe("env TLS mode validation", () => {
     restoreEnv(snapshot);
   });
 
-  it("defaults to https when TREAZ_TLS_MODE is unset", async () => {
+  it("defaults to automatic mode when TREAZ_TLS_MODE is unset", async () => {
     const module = await import("./env.js");
 
-    expect(module.env.TREAZ_TLS_MODE).toBe("https");
-    expect(module.env.TLS_ENABLED).toBe(true);
+    expect(module.env.TREAZ_TLS_MODE).toBe("http");
+    expect(module.env.TLS_ENABLED).toBe(false);
   });
 
   it.each([
@@ -162,6 +162,26 @@ describe("env TLS mode validation", () => {
       expect(module.env.TLS_ENABLED).toBe(expectedTlsEnabled);
     }
   );
+
+  it("treats automatic mode as HTTP outside production", async () => {
+    process.env.TREAZ_TLS_MODE = "auto";
+    process.env.NODE_ENV = "development";
+
+    const module = await import("./env.js");
+
+    expect(module.env.TREAZ_TLS_MODE).toBe("http");
+    expect(module.env.TLS_ENABLED).toBe(false);
+  });
+
+  it("treats automatic mode as HTTPS in production", async () => {
+    process.env.TREAZ_TLS_MODE = "auto";
+    process.env.NODE_ENV = "production";
+
+    const module = await import("./env.js");
+
+    expect(module.env.TREAZ_TLS_MODE).toBe("https");
+    expect(module.env.TLS_ENABLED).toBe(true);
+  });
 
   it("rejects unsupported TLS modes", async () => {
     process.env.TREAZ_TLS_MODE = "maybe";

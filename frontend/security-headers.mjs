@@ -8,6 +8,18 @@
 
 const TLS_ENABLED_VALUES = new Set(["https", "true", "1", "on"]);
 const TLS_DISABLED_VALUES = new Set(["http", "false", "0", "off"]);
+const TLS_AUTOMATIC_VALUES = new Set(["auto", "automatic", "lan"]);
+
+/**
+ * @returns {"production" | "development" | "test" | "unknown"}
+ */
+function resolveNodeEnv() {
+  const raw = process.env.NODE_ENV?.trim().toLowerCase();
+  if (raw === "production" || raw === "development" || raw === "test") {
+    return raw;
+  }
+  return "unknown";
+}
 
 /**
  * @returns {boolean}
@@ -15,7 +27,7 @@ const TLS_DISABLED_VALUES = new Set(["http", "false", "0", "off"]);
 function isTlsEnabled() {
   const raw = process.env.TREAZ_TLS_MODE;
   if (!raw || raw.trim().length === 0) {
-    return true;
+    return resolveNodeEnv() === "production";
   }
 
   const normalized = raw.trim().toLowerCase();
@@ -27,8 +39,12 @@ function isTlsEnabled() {
     return false;
   }
 
+  if (TLS_AUTOMATIC_VALUES.has(normalized)) {
+    return resolveNodeEnv() === "production";
+  }
+
   const message =
-    `Unsupported TREAZ_TLS_MODE value "${raw}". Accepted values: https, http, true, false, 1, 0.`;
+    `Unsupported TREAZ_TLS_MODE value "${raw}". Accepted values: https, http, true, false, 1, 0, auto.`;
   if (process.env.NODE_ENV === "production") {
     throw new Error(message);
   }

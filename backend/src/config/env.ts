@@ -10,6 +10,21 @@ export const bootstrapSecrets = ensureBootstrapSecrets();
 
 const TLS_ENABLED_VALUES = new Set(["https", "true", "1", "on"]);
 const TLS_DISABLED_VALUES = new Set(["http", "false", "0", "off"]);
+const TLS_AUTOMATIC_VALUES = new Set(["auto", "automatic", "lan"]);
+
+function resolveAutomaticTlsMode(): "https" | "http" {
+  const rawNodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
+
+  if (rawNodeEnv === "production") {
+    return "https";
+  }
+
+  if (rawNodeEnv === "development" || rawNodeEnv === "test") {
+    return "http";
+  }
+
+  return "https";
+}
 
 function isValidIp(value: string): boolean {
   try {
@@ -22,7 +37,7 @@ function isValidIp(value: string): boolean {
 
 function normalizeTlsMode(value?: string | null): "https" | "http" {
   if (!value || value.trim().length === 0) {
-    return "https";
+    return resolveAutomaticTlsMode();
   }
 
   const normalized = value.trim().toLowerCase();
@@ -34,8 +49,12 @@ function normalizeTlsMode(value?: string | null): "https" | "http" {
     return "http";
   }
 
+  if (TLS_AUTOMATIC_VALUES.has(normalized)) {
+    return resolveAutomaticTlsMode();
+  }
+
   throw new Error(
-    "TREAZ_TLS_MODE must be one of https, http, true, false, 1, 0, on, off",
+    "TREAZ_TLS_MODE must be one of https, http, true, false, 1, 0, on, off, auto",
   );
 }
 
