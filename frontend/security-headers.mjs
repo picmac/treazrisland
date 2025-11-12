@@ -49,7 +49,10 @@ function resolveRuntimeStage() {
 
   const githubActionsFlag = process.env.GITHUB_ACTIONS?.trim().toLowerCase();
   if (githubActionsFlag === "true") {
-    return "development";
+    const tlsMode = process.env.TREAZ_TLS_MODE?.trim().toLowerCase();
+    if (!tlsMode || TLS_AUTOMATIC_VALUES.has(tlsMode) || TLS_DISABLED_VALUES.has(tlsMode)) {
+      return "development";
+    }
   }
 
   const rawNodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
