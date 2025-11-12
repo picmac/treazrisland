@@ -38,23 +38,32 @@ fi
 
 inform "All prerequisites detected."
 
+copy_env_template() {
+  local example_path="$1"
+  local target_path="$2"
+
+  if [[ -f "$example_path" ]]; then
+    if [[ -f "$target_path" ]]; then
+      inform "${target_path#$REPO_ROOT/} already exists. Skipping copy from ${example_path#$REPO_ROOT/}."
+    else
+      inform "Copying ${example_path#$REPO_ROOT/} to ${target_path#$REPO_ROOT/}..."
+      cp "$example_path" "$target_path"
+    fi
+  else
+    inform "No ${example_path#$REPO_ROOT/} found. Skipping."
+  fi
+}
+
 cd "$REPO_ROOT"
 
 # Install Node dependencies
 inform "Installing Node dependencies with pnpm..."
 pnpm install
 
-# Prepare environment file
-if [[ -f .env.example ]]; then
-  if [[ -f .env ]]; then
-    inform ".env already exists. Skipping copy from .env.example."
-  else
-    inform "Copying .env.example to .env..."
-    cp .env.example .env
-  fi
-else
-  inform "No .env.example found. Skipping environment file setup."
-fi
+# Prepare environment files
+copy_env_template "$REPO_ROOT/.env.example" "$REPO_ROOT/.env"
+copy_env_template "$REPO_ROOT/backend/.env.example" "$REPO_ROOT/backend/.env"
+copy_env_template "$REPO_ROOT/frontend/.env.example" "$REPO_ROOT/frontend/.env.local"
 
 # Start Docker services
 inform "Building and starting Docker services (docker compose up --build)..."
