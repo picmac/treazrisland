@@ -47,7 +47,11 @@ function normalizeRuntimeStage(
   return resolved;
 }
 
-function resolveRuntimeStage(): "production" | "development" | "test" | "unknown" {
+function resolveRuntimeStage():
+  | "production"
+  | "development"
+  | "test"
+  | "unknown" {
   const runtimeEnv = normalizeRuntimeStage(process.env.TREAZ_RUNTIME_ENV);
   if (runtimeEnv) {
     return runtimeEnv;
@@ -59,7 +63,11 @@ function resolveRuntimeStage(): "production" | "development" | "test" | "unknown
   }
 
   const rawNodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
-  if (rawNodeEnv === "production" || rawNodeEnv === "development" || rawNodeEnv === "test") {
+  if (
+    rawNodeEnv === "production" ||
+    rawNodeEnv === "development" ||
+    rawNodeEnv === "test"
+  ) {
     return rawNodeEnv;
   }
 
