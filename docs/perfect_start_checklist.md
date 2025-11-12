@@ -20,7 +20,7 @@ This checklist guarantees a flawless first impression when unveiling Treazrislan
 - [ ] Dependency matrix reviewed to confirm every container, runtime, and database is on the most recent LTS release.
 
 ### 2. Pixellab.ai Theming
-- [ ] Pixellab.ai API token stored securely (e.g., `.env.local` template references secret manager path).
+- [ ] Pixellab.ai API token stored securely with the storage location documented for operators.
 - [ ] Prompt catalogue reviewed; unused prompts archived, final set approved.
 - [ ] Asset manifest generated with accessibility audit results appended.
 - [ ] EmulatorJS play route visually checked against ROMM reference screenshots on desktop and mobile widths.

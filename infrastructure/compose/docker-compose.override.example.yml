@@ -10,7 +10,6 @@ services:
       - "5173:5173"
     volumes:
       - ../../frontend:/app
-      - ../../frontend/.env.local:/app/.env.local:ro
 
   backend:
     environment:
@@ -21,7 +20,6 @@ services:
       - "4000:4000"
     volumes:
       - ../../backend:/app
-      - ../../backend/.env.local:/app/.env.local:ro
 
   postgres:
     ports:

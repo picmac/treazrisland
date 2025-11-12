@@ -1,4 +1,4 @@
-name: CI/CD
+name: Backend CI
 
 on:
   workflow_dispatch:
@@ -6,97 +6,34 @@ on:
     branches:
       - main
   pull_request:
-    branches:
-      - main
 
 jobs:
-  lint-test-build:
+  backend:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        project: [backend, frontend]
-    defaults:
-      run:
-        working-directory: ${{ matrix.project }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.5.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22.11.0
-          cache: npm
-          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+          node-version: 20.14.0
+          cache: pnpm
+          cache-dependency-path: backend/pnpm-lock.yaml
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Unit tests
-        run: npm test
+      - name: Run backend tests
+        working-directory: backend
+        run: pnpm test -- --run
 
       - name: Build backend
-        if: matrix.project == 'backend'
-        env:
-          NODE_ENV: production
-          PRISMA_LOG_LEVEL: debug
-          DEBUG: prisma:*
-          NPM_CONFIG_LOGLEVEL: verbose
-        run: npm run build
-
-      - name: Build frontend
-        if: matrix.project == 'frontend'
-        env:
-          NODE_ENV: production
-          NEXT_TELEMETRY_DISABLED: 1
-        run: npm run build
-
-  deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs:
-      - lint-test-build
-    concurrency:
-      group: deploy-${{ github.ref }}
-      cancel-in-progress: true
-    runs-on:
-      - self-hosted
-      - treaz-home
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Deploy to home infrastructure
-        env:
-          TREAZ_ENV_FILE: /opt/treazrisland/config/treaz.env
-          TREAZ_COMPOSE_PROJECT_NAME: treazrisland
-        run: |
-          chmod +x scripts/deploy/deploy-local.sh
-          scripts/deploy/deploy-local.sh
-
-      - name: Collect compose diagnostics
-        if: failure()
-        env:
-          TREAZ_ENV_FILE: /opt/treazrisland/config/treaz.env
-          TREAZ_COMPOSE_PROJECT_NAME: treazrisland
-          STACK_FILE: ${{ github.workspace }}/infra/docker-compose.prod.yml
-        run: |
-          mkdir -p diagnostics
-          touch diagnostics/debug-stack.log
-          chmod +x scripts/infra/debug-stack.sh
-          if ! scripts/infra/debug-stack.sh --tail 200 > diagnostics/debug-stack.log 2>&1; then
-            echo "::warning::debug-stack.sh exited with a non-zero status. Check diagnostics/debug-stack.log for details."
-          fi
-          ls -lah diagnostics
-
-      - name: Upload compose diagnostics artifact
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: compose-diagnostics
-          path: diagnostics
+        working-directory: backend
+        run: pnpm build
