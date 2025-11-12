@@ -4,6 +4,7 @@ import { FirstAdminForm } from "@/src/onboarding/sections/first-admin-form";
 import { PixelFrame } from "@/src/components/pixel-frame";
 import { SetupWizard } from "@/src/onboarding/setup-wizard";
 import { ApiError, resolveApiBase } from "@/src/lib/api/client";
+import { OnboardingConnectionRetry } from "@/src/onboarding/components/onboarding-connection-retry";
 import {
   fetchOnboardingStatus,
   type OnboardingStatus,
@@ -57,6 +58,11 @@ export default async function OnboardingEntry() {
         .filter(Boolean)
         .join(" ");
     } else {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred while contacting the backend.";
+
       return (
         <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-white">
           <PixelFrame className="space-y-4">
@@ -64,14 +70,10 @@ export default async function OnboardingEntry() {
               Onboarding temporarily unavailable
             </h1>
             <div className="space-y-3 text-sm text-slate-200">
-              <p>
-                {error instanceof Error
-                  ? error.message
-                  : "An unexpected error occurred while contacting the backend."}
-              </p>
-              <p className="text-xs text-slate-300">
-                {`We attempted to reach the TREAZRISLAND API at ${resolvedApiBase}.`}
-              </p>
+              <OnboardingConnectionRetry
+                errorMessage={errorMessage}
+                resolvedApiBase={resolvedApiBase}
+              />
               <div className="space-y-2 text-xs text-slate-300">
                 <p className="uppercase text-slate-100">Troubleshooting checklist</p>
                 <ul className="list-disc space-y-1 pl-5">
