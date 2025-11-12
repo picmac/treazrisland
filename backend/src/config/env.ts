@@ -53,6 +53,11 @@ function resolveRuntimeStage(): "production" | "development" | "test" | "unknown
     return runtimeEnv;
   }
 
+  const githubActionsFlag = process.env.GITHUB_ACTIONS?.trim().toLowerCase();
+  if (githubActionsFlag === "true") {
+    return "development";
+  }
+
   const rawNodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
   if (rawNodeEnv === "production" || rawNodeEnv === "development" || rawNodeEnv === "test") {
     return rawNodeEnv;
@@ -454,13 +459,17 @@ const signedUrlTtlMs = parsed.data.STORAGE_SIGNED_URL_TTL
   ? ms(parsed.data.STORAGE_SIGNED_URL_TTL as StringValue)
   : undefined;
 const tlsEnabled = parsed.data.TREAZ_TLS_MODE === "https";
+const isGitHubActions =
+  process.env.GITHUB_ACTIONS?.trim().toLowerCase() === "true";
 const runtimeStage =
   parsed.data.TREAZ_RUNTIME_ENV ??
-  (parsed.data.NODE_ENV === "production"
-    ? "production"
-    : parsed.data.NODE_ENV === "test"
-      ? "test"
-      : "development");
+  (isGitHubActions
+    ? "development"
+    : parsed.data.NODE_ENV === "production"
+      ? "production"
+      : parsed.data.NODE_ENV === "test"
+        ? "test"
+        : "development");
 const netplayIdleMs = ms(parsed.data.NETPLAY_IDLE_TIMEOUT as StringValue);
 const netplayStunUris = parsed.data.NETPLAY_STUN_URIS
   ? splitCsv(parsed.data.NETPLAY_STUN_URIS)

@@ -183,6 +183,18 @@ describe("env TLS mode validation", () => {
     expect(module.env.TLS_ENABLED).toBe(true);
   });
 
+  it("treats GitHub Actions as development for automatic TLS", async () => {
+    process.env.TREAZ_TLS_MODE = "auto";
+    process.env.NODE_ENV = "production";
+    process.env.GITHUB_ACTIONS = "true";
+
+    const module = await import("./env.js");
+
+    expect(module.env.TREAZ_TLS_MODE).toBe("http");
+    expect(module.env.TLS_ENABLED).toBe(false);
+    expect(module.env.RUNTIME_STAGE).toBe("development");
+  });
+
   it("prefers TREAZ_RUNTIME_ENV when resolving automatic mode", async () => {
     process.env.TREAZ_TLS_MODE = "auto";
     process.env.NODE_ENV = "development";

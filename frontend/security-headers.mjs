@@ -47,6 +47,11 @@ function resolveRuntimeStage() {
     return "production";
   }
 
+  const githubActionsFlag = process.env.GITHUB_ACTIONS?.trim().toLowerCase();
+  if (githubActionsFlag === "true") {
+    return "development";
+  }
+
   const rawNodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
   if (rawNodeEnv === "development" || rawNodeEnv === "test") {
     return rawNodeEnv;

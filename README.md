@@ -69,6 +69,7 @@ Backend configuration is validated on boot by [`backend/src/config/env.ts`](./ba
 ### HTTP defaults and opting into TLS
 
 - `.env.example` keeps `TREAZ_TLS_MODE=auto` so strict HTTPS headers remain the baseline for production deployments while LAN builds stay HTTP by default. Set `TREAZ_RUNTIME_ENV=production` (or an alias such as `prod`/`internet`) whenever the stack is exposed beyond trusted networks.
+- When GitHub Actions (including the self-hosted runner) runs without an explicit `TREAZ_RUNTIME_ENV`, automatic TLS now resolves to HTTP so preview builds stay LAN-friendly. Export `TREAZ_RUNTIME_ENV=production` before invoking build or deploy scripts if the workflow should emit HTTPS-only headers.
 - The `frontend/scripts/start-http.mjs` helper (used by `npm start`, `npm run start:lan`, and the Docker entrypoint) forces `TREAZ_TLS_MODE=http` when it detects GitHub Actions. Export `TREAZ_RUNTIME_ENV=production` (and optionally `TREAZ_TLS_MODE=https`) before invoking the helper if your preview environment terminates TLS upstream.
 - For manual local development you can still set `TREAZ_TLS_MODE=http` (see `scripts/dev-http.sh`) to hard-disable HTTPS directives, or `https` to mimic production.
   - Point `NEXT_PUBLIC_API_BASE_URL` and `CORS_ALLOWED_ORIGINS` at your `https://` hostname.
