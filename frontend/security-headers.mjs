@@ -49,7 +49,10 @@ function resolveRuntimeStage() {
 
   const githubActionsFlag = process.env.GITHUB_ACTIONS?.trim().toLowerCase();
   if (githubActionsFlag === "true") {
-    return "development";
+    const tlsMode = process.env.TREAZ_TLS_MODE?.trim().toLowerCase();
+    if (!tlsMode || TLS_AUTOMATIC_VALUES.has(tlsMode) || TLS_DISABLED_VALUES.has(tlsMode)) {
+      return "development";
+    }
   }
 
   const rawNodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
@@ -135,13 +138,18 @@ function serializeDirective(name, sources) {
  */
 export function createContentSecurityPolicy(options = {}) {
   const tlsEnabled = isTlsEnabled();
+  const runtimeStage = resolveRuntimeStage();
   const { nonce, mediaCdn = process.env.NEXT_PUBLIC_MEDIA_CDN ?? null } = options;
   const mediaCdnOrigin = normalizeOrigin(mediaCdn);
 
   const scriptSrc = new Set(["'self'", "https:", "blob:"]);
   if (nonce) {
     scriptSrc.add(`'nonce-${nonce}'`);
-    scriptSrc.add("'strict-dynamic'");
+    if (runtimeStage === "production") {
+      scriptSrc.add("'strict-dynamic'");
+    } else {
+      scriptSrc.add("'unsafe-inline'");
+    }
   } else {
     scriptSrc.add("'unsafe-inline'");
   }
