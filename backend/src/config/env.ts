@@ -290,6 +290,36 @@ const envSchema = z.object({
     .regex(/^\d+$/)
     .default(String(1024 * 1024 * 1024))
     .transform(Number),
+  TREAZ_BOOTSTRAP_ADMIN_EMAIL: z
+    .preprocess(
+      (value) => {
+        if (typeof value !== "string") {
+          return value;
+        }
+        const trimmed = value.trim();
+        return trimmed.length > 0 ? trimmed : undefined;
+      },
+      z.string().email(),
+    )
+    .optional(),
+  TREAZ_BOOTSTRAP_ADMIN_NICKNAME: z
+    .preprocess(
+      (value) => {
+        if (typeof value !== "string") {
+          return value;
+        }
+        const trimmed = value.trim();
+        return trimmed.length > 0 ? trimmed : undefined;
+      },
+      z.string().min(3).max(32),
+    )
+    .optional(),
+  TREAZ_BOOTSTRAP_ADMIN_PASSWORD: z
+    .string()
+    .min(8)
+    .regex(/[A-Z]/, "Bootstrap admin password must include an uppercase letter")
+    .regex(/[0-9]/, "Bootstrap admin password must include a digit")
+    .optional(),
   SCREENSCRAPER_USERNAME: z
     .string()
     .optional()
@@ -476,6 +506,29 @@ const netplayStunUris = parsed.data.NETPLAY_STUN_URIS
 const netplayTurnUris = parsed.data.NETPLAY_TURN_URIS
   ? splitCsv(parsed.data.NETPLAY_TURN_URIS)
   : [];
+const bootstrapAdminEmail = parsed.data.TREAZ_BOOTSTRAP_ADMIN_EMAIL;
+const bootstrapAdminNickname = parsed.data.TREAZ_BOOTSTRAP_ADMIN_NICKNAME;
+const bootstrapAdminPassword = parsed.data.TREAZ_BOOTSTRAP_ADMIN_PASSWORD;
+const bootstrapCredentialCount = [
+  bootstrapAdminEmail,
+  bootstrapAdminNickname,
+  bootstrapAdminPassword,
+].filter((value) => value !== undefined).length;
+
+if (bootstrapCredentialCount > 0 && bootstrapCredentialCount < 3) {
+  throw new Error(
+    "TREAZ_BOOTSTRAP_ADMIN_EMAIL, TREAZ_BOOTSTRAP_ADMIN_NICKNAME, and TREAZ_BOOTSTRAP_ADMIN_PASSWORD must all be provided together",
+  );
+}
+
+const bootstrapAdminCredentials =
+  bootstrapCredentialCount === 3
+    ? {
+        email: bootstrapAdminEmail!.toLowerCase(),
+        nickname: bootstrapAdminNickname!,
+        password: bootstrapAdminPassword!,
+      }
+    : null;
 if (typeof accessMs !== "number" || accessMs <= 0) {
   throw new Error("JWT_ACCESS_TTL must be a positive duration string");
 }
@@ -613,6 +666,7 @@ export const env = {
   ...parsed.data,
   TREAZ_RUNTIME_ENV: runtimeStage,
   RUNTIME_STAGE: runtimeStage,
+  BOOTSTRAP_ADMIN_CREDENTIALS: bootstrapAdminCredentials,
   LOG_LEVEL:
     parsed.data.LOG_LEVEL ??
     (parsed.data.NODE_ENV === "production" ? "info" : "debug"),
