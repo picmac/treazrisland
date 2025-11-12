@@ -14,6 +14,17 @@ This guide standardises the local development toolchain so that future bootstrap
 
 > **Tip:** If you are using asdf, these versions are pinned in `.tool-versions`. Adjustments to production or staging infrastructure should be reflected here to keep environments aligned.
 
+## Bootstrap automation
+
+Run `./scripts/bootstrap.sh` from the repository root once the prerequisites listed above are available. The script performs the following actions:
+
+1. Verifies that Docker (with Compose v2), Node.js, and pnpm are installed and accessible on your PATH.
+2. Installs workspace dependencies via `pnpm install`.
+3. Copies `.env.example` to `.env` if the target file is missing so that Docker services share consistent defaults.
+4. Executes `docker compose up --build` to build and start the project containers.
+
+If any prerequisite is missing the script exits with guidance on how to install it, making it safe to re-run after correcting your environment.
+
 ## macOS setup
 
 1. Install [Homebrew](https://brew.sh/) if it is not already available.
