@@ -105,9 +105,11 @@ function chooseEffectivePort(host?: string, port?: string | null): string | unde
     const loopbackHost = host ? isLoopbackHost(host) : false;
     const privateNetworkHost = host ? isPrivateNetworkHost(host) : false;
 
-    if (devLikeEnvironment || loopbackHost || privateNetworkHost) {
+    if (!loopbackHost && (devLikeEnvironment || privateNetworkHost)) {
       return DEFAULT_DEV_API_PORT;
     }
+
+    return sanitizedPort;
   }
 
   if (sanitizedPort) {
@@ -401,6 +403,13 @@ export class ApiConfigurationError extends Error {
 
 const apiHealthChecks = new Map<string, Promise<void>>();
 
+function joinUrl(base: string, path: string): string {
+  const normalizedBase = base.endsWith("/") ? base : `${base}/`;
+  const trimmedPath = path.startsWith("/") ? path.slice(1) : path;
+
+  return new URL(trimmedPath, normalizedBase).toString();
+}
+
 async function ensureInternalApiReachable(baseUrl: string): Promise<void> {
   if (typeof window !== "undefined") {
     return;
@@ -419,7 +428,7 @@ async function ensureInternalApiReachable(baseUrl: string): Promise<void> {
   }
 
   const probe = (async () => {
-    const healthUrl = new URL("/health/ready", baseUrl);
+    const healthUrl = new URL(joinUrl(baseUrl, "/health/ready"));
 
     let response: Response;
     try {
@@ -589,7 +598,9 @@ export async function apiRequest(path: string, init?: ApiRequestInit): Promise<R
 
     await ensureInternalApiReachable(resolvedBase);
 
-    response = await fetch(`${resolvedBase}${path}`, {
+    const targetUrl = joinUrl(resolvedBase, path);
+
+    response = await fetch(targetUrl, {
       ...fetchInit,
       cache: fetchInit.cache ?? "no-store",
       credentials: fetchInit.credentials ?? "include",
