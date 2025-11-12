@@ -9,16 +9,27 @@ vi.mock("@/src/lib/server/backend-cookies", () => ({
   buildCookieHeaderFromStore: vi.fn()
 }));
 
+vi.mock("next/headers", () => ({
+  headers: vi.fn()
+}));
+
 import { ApiError } from "@/src/lib/api/client";
+import type { HeaderGetter } from "@/src/lib/api/client";
 import { loginWithCookies } from "@/src/lib/api/auth";
 import {
   applyBackendCookies,
   buildCookieHeaderFromStore
 } from "@/src/lib/server/backend-cookies";
 import { performLogin } from "@/app/(auth)/login/actions";
+import { headers } from "next/headers";
 
 describe("performLogin", () => {
+  let headerStore: HeaderGetter;
+
   beforeEach(() => {
+    vi.mocked(headers).mockReset();
+    headerStore = { get: vi.fn() } as HeaderGetter;
+    vi.mocked(headers).mockReturnValue(headerStore as unknown as Headers);
     vi.mocked(loginWithCookies).mockReset();
     vi.mocked(applyBackendCookies).mockReset();
     vi.mocked(buildCookieHeaderFromStore).mockReset();
@@ -39,7 +50,10 @@ describe("performLogin", () => {
 
     expect(loginWithCookies).toHaveBeenCalledWith(
       { identifier: "captain", password: "Secret123" },
-      { cookieHeader: "treaz_refresh=abc" }
+      expect.objectContaining({
+        cookieHeader: "treaz_refresh=abc",
+        requestHeaders: headerStore
+      })
     );
     expect(applyBackendCookies).toHaveBeenCalledWith([
       "treaz_refresh=abc; Path=/; HttpOnly"
@@ -67,6 +81,10 @@ describe("performLogin", () => {
       error: "MFA challenge required",
       mfaRequired: true
     });
+    expect(loginWithCookies).toHaveBeenCalledWith(
+      { identifier: "captain", password: "Secret123" },
+      expect.objectContaining({ requestHeaders: headerStore })
+    );
     expect(applyBackendCookies).not.toHaveBeenCalled();
   });
 
@@ -76,5 +94,9 @@ describe("performLogin", () => {
     const result = await performLogin({ identifier: "captain", password: "Secret123" });
 
     expect(result).toEqual({ success: false, error: "network down" });
+    expect(loginWithCookies).toHaveBeenCalledWith(
+      { identifier: "captain", password: "Secret123" },
+      expect.objectContaining({ requestHeaders: headerStore })
+    );
   });
 });
