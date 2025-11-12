@@ -8,6 +8,8 @@ Curate reusable prompt templates that yield cohesive 16-bit assets for Treazrisl
 - Maintain consistent palettes by reusing the same `seed` and `color_image` parameters when iterating on a component family.
 - Document any manual post-processing steps (e.g., trimming transparent borders) alongside the prompt for repeatability.
 - Submit prompt additions or edits through peer review to ensure adherence to secure coding and theming guidelines, and update related documentation immediately after changes land.
+- Run each new asset through the accessibility gate (WCAG AA contrast check, color-blind simulation) and record the results in the manifest for future audits.
+- Store low-resolution previews (webp or gif) alongside prompts for reviewers; full-resolution binaries remain in artifact storage per repository policy.
 
 ## Prompt Templates
 ### 1. Island Background Hero
@@ -44,6 +46,14 @@ Seed: 1337
 Notes: ensure square framing for compatibility with avatar slots and conversation UI.
 ```
 
+### 5. Typography & Logo Treatments
+```
+Description: "pixel-serif logotype reading TREAZRISLAND with subtle tropical gradients"
+Guidance Scale: 6
+Palette Reference: upload approved UI chrome palette to enforce contrast parity
+Notes: request alternate wordmark variants (horizontal, stacked) for responsive layouts.
+```
+
 ## Relevant Pixellab.ai Endpoints
 - **POST `/animate-with-skeleton`** – Generates layered pixel animations using reference art and skeleton keypoints; ideal for complex scene compositions when re-animating UI flourishes.【667adc†L8-L10】【8ac2c4†L31-L77】
 - **POST `/animate-with-text`** – Produces 64x64 animated sprites from textual descriptions, useful for dynamic avatar sets and contextual UI feedback states.【8ac2c4†L79-L130】
@@ -54,3 +64,4 @@ Notes: ensure square framing for compatibility with avatar slots and conversatio
 - Add automated script to download generated assets into `frontend/public/themes/pixellab/` while skipping binaries in git.
 - Establish review checkpoints for accessibility (contrast, legibility) and localisation readiness.
 - Create a recurring task to audit this catalogue and associated manifests so documentation stays current with the generated asset set.
+- Draft a launch-day art QA script (visual smoke test, theming spot check in EmulatorJS) and reference it in the launch readiness checklist.

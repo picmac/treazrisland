@@ -57,6 +57,9 @@ Deliver a self-hosted retro gaming island where players can onboard quickly, bro
 - Automated test coverage for core APIs and UI flows (onboarding, upload, play session).
 - Manual playtest sign-off covering first-admin setup through playing a ROM and saving progress, including verification that Pixellab.ai theme assets load correctly in the emulator view.
 - Security review checklist completed for each release, and living documentation updated to reflect the current infrastructure and processes.
+- Launch readiness checklist completed, covering bootstrap automation, observability dashboards, documentation updates, and green status on all gating pipelines.
+- Operator onboarding pack reviewed and rehearsed (runbook dry run, disaster recovery drill, and EmulatorJS UX walkthrough recorded).
+- Product owner approval that Pixellab.ai assets, copy, and localization strings meet the desired "day-one" quality bar.
 
 ## Future Considerations
 - Netplay lobby and peer-to-peer session orchestration.
