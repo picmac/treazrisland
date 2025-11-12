@@ -113,6 +113,8 @@ describe("env TLS mode validation", () => {
 
     seedRequiredEnv();
     delete process.env.TREAZ_TLS_MODE;
+    delete process.env.TREAZ_RUNTIME_ENV;
+    delete process.env.GITHUB_ACTIONS;
   });
 
   afterEach(() => {
