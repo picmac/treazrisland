@@ -1,0 +1,8 @@
+{
+  "name": "treazrisland",
+  "private": true,
+  "engines": {
+    "node": "20.14.0",
+    "pnpm": "9.5.0"
+  }
+}
