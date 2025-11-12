@@ -16,17 +16,23 @@
     "prisma:migrate:reset": "prisma migrate reset --force"
   },
   "dependencies": {
+    "@fastify/cookie": "^9.4.0",
+    "@fastify/jwt": "^7.2.4",
+    "@fastify/redis": "^6.2.0",
+    "@prisma/client": "^5.15.0",
     "dotenv-flow": "^3.2.0",
     "fastify": "^4.27.2",
-    "zod": "^3.23.8",
-    "@prisma/client": "^5.15.0"
+    "fastify-plugin": "^5.1.0",
+    "ioredis": "^5.8.2",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/dotenv-flow": "^3.3.3",
     "@types/node": "^20.14.9",
+    "ioredis-mock": "^8.13.1",
+    "prisma": "^5.15.0",
     "tsx": "^4.15.7",
     "typescript": "^5.4.5",
-    "vitest": "^1.5.0",
-    "prisma": "^5.15.0"
+    "vitest": "^1.5.0"
   }
 }
