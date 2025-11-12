@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import nextConfig from "@/next.config";
+import nextConfig from "../../next.config.mjs";
 import {
   buildSecurityHeaders,
   createContentSecurityPolicy
-} from "@/security-headers";
+} from "../../security-headers.mjs";
 
 const ORIGINAL_ENV = { ...process.env };
 

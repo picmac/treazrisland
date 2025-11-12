@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-import { proxy } from "@/proxy";
+import { proxy } from "../../proxy";
 
 const ORIGINAL_CRYPTO = globalThis.crypto;
 const ORIGINAL_ENV = { ...process.env };
