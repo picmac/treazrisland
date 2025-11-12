@@ -7,6 +7,7 @@ import {
   buildCookieHeaderFromStore,
 } from "@/src/lib/server/backend-cookies";
 import { passwordResetConfirmSchema } from "@/lib/validation/auth";
+import { headers } from "next/headers";
 
 export type PasswordResetConfirmInput = {
   token: string;
@@ -35,9 +36,11 @@ export async function confirmPasswordResetAction(
   }
 
   try {
+    const headerStore = headers();
     const cookieHeader = await buildCookieHeaderFromStore();
     const { payload: session, cookies } = await confirmPasswordResetWithCookies(validation.data, {
       cookieHeader,
+      requestHeaders: headerStore,
     });
     await applyBackendCookies(cookies);
     return { success: true, payload: session };

@@ -3,6 +3,7 @@
 import { ApiError } from "@/src/lib/api/client";
 import { requestPasswordReset } from "@/src/lib/api/auth";
 import { passwordResetRequestSchema } from "@/lib/validation/auth";
+import { headers } from "next/headers";
 
 export type PasswordResetRequestInput = {
   email: string;
@@ -26,7 +27,8 @@ export async function submitPasswordResetRequest(
   }
 
   try {
-    const response = await requestPasswordReset(validation.data.email);
+    const headerStore = headers();
+    const response = await requestPasswordReset(validation.data.email, headerStore);
     return { success: true, message: response.message };
   } catch (error) {
     if (error instanceof ApiError) {

@@ -123,10 +123,14 @@ export async function refreshSession(): Promise<SessionPayload> {
   return apiFetch<SessionPayload>("/auth/refresh", withRefreshCsrf({ method: "POST" }));
 }
 
-export async function requestPasswordReset(email: string): Promise<{ message: string }> {
+export async function requestPasswordReset(
+  email: string,
+  requestHeaders?: HeaderGetter
+): Promise<{ message: string }> {
   return apiFetch<{ message: string }>("/auth/password/reset/request", {
     method: "POST",
-    body: JSON.stringify({ email })
+    body: JSON.stringify({ email }),
+    requestHeaders,
   });
 }
 
@@ -135,12 +139,13 @@ export async function confirmPasswordResetWithCookies(
     token: string;
     password: string;
   },
-  options?: { cookieHeader?: string }
+  options?: { cookieHeader?: string; requestHeaders?: HeaderGetter }
 ): Promise<{ payload: SessionPayload; cookies: SetCookieHeader }> {
   const response = await apiRequest("/auth/password/reset/confirm", {
     method: "POST",
     body: JSON.stringify(payload),
     headers: options?.cookieHeader ? { cookie: options.cookieHeader } : undefined,
+    requestHeaders: options?.requestHeaders,
   });
 
   const data = (await response.json()) as SessionPayload;
