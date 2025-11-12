@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type LocationDescriptor = PropertyDescriptor | undefined;
+type WindowDescriptor = PropertyDescriptor | undefined;
 
 type EnvSnapshot = Record<string, string | undefined>;
 
@@ -18,6 +19,7 @@ const ENV_KEYS = [
 describe("apiRequest", () => {
   let originalEnv: EnvSnapshot;
   let originalLocationDescriptor: LocationDescriptor;
+  let originalWindowDescriptor: WindowDescriptor;
 
   beforeEach(() => {
     vi.resetModules();
@@ -28,6 +30,7 @@ describe("apiRequest", () => {
     }, {});
 
     originalLocationDescriptor = Object.getOwnPropertyDescriptor(globalThis, "location");
+    originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
   });
 
   afterEach(() => {
@@ -45,6 +48,13 @@ describe("apiRequest", () => {
     } else {
       // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete (globalThis as { location?: unknown }).location;
+    }
+
+    if (originalWindowDescriptor) {
+      Object.defineProperty(globalThis, "window", originalWindowDescriptor);
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete (globalThis as { window?: unknown }).window;
     }
 
     vi.restoreAllMocks();
@@ -72,6 +82,17 @@ describe("apiRequest", () => {
       "https://runtime.test/status",
       expect.objectContaining({ credentials: "include" })
     );
+  });
+
+  it("prefers AUTH_API_BASE_URL when NEXT_PUBLIC_API_BASE_URL is undefined in browsers", async () => {
+    process.env.AUTH_API_BASE_URL = "https://auth-only.example";
+
+    Object.defineProperty(globalThis, "window", { configurable: true, value: {} });
+    Object.defineProperty(globalThis, "location", { configurable: true, value: { origin: "https://ignored.test" } });
+
+    const { resolveApiBase } = await import("./client");
+
+    expect(resolveApiBase()).toBe("https://auth-only.example");
   });
 
   it("switches dev port 3000 to 3001 when inferred from runtime location", async () => {
