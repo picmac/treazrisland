@@ -27,7 +27,9 @@ Both the development and production stacks keep the Fastify API off the host net
 `3001`; instead it sits behind the internal `backend_private` bridge network that is only shared with the reverse proxies and web
 frontends (`frontend`, `nginx`, and `cloudflared`). Supporting dependencies such as PostgreSQL and MinIO stay reachable through the
 default network, mirroring a private LAN segment. This layout prevents accidental exposure of administrative endpoints while
-preserving the ergonomic developer experience of `docker compose up`.
+preserving the ergonomic developer experience of `docker compose up`. Pair this network isolation with the frontend requirements in
+[`docs/operators/service-discovery.md`](../docs/operators/service-discovery.md) so `AUTH_API_BASE_URL` always resolves to the
+private service name (for example `http://backend:3001`).
 
 ### HTTPS edge termination
 

@@ -52,7 +52,9 @@ Do not bump these packages or their transitive LTS peers without written confirm
    The frontend reads only `NEXT_PUBLIC_*` variables; adjust `NEXT_PUBLIC_API_BASE_URL` if your backend runs on a non-default
    host/port. `NEXT_PUBLIC_API_BASE_URL` and `STORAGE_ENDPOINT` default to `http://localhost` so the stack works without TLS in
    development. When `NEXT_PUBLIC_API_BASE_URL` is omitted, the browser build reuses `AUTH_API_BASE_URL`, so either variable
-   keeps the client pointed at the backend.
+   keeps the client pointed at the backend. Production deployments must set `AUTH_API_BASE_URL` to an internal service discovery
+   record (for example `http://api.internal.svc` or the Docker Compose `backend` hostname) so the frontend never falls back to a
+   public ingress. See [`docs/operators/service-discovery.md`](docs/operators/service-discovery.md) for examples.
 
 3. Replace all placeholder secrets before exposing the stack to real users. The most important keys are summarised below:
 

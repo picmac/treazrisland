@@ -109,8 +109,11 @@ client-side requests and server components resolve the correct origin:
 - `NEXT_PUBLIC_API_BASE_URL` – recommended only for development or when you intentionally expose the backend on a public host.
   The value is embedded in client bundles, so production stacks that rely on the ingress proxy should leave it undefined.
 - `AUTH_API_BASE_URL` – server-only equivalent used by the Next.js runtime. Keep this pointing at the private Fastify service
-  (for example `http://backend:3001`) so server components and API rewrites can reach the backend without disclosing its address
-  to browsers.
+  (for example `http://api.internal.svc` in Kubernetes or `http://backend:3001` in Docker Compose) so server components and API
+  rewrites can reach the backend without disclosing its address to browsers. The frontend now performs a `/health/ready` probe
+  against this host during startup; misconfiguration (such as pointing at a public hostname) fails closed with a 503 error so
+  public ingress endpoints are never used as an implicit fallback. See
+  [`docs/operators/service-discovery.md`](../docs/operators/service-discovery.md) for platform-specific guidance.
 
 If neither variable is present, API calls default to `window.location.origin` in the browser and derive the absolute host from
 incoming request headers during server rendering. The production Next.js server also rewrites `/api/*` requests to the private
