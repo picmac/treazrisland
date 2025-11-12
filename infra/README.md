@@ -19,6 +19,14 @@ Home for Docker Compose definitions, deployment manifests, and helper scripts th
 
 All services live in [`docker-compose.yml`](./docker-compose.yml). Production overrides are stored in [`docker-compose.prod.yml`](./docker-compose.prod.yml).
 
+### API network isolation
+
+The development stack keeps the Fastify API off the host network. The `backend` service no longer publishes port `3001`; instead
+it sits behind an internal bridge network (`backend_private`) that is only shared with the reverse proxies and web frontends
+(`frontend`, `nginx`, and `cloudflared`). Supporting dependencies such as PostgreSQL and MinIO stay reachable through the default
+network, mirroring a private LAN segment. This layout prevents accidental exposure of administrative endpoints while preserving
+the ergonomic developer experience of `docker compose up`.
+
 ## Minimal Docker Hub stack
 
 Operators who just want the core experience can use [`docker-compose.simple.yml`](./docker-compose.simple.yml). It launches the
@@ -50,6 +58,10 @@ The script respects `TREAZ_ENV_FILE`, `TREAZ_COMPOSE_PROJECT_NAME`, and `STACK_F
 ### Validating Compose manifests
 
 Run `docker compose -f infra/docker-compose.yml config` whenever you tweak the manifests. The command resolves variable substitutions, confirms that `env_file` entries exist, and highlights syntax errors before you attempt to boot the stack. Repeat the same command with `infra/docker-compose.prod.yml` to validate production overrides.
+
+An automated GitHub Action (`docker-compose security`) runs `scripts/ci/check_compose_api_privacy.sh` on every pull request that
+touches the Compose files. The helper enforces that the backend service never publishes host ports and that the `backend_private`
+network stays marked as `internal: true`, preventing regressions that would re-expose the API outside of the LAN.
 
 ## Local development stack
 
