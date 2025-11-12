@@ -1,5 +1,7 @@
 "use server";
 
+import { headers } from "next/headers";
+
 import { ApiError } from "@/src/lib/api/client";
 import { loginWithCookies, type LoginResponse } from "@/src/lib/api/auth";
 import {
@@ -20,6 +22,7 @@ export type LoginActionResult =
   | { success: false; error: string; mfaRequired?: boolean };
 
 export async function performLogin(payload: LoginActionInput): Promise<LoginActionResult> {
+  const requestHeaders = headers();
   const sanitizedPayload = {
     identifier: payload.identifier.trim(),
     password: payload.password,
@@ -40,7 +43,8 @@ export async function performLogin(payload: LoginActionInput): Promise<LoginActi
   try {
     const cookieHeader = await buildCookieHeaderFromStore();
     const { payload: session, cookies } = await loginWithCookies(validation.data, {
-      cookieHeader
+      cookieHeader,
+      requestHeaders
     });
     await applyBackendCookies(cookies);
     return { success: true, payload: session };
