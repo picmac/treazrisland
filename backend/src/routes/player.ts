@@ -26,6 +26,24 @@ const FALLBACK_PLAYBACK_ACTIONS = {
 type PlaybackActionValue =
   (typeof FALLBACK_PLAYBACK_ACTIONS)[keyof typeof FALLBACK_PLAYBACK_ACTIONS];
 
+const DEFAULT_ASSET_MIME_TYPE = "application/octet-stream";
+
+const ASSET_FORMAT_MIME_TYPES = new Map<string, string>([
+  ["png", "image/png"],
+  ["jpg", "image/jpeg"],
+  ["jpeg", "image/jpeg"],
+  ["webp", "image/webp"],
+  ["mp4", "video/mp4"],
+]);
+
+function resolveAssetMimeType(format?: string | null): string {
+  if (!format) {
+    return DEFAULT_ASSET_MIME_TYPE;
+  }
+  const normalized = format.trim().toLowerCase();
+  return ASSET_FORMAT_MIME_TYPES.get(normalized) ?? DEFAULT_ASSET_MIME_TYPE;
+}
+
 const RUNTIME_PLAYBACK_ACTIONS = {
   ...FALLBACK_PLAYBACK_ACTIONS,
   ...((
@@ -476,9 +494,13 @@ export async function registerPlayerRoutes(
       } else if (object.contentLength) {
         reply.header("content-length", String(object.contentLength));
       }
-      if (asset.format) {
-        reply.header("content-type", `application/${asset.format}`);
-      }
+
+      const storageContentType = object.contentType?.trim();
+      const contentType =
+        storageContentType && storageContentType.length > 0
+          ? storageContentType
+          : resolveAssetMimeType(asset.format);
+      reply.header("content-type", contentType);
 
       return reply.send(object.stream);
     },

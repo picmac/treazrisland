@@ -202,6 +202,76 @@ describe("player routes", () => {
     }
   });
 
+  it("streams image assets with inferred content type", async () => {
+    const assetData = Buffer.from("IMAGEDATA");
+    const assetDirectory = join(
+      STORAGE_ROOT,
+      process.env.STORAGE_BUCKET_ASSETS!,
+      "covers",
+    );
+    await fs.mkdir(assetDirectory, { recursive: true });
+    await fs.writeFile(join(assetDirectory, "asset-1.png"), assetData);
+
+    prismaMock.romAsset.findUnique.mockResolvedValue({
+      id: "asset-1",
+      romId: "rom-1",
+      storageKey: "covers/asset-1.png",
+      externalUrl: null,
+      format: "png",
+      fileSize: assetData.length,
+    });
+    prismaMock.romPlaybackAudit.create.mockResolvedValue({});
+
+    const token = app.jwt.sign({ sub: "user-1", role: "USER" });
+    const response = await request(app)
+      .get("/rom-assets/asset-1")
+      .set("authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.headers["content-type"]).toBe("image/png");
+    expect(response.headers["content-length"]).toBe(
+      String(assetData.length),
+    );
+    expect(prismaMock.romAsset.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "asset-1" } }),
+    );
+  });
+
+  it("streams video assets with inferred content type when storage lacks metadata", async () => {
+    const assetData = Buffer.from("VIDEODATA");
+    const assetDirectory = join(
+      STORAGE_ROOT,
+      process.env.STORAGE_BUCKET_ASSETS!,
+      "videos",
+    );
+    await fs.mkdir(assetDirectory, { recursive: true });
+    await fs.writeFile(join(assetDirectory, "asset-2.mp4"), assetData);
+
+    prismaMock.romAsset.findUnique.mockResolvedValue({
+      id: "asset-2",
+      romId: "rom-2",
+      storageKey: "videos/asset-2.mp4",
+      externalUrl: null,
+      format: "mp4",
+      fileSize: null,
+    });
+    prismaMock.romPlaybackAudit.create.mockResolvedValue({});
+
+    const token = app.jwt.sign({ sub: "user-1", role: "USER" });
+    const response = await request(app)
+      .get("/rom-assets/asset-2")
+      .set("authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.headers["content-type"]).toBe("video/mp4");
+    expect(response.headers["content-length"]).toBe(
+      String(assetData.length),
+    );
+    expect(prismaMock.romAsset.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "asset-2" } }),
+    );
+  });
+
   it("returns recent play states with rom context", async () => {
     const now = new Date();
     prismaMock.playState.findMany.mockResolvedValueOnce([
