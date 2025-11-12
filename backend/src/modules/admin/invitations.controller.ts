@@ -4,14 +4,9 @@ import { z } from 'zod';
 import { invitationService } from '../../services/invitations';
 import { renderInviteTemplate } from '../../services/mailer/templates/invite';
 
-type AccessTokenPayload = {
-  sub: string;
-  email?: string;
-};
-
 const ensureAdminSession: preHandlerHookHandler = async (request, reply) => {
   try {
-    const payload = await request.jwtVerify<AccessTokenPayload>();
+    const payload = await request.jwtVerify();
 
     if (!payload.email) {
       return reply.status(401).send({ error: 'Unauthorized' });
