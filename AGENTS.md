@@ -5,7 +5,6 @@ This repository has been reset for a fresh planning cycle. Keep changes minimal,
 
 ## Working Agreements
 - Operate in English for code, comments, and documentation.
-- Avoid adding binaries; note required assets in TODO lists instead.
 - Prioritise clarity and incremental commits over large, risky rewrites.
 - Document every significant decision in the PR description.
 
