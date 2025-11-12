@@ -364,10 +364,14 @@ export async function apiRequest(path: string, init?: ApiRequestInit): Promise<R
   const isFormData =
     typeof FormData !== "undefined" && fetchInit.body instanceof FormData;
 
+  const hasBody = typeof fetchInit.body !== "undefined";
+
   if (isFormData) {
     headers.delete("Content-Type");
-  } else if (!headers.has("Content-Type")) {
+  } else if (hasBody && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
+  } else if (!hasBody && headers.get("Content-Type") === "application/json") {
+    headers.delete("Content-Type");
   }
 
   let response: Response;
