@@ -76,11 +76,10 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    ports:
-      - "3001:3001"
     restart: unless-stopped
     networks:
       - default
+      - backend_private
       - monitoring
 
   coturn:
@@ -122,12 +121,14 @@ services:
     environment:
       NODE_ENV: production
       PORT: ${FRONTEND_PORT:-3000}
+      AUTH_API_BASE_URL: ${AUTH_API_BASE_URL:-http://backend:3001}
     depends_on:
       backend:
         condition: service_started
-    ports:
-      - "3000:3000"
     restart: unless-stopped
+    networks:
+      - default
+      - backend_private
 
   prometheus:
     image: prom/prometheus:v3.7.3
@@ -250,12 +251,60 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
 
+  nginx:
+    image: nginx:1.29.3-alpine3.22
+    container_name: treazrisland-prod-nginx
+    depends_on:
+      frontend:
+        condition: service_started
+    environment:
+      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-treazrisland.localhost}
+      LETSENCRYPT_PRIMARY_DOMAIN: ${LETSENCRYPT_PRIMARY_DOMAIN:-treazrisland.localhost}
+      LETSENCRYPT_ADDITIONAL_DOMAINS: ${LETSENCRYPT_ADDITIONAL_DOMAINS:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/treazrisland.conf:/etc/nginx/templates/treazrisland.conf.template:ro
+      - certbot-www:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
+    command: >-
+      /bin/sh -c "envsubst '\$${NGINX_SERVER_NAME} \$${LETSENCRYPT_PRIMARY_DOMAIN}' < /etc/nginx/templates/treazrisland.conf.template > /etc/nginx/conf.d/treazrisland.conf && nginx -g 'daemon off;'"
+    restart: unless-stopped
+    networks:
+      - default
+      - backend_private
+
+  certbot:
+    build:
+      context: ./certbot
+    container_name: treazrisland-prod-certbot
+    depends_on:
+      nginx:
+        condition: service_started
+    environment:
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@example.com}
+      LETSENCRYPT_PRIMARY_DOMAIN: ${LETSENCRYPT_PRIMARY_DOMAIN:-treazrisland.localhost}
+      LETSENCRYPT_ADDITIONAL_DOMAINS: ${LETSENCRYPT_ADDITIONAL_DOMAINS:-}
+      LETSENCRYPT_STAGING: ${LETSENCRYPT_STAGING:-true}
+      NGINX_CONTAINER_NAME: ${NGINX_CONTAINER_NAME:-treazrisland-prod-nginx}
+    volumes:
+      - certbot-www:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   minio-data:
   loki-data:
+  certbot-www:
+  letsencrypt:
 
 networks:
+  backend_private:
+    driver: bridge
+    internal: true
   monitoring:
     driver: bridge
 
