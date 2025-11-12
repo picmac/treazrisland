@@ -7,6 +7,7 @@ import Redis from 'ioredis';
 import RedisMock from 'ioredis-mock';
 
 import { getEnv, type Env } from './config/env';
+import { adminRoutes } from './modules/admin/routes';
 import { authRoutes } from './modules/auth/routes';
 import { RedisSessionStore } from './modules/auth/session-store';
 
@@ -57,6 +58,7 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
   });
 
   await fastify.register(authRoutes, { prefix: '/auth' });
+  await fastify.register(adminRoutes, { prefix: '/admin' });
 });
 
 export const createApp = (env: Env = getEnv()): FastifyInstance => {

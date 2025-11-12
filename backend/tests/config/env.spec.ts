@@ -29,6 +29,7 @@ describe('config/env', () => {
       JWT_REFRESH_TOKEN_TTL: 604800,
       MAGIC_LINK_TOKEN_TTL: 300,
       REDIS_URL: undefined,
+      DATABASE_URL: undefined,
     });
   });
 

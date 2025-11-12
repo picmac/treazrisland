@@ -11,6 +11,7 @@ export const envSchema = z.object({
   JWT_REFRESH_TOKEN_TTL: z.coerce.number().int().positive().default(604800),
   MAGIC_LINK_TOKEN_TTL: z.coerce.number().int().positive().default(300),
   REDIS_URL: z.string().url().optional(),
+  DATABASE_URL: z.string().url().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -24,6 +25,7 @@ export const parseEnv = (source: NodeJS.ProcessEnv = process.env): Env => {
     JWT_REFRESH_TOKEN_TTL: source.JWT_REFRESH_TOKEN_TTL,
     MAGIC_LINK_TOKEN_TTL: source.MAGIC_LINK_TOKEN_TTL,
     REDIS_URL: source.REDIS_URL,
+    DATABASE_URL: source.DATABASE_URL,
   });
 
   if (!result.success) {
