@@ -1,5 +1,7 @@
 "use server";
 
+import { headers } from "next/headers";
+
 import { ApiError } from "@/src/lib/api/client";
 import { redeemInvitation, type SignupResponse } from "@/src/lib/api/auth";
 import {
@@ -23,6 +25,7 @@ export type SignupActionResult =
 export async function redeemInvitationAction(
   payload: SignupActionInput
 ): Promise<SignupActionResult> {
+  const headerStore = headers();
   const sanitizedPayload = {
     token: payload.token,
     email: payload.email?.trim() || undefined,
@@ -43,7 +46,8 @@ export async function redeemInvitationAction(
   try {
     const cookieHeader = await buildCookieHeaderFromStore();
     const { payload: session, cookies } = await redeemInvitation(validation.data, {
-      cookieHeader
+      cookieHeader,
+      requestHeaders: headerStore
     });
     await applyBackendCookies(cookies);
     return { success: true, payload: session };
