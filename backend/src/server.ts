@@ -37,6 +37,7 @@ import {
   fetchSetupState,
   ONBOARDING_STEP_KEYS,
 } from "./services/setup/state.js";
+import { bootstrapInitialAdmin } from "./services/setup/bootstrap-admin.js";
 
 type BuildServerOptions = {
   registerPrisma?: boolean;
@@ -216,6 +217,17 @@ export const buildServer = (
       setupComplete: state.setupComplete,
       pendingSteps: pending,
     };
+  });
+
+  app.addHook("onReady", async () => {
+    if (!app.hasDecorator("prisma")) {
+      return;
+    }
+
+    await bootstrapInitialAdmin({
+      prisma: app.prisma,
+      log: app.log.child({ context: "bootstrap-admin" }),
+    });
   });
 
   return app;

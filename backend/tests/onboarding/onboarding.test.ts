@@ -32,6 +32,9 @@ process.env.STORAGE_BUCKET_ASSETS = process.env.STORAGE_BUCKET_ASSETS ?? "assets
 process.env.STORAGE_BUCKET_ROMS = process.env.STORAGE_BUCKET_ROMS ?? "roms";
 process.env.STORAGE_BUCKET_BIOS = process.env.STORAGE_BUCKET_BIOS ?? "bios";
 process.env.ROM_UPLOAD_MAX_BYTES = process.env.ROM_UPLOAD_MAX_BYTES ?? `${1024 * 1024}`;
+delete process.env.TREAZ_BOOTSTRAP_ADMIN_EMAIL;
+delete process.env.TREAZ_BOOTSTRAP_ADMIN_NICKNAME;
+delete process.env.TREAZ_BOOTSTRAP_ADMIN_PASSWORD;
 
 let buildServer: typeof import("../../src/server.js").buildServer;
 

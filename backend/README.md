@@ -23,8 +23,11 @@ Fastify + Prisma service powering authentication, library management, emulator s
    - **Email**: supply SMTP credentials (`SMTP_HOST`, `SMTP_PORT`, optional `SMTP_USERNAME`/`SMTP_PASSWORD`) and a sender identity (`SMTP_FROM_EMAIL`, optional `SMTP_FROM_NAME`) if you expect password reset or invite emails to work. Leave the provider as `none` only in development.
    - **Storage**: choose between `STORAGE_DRIVER=filesystem` (requires `STORAGE_LOCAL_ROOT`) or `STORAGE_DRIVER=s3` (requires the MinIO/S3 settings from `.env.example`).
    - **ScreenScraper**: either populate `SCREENSCRAPER_USERNAME`/`SCREENSCRAPER_PASSWORD` directly for local experiments or use encrypted developer credentials (`npm run screenscraper:encrypt`).
+   - **Bootstrap admin (optional)**: provide `TREAZ_BOOTSTRAP_ADMIN_EMAIL`, `TREAZ_BOOTSTRAP_ADMIN_NICKNAME`, and `TREAZ_BOOTSTRAP_ADMIN_PASSWORD` to let the server create the first admin automatically on startup. Remove or rotate these values immediately after the first successful launch.
 
 The configuration contract is enforced by [`src/config/env.ts`](./src/config/env.ts); the process stops on invalid settings with a descriptive error.
+
+When the three bootstrap variables are present, Fastify will hash the password with Argon2, create the admin account before accepting traffic, and mark the onboarding `first-admin` step as completed. The helper only runs when the user table is empty and logs both success and skip/failure paths for operators.
 
 ## Database lifecycle
 
