@@ -291,28 +291,22 @@ const envSchema = z.object({
     .default(String(1024 * 1024 * 1024))
     .transform(Number),
   TREAZ_BOOTSTRAP_ADMIN_EMAIL: z
-    .preprocess(
-      (value) => {
-        if (typeof value !== "string") {
-          return value;
-        }
-        const trimmed = value.trim();
-        return trimmed.length > 0 ? trimmed : undefined;
-      },
-      z.string().email(),
-    )
+    .preprocess((value) => {
+      if (typeof value !== "string") {
+        return value;
+      }
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    }, z.string().email())
     .optional(),
   TREAZ_BOOTSTRAP_ADMIN_NICKNAME: z
-    .preprocess(
-      (value) => {
-        if (typeof value !== "string") {
-          return value;
-        }
-        const trimmed = value.trim();
-        return trimmed.length > 0 ? trimmed : undefined;
-      },
-      z.string().min(3).max(32),
-    )
+    .preprocess((value) => {
+      if (typeof value !== "string") {
+        return value;
+      }
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    }, z.string().min(3).max(32))
     .optional(),
   TREAZ_BOOTSTRAP_ADMIN_PASSWORD: z
     .string()
