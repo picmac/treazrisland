@@ -68,10 +68,12 @@ export const romController: FastifyPluginAsync = async (fastify) => {
     }
 
     const favoritesOnly = parsed.data.favorites === 'true';
-    const userId = getRequestUserId(request.user);
+    let userId: string | undefined;
 
     if (favoritesOnly) {
       await fastify.authenticate(request, reply);
+
+      userId = getRequestUserId(request.user);
 
       if (!userId) {
         return reply.status(401).send({ error: 'Unauthorized' });
