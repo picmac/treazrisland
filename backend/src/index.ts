@@ -1,6 +1,6 @@
 import './config/observability-bootstrap';
 
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify from 'fastify';
 import fp from 'fastify-plugin';
 import fastifyCookie from '@fastify/cookie';
 import fastifyJwt from '@fastify/jwt';
@@ -84,7 +84,7 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
   await fastify.register(romRoutes);
 });
 
-export const createApp = (env: Env = getEnv()): FastifyInstance => {
+export const createApp = (env: Env = getEnv()): ReturnType<typeof Fastify> => {
   const app = Fastify({
     logger: buildLogger(env),
   });
