@@ -1,8 +1,9 @@
-import type { FastifyPluginAsync } from 'fastify';
 
 import { loginController } from './login.controller';
 import { magicLinkController } from './magic-link.controller';
 import { refreshTokenController } from './refresh-token.controller';
+
+import type { FastifyPluginAsync } from 'fastify';
 
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(loginController);

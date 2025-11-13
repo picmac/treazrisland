@@ -1,10 +1,12 @@
 'use client';
 
 import { ChangeEvent, useMemo } from 'react';
+
 import {
   RomLibraryFilters,
   getRomLibraryFilterDefaults
 } from '@/hooks/useRomLibrary';
+
 import styles from './FilterBar.module.css';
 
 interface FilterBarProps {

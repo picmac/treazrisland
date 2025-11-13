@@ -1,8 +1,8 @@
-import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import pino, { type LoggerOptions } from 'pino';
 
 import type { Env } from '../config/env';
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 
 export const buildLogger = (env: Env) => {
   const options: LoggerOptions = {

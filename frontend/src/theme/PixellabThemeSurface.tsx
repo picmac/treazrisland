@@ -1,7 +1,8 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { usePixellabTheme } from './ThemeProvider';
+
+import type { ReactNode } from 'react';
 
 export function PixellabThemeSurface({ children }: { children: ReactNode }) {
   const { tokens, status, error } = usePixellabTheme();

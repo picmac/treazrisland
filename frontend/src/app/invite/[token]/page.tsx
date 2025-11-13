@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+
 import { redeemInviteToken, type InviteRedemptionResponse } from '@/lib/apiClient';
 
 type FormStatus = {

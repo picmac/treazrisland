@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 
 import type { RefreshTokenPayload } from './types';
+import type { FastifyPluginAsync } from 'fastify';
 
 const bodySchema = z
   .object({

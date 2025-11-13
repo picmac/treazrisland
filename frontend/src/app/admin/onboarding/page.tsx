@@ -1,4 +1,5 @@
-import ProgressSteps, { type ProgressStep } from '@/components/ProgressSteps';
+import { ProgressSteps, type ProgressStep } from '@/components/ProgressSteps';
+
 import styles from './page.module.css';
 
 const onboardingSteps: ProgressStep[] = [

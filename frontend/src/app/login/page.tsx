@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useEffect, useState, type FormEvent } from 'react';
+
 import { exchangeMagicLinkToken, loginWithPassword, type AuthResponse } from '@/lib/apiClient';
 
 type FormStatus = {

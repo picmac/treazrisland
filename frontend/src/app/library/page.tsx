@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FixedSizeGrid as Grid, GridChildComponentProps } from 'react-window';
-import FilterBar from '@/components/library/FilterBar';
+
+import { FilterBar } from '@/components/library/FilterBar';
 import {
   RomEntry,
   RomLibraryFilters,
   getRomLibraryFilterDefaults,
   useRomLibrary
 } from '@/hooks/useRomLibrary';
+
 import styles from './library.module.css';
 
 const CARD_WIDTH = 220;

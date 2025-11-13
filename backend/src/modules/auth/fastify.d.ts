@@ -1,10 +1,11 @@
-import type { FastifyReply, FastifyRequest } from 'fastify';
 
-import type { Env } from '../../config/env';
 import { RedisSessionStore } from './session-store';
+
 import type { AuthUser } from './types';
+import type { Env } from '../../config/env';
 import type { RomService } from '../roms/rom.service';
 import type { SaveStateService } from '../roms/save-state.service';
+import type { FastifyReply, FastifyRequest as FastifyRequestType } from 'fastify';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -12,7 +13,7 @@ declare module 'fastify' {
     sessionStore: RedisSessionStore;
     romService: RomService;
     saveStateService: SaveStateService;
-    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    authenticate: (request: FastifyRequestType, reply: FastifyReply) => Promise<void>;
   }
 
   interface FastifyRequest {
