@@ -25,8 +25,12 @@ export class ApiError extends Error {
 class ApiClient {
   constructor(private readonly baseUrl: string) {}
 
-  private async request<T>(path: string, init: RequestInit): Promise<T> {
+  private async request<T>(path: string, init: RequestInit, options?: { requiresAuth?: boolean }): Promise<T> {
     const accessToken = getStoredAccessToken();
+
+    if (options?.requiresAuth && !accessToken) {
+      throw new ApiError('You must be signed in to perform this action.', 401);
+    }
 
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...init,
@@ -56,15 +60,15 @@ class ApiClient {
     return payload as T;
   }
 
-  get<T>(path: string): Promise<T> {
-    return this.request<T>(path, { method: 'GET' });
+  get<T>(path: string, options?: { requiresAuth?: boolean }): Promise<T> {
+    return this.request<T>(path, { method: 'GET' }, options);
   }
 
-  post<T>(path: string, body?: JsonRecord): Promise<T> {
+  post<T>(path: string, body?: JsonRecord, options?: { requiresAuth?: boolean }): Promise<T> {
     return this.request<T>(path, {
       method: 'POST',
       body: body ? JSON.stringify(body) : undefined
-    });
+    }, options);
   }
 }
 
@@ -107,5 +111,5 @@ export interface RomFavoriteResponse {
 }
 
 export function toggleRomFavorite(romId: string) {
-  return apiClient.post<RomFavoriteResponse>(`/roms/${romId}/favorite`);
+  return apiClient.post<RomFavoriteResponse>(`/roms/${romId}/favorite`, undefined, { requiresAuth: true });
 }
