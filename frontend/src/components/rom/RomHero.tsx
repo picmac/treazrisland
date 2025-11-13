@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import type { RomAsset, RomDetails } from '@/types/rom';
 import { ApiError, toggleRomFavorite } from '@/lib/apiClient';
@@ -52,7 +53,15 @@ export function RomHero({ rom }: RomHeroProps) {
     <article className="rom-hero">
       <div className="rom-hero__media" aria-hidden={!heroAsset}>
         {heroAsset ? (
-          <img src={heroAsset.url} alt={`${rom.title} artwork`} loading="lazy" />
+          <Image
+            src={heroAsset.url}
+            alt={`${rom.title} artwork`}
+            width={640}
+            height={360}
+            sizes="(min-width: 1024px) 480px, 100vw"
+            className="rom-hero__media-image"
+            priority={false}
+          />
         ) : (
           <div className="rom-hero__placeholder">
             <p>Artwork coming soon</p>

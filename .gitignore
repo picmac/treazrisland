@@ -5,6 +5,7 @@ dist/
 out/
 .env
 .env.local
+frontend/tsconfig.tsbuildinfo
 
 # Logs
 npm-debug.log*

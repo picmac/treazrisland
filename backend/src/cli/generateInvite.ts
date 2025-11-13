@@ -1,6 +1,7 @@
+import { randomBytes } from 'node:crypto';
+
 import { PrismaClient } from '@prisma/client';
 import { config as loadEnvFiles } from 'dotenv-flow';
-import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 
 import { Prompt } from './prompt';

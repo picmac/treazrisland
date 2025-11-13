@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 
 import type { AuthUser } from './types';
+import type { FastifyPluginAsync } from 'fastify';
 
 const loginSchema = z.object({
   email: z.string().email(),

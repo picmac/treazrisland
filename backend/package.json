@@ -10,6 +10,7 @@
     "postinstall": "prisma generate",
     "cli:create-admin": "tsx src/cli/createAdmin.ts",
     "cli:generate-invite": "tsx src/cli/generateInvite.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "pretest": "prisma generate",
     "test:watch": "vitest",

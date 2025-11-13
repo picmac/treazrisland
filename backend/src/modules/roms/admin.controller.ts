@@ -1,10 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 
 import { romAssetTypes, type RomAssetType } from './rom.service';
 import { createMinioClient, ensureBucket } from './storage';
+
+import type { FastifyPluginAsync } from 'fastify';
 
 const assetSchema = z.object({
   type: z.enum(romAssetTypes as [RomAssetType, ...RomAssetType[]]).default('ROM'),

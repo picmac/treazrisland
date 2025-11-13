@@ -24,6 +24,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@vitejs/plugin-react": [
+        "./types/@vitejs__plugin-react.d.ts"
       ]
     },
     "plugins": [
