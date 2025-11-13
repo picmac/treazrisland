@@ -1,3 +1,5 @@
+import type { FastifyReply, FastifyRequest } from 'fastify';
+
 import type { Env } from '../../config/env';
 import { RedisSessionStore } from './session-store';
 import type { AuthUser } from './types';
@@ -8,9 +10,10 @@ declare module 'fastify' {
     config: Env;
     sessionStore: RedisSessionStore;
     romService: RomService;
+    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 
   interface FastifyRequest {
-    user: AuthUser;
+    user?: AuthUser;
   }
 }

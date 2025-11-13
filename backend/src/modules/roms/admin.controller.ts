@@ -37,6 +37,7 @@ const createRomSchema = z.object({
   description: z.string().min(1).max(1000).optional(),
   platformId: z.string().min(1),
   releaseYear: z.number().int().min(1950).max(new Date().getFullYear()).optional(),
+  genres: z.array(z.string().min(1)).max(10).optional(),
   asset: assetSchema,
 });
 
@@ -50,7 +51,7 @@ export const adminRomController: FastifyPluginAsync = async (fastify) => {
       return reply.status(400).send({ error: 'Invalid ROM payload' });
     }
 
-    const { title, description, platformId, releaseYear, asset } = parsed.data;
+    const { title, description, platformId, releaseYear, genres, asset } = parsed.data;
 
     let assetBuffer: Buffer;
     try {
@@ -98,6 +99,7 @@ export const adminRomController: FastifyPluginAsync = async (fastify) => {
       description,
       platformId,
       releaseYear,
+      genres,
       asset: {
         type: asset.type,
         objectKey,

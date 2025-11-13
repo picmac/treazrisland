@@ -9,6 +9,7 @@ import RedisMock from 'ioredis-mock';
 import { getEnv, type Env } from './config/env';
 import { authRoutes } from './modules/auth/routes';
 import { RedisSessionStore } from './modules/auth/session-store';
+import type { AuthUser } from './modules/auth/types';
 import { romRoutes } from './modules/roms/routes';
 import { RomService } from './modules/roms/rom.service';
 
@@ -42,6 +43,20 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
     },
   });
 
+  fastify.decorate(
+    'authenticate',
+    async function authenticate(request, reply) {
+      const payload = await request.jwtVerify<{ sub: string; email?: string }>();
+
+      const user: AuthUser = {
+        id: payload.sub,
+        email: payload.email ?? payload.sub,
+      };
+
+      request.user = user;
+    },
+  );
+
   await fastify.register(fastifyRedis, {
     client: createRedisClient(env),
   });
@@ -61,7 +76,7 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
   });
 
   await fastify.register(authRoutes, { prefix: '/auth' });
-  await fastify.register(romRoutes, { prefix: '/admin' });
+  await fastify.register(romRoutes);
 });
 
 export const createApp = (env: Env = getEnv()): FastifyInstance => {
