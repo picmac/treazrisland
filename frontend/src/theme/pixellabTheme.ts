@@ -43,12 +43,30 @@ export type PixellabThemeTokens = {
   };
 };
 
+export type PixellabAssetMetadata = {
+  promptId?: string;
+  model?: string;
+  seed?: string;
+  palette?: string;
+  previewUrl?: string;
+  [key: string]: unknown;
+};
+
 export type PixellabAsset = {
   id: string;
   label: string;
   type: 'background' | 'logo' | 'sprite' | 'audio' | 'video' | 'ui';
   src: string;
   description?: string;
+  metadata?: PixellabAssetMetadata;
+};
+
+export type PixellabThemeMetadata = {
+  themeId: string;
+  source: string;
+  assetCount: number;
+  apiVersion?: string;
+  [key: string]: unknown;
 };
 
 export type PixellabThemeManifest = {
@@ -56,6 +74,7 @@ export type PixellabThemeManifest = {
   generatedAt: string;
   tokens?: Partial<PixellabThemeTokens>;
   assets?: PixellabAsset[];
+  metadata?: PixellabThemeMetadata;
 };
 
 export const FALLBACK_PIXELLAB_THEME: PixellabThemeTokens = {

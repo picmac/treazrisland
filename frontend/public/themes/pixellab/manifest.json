@@ -1,6 +1,12 @@
 {
   "version": "0.1.0",
   "generatedAt": "2024-05-18T00:00:00.000Z",
+  "metadata": {
+    "themeId": "sample-pixellab-theme",
+    "source": "pixellab.ai",
+    "assetCount": 2,
+    "apiVersion": "mock"
+  },
   "tokens": {
     "palette": {
       "primary": "#f7b733",
@@ -43,14 +49,28 @@
       "label": "Neon grid wallpaper",
       "type": "background",
       "src": "/themes/pixellab/hero-grid.png",
-      "description": "Placeholder reference for the Pixellab grid wallpaper export."
+      "description": "Placeholder reference for the Pixellab grid wallpaper export.",
+      "metadata": {
+        "promptId": "demo-hero-grid",
+        "model": "pixel-core-v3",
+        "seed": "1337",
+        "palette": "#f7b733,#b958f6",
+        "previewUrl": "https://example.com/pixellab/hero-grid"
+      }
     },
     {
       "id": "treazr-wordmark",
       "label": "Treazr Island wordmark",
       "type": "logo",
       "src": "/themes/pixellab/wordmark.png",
-      "description": "Wordmark produced from Pixellab prompt set A."
+      "description": "Wordmark produced from Pixellab prompt set A.",
+      "metadata": {
+        "promptId": "demo-wordmark",
+        "model": "pixel-core-v3",
+        "seed": "9001",
+        "palette": "#fefae0,#f7b733",
+        "previewUrl": "https://example.com/pixellab/wordmark"
+      }
     }
   ]
 }
