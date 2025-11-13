@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { RomAsset, RomDetails } from '@/types/rom';
-import { toggleRomFavorite } from '@/lib/apiClient';
+import { ApiError, toggleRomFavorite } from '@/lib/apiClient';
 
 interface RomHeroProps {
   rom: RomDetails;
@@ -39,7 +39,11 @@ export function RomHero({ rom }: RomHeroProps) {
       setIsFavorite(previousValue);
       setFavoriteStatus('error');
       setFavoriteMessage(
-        error instanceof Error ? error.message : 'Unable to update favorites right now.'
+        error instanceof ApiError && error.status === 401
+          ? 'Sign in to manage your favorites.'
+          : error instanceof Error
+            ? error.message
+            : 'Unable to update favorites right now.'
       );
     }
   };
