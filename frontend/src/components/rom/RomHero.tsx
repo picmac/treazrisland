@@ -73,11 +73,7 @@ export function RomHero({ rom }: RomHeroProps) {
         )}
 
         <div className="rom-hero__actions">
-          <a
-            className="rom-hero__cta"
-            href={`/rom/${rom.id}/play`}
-            aria-label={`Launch ${rom.title}. Emulator wiring coming soon.`}
-          >
+          <a className="rom-hero__cta" href={`/play/${rom.id}`} aria-label={`Launch ${rom.title} in EmulatorJS.`}>
             Play Now
           </a>
           <button
