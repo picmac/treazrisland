@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { Readable } from 'node:stream';
 
-import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import type { FastifyError, FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
 import type { Env } from '../../config/env';
@@ -187,7 +187,19 @@ export const romController: FastifyPluginAsync = async (fastify) => {
 
   fastify.post(
     '/roms/:id/save-state',
-    { preHandler: fastify.authenticate, bodyLimit: MAX_SAVE_STATE_BODY_BYTES },
+    {
+      preHandler: fastify.authenticate,
+      bodyLimit: MAX_SAVE_STATE_BODY_BYTES,
+      errorHandler: (error: FastifyError, request, reply) => {
+        if (error.code === 'FST_ERR_CTP_BODY_TOO_LARGE') {
+          return reply
+            .status(413)
+            .send({ error: 'Save state exceeds maximum allowed size' });
+        }
+
+        throw error;
+      },
+    },
     async (request, reply) => {
       const params = romIdParamsSchema.safeParse(request.params);
 
