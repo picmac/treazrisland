@@ -5,6 +5,13 @@ export default defineConfig({
     include: ['tests/**/*.spec.ts', 'tests/**/*.test.ts'],
     environment: 'node',
     globals: true,
+    deps: {
+      optimizer: {
+        ssr: {
+          include: ['minio'],
+        },
+      },
+    },
     coverage: {
       enabled: false,
     },

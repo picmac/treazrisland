@@ -26,6 +26,14 @@ describe('POST /admin/roms', () => {
   let app: ReturnType<typeof createApp> | null = null;
   let runtimeError: Error | null = null;
 
+  const getApp = (): NonNullable<typeof app> => {
+    if (!app) {
+      throw new Error('Fastify app not initialised');
+    }
+
+    return app;
+  };
+
   beforeAll(async () => {
     container = await new GenericContainer('quay.io/minio/minio')
       .withEnvironment({
@@ -93,13 +101,13 @@ describe('POST /admin/roms', () => {
 
   it('uploads ROM assets to MinIO and registers metadata', async ({ skip }) => {
     if (runtimeError) {
-      skip('Container runtime unavailable');
+      skip();
     }
 
     const romData = Buffer.from('retro-bytes');
     const checksum = createHash('sha256').update(romData).digest('hex');
 
-    const response = await app.inject({
+    const response = await getApp().inject({
       method: 'POST',
       url: '/admin/roms',
       payload: {
@@ -144,13 +152,13 @@ describe('POST /admin/roms', () => {
 
   it('rejects uploads when the checksum does not match the payload', async ({ skip }) => {
     if (runtimeError) {
-      skip('Container runtime unavailable');
+      skip();
     }
 
     const romData = Buffer.from('retro-bytes');
     const checksum = createHash('sha256').update('something-else').digest('hex');
 
-    const response = await app.inject({
+    const response = await getApp().inject({
       method: 'POST',
       url: '/admin/roms',
       payload: {

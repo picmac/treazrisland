@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
-export const romAssetTypes = ["ROM", "COVER", "ARTWORK", "MANUAL"] as const;
+export const romAssetTypes: ['ROM', 'COVER', 'ARTWORK', 'MANUAL'] = [
+  'ROM',
+  'COVER',
+  'ARTWORK',
+  'MANUAL',
+];
 export type RomAssetType = (typeof romAssetTypes)[number];
 
 export interface RegisterRomAssetInput {
