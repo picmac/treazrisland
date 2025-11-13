@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3333';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3333';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -43,10 +43,14 @@ class ApiClient {
     return payload as T;
   }
 
-  post<T>(path: string, body: JsonRecord): Promise<T> {
+  get<T>(path: string): Promise<T> {
+    return this.request<T>(path, { method: 'GET' });
+  }
+
+  post<T>(path: string, body?: JsonRecord): Promise<T> {
     return this.request<T>(path, {
       method: 'POST',
-      body: JSON.stringify(body)
+      body: body ? JSON.stringify(body) : undefined
     });
   }
 }
@@ -82,4 +86,13 @@ export function exchangeMagicLinkToken(token: string) {
 
 export function redeemInviteToken(token: string, payload: { email: string; password: string; displayName?: string }) {
   return apiClient.post<InviteRedemptionResponse>(`/invites/${token}/redeem`, payload);
+}
+
+export interface RomFavoriteResponse {
+  romId: string;
+  isFavorite: boolean;
+}
+
+export function toggleRomFavorite(romId: string) {
+  return apiClient.post<RomFavoriteResponse>(`/roms/${romId}/favorite`);
 }

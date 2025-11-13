@@ -155,3 +155,230 @@ body {
   background: rgba(0, 0, 0, 0.35);
   font-size: 0.75rem;
 }
+
+.rom-layout {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (min-width: 960px) {
+  .rom-layout {
+    grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr);
+    align-items: start;
+  }
+}
+
+.rom-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: rgba(6, 0, 20, 0.65);
+  border: 1px solid rgba(249, 96, 204, 0.35);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+@media (min-width: 720px) {
+  .rom-hero {
+    grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr);
+  }
+}
+
+.rom-hero__media {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rom-hero__media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rom-hero__placeholder {
+  text-transform: uppercase;
+  letter-spacing: 0.15rem;
+  font-size: 0.75rem;
+  color: rgba(254, 250, 224, 0.6);
+}
+
+.rom-hero__content h1 {
+  margin-block: 0.25rem 0.75rem;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+}
+
+.rom-hero__meta {
+  text-transform: uppercase;
+  letter-spacing: 0.2rem;
+  font-size: 0.8rem;
+  color: rgba(254, 250, 224, 0.75);
+}
+
+.rom-hero__description {
+  line-height: 1.6;
+  color: rgba(254, 250, 224, 0.9);
+}
+
+.rom-hero__genres {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.rom-hero__genres li {
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(249, 96, 204, 0.4);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.rom-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.rom-hero__cta,
+.rom-hero__favorite {
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.85rem 1.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rom-hero__cta {
+  background: linear-gradient(120deg, var(--pixellab-accent), var(--pixellab-accent-muted));
+  color: #060014;
+}
+
+.rom-hero__favorite {
+  background: transparent;
+  color: var(--pixellab-foreground);
+  border: 1px solid rgba(254, 250, 224, 0.4);
+}
+
+.rom-hero__favorite:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.rom-hero__favorite-message {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.rom-hero__favorite-message--error {
+  color: #ffb4c8;
+}
+
+.rom-hero__favorite-message--success {
+  color: #8de4bd;
+}
+
+.rom-metadata {
+  background: rgba(6, 0, 20, 0.65);
+  border: 1px solid rgba(249, 96, 204, 0.35);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+}
+
+.rom-metadata h2 {
+  margin-top: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.2rem;
+  font-size: 0.95rem;
+}
+
+.rom-metadata__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.rom-metadata__row {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.rom-metadata__row dt {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2rem;
+  color: rgba(254, 250, 224, 0.7);
+}
+
+.rom-metadata__row dd {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+}
+
+.rom-metadata__assets {
+  margin-top: 1.5rem;
+}
+
+.rom-metadata__assets h3 {
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15rem;
+  font-size: 0.8rem;
+}
+
+.rom-metadata__asset-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rom-metadata__asset-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.rom-metadata__asset-type {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.15rem;
+  font-size: 0.7rem;
+}
+
+.rom-metadata__asset-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: rgba(254, 250, 224, 0.75);
+}
+
+.rom-metadata__asset-list a {
+  color: var(--pixellab-accent);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.2rem;
+}
