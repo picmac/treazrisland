@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
 import type { Env } from '../../config/env';
@@ -47,6 +47,18 @@ const serializeRomAsset = (env: Env, asset: RomAssetRecord) => ({
   url: buildAssetUrl(env, asset.objectKey),
 });
 
+const getRequestUserId = (user: FastifyRequest['user']): string | undefined => {
+  if (!user) {
+    return undefined;
+  }
+
+  if (typeof user === 'object' && 'id' in user && typeof (user as { id?: unknown }).id === 'string') {
+    return user.id as string;
+  }
+
+  return undefined;
+};
+
 export const romController: FastifyPluginAsync = async (fastify) => {
   fastify.get('/roms', async (request, reply) => {
     const parsed = listQuerySchema.safeParse(request.query);
@@ -56,11 +68,12 @@ export const romController: FastifyPluginAsync = async (fastify) => {
     }
 
     const favoritesOnly = parsed.data.favorites === 'true';
+    const userId = getRequestUserId(request.user);
 
     if (favoritesOnly) {
       await fastify.authenticate(request, reply);
 
-      if (!request.user) {
+      if (!userId) {
         return reply.status(401).send({ error: 'Unauthorized' });
       }
     }
@@ -69,7 +82,7 @@ export const romController: FastifyPluginAsync = async (fastify) => {
       filters: {
         platformId: parsed.data.platform,
         genre: parsed.data.genre,
-        favoriteForUserId: favoritesOnly ? request.user?.id : undefined,
+        favoriteForUserId: favoritesOnly ? userId : undefined,
       },
       pagination: {
         page: parsed.data.page,
@@ -120,11 +133,13 @@ export const romController: FastifyPluginAsync = async (fastify) => {
         return reply.status(404).send({ error: 'ROM not found' });
       }
 
-      if (!request.user) {
+      const userId = getRequestUserId(request.user);
+
+      if (!userId) {
         return reply.status(401).send({ error: 'Unauthorized' });
       }
 
-      const isFavorite = fastify.romService.toggleFavorite(request.user.id, rom.id);
+      const isFavorite = fastify.romService.toggleFavorite(userId, rom.id);
 
       return reply.send({ romId: rom.id, isFavorite });
     },
