@@ -163,6 +163,26 @@ function sanitizeFileName(baseName: string, extension: string): string {
   return `${safeBase || 'asset'}${extension}`;
 }
 
+function resolveAssetFileName(asset: PixellabApiAsset, extension: string): string {
+  const providedFileName = asset.fileName?.trim();
+  if (providedFileName) {
+    const baseName = path.basename(providedFileName);
+    if (baseName && baseName !== '.' && baseName !== '..') {
+      if (baseName !== providedFileName) {
+        console.warn(
+          `\u26a0\ufe0f  Asset ${asset.id} provided file name "${providedFileName}" contains path separators. Using "${baseName}" instead.`
+        );
+      }
+      return baseName;
+    }
+    console.warn(
+      `\u26a0\ufe0f  Asset ${asset.id} provided an invalid file name "${providedFileName}". Falling back to a sanitized identifier.`
+    );
+  }
+
+  return sanitizeFileName(asset.id, extension);
+}
+
 async function downloadAsset(
   asset: PixellabApiAsset,
   outputDir: string,
@@ -174,7 +194,7 @@ async function downloadAsset(
   }
 
   const extension = deriveExtension(asset.downloadUrl);
-  const fileName = asset.fileName ?? sanitizeFileName(asset.id, extension);
+  const fileName = resolveAssetFileName(asset, extension);
   const destinationPath = path.join(outputDir, fileName);
   await mkdir(path.dirname(destinationPath), { recursive: true });
   console.log(`\ud83d\udcbe  Downloading ${asset.id} -> ${destinationPath}`);
