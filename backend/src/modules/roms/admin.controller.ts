@@ -1,28 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import type { FastifyPluginAsync } from 'fastify';
-import { Client } from 'minio';
 import { z } from 'zod';
 
-import type { Env } from '../../config/env';
 import { romAssetTypes, type RomAssetType } from './rom.service';
-
-const createMinioClient = (env: Env): Client =>
-  new Client({
-    endPoint: env.OBJECT_STORAGE_ENDPOINT,
-    port: env.OBJECT_STORAGE_PORT,
-    useSSL: env.OBJECT_STORAGE_USE_SSL,
-    accessKey: env.OBJECT_STORAGE_ACCESS_KEY,
-    secretKey: env.OBJECT_STORAGE_SECRET_KEY,
-    region: env.OBJECT_STORAGE_REGION,
-  });
-
-const ensureBucket = async (client: Client, bucket: string, region: string): Promise<void> => {
-  const exists = await client.bucketExists(bucket);
-  if (!exists) {
-    await client.makeBucket(bucket, region);
-  }
-};
+import { createMinioClient, ensureBucket } from './storage';
 
 const assetSchema = z.object({
   type: z.enum(romAssetTypes as [RomAssetType, ...RomAssetType[]]).default('ROM'),

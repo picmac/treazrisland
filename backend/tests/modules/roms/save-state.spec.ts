@@ -1,0 +1,177 @@
+import '../../setup-env';
+
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { GenericContainer, type StartedTestContainer } from 'testcontainers';
+import { createHash } from 'node:crypto';
+
+import { createApp } from '../../../src/index';
+import { parseEnv, type Env } from '../../../src/config/env';
+import { MAX_SAVE_STATE_BYTES } from '../../../src/modules/roms/rom.controller';
+
+describe('ROM save state endpoints', () => {
+  const bucket = 'rom-save-state-tests';
+  let container: StartedTestContainer | null = null;
+  let env: Env;
+  let app: ReturnType<typeof createApp> | null = null;
+  let runtimeError: Error | null = null;
+
+  const getApp = (): NonNullable<typeof app> => {
+    if (!app) {
+      throw new Error('Fastify app not initialised');
+    }
+
+    return app;
+  };
+
+  const createRom = async (): Promise<string> => {
+    const romPayload = Buffer.from('test-rom');
+    const checksum = createHash('sha256').update(romPayload).digest('hex');
+
+    const response = await getApp().inject({
+      method: 'POST',
+      url: '/admin/roms',
+      payload: {
+        title: 'Save State Test',
+        platformId: 'nes',
+        releaseYear: 1993,
+        asset: {
+          filename: 'save-test.zip',
+          contentType: 'application/zip',
+          data: romPayload.toString('base64'),
+          checksum,
+        },
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const body = response.json() as { rom: { id: string } };
+    return body.rom.id;
+  };
+
+  const getAccessToken = async (): Promise<string> => {
+    const response = await getApp().inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { email: 'player@example.com', password: 'password123' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { accessToken: string };
+    return body.accessToken;
+  };
+
+  beforeAll(async () => {
+    container = await new GenericContainer('quay.io/minio/minio')
+      .withEnvironment({
+        MINIO_ROOT_USER: 'minioadmin',
+        MINIO_ROOT_PASSWORD: 'minioadmin',
+      })
+      .withExposedPorts(9000)
+      .withCommand(['server', '/data', '--console-address', ':9001'])
+      .start()
+      .catch((error: Error) => {
+        runtimeError = error;
+        return undefined as unknown as StartedTestContainer;
+      });
+
+    env = parseEnv(process.env);
+
+    if (runtimeError || !container) {
+      console.warn('[save-state] Skipping MinIO integration tests:', runtimeError?.message);
+      return;
+    }
+
+    const host = container.getHost();
+    const port = container.getMappedPort(9000);
+
+    process.env.OBJECT_STORAGE_ENDPOINT = host;
+    process.env.OBJECT_STORAGE_PORT = port.toString();
+    process.env.OBJECT_STORAGE_BUCKET = bucket;
+    process.env.OBJECT_STORAGE_USE_SSL = 'false';
+
+    env = parseEnv(process.env);
+  }, 120_000);
+
+  afterAll(async () => {
+    if (container && !runtimeError) {
+      await container.stop();
+    }
+  });
+
+  beforeEach(async () => {
+    if (runtimeError) {
+      return;
+    }
+
+    app = createApp(env);
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    if (!app) {
+      return;
+    }
+
+    await app.close();
+    app = null;
+  });
+
+  it('persists save states and returns the latest blob', async ({ skip }) => {
+    if (runtimeError) {
+      skip();
+    }
+
+    const token = await getAccessToken();
+    const romId = await createRom();
+
+    const saveData = Buffer.from('state-blob');
+    const saveResponse = await getApp().inject({
+      method: 'POST',
+      url: `/roms/${romId}/save-state`,
+      headers: { Authorization: `Bearer ${token}` },
+      payload: {
+        data: saveData.toString('base64'),
+        label: 'Checkpoint 1',
+        contentType: 'application/octet-stream',
+      },
+    });
+
+    expect(saveResponse.statusCode).toBe(201);
+    const saved = saveResponse.json() as { saveState: { checksum: string; size: number } };
+    expect(saved.saveState.checksum).toBeDefined();
+    expect(saved.saveState.size).toBe(saveData.byteLength);
+
+    const latestResponse = await getApp().inject({
+      method: 'GET',
+      url: `/roms/${romId}/save-state/latest`,
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    expect(latestResponse.statusCode).toBe(200);
+    const latestBody = latestResponse.json() as { data: string };
+    expect(Buffer.from(latestBody.data, 'base64').equals(saveData)).toBe(true);
+  });
+
+  it('rejects payloads that exceed the configured limit', async ({ skip }) => {
+    if (runtimeError) {
+      skip();
+    }
+
+    const token = await getAccessToken();
+    const romId = await createRom();
+    const oversized = Buffer.alloc(MAX_SAVE_STATE_BYTES + 1, 1);
+
+    const response = await getApp().inject({
+      method: 'POST',
+      url: `/roms/${romId}/save-state`,
+      headers: { Authorization: `Bearer ${token}` },
+      payload: {
+        data: oversized.toString('base64'),
+        contentType: 'application/octet-stream',
+      },
+    });
+
+    expect(response.statusCode).toBe(413);
+    expect(response.json()).toEqual({ error: 'Save state exceeds maximum allowed size' });
+  });
+});
