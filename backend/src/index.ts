@@ -1,3 +1,5 @@
+import './config/observability-bootstrap';
+
 import Fastify, { type FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 import fastifyCookie from '@fastify/cookie';
@@ -7,7 +9,7 @@ import Redis from 'ioredis';
 import RedisMock from 'ioredis-mock';
 
 import { getEnv, type Env } from './config/env';
-import { startObservability, stopObservability } from './config/observability';
+import { stopObservability } from './config/observability';
 import { authRoutes } from './modules/auth/routes';
 import { RedisSessionStore } from './modules/auth/session-store';
 import type { AuthUser } from './modules/auth/types';
@@ -15,9 +17,6 @@ import { romRoutes } from './modules/roms/routes';
 import { RomService } from './modules/roms/rom.service';
 import { SaveStateService } from './modules/roms/save-state.service';
 import { buildLogger, loggerPlugin } from './plugins/logger';
-
-process.env.NODE_ENV = process.env.NODE_ENV ?? 'development';
-process.env.PORT = process.env.PORT ?? '3000';
 
 const createRedisClient = (env: Env): Redis => {
   if (env.NODE_ENV === 'test' || !env.REDIS_URL) {
@@ -86,8 +85,6 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
 });
 
 export const createApp = (env: Env = getEnv()): FastifyInstance => {
-  startObservability(env);
-
   const app = Fastify({
     logger: buildLogger(env),
   });
