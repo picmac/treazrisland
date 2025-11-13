@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { ToastProvider } from '@/components/ui/ToastProvider';
 import { PixellabThemeSurface } from '@/theme/PixellabThemeSurface';
 import { ThemeProvider } from '@/theme/ThemeProvider';
 import './globals.css';
@@ -15,7 +16,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         <ThemeProvider>
-          <PixellabThemeSurface>{children}</PixellabThemeSurface>
+          <ToastProvider>
+            <PixellabThemeSurface>{children}</PixellabThemeSurface>
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>

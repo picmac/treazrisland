@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ControlOverlay } from '@/components/emulator/ControlOverlay';
 import { SessionPrepDialog } from '@/components/emulator/SessionPrepDialog';
+import { useToast } from '@/components/ui/ToastProvider';
+import { useSaveStates } from '@/hooks/useSaveStates';
 import { fetchRomDetails } from '@/lib/roms';
+import { persistSaveState } from '@/lib/saveStates';
 import type { RomAsset, RomDetails } from '@/types/rom';
 
 type PlayPageProps = {
@@ -41,9 +44,11 @@ export default function PlayPage({ params }: PlayPageProps) {
   const [isSessionReady, setSessionReady] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoadingState, setIsLoadingState] = useState(false);
   const emulatorContainerRef = useRef<HTMLDivElement>(null);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
+  const { pushToast } = useToast();
+  const { latestSaveState, isLoading: isLoadingCloudSave, loadLatestSaveState } = useSaveStates(romId);
+  const [isSyncingCloudSave, setIsSyncingCloudSave] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -83,6 +88,10 @@ export default function PlayPage({ params }: PlayPageProps) {
   }, [romId]);
 
   useEffect(() => {
+    setLastSavedAt(null);
+  }, [romId]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
@@ -97,6 +106,13 @@ export default function PlayPage({ params }: PlayPageProps) {
       }
     }
   }, [romId]);
+
+  useEffect(() => {
+    if (!latestSaveState) {
+      return;
+    }
+    setLastSavedAt(new Date(latestSaveState.saveState.updatedAt));
+  }, [latestSaveState]);
 
   const romAsset = useMemo(() => selectRomBinary(rom?.assets ?? []), [rom?.assets]);
   const emulatorCore = useMemo(() => {
@@ -164,18 +180,69 @@ export default function PlayPage({ params }: PlayPageProps) {
   };
 
   const handleLoadState = () => {
+    loadLatestSaveState()
+      .then((response) => {
+        if (!response) {
+          pushToast({
+            title: 'No cloud save yet',
+            description: 'Create a cloud save before loading your progress.'
+          });
+          return;
+        }
+        const savedAtLabel = new Date(response.saveState.updatedAt).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        pushToast({ title: 'Cloud save loaded', description: `Checkpoint from ${savedAtLabel}` });
+      })
+      .catch((loadError) => {
+        pushToast({
+          title: 'Failed to load save',
+          description:
+            loadError instanceof Error ? loadError.message : 'Unable to retrieve the latest save state.'
+        });
+      });
+  };
+
+  const handleSyncCloudSave = async () => {
+    if (!rom) {
+      return;
+    }
+
     if (typeof window === 'undefined') {
       return;
     }
-    setIsLoadingState(true);
+
+    setIsSyncingCloudSave(true);
     try {
-      const payload = window.localStorage.getItem(getSaveKey(romId));
-      if (payload) {
-        const parsed = JSON.parse(payload) as { savedAt: string };
-        setLastSavedAt(new Date(parsed.savedAt));
+      const savePayload = {
+        romId,
+        title: rom.title,
+        savedAt: new Date().toISOString()
+      };
+      const data = encodeToBase64(JSON.stringify(savePayload));
+      if (!data) {
+        throw new Error('Unable to encode the save payload for upload');
       }
+      await persistSaveState(romId, {
+        data,
+        label: `Session backup • ${rom.title}`,
+        slot: 1,
+        contentType: 'application/json'
+      });
+      await loadLatestSaveState();
+      pushToast({
+        title: 'Save uploaded',
+        description: 'Your progress is now synced to Treazr Cloud.'
+      });
+    } catch (syncError) {
+      pushToast({
+        title: 'Upload failed',
+        description:
+          syncError instanceof Error ? syncError.message : 'Unable to upload your save at the moment.'
+      });
     } finally {
-      setIsLoadingState(false);
+      setIsSyncingCloudSave(false);
     }
   };
 
@@ -221,8 +288,10 @@ export default function PlayPage({ params }: PlayPageProps) {
             lastSavedAt={lastSavedAt}
             onSaveState={handleSaveState}
             onLoadState={handleLoadState}
+            onSyncCloudSave={handleSyncCloudSave}
             isSaving={isSaving}
-            isLoading={isLoadingState}
+            isLoading={isLoadingCloudSave}
+            isSyncing={isSyncingCloudSave}
             disabled={!isSessionReady}
           />
         )}
@@ -244,4 +313,18 @@ function getSaveKey(romId: string) {
 
 function selectRomBinary(assets: RomAsset[]): RomAsset | undefined {
   return assets.find((asset) => asset.type === 'ROM') ?? assets[0];
+}
+
+function encodeToBase64(value: string) {
+  if (typeof window === 'undefined' || typeof window.btoa !== 'function') {
+    return '';
+  }
+
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(value);
+  let binary = '';
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return window.btoa(binary);
 }
