@@ -11,6 +11,17 @@ export const envSchema = z.object({
   JWT_REFRESH_TOKEN_TTL: z.coerce.number().int().positive().default(604800),
   MAGIC_LINK_TOKEN_TTL: z.coerce.number().int().positive().default(300),
   REDIS_URL: z.string().url().optional(),
+  OBJECT_STORAGE_ENDPOINT: z.string().min(1),
+  OBJECT_STORAGE_PORT: z.coerce.number().int().min(1).max(65535),
+  OBJECT_STORAGE_USE_SSL: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  OBJECT_STORAGE_ACCESS_KEY: z.string().min(1),
+  OBJECT_STORAGE_SECRET_KEY: z.string().min(1),
+  OBJECT_STORAGE_BUCKET: z.string().min(1),
+  OBJECT_STORAGE_REGION: z.string().min(1).default("us-east-1"),
+  OBJECT_STORAGE_PRESIGNED_TTL: z.coerce.number().int().positive().default(300),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -24,6 +35,14 @@ export const parseEnv = (source: NodeJS.ProcessEnv = process.env): Env => {
     JWT_REFRESH_TOKEN_TTL: source.JWT_REFRESH_TOKEN_TTL,
     MAGIC_LINK_TOKEN_TTL: source.MAGIC_LINK_TOKEN_TTL,
     REDIS_URL: source.REDIS_URL,
+    OBJECT_STORAGE_ENDPOINT: source.OBJECT_STORAGE_ENDPOINT,
+    OBJECT_STORAGE_PORT: source.OBJECT_STORAGE_PORT,
+    OBJECT_STORAGE_USE_SSL: source.OBJECT_STORAGE_USE_SSL,
+    OBJECT_STORAGE_ACCESS_KEY: source.OBJECT_STORAGE_ACCESS_KEY,
+    OBJECT_STORAGE_SECRET_KEY: source.OBJECT_STORAGE_SECRET_KEY,
+    OBJECT_STORAGE_BUCKET: source.OBJECT_STORAGE_BUCKET,
+    OBJECT_STORAGE_REGION: source.OBJECT_STORAGE_REGION,
+    OBJECT_STORAGE_PRESIGNED_TTL: source.OBJECT_STORAGE_PRESIGNED_TTL,
   });
 
   if (!result.success) {

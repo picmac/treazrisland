@@ -19,6 +19,14 @@ describe('config/env', () => {
       NODE_ENV: 'development',
       PORT: '4000',
       JWT_SECRET: 'test-secret-value-123456789012345678',
+      OBJECT_STORAGE_ENDPOINT: '127.0.0.1',
+      OBJECT_STORAGE_PORT: '9000',
+      OBJECT_STORAGE_USE_SSL: 'false',
+      OBJECT_STORAGE_ACCESS_KEY: 'test-access',
+      OBJECT_STORAGE_SECRET_KEY: 'test-secret',
+      OBJECT_STORAGE_BUCKET: 'roms',
+      OBJECT_STORAGE_REGION: 'us-east-1',
+      OBJECT_STORAGE_PRESIGNED_TTL: '120',
     } as NodeJS.ProcessEnv);
 
     expect(result).toMatchObject({
@@ -29,6 +37,14 @@ describe('config/env', () => {
       JWT_REFRESH_TOKEN_TTL: 604800,
       MAGIC_LINK_TOKEN_TTL: 300,
       REDIS_URL: undefined,
+      OBJECT_STORAGE_ENDPOINT: '127.0.0.1',
+      OBJECT_STORAGE_PORT: 9000,
+      OBJECT_STORAGE_USE_SSL: false,
+      OBJECT_STORAGE_ACCESS_KEY: 'test-access',
+      OBJECT_STORAGE_SECRET_KEY: 'test-secret',
+      OBJECT_STORAGE_BUCKET: 'roms',
+      OBJECT_STORAGE_REGION: 'us-east-1',
+      OBJECT_STORAGE_PRESIGNED_TTL: 120,
     });
   });
 
@@ -59,6 +75,14 @@ describe('config/env', () => {
     process.env.NODE_ENV = 'production';
     process.env.PORT = '5050';
     process.env.JWT_SECRET = 'test-secret-value-123456789012345678';
+    process.env.OBJECT_STORAGE_ENDPOINT = '127.0.0.1';
+    process.env.OBJECT_STORAGE_PORT = '9000';
+    process.env.OBJECT_STORAGE_ACCESS_KEY = 'cache-access';
+    process.env.OBJECT_STORAGE_SECRET_KEY = 'cache-secret';
+    process.env.OBJECT_STORAGE_BUCKET = 'roms';
+    process.env.OBJECT_STORAGE_USE_SSL = 'false';
+    process.env.OBJECT_STORAGE_REGION = 'us-east-1';
+    process.env.OBJECT_STORAGE_PRESIGNED_TTL = '90';
 
     const { getEnv } = await import('../../src/config/env');
 

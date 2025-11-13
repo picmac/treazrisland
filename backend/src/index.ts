@@ -9,6 +9,8 @@ import RedisMock from 'ioredis-mock';
 import { getEnv, type Env } from './config/env';
 import { authRoutes } from './modules/auth/routes';
 import { RedisSessionStore } from './modules/auth/session-store';
+import { romRoutes } from './modules/roms/routes';
+import { RomService } from './modules/roms/rom.service';
 
 process.env.NODE_ENV = process.env.NODE_ENV ?? 'development';
 process.env.PORT = process.env.PORT ?? '3000';
@@ -52,11 +54,14 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
     }),
   );
 
+  fastify.decorate('romService', new RomService());
+
   fastify.addHook('onClose', async () => {
     await fastify.redis.quit();
   });
 
   await fastify.register(authRoutes, { prefix: '/auth' });
+  await fastify.register(romRoutes, { prefix: '/admin' });
 });
 
 export const createApp = (env: Env = getEnv()): FastifyInstance => {
