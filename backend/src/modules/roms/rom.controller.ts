@@ -37,6 +37,7 @@ const saveStateBodySchema = z.object({
 });
 
 export const MAX_SAVE_STATE_BYTES = 5 * 1024 * 1024; // 5 MiB
+const MAX_SAVE_STATE_BODY_BYTES = Math.ceil(MAX_SAVE_STATE_BYTES * 1.4);
 
 const buildAssetUrl = (env: Env, objectKey: string): string => {
   const protocol = env.OBJECT_STORAGE_USE_SSL ? 'https' : 'http';
@@ -185,7 +186,7 @@ export const romController: FastifyPluginAsync = async (fastify) => {
 
   fastify.post(
     '/roms/:id/save-state',
-    { preHandler: fastify.authenticate },
+    { preHandler: fastify.authenticate, bodyLimit: MAX_SAVE_STATE_BODY_BYTES },
     async (request, reply) => {
       const params = romIdParamsSchema.safeParse(request.params);
 
