@@ -5,6 +5,7 @@ export default defineConfig({
     include: ['tests/**/*.spec.ts', 'tests/**/*.test.ts'],
     environment: 'node',
     globals: true,
+    passWithNoTests: true,
     deps: {
       optimizer: {
         ssr: {
@@ -13,7 +14,14 @@ export default defineConfig({
       },
     },
     coverage: {
-      enabled: false,
+      provider: 'v8',
+      enabled: true,
+      reporter: ['text', 'json-summary'],
+      reportsDirectory: './coverage',
+      lines: 60,
+      functions: 60,
+      statements: 60,
+      branches: 50,
     },
   },
 });
