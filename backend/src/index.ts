@@ -29,6 +29,39 @@ const createRedisClient = (env: Env): Redis => {
   return new Redis(env.REDIS_URL);
 };
 
+type DependencyStatus = 'up' | 'down';
+
+type HealthDependencies = {
+  redis: { status: DependencyStatus };
+  objectStorage: { status: 'configured'; bucket: string; region: string };
+};
+
+type HealthResponse = {
+  status: 'ok' | 'degraded';
+  dependencies: HealthDependencies;
+};
+
+const redisStatus = (redis: Redis): DependencyStatus =>
+  redis.status === 'ready' ? 'up' : 'down';
+
+const buildHealthResponse = (redis: Redis, env: Env): HealthResponse => {
+  const redisState = redisStatus(redis);
+
+  const dependencies: HealthDependencies = {
+    redis: { status: redisState },
+    objectStorage: {
+      status: 'configured',
+      bucket: env.OBJECT_STORAGE_BUCKET,
+      region: env.OBJECT_STORAGE_REGION,
+    },
+  };
+
+  return {
+    status: redisState === 'up' ? 'ok' : 'degraded',
+    dependencies,
+  };
+};
+
 const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
   fastify.decorate('config', env);
 
@@ -83,14 +116,14 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
 
   await fastify.register(authRoutes, { prefix: '/auth' });
   await fastify.register(romRoutes);
+
+  fastify.get('/health', async () => buildHealthResponse(fastify.redis, env));
 });
 
 export const createApp = (env: Env = getEnv()): ReturnType<typeof Fastify> => {
   const app = Fastify({
     logger: buildLogger(env),
   });
-
-  app.get('/health', async () => ({ status: 'ok' }));
 
   void app.register(appPlugin, { env });
 

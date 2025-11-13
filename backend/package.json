@@ -43,12 +43,14 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/supertest": "^2.0.16",
     "@types/bcryptjs": "^2.4.6",
     "@types/dotenv-flow": "^3.3.3",
     "@types/node": "^20.14.9",
     "@vitest/coverage-v8": "^1.6.1",
     "ioredis-mock": "^8.13.1",
     "prisma": "^5.15.0",
+    "supertest": "^7.1.4",
     "testcontainers": "^11.8.1",
     "tsx": "^4.15.7",
     "typescript": "^5.4.5",
