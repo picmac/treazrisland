@@ -12,6 +12,7 @@ import { RedisSessionStore } from './modules/auth/session-store';
 import type { AuthUser } from './modules/auth/types';
 import { romRoutes } from './modules/roms/routes';
 import { RomService } from './modules/roms/rom.service';
+import { SaveStateService } from './modules/roms/save-state.service';
 
 process.env.NODE_ENV = process.env.NODE_ENV ?? 'development';
 process.env.PORT = process.env.PORT ?? '3000';
@@ -70,6 +71,7 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
   );
 
   fastify.decorate('romService', new RomService());
+  fastify.decorate('saveStateService', new SaveStateService());
 
   fastify.addHook('onClose', async () => {
     await fastify.redis.quit();
