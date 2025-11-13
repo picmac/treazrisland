@@ -39,6 +39,7 @@ export const adminInvitationsController: FastifyPluginAsync = async (fastify) =>
     const { invite, token } = await invitationService.createInvitation({
       email,
       expiresInHours,
+      createdById: request.user?.id,
     });
 
     const inviteUrl = new URL(
