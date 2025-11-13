@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
-import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+
+import type { FastifyPluginAsync } from 'fastify';
 
 export const magicLinkController: FastifyPluginAsync = async (fastify) => {
   const bodySchema = z.object({

@@ -1,10 +1,10 @@
 import './config/observability-bootstrap';
 
-import Fastify from 'fastify';
-import fp from 'fastify-plugin';
 import fastifyCookie from '@fastify/cookie';
 import fastifyJwt from '@fastify/jwt';
 import fastifyRedis from '@fastify/redis';
+import Fastify from 'fastify';
+import fp from 'fastify-plugin';
 import Redis from 'ioredis';
 import RedisMock from 'ioredis-mock';
 
@@ -12,11 +12,12 @@ import { getEnv, type Env } from './config/env';
 import { stopObservability } from './config/observability';
 import { authRoutes } from './modules/auth/routes';
 import { RedisSessionStore } from './modules/auth/session-store';
-import type { AuthUser } from './modules/auth/types';
-import { romRoutes } from './modules/roms/routes';
 import { RomService } from './modules/roms/rom.service';
+import { romRoutes } from './modules/roms/routes';
 import { SaveStateService } from './modules/roms/save-state.service';
 import { buildLogger, loggerPlugin } from './plugins/logger';
+
+import type { AuthUser } from './modules/auth/types';
 
 const createRedisClient = (env: Env): Redis => {
   if (env.NODE_ENV === 'test' || !env.REDIS_URL) {
@@ -49,7 +50,7 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
 
   fastify.decorate(
     'authenticate',
-    async function authenticate(request, reply) {
+    async function authenticate(request, _reply) {
       const payload = await request.jwtVerify<{ sub: string; email?: string }>();
 
       const user: AuthUser = {

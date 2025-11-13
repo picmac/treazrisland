@@ -1,14 +1,14 @@
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+import { ExportResultCode } from '@opentelemetry/core';
 import { FastifyInstrumentation } from '@opentelemetry/instrumentation-fastify';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
-import type { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
-import type { ExportResult } from '@opentelemetry/core';
-import { ExportResultCode } from '@opentelemetry/core';
-import { resourceFromAttributes } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 
 import type { Env } from './env';
+import type { ExportResult } from '@opentelemetry/core';
+import type { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
 let sdk: NodeSDK | null = null;
 

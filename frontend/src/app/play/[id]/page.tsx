@@ -137,20 +137,19 @@ export default function PlayPage({ params }: PlayPageProps) {
     emulatorWindow.EJS_biosUrl = '';
     emulatorWindow.EJS_color = '#f7b733';
 
-    emulatorContainerRef.current.innerHTML = '<div id="emulator-layer" class="play-session__viewport"></div>';
+    const container = emulatorContainerRef.current;
+    container.innerHTML = '<div id="emulator-layer" class="play-session__viewport"></div>';
 
     const script = document.createElement('script');
     script.src = 'https://cdn.emulatorjs.org/dist/embed.js';
     script.async = true;
     scriptRef.current = script;
-    emulatorContainerRef.current.appendChild(script);
+    container.appendChild(script);
 
     return () => {
       script.remove();
       scriptRef.current = null;
-      if (emulatorContainerRef.current) {
-        emulatorContainerRef.current.innerHTML = '';
-      }
+      container.innerHTML = '';
       delete emulatorWindow.EJS_player;
       delete emulatorWindow.EJS_core;
       delete emulatorWindow.EJS_gameUrl;

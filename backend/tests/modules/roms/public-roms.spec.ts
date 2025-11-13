@@ -2,8 +2,9 @@ import '../../setup-env';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { createApp } from '../../../src/index';
 import { parseEnv, type Env } from '../../../src/config/env';
+import { createApp } from '../../../src/index';
+
 import type { RegisterRomInput } from '../../../src/modules/roms/rom.service';
 
 describe('ROM catalogue routes', () => {

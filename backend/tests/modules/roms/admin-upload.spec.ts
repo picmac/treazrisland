@@ -1,13 +1,17 @@
 import '../../setup-env';
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
+
 import { Client } from 'minio';
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
-import { createHash } from 'node:crypto';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+
+
+import { parseEnv, type Env } from '../../../src/config/env';
+import { createApp } from '../../../src/index';
+
 import type { Readable } from 'node:stream';
 
-import { createApp } from '../../../src/index';
-import { parseEnv, type Env } from '../../../src/config/env';
 
 const streamToBuffer = async (stream: Readable): Promise<Buffer> => {
   const chunks: Buffer[] = [];

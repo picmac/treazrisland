@@ -1,11 +1,12 @@
 import '../../setup-env';
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 import { createHash } from 'node:crypto';
 
-import { createApp } from '../../../src/index';
+import { GenericContainer, type StartedTestContainer } from 'testcontainers';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+
 import { parseEnv, type Env } from '../../../src/config/env';
+import { createApp } from '../../../src/index';
 import { MAX_SAVE_STATE_BYTES } from '../../../src/modules/roms/rom.controller';
 
 describe('ROM save state endpoints', () => {
