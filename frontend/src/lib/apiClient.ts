@@ -7,7 +7,7 @@ type JsonRecord = Record<string, unknown>;
 const isRecord = (value: unknown): value is JsonRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(message: string, readonly status?: number) {
     super(message);
     this.name = 'ApiError';
