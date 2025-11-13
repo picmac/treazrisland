@@ -159,28 +159,38 @@ function deriveExtension(downloadUrl: string): string {
 }
 
 function sanitizeFileName(baseName: string, extension: string): string {
+  const normalizedExtension = extension.startsWith('.') ? extension : `.${extension}`;
   const safeBase = baseName.toLowerCase().replace(/[^a-z0-9-_]+/g, '-').replace(/^-+|-+$/g, '');
-  return `${safeBase || 'asset'}${extension}`;
+  return `${safeBase || 'asset'}${normalizedExtension}`;
 }
 
-function resolveAssetFileName(asset: PixellabApiAsset, extension: string): string {
+function resolveAssetFileName(asset: PixellabApiAsset, fallbackExtension: string): string {
   const providedFileName = asset.fileName?.trim();
   if (providedFileName) {
-    const baseName = path.basename(providedFileName);
-    if (baseName && baseName !== '.' && baseName !== '..') {
-      if (baseName !== providedFileName) {
-        console.warn(
-          `\u26a0\ufe0f  Asset ${asset.id} provided file name "${providedFileName}" contains path separators. Using "${baseName}" instead.`
-        );
-      }
-      return baseName;
+    const containsSeparators = /[\\/]/.test(providedFileName);
+    const isDotOnly = /^\.+$/.test(providedFileName);
+    if (!containsSeparators && !isDotOnly) {
+      const parsed = path.parse(providedFileName);
+      const baseName = parsed.name || parsed.base;
+      const extension = parsed.ext || fallbackExtension;
+      return sanitizeFileName(baseName, extension);
     }
+
     console.warn(
       `\u26a0\ufe0f  Asset ${asset.id} provided an invalid file name "${providedFileName}". Falling back to a sanitized identifier.`
     );
   }
 
-  return sanitizeFileName(asset.id, extension);
+  return sanitizeFileName(asset.id, fallbackExtension);
+}
+
+function ensureSafeDestination(outputDir: string, fileName: string): string {
+  const resolvedOutput = path.resolve(outputDir);
+  const resolvedDestination = path.resolve(resolvedOutput, fileName);
+  if (!resolvedDestination.startsWith(`${resolvedOutput}${path.sep}`)) {
+    throw new Error(`Resolved asset path ${resolvedDestination} is outside the output directory ${resolvedOutput}`);
+  }
+  return resolvedDestination;
 }
 
 async function downloadAsset(
@@ -195,7 +205,7 @@ async function downloadAsset(
 
   const extension = deriveExtension(asset.downloadUrl);
   const fileName = resolveAssetFileName(asset, extension);
-  const destinationPath = path.join(outputDir, fileName);
+  const destinationPath = ensureSafeDestination(outputDir, fileName);
   await mkdir(path.dirname(destinationPath), { recursive: true });
   console.log(`\ud83d\udcbe  Downloading ${asset.id} -> ${destinationPath}`);
 
