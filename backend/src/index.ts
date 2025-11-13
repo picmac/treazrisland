@@ -7,12 +7,14 @@ import Redis from 'ioredis';
 import RedisMock from 'ioredis-mock';
 
 import { getEnv, type Env } from './config/env';
+import { startObservability, stopObservability } from './config/observability';
 import { authRoutes } from './modules/auth/routes';
 import { RedisSessionStore } from './modules/auth/session-store';
 import type { AuthUser } from './modules/auth/types';
 import { romRoutes } from './modules/roms/routes';
 import { RomService } from './modules/roms/rom.service';
 import { SaveStateService } from './modules/roms/save-state.service';
+import { buildLogger, loggerPlugin } from './plugins/logger';
 
 process.env.NODE_ENV = process.env.NODE_ENV ?? 'development';
 process.env.PORT = process.env.PORT ?? '3000';
@@ -29,6 +31,8 @@ const createRedisClient = (env: Env): Redis => {
 
 const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
   fastify.decorate('config', env);
+
+  await fastify.register(loggerPlugin);
 
   await fastify.register(fastifyCookie, {
     parseOptions: {
@@ -82,13 +86,19 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
 });
 
 export const createApp = (env: Env = getEnv()): FastifyInstance => {
+  startObservability(env);
+
   const app = Fastify({
-    logger: env.NODE_ENV !== 'test',
+    logger: buildLogger(env),
   });
 
   app.get('/health', async () => ({ status: 'ok' }));
 
   void app.register(appPlugin, { env });
+
+  app.addHook('onClose', async () => {
+    await stopObservability();
+  });
 
   return app;
 };
