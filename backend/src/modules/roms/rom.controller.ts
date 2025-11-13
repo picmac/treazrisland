@@ -1,15 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto';
+import type { Readable } from 'node:stream';
 
-
+import type { FastifyError, FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
-import { createMinioClient, ensureBucket } from './storage';
-
+import type { Env } from '../../config/env';
 import type { RomAssetRecord, RomRecord } from './rom.service';
 import type { SaveStateRecord } from './save-state.service';
-import type { Env } from '../../config/env';
-import type { FastifyError, FastifyPluginAsync, FastifyRequest } from 'fastify';
-import type { Readable } from 'node:stream';
+import { createMinioClient, ensureBucket } from './storage';
 
 const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
