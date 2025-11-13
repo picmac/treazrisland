@@ -22,26 +22,35 @@ class NoopSpanExporter implements SpanExporter {
   }
 }
 
-const hasCustomOtelConfig = Boolean(
-  process.env.OTEL_TRACES_EXPORTER ??
-    process.env.OTEL_EXPORTER_OTLP_ENDPOINT ??
-    process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
-);
+const hasCustomOtelConfig = (): boolean =>
+  Boolean(
+    process.env.OTEL_TRACES_EXPORTER ??
+      process.env.OTEL_EXPORTER_OTLP_ENDPOINT ??
+      process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
+  );
 
 const createExporter = (env: Env): SpanExporter | undefined => {
   if (env.NODE_ENV === 'development') {
     return new ConsoleSpanExporter();
   }
 
-  if (hasCustomOtelConfig) {
+  if (hasCustomOtelConfig()) {
     return undefined;
   }
 
   return new NoopSpanExporter();
 };
 
+const shouldStartObservability = (env: Env): boolean => {
+  if (env.NODE_ENV === 'test' && !hasCustomOtelConfig()) {
+    return false;
+  }
+
+  return true;
+};
+
 export const startObservability = (env: Env): void => {
-  if (sdk) {
+  if (sdk || !shouldStartObservability(env)) {
     return;
   }
 
