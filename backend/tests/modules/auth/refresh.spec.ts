@@ -27,7 +27,9 @@ describe('POST /auth/refresh', () => {
       },
     });
 
-    const initialCookie = loginResponse.cookies.find((cookie) => cookie.name === 'refreshToken');
+    const initialCookie = loginResponse.cookies.find(
+      (cookie: { name: string }) => cookie.name === 'refreshToken',
+    );
 
     expect(initialCookie?.value).toBeDefined();
 
@@ -45,7 +47,9 @@ describe('POST /auth/refresh', () => {
 
     expect(body.accessToken).toBeTypeOf('string');
 
-    const rotatedCookie = refreshResponse.cookies.find((cookie) => cookie.name === 'refreshToken');
+    const rotatedCookie = refreshResponse.cookies.find(
+      (cookie: { name: string }) => cookie.name === 'refreshToken',
+    );
 
     expect(rotatedCookie?.value).toBeDefined();
     expect(rotatedCookie?.value).not.toBe(initialCookie?.value);
