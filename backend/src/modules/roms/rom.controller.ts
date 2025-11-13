@@ -37,7 +37,8 @@ const saveStateBodySchema = z.object({
 });
 
 export const MAX_SAVE_STATE_BYTES = 5 * 1024 * 1024; // 5 MiB
-const MAX_SAVE_STATE_BODY_BYTES = Math.ceil(MAX_SAVE_STATE_BYTES * 1.4);
+const BASE64_OVERHEAD_FACTOR = 4 / 3; // base64 inflates payload size by ~33%
+const MAX_SAVE_STATE_BODY_BYTES = Math.ceil(MAX_SAVE_STATE_BYTES * BASE64_OVERHEAD_FACTOR);
 
 const buildAssetUrl = (env: Env, objectKey: string): string => {
   const protocol = env.OBJECT_STORAGE_USE_SSL ? 'https' : 'http';
