@@ -101,10 +101,12 @@ export default function PlayPage({ params }: PlayPageProps) {
       try {
         const parsed = JSON.parse(storedValue) as { savedAt: string };
         setLastSavedAt(new Date(parsed.savedAt));
+        return;
       } catch (storageError) {
         console.warn('Failed to parse saved state timestamp', storageError);
       }
     }
+    setLastSavedAt(null);
   }, [romId]);
 
   useEffect(() => {
