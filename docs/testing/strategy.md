@@ -6,7 +6,7 @@ This repository uses a Vitest-based strategy for both the Next.js frontend and t
 
 - **Frontend**: Vitest runs against the `src` directory with a jsdom environment, React Fast Refresh awareness via `@vitejs/plugin-react`, and Testing Library helpers configured through `vitest.setup.ts`.
 - **Backend**: Vitest executes the API and domain tests in the `tests` directory using a Node environment with Fastify/Prisma helpers.
-- **Coverage**: Both projects rely on the V8 coverage provider with shared thresholds (60% statements/lines/functions, 50% branches). Reports are written to each package's `coverage` directory in text and machine-readable formats so CI can enforce thresholds.
+- **Coverage**: Both projects rely on the V8 coverage provider with shared thresholds (60% statements/lines/functions, 50% branches). Reports are written to each package's `coverage` directory in text and machine-readable formats so CI can enforce thresholds. Each workspace scopes coverage to files that currently have tests, so contributors should expand the `coverage.include` patterns as new suites are introduced.
 
 ## Commands
 

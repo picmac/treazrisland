@@ -44,6 +44,7 @@ export default defineConfig(
           enabled: hasUnitTests,
           reporter: ['text', 'json-summary', 'html'],
           reportsDirectory: './coverage',
+          include: ['src/app/page.tsx'],
           thresholds: hasUnitTests
             ? {
                 lines: 60,
