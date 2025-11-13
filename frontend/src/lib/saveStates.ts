@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+import { apiClient, type JsonRecord } from './apiClient';
 import type { SaveState } from '@/types/saveState';
 
 export interface LatestSaveStateResponse {
@@ -10,7 +10,7 @@ export interface SaveStateCreateResponse {
   saveState: SaveState;
 }
 
-export interface SaveStatePayload {
+export interface SaveStatePayload extends JsonRecord {
   data: string;
   label?: string;
   slot?: number;
