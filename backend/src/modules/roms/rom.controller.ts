@@ -5,6 +5,7 @@ import type { FastifyError, FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
 import type { Env } from '../../config/env';
+import type { AuthUser } from '../auth/types';
 import type { RomAssetRecord, RomRecord } from './rom.service';
 import type { SaveStateRecord } from './save-state.service';
 import { createMinioClient, ensureBucket } from './storage';
@@ -95,6 +96,31 @@ const getRequestUserId = (user: FastifyRequest['user']): string | undefined => {
   return undefined;
 };
 
+const tryAuthenticateRequest = async (request: FastifyRequest): Promise<void> => {
+  if (request.user) {
+    return;
+  }
+
+  const hasAuthHeader = typeof request.headers.authorization === 'string';
+  const hasRefreshCookie = typeof request.cookies?.refreshToken === 'string';
+
+  if (!hasAuthHeader && !hasRefreshCookie) {
+    return;
+  }
+
+  try {
+    const payload = await request.jwtVerify<{ sub: string; email?: string }>();
+    const user: AuthUser = {
+      id: payload.sub,
+      email: payload.email ?? payload.sub,
+    };
+
+    request.user = user;
+  } catch (error) {
+    request.log.debug({ err: error }, 'Optional authentication for ROM route failed');
+  }
+};
+
 export const romController: FastifyPluginAsync = async (fastify) => {
   const minioClient = createMinioClient(fastify.config);
 
@@ -143,16 +169,22 @@ export const romController: FastifyPluginAsync = async (fastify) => {
       return reply.status(400).send({ error: 'Invalid ROM identifier' });
     }
 
+    await tryAuthenticateRequest(request);
+
     const rom = fastify.romService.findById(parsed.data.id);
 
     if (!rom) {
       return reply.status(404).send({ error: 'ROM not found' });
     }
 
+    const userId = getRequestUserId(request.user);
+    const isFavorite = userId ? fastify.romService.isFavorite(userId, rom.id) : false;
+
     return reply.send({
       rom: {
         ...serializeRomSummary(rom),
         assets: rom.assets.map((asset) => serializeRomAsset(fastify.config, asset)),
+        isFavorite,
       },
     });
   });

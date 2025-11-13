@@ -150,6 +150,27 @@ describe('ROM catalogue routes', () => {
     expect(body.rom.assets[0].url).toBe('http://127.0.0.1:9000/roms/roms/detailed%20rom.zip');
   });
 
+  it('includes favorite state when the requester is authenticated', async () => {
+    const rom = createRom({ title: 'Favorite aware ROM' });
+    const userEmail = 'favorite-state@example.com';
+    app.romService.toggleFavorite(userEmail, rom.id);
+
+    const accessToken = await loginAndGetToken(userEmail);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/roms/${rom.id}`,
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { rom: { isFavorite?: boolean } };
+
+    expect(body.rom.isFavorite).toBe(true);
+  });
+
   it('toggles favorites via the API', async () => {
     const rom = createRom({ title: 'Toggle Favorite ROM' });
     const userEmail = 'toggle@example.com';
