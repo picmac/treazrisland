@@ -89,6 +89,7 @@ Before merging new prompts or regenerated assets, reviewers must complete the fo
 - [ ] Interactive states (hover, pressed, disabled) documented for UI frames and controls.
 - [ ] Localization-ready layouts confirmed (adequate padding for multi-language strings).
 - [ ] Metadata (prompt ID, model, seed, palette reference, preview link) captured in `manifest.json`.
+- [ ] Art lead sign-off captured (link to art approval issue) **before** updating `/frontend/public/themes/pixellab/manifest.json`.
 - [ ] Accessibility feedback from QA (if any) resolved or captured as TODO with owner.
 
 ## Relevant Pixellab.ai Endpoints
