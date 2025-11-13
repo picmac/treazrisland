@@ -63,7 +63,7 @@ jobs:
             ${{ runner.os }}-pnpm-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --recursive --frozen-lockfile
 
       - name: Set up Docker Buildx
         if: ${{ matrix.job.needsDocker }}
