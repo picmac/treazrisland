@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { redeemInviteToken, type InviteRedemptionResponse } from '@/lib/apiClient';
+import { storeAccessToken } from '@/lib/authTokens';
 
 type FormStatus = {
   state: 'idle' | 'loading' | 'success' | 'error';
@@ -45,6 +46,9 @@ export default function InvitePage({ params }: InvitePageProps) {
         password,
         displayName: displayName.trim() || undefined
       });
+      if (response.accessToken) {
+        storeAccessToken(response.accessToken);
+      }
       setResult(response);
       setStatus({ state: 'success', message: response.message || 'Invite redeemed. You can now sign in.' });
     } catch (error) {

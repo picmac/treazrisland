@@ -1,3 +1,5 @@
+import { getStoredAccessToken } from '@/lib/authTokens';
+
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3333';
 
 type JsonRecord = Record<string, unknown>;
@@ -16,10 +18,13 @@ class ApiClient {
   constructor(private readonly baseUrl: string) {}
 
   private async request<T>(path: string, init: RequestInit): Promise<T> {
+    const accessToken = getStoredAccessToken();
+
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...init,
       headers: {
         'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...(init.headers ?? {})
       },
       cache: 'no-store',

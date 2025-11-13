@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { exchangeMagicLinkToken, loginWithPassword, type AuthResponse } from '@/lib/apiClient';
+import { storeAccessToken } from '@/lib/authTokens';
 
 type FormStatus = {
   state: 'idle' | 'loading' | 'success' | 'error';
@@ -43,6 +44,7 @@ export default function LoginPage() {
 
     try {
       const result = await exchangeMagicLinkToken(magicToken.trim());
+      storeAccessToken(result.accessToken);
       setMagicResult(result);
       setMagicStatus({
         state: 'success',
@@ -70,6 +72,7 @@ export default function LoginPage() {
 
     try {
       const result = await loginWithPassword(email.trim(), password);
+      storeAccessToken(result.accessToken);
       setPasswordResult(result);
       setPasswordStatus({
         state: 'success',
