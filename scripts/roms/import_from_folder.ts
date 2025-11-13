@@ -82,10 +82,13 @@ const moveProcessedFiles = async (manifestPath: string, romPath: string): Promis
 
 const resolveUnderImportRoot = (filePath: string): string => {
   const resolved = path.resolve(IMPORT_ROOT, filePath);
-  if (!resolved.startsWith(IMPORT_ROOT)) {
-    throw new Error(`File path escapes import root: ${filePath}`);
+  const relative = path.relative(IMPORT_ROOT, resolved);
+
+  if (relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))) {
+    return resolved;
   }
-  return resolved;
+
+  throw new Error(`File path escapes import root: ${filePath}`);
 };
 
 const processManifestFile = async (manifestPath: string): Promise<void> => {
