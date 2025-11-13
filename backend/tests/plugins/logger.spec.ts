@@ -1,6 +1,6 @@
 import { Writable } from 'node:stream';
 
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify from 'fastify';
 import pino from 'pino';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -28,7 +28,7 @@ class LogCollector extends Writable {
 }
 
 describe('logger plugin', () => {
-  let app: FastifyInstance;
+  let app!: ReturnType<typeof Fastify>;
   let collector: LogCollector;
 
   beforeEach(async () => {

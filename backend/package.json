@@ -43,6 +43,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/supertest": "^2.0.16",
     "@types/bcryptjs": "^2.4.6",
     "@types/dotenv-flow": "^3.3.3",
     "@types/node": "^20.14.9",
