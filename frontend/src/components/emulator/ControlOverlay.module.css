@@ -11,10 +11,11 @@
   padding: 1rem 1.25rem;
   border-radius: 1rem;
   border: 1px solid rgba(247, 183, 51, 0.35);
-  background: rgba(6, 0, 20, 0.7);
+  background: rgba(6, 0, 20, var(--pixellab-overlay-opacity));
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(8px);
   width: min(320px, calc(100vw - 2rem));
+  min-height: var(--pixellab-toolbar-height);
 }
 
 .overlayHeader {
@@ -78,4 +79,30 @@
 
 .statusBadge {
   font-weight: bold;
+}
+
+@media (width <= 480px) {
+  .overlayRoot {
+    inset: auto 1rem 1rem 1rem;
+  }
+
+  .overlayPanel {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border-radius: 0.85rem;
+  }
+
+  .overlayActions {
+    flex-direction: column;
+  }
+
+  .overlayButton {
+    width: 100%;
+  }
+
+  .overlayMeta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
 }

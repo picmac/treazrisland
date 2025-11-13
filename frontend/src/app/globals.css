@@ -6,6 +6,12 @@
   --pixellab-accent: #f7b733;
   --pixellab-accent-muted: #b958f6;
   --pixellab-foreground: #fefae0;
+  --pixellab-overlay-opacity: 0.72;
+  --pixellab-toolbar-height: 3.75rem;
+  --pixellab-breakpoint-xs: 360px;
+  --pixellab-breakpoint-sm: 600px;
+  --pixellab-breakpoint-md: 960px;
+  --pixellab-breakpoint-lg: 1280px;
 }
 
 * {
@@ -32,7 +38,7 @@ body {
   flex: 1;
   width: min(1200px, 100%);
   margin: 0 auto;
-  padding: 1.5rem clamp(1rem, 4vw, 3rem) 3rem;
+  padding: 1.5rem clamp(1.25rem, 4vw, 3rem) 3rem;
 }
 
 .pixellab-theme__header {
@@ -161,7 +167,7 @@ body {
   gap: 1.5rem;
 }
 
-@media (min-width: 960px) {
+@media (width >= 960px) {
   .rom-layout {
     grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr);
     align-items: start;
@@ -177,9 +183,10 @@ body {
   background: rgba(6, 0, 20, 0.65);
   border: 1px solid rgba(249, 96, 204, 0.35);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  min-height: 100%;
 }
 
-@media (min-width: 720px) {
+@media (width >= 600px) {
   .rom-hero {
     grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr);
   }
@@ -445,4 +452,78 @@ body {
   font-size: 0.9rem;
   color: rgba(254, 250, 224, 0.8);
   text-align: center;
+}
+
+@media (width <= 480px) {
+  :root {
+    --pixellab-toolbar-height: 4.5rem;
+  }
+
+  .pixellab-content {
+    padding: 1.25rem 1rem 2.5rem;
+  }
+
+  .rom-layout {
+    gap: 1rem;
+  }
+
+  .rom-hero {
+    padding: 1.25rem;
+    gap: 1rem;
+  }
+
+  .rom-hero__media {
+    min-height: 200px;
+  }
+
+  .rom-hero__meta {
+    font-size: 0.75rem;
+    letter-spacing: 0.15rem;
+  }
+
+  .rom-hero__actions {
+    flex-direction: column;
+  }
+
+  .rom-hero__cta,
+  .rom-hero__favorite {
+    width: 100%;
+  }
+
+  .rom-metadata {
+    padding: 1.25rem;
+  }
+
+  .rom-metadata__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rom-metadata__asset-list li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .play-session__header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .play-session__cta {
+    width: 100%;
+  }
+
+  .play-session__stage {
+    min-height: 360px;
+    padding-bottom: calc(var(--pixellab-toolbar-height) + 1rem);
+  }
+
+  .play-session__canvas {
+    min-height: 360px;
+  }
+
+  .play-session__status {
+    font-size: 0.8rem;
+  }
 }
