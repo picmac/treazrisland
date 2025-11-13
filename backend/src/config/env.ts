@@ -6,6 +6,7 @@ loadEnvFiles({ silent: true });
 export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]),
   PORT: z.coerce.number().int().min(1).max(65535),
+  LOG_LEVEL: z.string().optional(),
   JWT_SECRET: z.string().min(32),
   JWT_ACCESS_TOKEN_TTL: z.coerce.number().int().positive().default(900),
   JWT_REFRESH_TOKEN_TTL: z.coerce.number().int().positive().default(604800),
@@ -30,6 +31,7 @@ export const parseEnv = (source: NodeJS.ProcessEnv = process.env): Env => {
   const result = envSchema.safeParse({
     NODE_ENV: source.NODE_ENV,
     PORT: source.PORT,
+    LOG_LEVEL: source.LOG_LEVEL,
     JWT_SECRET: source.JWT_SECRET,
     JWT_ACCESS_TOKEN_TTL: source.JWT_ACCESS_TOKEN_TTL,
     JWT_REFRESH_TOKEN_TTL: source.JWT_REFRESH_TOKEN_TTL,

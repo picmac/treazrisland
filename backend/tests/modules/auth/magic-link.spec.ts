@@ -37,7 +37,9 @@ describe('POST /auth/magic-link', () => {
 
     expect(body.accessToken).toBeTypeOf('string');
     expect(body.user.id).toBe('player-1');
-    expect(response.cookies.some((cookie) => cookie.name === 'refreshToken')).toBe(true);
+    expect(
+      response.cookies.some((cookie: { name: string }) => cookie.name === 'refreshToken'),
+    ).toBe(true);
   });
 
   it('rejects invalid or expired magic link tokens', async () => {

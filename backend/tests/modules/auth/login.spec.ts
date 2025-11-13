@@ -33,7 +33,9 @@ describe('POST /auth/login', () => {
 
     expect(body.accessToken).toBeTypeOf('string');
     expect(body.user.email).toBe('player@example.com');
-    expect(response.cookies.some((cookie) => cookie.name === 'refreshToken')).toBe(true);
+    expect(
+      response.cookies.some((cookie: { name: string }) => cookie.name === 'refreshToken'),
+    ).toBe(true);
   });
 
   it('rejects invalid credentials', async () => {
