@@ -19,3 +19,14 @@ pnpm --filter frontend start # serve the production build locally
 ```
 
 Additional scripts (linting, formatting, Husky hooks, etc.) are defined in the root `package.json` and automatically cover both the backend and frontend.
+
+## End-to-end tests
+
+Playwright smoke tests live under `tests/playwright/`. Run them against the Docker Compose stack with:
+
+```bash
+pnpm --filter @treazrisland/playwright exec playwright install --with-deps # first run only
+pnpm test:e2e
+```
+
+The helper script boots the stack, waits for the frontend (`5173`) and backend (`4000`) health checks, runs the suite, and drops screenshots/videos/traces into `tests/playwright/artifacts/` for inspection.

@@ -26,8 +26,8 @@ Copy them to `.env` (repository root) or `backend/.env` before running the boots
 | `EMULATOR_HOST` | Hostname for the LocalStack (AWS emulator) bridge. |
 | `EMULATOR_PORT` | Port for the LocalStack (AWS emulator) bridge. |
 | `FRONTEND_PORT` | Port exposed by the frontend container. |
-| `VITE_API_BASE_URL` | HTTP base URL for API requests made from the frontend container. |
-| `VITE_STORAGE_ENDPOINT` | HTTP endpoint that serves MinIO-hosted assets to the frontend container. |
+| `NEXT_PUBLIC_API_BASE_URL` | Public HTTP base URL exposed to the browser for API requests. |
+| `NEXT_INTERNAL_API_BASE_URL` | Internal HTTP base URL used by the frontend server (SSR/data fetching). |
 | `POSTGRES_USER` | Username configured for the PostgreSQL service. |
 | `POSTGRES_PASSWORD` | Password configured for the PostgreSQL service. |
 | `POSTGRES_DB` | Default database created for development. |
