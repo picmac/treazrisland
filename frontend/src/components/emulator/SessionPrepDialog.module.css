@@ -1,0 +1,85 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 10;
+}
+
+.dialog {
+  width: min(480px, 100%);
+  border-radius: 1.25rem;
+  border: 1px solid rgba(249, 96, 204, 0.45);
+  background: linear-gradient(145deg, rgba(6, 0, 20, 0.95), rgba(17, 6, 44, 0.9));
+  box-shadow: 0 40px 70px rgba(0, 0, 0, 0.6);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.dialog h1 {
+  margin: 0;
+  text-transform: uppercase;
+  font-size: 1rem;
+  letter-spacing: 0.15rem;
+  color: var(--pixellab-accent);
+}
+
+.mappingList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.mappingItem {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(254, 250, 224, 0.1);
+}
+
+.mappingItem span:last-child {
+  color: rgba(254, 250, 224, 0.85);
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.secondaryButton,
+.primaryButton {
+  border: none;
+  border-radius: 999px;
+  padding: 0.75rem 1.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.secondaryButton {
+  background: transparent;
+  color: rgba(254, 250, 224, 0.8);
+  border: 1px solid rgba(254, 250, 224, 0.25);
+}
+
+.primaryButton {
+  background: linear-gradient(135deg, var(--pixellab-accent), var(--pixellab-accent-muted));
+  color: #060014;
+}
+
+.dialog p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(254, 250, 224, 0.85);
+  line-height: 1.4;
+}

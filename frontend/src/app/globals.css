@@ -382,3 +382,67 @@ body {
   font-size: 0.7rem;
   letter-spacing: 0.2rem;
 }
+
+.play-session {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-height: 70vh;
+}
+
+.play-session__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.play-session__header h1 {
+  margin: 0.25rem 0 0;
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.play-session__cta {
+  align-self: center;
+  border: 1px solid rgba(254, 250, 224, 0.35);
+  background: transparent;
+  color: var(--pixellab-foreground);
+  border-radius: 999px;
+  padding: 0.65rem 1.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1rem;
+  cursor: pointer;
+}
+
+.play-session__stage {
+  position: relative;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(249, 96, 204, 0.35);
+  background: rgba(6, 0, 20, 0.75);
+  min-height: 420px;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.play-session__canvas {
+  width: 100%;
+  min-height: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.play-session__viewport {
+  width: min(960px, 100%);
+  aspect-ratio: 4 / 3;
+  background: #04000d;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(254, 250, 224, 0.15);
+}
+
+.play-session__status {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(254, 250, 224, 0.8);
+  text-align: center;
+}
