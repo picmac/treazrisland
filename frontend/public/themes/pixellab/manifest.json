@@ -1,0 +1,56 @@
+{
+  "version": "0.1.0",
+  "generatedAt": "2024-05-18T00:00:00.000Z",
+  "tokens": {
+    "palette": {
+      "primary": "#f7b733",
+      "secondary": "#b958f6",
+      "background": {
+        "base": "#060014",
+        "panel": "#12052b"
+      },
+      "foreground": "#fefae0"
+    },
+    "spacing": {
+      "none": "0",
+      "xxs": "0.25rem",
+      "xs": "0.5rem",
+      "sm": "0.75rem",
+      "md": "1rem",
+      "lg": "1.5rem",
+      "xl": "2rem",
+      "xxl": "3rem"
+    },
+    "typography": {
+      "family": "\"Press Start 2P\", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      "weight": 400,
+      "size": {
+        "base": "1rem",
+        "small": "0.85rem",
+        "medium": "1.1rem",
+        "large": "1.35rem"
+      },
+      "lineHeight": {
+        "compact": "1.1",
+        "normal": "1.4",
+        "relaxed": "1.75"
+      }
+    }
+  },
+  "assets": [
+    {
+      "id": "hero-grid",
+      "label": "Neon grid wallpaper",
+      "type": "background",
+      "src": "/themes/pixellab/hero-grid.png",
+      "description": "Placeholder reference for the Pixellab grid wallpaper export."
+    },
+    {
+      "id": "treazr-wordmark",
+      "label": "Treazr Island wordmark",
+      "type": "logo",
+      "src": "/themes/pixellab/wordmark.png",
+      "description": "Wordmark produced from Pixellab prompt set A."
+    }
+  ]
+}
