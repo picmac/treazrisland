@@ -15,7 +15,8 @@
     "typecheck": "pnpm --filter @treazrisland/backend run typecheck && pnpm --filter treazrisland-frontend run typecheck",
     "test": "pnpm -r test",
     "test:watch": "pnpm -r run test:watch",
-    "test:e2e": "./scripts/test-e2e.sh"
+    "test:e2e": "./scripts/test-e2e.sh",
+    "test:security-ack": "node tests/security-checklist-ack.test.js"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.15.0",
