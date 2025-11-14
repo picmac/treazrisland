@@ -27,7 +27,13 @@ jobs:
             const repo = context.repo.repo;
             const requiredLabel = 'security-checklist:acknowledged';
             const acknowledgementPhrase = /security checklist acknowledged/i;
-            const isFork = Boolean(context.payload.pull_request?.head?.repo?.fork);
+            const baseRepoId = context.payload.pull_request?.base?.repo?.id;
+            const headRepoId = context.payload.pull_request?.head?.repo?.id;
+            const repoForkFlag = context.payload.pull_request?.head?.repo?.fork;
+            const isFork = Boolean(
+              repoForkFlag === true ||
+              (baseRepoId && headRepoId && baseRepoId !== headRepoId)
+            );
 
             if (isFork) {
               core.notice('Security checklist gate skipped for forked pull requests.');
