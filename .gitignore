@@ -26,3 +26,10 @@ backend/var/
 # OS
 .DS_Store
 .docker/
+
+# Coverage reports
+coverage/
+**/coverage/
+
+# Playwright assets
+tests/playwright/artifacts/
