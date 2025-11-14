@@ -22,7 +22,10 @@ interface RegisterRomOverrides {
   platformId?: string;
 }
 
-export async function registerTestRom(request: APIRequestContext, overrides: RegisterRomOverrides = {}) {
+export async function registerTestRom(
+  request: APIRequestContext,
+  overrides: RegisterRomOverrides = {},
+) {
   const romLabel = overrides.title ?? `Playwright Drop ${Date.now()}`;
   const platformId = overrides.platformId ?? 'snes';
   const romBuffer = Buffer.from(`${romLabel}-${Math.random()}`);
@@ -41,9 +44,9 @@ export async function registerTestRom(request: APIRequestContext, overrides: Reg
         filename: 'playwright-rom.smc',
         contentType: 'application/octet-stream',
         data: encoded,
-        checksum
-      }
-    }
+        checksum,
+      },
+    },
   });
 
   expect(response.ok()).toBeTruthy();

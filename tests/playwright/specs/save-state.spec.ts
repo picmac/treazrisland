@@ -17,7 +17,10 @@ test.describe('save state management', () => {
     await saveButton.click();
     await expect(page.getByText(/Saved \d/)).toBeVisible();
 
-    const localPayload = await page.evaluate((id) => window.localStorage.getItem(`treazr:save:${id}`), rom.id);
+    const localPayload = await page.evaluate(
+      (id) => window.localStorage.getItem(`treazr:save:${id}`),
+      rom.id,
+    );
     expect(localPayload).toBeTruthy();
 
     await page.getByRole('button', { name: 'Upload Save' }).click();

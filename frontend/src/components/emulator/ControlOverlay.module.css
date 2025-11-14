@@ -56,7 +56,9 @@
   cursor: pointer;
   color: #060014;
   background: linear-gradient(135deg, var(--pixellab-accent), var(--pixellab-accent-muted));
-  transition: transform 120ms ease, opacity 120ms ease;
+  transition:
+    transform 120ms ease,
+    opacity 120ms ease;
 }
 
 .overlayButton:disabled {

@@ -23,7 +23,7 @@ export function ControlOverlay({
   isSaving = false,
   isLoading = false,
   isSyncing = false,
-  disabled = false
+  disabled = false,
 }: ControlOverlayProps) {
   const saveLabel = isSaving ? 'Saving…' : 'Save State';
   const loadLabel = isLoading ? 'Loading…' : 'Load State';
@@ -34,7 +34,11 @@ export function ControlOverlay({
 
   return (
     <div className={styles.overlayRoot} aria-live="polite">
-      <div className={styles.overlayPanel} role="toolbar" aria-label={`${romTitle} emulator controls`}>
+      <div
+        className={styles.overlayPanel}
+        role="toolbar"
+        aria-label={`${romTitle} emulator controls`}
+      >
         <div className={styles.overlayHeader}>
           <h2>Session Controls</h2>
           <p>{romTitle}</p>

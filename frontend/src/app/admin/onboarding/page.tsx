@@ -40,8 +40,9 @@ export default function AdminOnboardingPage() {
             <p className="eyebrow">Admin onboarding</p>
             <h1 id="onboarding-title">Boot up your command deck</h1>
             <p>
-              You are the first steward of Treazr Island&apos;s retro vault. Follow the steps below to introduce
-              yourself, upload a flagship ROM, and unlock invite tools for collaborators and early players.
+              You are the first steward of Treazr Island&apos;s retro vault. Follow the steps below
+              to introduce yourself, upload a flagship ROM, and unlock invite tools for
+              collaborators and early players.
             </p>
           </section>
 
@@ -64,7 +65,8 @@ export default function AdminOnboardingPage() {
                 ))}
               </ul>
               <div className={styles.callout}>
-                Pro tip: drag in a square PNG avatar (512px min) so invites match your studio style guide.
+                Pro tip: drag in a square PNG avatar (512px min) so invites match your studio style
+                guide.
               </div>
               <div className={styles.ctaRow}>
                 <button type="button">Open profile editor</button>
@@ -85,8 +87,8 @@ export default function AdminOnboardingPage() {
                 ))}
               </ul>
               <div className={styles.callout}>
-                EmulatorJS ingests .zip, .nes, .sfc, and .bin files up to 50&nbsp;MB. We auto-scan for known
-                header issues before publishing.
+                EmulatorJS ingests .zip, .nes, .sfc, and .bin files up to 50&nbsp;MB. We auto-scan
+                for known header issues before publishing.
               </div>
               <div className={styles.ctaRow}>
                 <button type="button">Launch ROM uploader</button>

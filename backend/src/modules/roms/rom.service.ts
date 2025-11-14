@@ -115,9 +115,7 @@ export class RomService {
 
     if (filters.genre) {
       const targetGenre = filters.genre.toLowerCase();
-      roms = roms.filter((rom) =>
-        rom.genres.some((genre) => genre.toLowerCase() === targetGenre),
-      );
+      roms = roms.filter((rom) => rom.genres.some((genre) => genre.toLowerCase() === targetGenre));
     }
 
     if (filters.favoriteForUserId) {
@@ -173,9 +171,7 @@ export class RomService {
       return [];
     }
 
-    const normalized = genres
-      .map((genre) => genre.trim())
-      .filter((genre) => genre.length > 0);
+    const normalized = genres.map((genre) => genre.trim()).filter((genre) => genre.length > 0);
 
     return Array.from(new Set(normalized));
   }

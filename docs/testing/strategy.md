@@ -10,14 +10,14 @@ This repository uses a Vitest-based strategy for both the Next.js frontend and t
 
 ## Commands
 
-| Scope | Command | Description |
-| --- | --- | --- |
-| Workspace | `pnpm test` | Runs the `test` script for every workspace (frontend and backend) in run mode with coverage thresholds enforced. |
-| Workspace | `pnpm test:watch` | Runs `test:watch` in every workspace for interactive development feedback. |
-| Frontend | `pnpm --filter treazrisland-frontend test` | Executes Vitest once with jsdom and Testing Library helpers. |
-| Frontend | `pnpm --filter treazrisland-frontend test:watch` | Starts Vitest in watch mode for the frontend only. |
-| Backend | `pnpm --filter @treazrisland/backend test` | Runs the Fastify/Prisma Vitest suite with coverage checks. |
-| Backend | `pnpm --filter @treazrisland/backend test:watch` | Watches backend files and reruns affected Vitest suites. |
+| Scope     | Command                                          | Description                                                                                                      |
+| --------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| Workspace | `pnpm test`                                      | Runs the `test` script for every workspace (frontend and backend) in run mode with coverage thresholds enforced. |
+| Workspace | `pnpm test:watch`                                | Runs `test:watch` in every workspace for interactive development feedback.                                       |
+| Frontend  | `pnpm --filter treazrisland-frontend test`       | Executes Vitest once with jsdom and Testing Library helpers.                                                     |
+| Frontend  | `pnpm --filter treazrisland-frontend test:watch` | Starts Vitest in watch mode for the frontend only.                                                               |
+| Backend   | `pnpm --filter @treazrisland/backend test`       | Runs the Fastify/Prisma Vitest suite with coverage checks.                                                       |
+| Backend   | `pnpm --filter @treazrisland/backend test:watch` | Watches backend files and reruns affected Vitest suites.                                                         |
 
 ## Expectations for Contributors
 

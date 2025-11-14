@@ -20,15 +20,14 @@ describe('ROM catalogue routes', () => {
       platformId: override?.platformId ?? 'nes',
       releaseYear: override?.releaseYear ?? 1990,
       genres: override?.genres ?? ['action'],
-      asset:
-        override?.asset ?? {
-          type: 'ROM',
-          uri: `s3://roms/test-${romCounter}.zip`,
-          objectKey: override?.asset?.objectKey ?? `roms/test-${romCounter}.zip`,
-          checksum: 'a'.repeat(64),
-          contentType: 'application/zip',
-          size: 1024,
-        },
+      asset: override?.asset ?? {
+        type: 'ROM',
+        uri: `s3://roms/test-${romCounter}.zip`,
+        objectKey: override?.asset?.objectKey ?? `roms/test-${romCounter}.zip`,
+        checksum: 'a'.repeat(64),
+        contentType: 'application/zip',
+        size: 1024,
+      },
     });
   };
 

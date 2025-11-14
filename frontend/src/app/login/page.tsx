@@ -49,12 +49,12 @@ export default function LoginPage() {
       setMagicStatus({
         state: 'success',
         message: 'Magic link accepted.',
-        detail: `Welcome back ${result.user.email}`
+        detail: `Welcome back ${result.user.email}`,
       });
     } catch (error) {
       setMagicStatus({
         state: 'error',
-        message: error instanceof Error ? error.message : 'Magic link exchange failed.'
+        message: error instanceof Error ? error.message : 'Magic link exchange failed.',
       });
     }
   };
@@ -77,12 +77,12 @@ export default function LoginPage() {
       setPasswordStatus({
         state: 'success',
         message: 'Password login successful.',
-        detail: `Session issued for ${result.user.email}`
+        detail: `Session issued for ${result.user.email}`,
       });
     } catch (error) {
       setPasswordStatus({
         state: 'error',
-        message: error instanceof Error ? error.message : 'Unable to log in with password.'
+        message: error instanceof Error ? error.message : 'Unable to log in with password.',
       });
     }
   };
@@ -93,14 +93,17 @@ export default function LoginPage() {
         <p className="eyebrow">Secure Docking</p>
         <h1>Authenticate your Treazr Island session</h1>
         <p className="lede">
-          Use the magic link token from your invitation email or fall back to the operator password issued during bootstrap.
+          Use the magic link token from your invitation email or fall back to the operator password
+          issued during bootstrap.
         </p>
       </header>
 
       <div className="auth-grid">
         <article className="auth-card">
           <h2>Magic link entry</h2>
-          <p>Paste the short-lived token supplied via email or CLI invite to receive a fresh session.</p>
+          <p>
+            Paste the short-lived token supplied via email or CLI invite to receive a fresh session.
+          </p>
           <form onSubmit={handleMagicSubmit}>
             <label>
               <span>Magic link token</span>

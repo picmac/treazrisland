@@ -32,7 +32,7 @@ const CORE_BY_PLATFORM: Record<string, string> = {
   gba: 'gba',
   gb: 'gb',
   gbc: 'gbc',
-  n64: 'n64'
+  n64: 'n64',
 };
 
 export default function PlayPage({ params }: PlayPageProps) {
@@ -47,7 +47,11 @@ export default function PlayPage({ params }: PlayPageProps) {
   const emulatorContainerRef = useRef<HTMLDivElement>(null);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
   const { pushToast } = useToast();
-  const { latestSaveState, isLoading: isLoadingCloudSave, loadLatestSaveState } = useSaveStates(romId);
+  const {
+    latestSaveState,
+    isLoading: isLoadingCloudSave,
+    loadLatestSaveState,
+  } = useSaveStates(romId);
   const [isSyncingCloudSave, setIsSyncingCloudSave] = useState(false);
 
   useEffect(() => {
@@ -172,7 +176,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     try {
       window.localStorage.setItem(
         getSaveKey(romId),
-        JSON.stringify({ romId, savedAt: nextTimestamp.toISOString() })
+        JSON.stringify({ romId, savedAt: nextTimestamp.toISOString() }),
       );
       setLastSavedAt(nextTimestamp);
     } finally {
@@ -186,13 +190,13 @@ export default function PlayPage({ params }: PlayPageProps) {
         if (!response) {
           pushToast({
             title: 'No cloud save yet',
-            description: 'Create a cloud save before loading your progress.'
+            description: 'Create a cloud save before loading your progress.',
           });
           return;
         }
         const savedAtLabel = new Date(response.saveState.updatedAt).toLocaleTimeString([], {
           hour: '2-digit',
-          minute: '2-digit'
+          minute: '2-digit',
         });
         pushToast({ title: 'Cloud save loaded', description: `Checkpoint from ${savedAtLabel}` });
       })
@@ -200,7 +204,9 @@ export default function PlayPage({ params }: PlayPageProps) {
         pushToast({
           title: 'Failed to load save',
           description:
-            loadError instanceof Error ? loadError.message : 'Unable to retrieve the latest save state.'
+            loadError instanceof Error
+              ? loadError.message
+              : 'Unable to retrieve the latest save state.',
         });
       });
   };
@@ -219,7 +225,7 @@ export default function PlayPage({ params }: PlayPageProps) {
       const savePayload = {
         romId,
         title: rom.title,
-        savedAt: new Date().toISOString()
+        savedAt: new Date().toISOString(),
       };
       const data = encodeToBase64(JSON.stringify(savePayload));
       if (!data) {
@@ -229,18 +235,20 @@ export default function PlayPage({ params }: PlayPageProps) {
         data,
         label: `Session backup • ${rom.title}`,
         slot: 1,
-        contentType: 'application/json'
+        contentType: 'application/json',
       });
       await loadLatestSaveState();
       pushToast({
         title: 'Save uploaded',
-        description: 'Your progress is now synced to Treazr Cloud.'
+        description: 'Your progress is now synced to Treazr Cloud.',
       });
     } catch (syncError) {
       pushToast({
         title: 'Upload failed',
         description:
-          syncError instanceof Error ? syncError.message : 'Unable to upload your save at the moment.'
+          syncError instanceof Error
+            ? syncError.message
+            : 'Unable to upload your save at the moment.',
       });
     } finally {
       setIsSyncingCloudSave(false);
@@ -254,23 +262,21 @@ export default function PlayPage({ params }: PlayPageProps) {
           <p className="eyebrow">Live emulator session</p>
           <h1>{rom?.title ?? 'Preparing ROM…'}</h1>
         </div>
-        <button
-          type="button"
-          className="play-session__cta"
-          onClick={() => setShowPrepDialog(true)}
-        >
+        <button type="button" className="play-session__cta" onClick={() => setShowPrepDialog(true)}>
           Controller Map
         </button>
       </header>
 
       <div className="play-session__stage">
-        <div ref={emulatorContainerRef} className="play-session__canvas" aria-label="Emulator viewport">
+        <div
+          ref={emulatorContainerRef}
+          className="play-session__canvas"
+          aria-label="Emulator viewport"
+        >
           {!isSessionReady && (
             <p className="play-session__status">Confirm your controller to start the emulator.</p>
           )}
-          {loadState === 'loading' && (
-            <p className="play-session__status">Fetching ROM dossier…</p>
-          )}
+          {loadState === 'loading' && <p className="play-session__status">Fetching ROM dossier…</p>}
           {loadState === 'error' && error && (
             <p className="play-session__status" role="alert">
               {error}

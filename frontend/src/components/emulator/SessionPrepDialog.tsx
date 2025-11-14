@@ -21,7 +21,7 @@ const DEFAULT_MAPPINGS: MappingItem[] = [
   { action: 'A', binding: 'X' },
   { action: 'B', binding: 'Z' },
   { action: 'Start', binding: 'Enter' },
-  { action: 'Select', binding: 'Shift' }
+  { action: 'Select', binding: 'Shift' },
 ];
 
 export function SessionPrepDialog({
@@ -29,7 +29,7 @@ export function SessionPrepDialog({
   romTitle,
   mappings = DEFAULT_MAPPINGS,
   onConfirm,
-  onCancel
+  onCancel,
 }: SessionPrepDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
@@ -39,12 +39,19 @@ export function SessionPrepDialog({
   }
 
   return (
-    <div className={styles.backdrop} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId}>
+    <div
+      className={styles.backdrop}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
+    >
       <div className={styles.dialog}>
         <h1 id={titleId}>Controller Check</h1>
         <p id={descriptionId}>
-          {romTitle ? `Confirm your controls before diving into ${romTitle}.` : 'Confirm your controls before starting your session.'}
-          {' '}
+          {romTitle
+            ? `Confirm your controls before diving into ${romTitle}.`
+            : 'Confirm your controls before starting your session.'}{' '}
           Plug in a gamepad now or stick with the keyboard defaults below.
         </p>
         <ul className={styles.mappingList}>

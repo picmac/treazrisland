@@ -40,7 +40,9 @@ const readValue = async (label: string, options: PromptedValueOptions = {}): Pro
     if (schema) {
       const parsed = schema.safeParse(envValue);
       if (!parsed.success) {
-        throw new Error(`${envKey} is invalid: ${parsed.error.errors[0]?.message ?? parsed.error.message}`);
+        throw new Error(
+          `${envKey} is invalid: ${parsed.error.errors[0]?.message ?? parsed.error.message}`,
+        );
       }
 
       return parsed.data;
@@ -62,7 +64,9 @@ const readValue = async (label: string, options: PromptedValueOptions = {}): Pro
     if (schema) {
       const parsed = schema.safeParse(value);
       if (!parsed.success) {
-        console.error(`${label} is invalid: ${parsed.error.errors[0]?.message ?? parsed.error.message}`);
+        console.error(
+          `${label} is invalid: ${parsed.error.errors[0]?.message ?? parsed.error.message}`,
+        );
         continue;
       }
 
@@ -73,7 +77,10 @@ const readValue = async (label: string, options: PromptedValueOptions = {}): Pro
   }
 };
 
-const getEmail = () => readValue('Admin email', { envKey: 'ADMIN_EMAIL', required: true, schema: emailSchema }).then((value) => value.toLowerCase());
+const getEmail = () =>
+  readValue('Admin email', { envKey: 'ADMIN_EMAIL', required: true, schema: emailSchema }).then(
+    (value) => value.toLowerCase(),
+  );
 
 const getUsername = (defaultValue: string) =>
   readValue('Admin username', {
@@ -84,7 +91,9 @@ const getUsername = (defaultValue: string) =>
   }).then((value) => value.toLowerCase());
 
 const getDisplayName = (defaultValue: string) =>
-  readValue('Display name (optional)', { envKey: 'ADMIN_DISPLAY_NAME', defaultValue }).then((value) => value || defaultValue);
+  readValue('Display name (optional)', { envKey: 'ADMIN_DISPLAY_NAME', defaultValue }).then(
+    (value) => value || defaultValue,
+  );
 
 const getPassword = async (): Promise<string> => {
   const envPassword = process.env.ADMIN_PASSWORD?.trim();
@@ -92,7 +101,9 @@ const getPassword = async (): Promise<string> => {
   if (envPassword) {
     const parsed = passwordSchema.safeParse(envPassword);
     if (!parsed.success) {
-      throw new Error(`ADMIN_PASSWORD is invalid: ${parsed.error.errors[0]?.message ?? parsed.error.message}`);
+      throw new Error(
+        `ADMIN_PASSWORD is invalid: ${parsed.error.errors[0]?.message ?? parsed.error.message}`,
+      );
     }
 
     console.log('Using password provided via ADMIN_PASSWORD environment variable.');
@@ -100,7 +111,11 @@ const getPassword = async (): Promise<string> => {
   }
 
   while (true) {
-    const password = await readValue('Password', { hidden: true, required: true, schema: passwordSchema });
+    const password = await readValue('Password', {
+      hidden: true,
+      required: true,
+      schema: passwordSchema,
+    });
     const confirmation = await prompt.ask('Confirm password: ', { hidden: true });
 
     if (password !== confirmation) {

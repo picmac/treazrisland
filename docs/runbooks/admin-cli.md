@@ -32,12 +32,12 @@ The script prompts for:
 Set any of the following environment variables to pre-fill the prompts (useful for automation). Invalid values will stop the
 script before touching the database.
 
-| Variable | Purpose |
-| --- | --- |
-| `ADMIN_EMAIL` | Email for the admin account. |
-| `ADMIN_USERNAME` | Username for the admin account. |
-| `ADMIN_DISPLAY_NAME` | Optional display name. |
-| `ADMIN_PASSWORD` | Plain text password that will be hashed before saving. |
+| Variable             | Purpose                                                |
+| -------------------- | ------------------------------------------------------ |
+| `ADMIN_EMAIL`        | Email for the admin account.                           |
+| `ADMIN_USERNAME`     | Username for the admin account.                        |
+| `ADMIN_DISPLAY_NAME` | Optional display name.                                 |
+| `ADMIN_PASSWORD`     | Plain text password that will be hashed before saving. |
 
 ## Generate manual invite codes
 
@@ -57,10 +57,10 @@ Successful execution prints the generated invite code plus metadata (reserved em
 
 ### Environment overrides
 
-| Variable | Purpose |
-| --- | --- |
-| `INVITE_EMAIL` | Optional invitee email constraint. |
-| `INVITE_CREATOR_EMAIL` | Email of an existing user to attribute as the creator. |
+| Variable                 | Purpose                                                         |
+| ------------------------ | --------------------------------------------------------------- |
+| `INVITE_EMAIL`           | Optional invitee email constraint.                              |
+| `INVITE_CREATOR_EMAIL`   | Email of an existing user to attribute as the creator.          |
 | `INVITE_EXPIRES_IN_DAYS` | Non-negative integer controlling the expiry window (0 = never). |
 
 Provide these variables to skip the interactive questions—for example when embedding the workflow inside higher-level

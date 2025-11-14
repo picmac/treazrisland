@@ -11,24 +11,24 @@ export function RomMetadataPanel({ rom }: RomMetadataPanelProps) {
     { label: 'Release', value: rom.releaseYear ? rom.releaseYear.toString() : 'Unannounced' },
     {
       label: 'Genres',
-      value: rom.genres.length > 0 ? rom.genres.join(', ') : 'Awaiting tags'
+      value: rom.genres.length > 0 ? rom.genres.join(', ') : 'Awaiting tags',
     },
     {
       label: 'Primary asset',
-      value: primaryAsset ? describeAsset(primaryAsset) : 'Pending upload'
+      value: primaryAsset ? describeAsset(primaryAsset) : 'Pending upload',
     },
     {
       label: 'Checksum',
-      value: primaryAsset ? shortenChecksum(primaryAsset.checksum) : '—'
+      value: primaryAsset ? shortenChecksum(primaryAsset.checksum) : '—',
     },
     {
       label: 'Updated',
       value: new Date(rom.updatedAt).toLocaleDateString(undefined, {
         year: 'numeric',
         month: 'short',
-        day: 'numeric'
-      })
-    }
+        day: 'numeric',
+      }),
+    },
   ];
 
   return (

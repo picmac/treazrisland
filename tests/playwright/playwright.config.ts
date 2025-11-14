@@ -12,11 +12,11 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   timeout: 90_000,
   expect: {
-    timeout: 10_000
+    timeout: 10_000,
   },
   reporter: [
     ['list'],
-    ['html', { outputFolder: path.join(artifactsRoot, 'html-report'), open: 'never' }]
+    ['html', { outputFolder: path.join(artifactsRoot, 'html-report'), open: 'never' }],
   ],
   outputDir: path.join(artifactsRoot, 'test-results'),
   use: {
@@ -24,12 +24,12 @@ export default defineConfig({
     trace: 'retain-on-failure',
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    actionTimeout: 15_000
+    actionTimeout: 15_000,
   },
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] }
-    }
-  ]
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
 });

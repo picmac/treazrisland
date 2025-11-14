@@ -25,9 +25,7 @@ export function ProgressSteps({ steps }: ProgressStepsProps) {
             </span>
             <div>
               <p className={styles.stepTitle}>{step.title}</p>
-              {step.description && (
-                <p className={styles.stepDescription}>{step.description}</p>
-              )}
+              {step.description && <p className={styles.stepDescription}>{step.description}</p>}
             </div>
           </li>
         );

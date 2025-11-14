@@ -20,14 +20,21 @@
 
 body {
   margin: 0;
-  font-family: 'Press Start 2P', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family:
+    'Press Start 2P',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   background-color: var(--pixellab-bg-primary);
   color: var(--pixellab-foreground);
 }
 
 .pixellab-grid {
   min-height: 100vh;
-  background-image: radial-gradient(circle at top, rgba(249, 96, 204, 0.35), transparent 60%),
+  background-image:
+    radial-gradient(circle at top, rgba(249, 96, 204, 0.35), transparent 60%),
     linear-gradient(135deg, rgba(12, 33, 79, 0.8), rgba(7, 2, 33, 0.95));
   background-attachment: fixed;
   display: flex;

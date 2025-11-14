@@ -4,7 +4,7 @@ import { z } from 'zod';
 loadEnvFiles({ silent: true });
 
 export const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]),
+  NODE_ENV: z.enum(['development', 'test', 'production']),
   PORT: z.coerce.number().int().min(1).max(65535),
   LOG_LEVEL: z.string().optional(),
   JWT_SECRET: z.string().min(32),
@@ -15,13 +15,13 @@ export const envSchema = z.object({
   OBJECT_STORAGE_ENDPOINT: z.string().min(1),
   OBJECT_STORAGE_PORT: z.coerce.number().int().min(1).max(65535),
   OBJECT_STORAGE_USE_SSL: z
-    .enum(["true", "false"])
-    .default("false")
-    .transform((value) => value === "true"),
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   OBJECT_STORAGE_ACCESS_KEY: z.string().min(1),
   OBJECT_STORAGE_SECRET_KEY: z.string().min(1),
   OBJECT_STORAGE_BUCKET: z.string().min(1),
-  OBJECT_STORAGE_REGION: z.string().min(1).default("us-east-1"),
+  OBJECT_STORAGE_REGION: z.string().min(1).default('us-east-1'),
   OBJECT_STORAGE_PRESIGNED_TTL: z.coerce.number().int().positive().default(300),
 });
 
@@ -48,7 +48,7 @@ export const parseEnv = (source: NodeJS.ProcessEnv = process.env): Env => {
   });
 
   if (!result.success) {
-    throw new Error("Invalid environment configuration", { cause: result.error });
+    throw new Error('Invalid environment configuration', { cause: result.error });
   }
 
   return result.data;

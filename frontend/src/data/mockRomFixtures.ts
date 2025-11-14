@@ -21,7 +21,7 @@ const MOCK_ROM_FIXTURES: Record<string, RomDetails> = {
         contentType: 'image/png',
         size: 204800,
         createdAt: '2024-06-01T00:00:00.000Z',
-        url: '/themes/pixellab/hero-grid.png'
+        url: '/themes/pixellab/hero-grid.png',
       },
       {
         id: 'rom-build',
@@ -30,7 +30,7 @@ const MOCK_ROM_FIXTURES: Record<string, RomDetails> = {
         contentType: 'application/octet-stream',
         size: 1048576,
         createdAt: '2024-06-01T00:00:00.000Z',
-        url: 'https://example.com/romm-prototype.smc'
+        url: 'https://example.com/romm-prototype.smc',
       },
       {
         id: 'pitch-deck',
@@ -39,10 +39,10 @@ const MOCK_ROM_FIXTURES: Record<string, RomDetails> = {
         contentType: 'application/pdf',
         size: 512000,
         createdAt: '2024-06-01T00:00:00.000Z',
-        url: 'https://example.com/romm-prototype-notes.pdf'
-      }
-    ]
-  }
+        url: 'https://example.com/romm-prototype-notes.pdf',
+      },
+    ],
+  },
 };
 
 const favoriteStore = new Map<string, boolean>();
@@ -52,12 +52,12 @@ export function getMockRomDetails(id: string): RomDetails {
   const baseRom = MOCK_ROM_FIXTURES[id] ?? {
     ...MOCK_ROM_FIXTURES['romm-prototype'],
     id,
-    title: `Treazr Drop ${id.toUpperCase()}`
+    title: `Treazr Drop ${id.toUpperCase()}`,
   };
 
   return {
     ...baseRom,
-    isFavorite: favoriteStore.get(id) ?? baseRom.isFavorite ?? false
+    isFavorite: favoriteStore.get(id) ?? baseRom.isFavorite ?? false,
   };
 }
 
@@ -82,12 +82,12 @@ export function persistMockSaveState(id: string, payload: SaveStatePayload): Sav
     contentType: payload.contentType,
     checksum: `mock-${payload.data.length}`,
     createdAt: timestamp,
-    updatedAt: timestamp
+    updatedAt: timestamp,
   };
 
   saveStateStore.set(id, {
     saveState,
-    data: payload.data
+    data: payload.data,
   });
 
   return saveState;
