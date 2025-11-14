@@ -14,8 +14,8 @@ services:
   backend:
     environment:
       DATABASE_URL: postgresql://treazr:treazr@localhost:5432/treazr
-      STORAGE_ACCESS_KEY: local_dev_access_key
-      STORAGE_SECRET_KEY: local_dev_secret_key
+      OBJECT_STORAGE_ACCESS_KEY: local_dev_access_key
+      OBJECT_STORAGE_SECRET_KEY: local_dev_secret_key
     ports:
       - '4000:4000'
     volumes:
