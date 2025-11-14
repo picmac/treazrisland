@@ -17,6 +17,7 @@ test.describe('rom favorites', () => {
 
     await favoriteButton.click();
     await expect(favoriteButton).toHaveText('★ Favorited');
+    await expect(page.getByRole('status', { name: 'Added to favorites.' })).toBeVisible();
 
     await page.reload();
     await expect(page.getByRole('button', { name: '★ Favorited' })).toBeVisible();
@@ -40,6 +41,7 @@ test.describe('rom favorites', () => {
 
     await favoritedButton.click();
     await expect(favoritedButton).toHaveText('☆ Add to favorites');
+    await expect(page.getByRole('status', { name: 'Removed from favorites.' })).toBeVisible();
 
     await page.reload();
     await expect(page.getByRole('button', { name: FAVORITE_BUTTON_LABEL })).toHaveText(
