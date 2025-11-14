@@ -6,6 +6,9 @@ import { RomMetadataPanel } from '@/components/rom/RomMetadataPanel';
 import { ACCESS_TOKEN_KEY } from '@/constants/auth';
 import { fetchRomDetails } from '@/lib/roms';
 
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 interface RomPageParams {
   params: {
     id: string;

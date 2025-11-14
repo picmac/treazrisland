@@ -4,6 +4,8 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import type { RomAsset, RomDetails } from '@/types/rom';
 import { ApiError, toggleRomFavorite } from '@/lib/apiClient';
+import { getStoredAccessToken } from '@/lib/authTokens';
+import { fetchRomDetails } from '@/lib/roms';
 
 interface RomHeroProps {
   rom: RomDetails;
@@ -19,6 +21,36 @@ export function RomHero({ rom }: RomHeroProps) {
   useEffect(() => {
     setIsFavorite(rom.isFavorite ?? false);
   }, [rom.id, rom.isFavorite]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const accessToken = getStoredAccessToken();
+
+    if (!accessToken) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const refreshFavoriteState = async () => {
+      try {
+        const freshRom = await fetchRomDetails(rom.id);
+        if (!cancelled && freshRom) {
+          setIsFavorite(freshRom.isFavorite ?? false);
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('Unable to refresh favorite state for ROM', rom.id, error);
+        }
+      }
+    };
+
+    void refreshFavoriteState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rom.id]);
 
   const heroAsset = selectHeroAsset(rom.assets);
   const platformLabel = rom.platformId.toUpperCase();
