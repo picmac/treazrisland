@@ -31,7 +31,7 @@ Copy them to `.env` (repository root) or `backend/.env` before running the boots
 | `EMULATOR_HOST`                | Hostname for the LocalStack (AWS emulator) bridge.                               |
 | `EMULATOR_PORT`                | Port for the LocalStack (AWS emulator) bridge.                                   |
 | `FRONTEND_PORT`                | Port exposed by the frontend container.                                          |
-| `NEXT_PUBLIC_API_BASE_URL`     | Public HTTP base URL exposed to the browser for API requests.                    |
+| `NEXT_PUBLIC_API_BASE_URL`     | Public HTTP base URL (default `/api`) that the browser uses for API requests.    |
 | `NEXT_INTERNAL_API_BASE_URL`   | Internal HTTP base URL used by the frontend server (SSR/data fetching).          |
 | `POSTGRES_USER`                | Username configured for the PostgreSQL service.                                  |
 | `POSTGRES_PASSWORD`            | Password configured for the PostgreSQL service.                                  |
@@ -46,6 +46,10 @@ Copy them to `.env` (repository root) or `backend/.env` before running the boots
 | `LOCALSTACK_DEBUG`             | Enables verbose logging for LocalStack when set to `1`.                          |
 | `LOCALSTACK_REGION`            | AWS region emulated by LocalStack.                                               |
 | `LOCALSTACK_EDGE_PORT`         | Host port published by the LocalStack edge endpoint.                             |
+
+The frontend dev server proxies every request that hits `NEXT_PUBLIC_API_BASE_URL` to
+`NEXT_INTERNAL_API_BASE_URL`, keeping browser traffic same-origin while still reaching the
+Fastify backend.
 
 ## Backend (`backend/.env`)
 

@@ -1,7 +1,6 @@
 import { getStoredAccessToken } from '@/lib/authTokens';
 
-const DEFAULT_BROWSER_API_BASE_URL =
-  process.env.NODE_ENV === 'development' ? '/api' : 'http://localhost:3333';
+const DEFAULT_BROWSER_API_BASE_URL = '/api';
 const DEFAULT_SERVER_API_BASE_URL = 'http://localhost:4000';
 
 const resolveBrowserBaseUrl = () =>
