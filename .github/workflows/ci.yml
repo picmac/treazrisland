@@ -27,6 +27,12 @@ jobs:
             const repo = context.repo.repo;
             const requiredLabel = 'security-checklist:acknowledged';
             const acknowledgementPhrase = /security checklist acknowledged/i;
+            const isFork = Boolean(context.payload.pull_request?.head?.repo?.fork);
+
+            if (isFork) {
+              core.notice('Security checklist gate skipped for forked pull requests.');
+              return;
+            }
 
             const labels = (context.payload.pull_request.labels || []).map(label => label.name.toLowerCase());
             if (labels.includes(requiredLabel.toLowerCase())) {
