@@ -44,6 +44,9 @@ describe('fetchRomDetails', () => {
 
     render(<RomHero rom={rom!} />);
 
+    const playNowLink = screen.getByRole('link', { name: /Play Now/i });
+    expect(playNowLink).toHaveAttribute('href', `/play/${romFixture.id}`);
+
     const favoriteButton = screen.getByRole('button', { name: /favorited/i });
     expect(favoriteButton).toHaveAttribute('aria-pressed', 'true');
   });
