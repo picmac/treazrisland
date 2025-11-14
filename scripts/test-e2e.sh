@@ -14,14 +14,51 @@ PLAYWRIGHT_API_URL="${PLAYWRIGHT_API_URL:-$DEFAULT_BACKEND_URL}"
 KEEP_STACK="${KEEP_E2E_STACK:-0}"
 WAIT_ATTEMPTS="${E2E_WAIT_ATTEMPTS:-120}"
 WAIT_DELAY_SECONDS="${E2E_WAIT_DELAY_SECONDS:-3}"
+LOG_STREAM_SERVICES="${E2E_LOG_STREAM_SERVICES:-frontend backend}"
+LOG_STREAM_FILE="$ARTIFACT_DIR/stack-stream.log"
+LOG_STREAM_PID=""
 
 log() {
   echo "[test:e2e] $*"
 }
 
+log_block() {
+  local prefix="$1"
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    log "[$prefix] $line"
+  done
+}
+
 if ! command -v docker >/dev/null 2>&1; then
   log "Docker CLI is required to run test:e2e"
   exit 1
+fi
+
+log "Configuration summary:"
+log "  COMPOSE_FILE=$COMPOSE_FILE"
+log "  COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME"
+log "  WAIT_ATTEMPTS=$WAIT_ATTEMPTS"
+log "  WAIT_DELAY_SECONDS=${WAIT_DELAY_SECONDS}s"
+log "  PLAYWRIGHT_BASE_URL=$PLAYWRIGHT_BASE_URL"
+log "  PLAYWRIGHT_API_URL=$PLAYWRIGHT_API_URL"
+if [[ -n "${LOG_STREAM_SERVICES// }" ]]; then
+  log "  E2E_LOG_STREAM_SERVICES=$LOG_STREAM_SERVICES"
+else
+  log "  E2E_LOG_STREAM_SERVICES=<disabled>"
+fi
+
+docker --version 2>&1 | log_block docker
+docker compose version 2>&1 | log_block docker
+if docker info >/dev/null 2>&1; then
+  docker info --format 'ServerVersion={{.ServerVersion}} Kernel={{.KernelVersion}}' 2>/dev/null \
+    | log_block docker
+fi
+if command -v df >/dev/null 2>&1; then
+  df -h . | log_block disk
+fi
+if command -v free >/dev/null 2>&1; then
+  free -m | log_block memory
 fi
 
 compose() {
@@ -30,7 +67,17 @@ compose() {
 
 mkdir -p "$ARTIFACT_DIR"
 
+stop_log_stream() {
+  if [[ -n "$LOG_STREAM_PID" ]] && kill -0 "$LOG_STREAM_PID" >/dev/null 2>&1; then
+    log "Stopping live log stream (pid $LOG_STREAM_PID)"
+    kill "$LOG_STREAM_PID" >/dev/null 2>&1 || true
+    wait "$LOG_STREAM_PID" 2>/dev/null || true
+    LOG_STREAM_PID=""
+  fi
+}
+
 cleanup() {
+  stop_log_stream
   log "Collecting Docker Compose logs"
   compose logs --no-color \
     > "$ARTIFACT_DIR/compose.log" 2>&1 || true
@@ -49,6 +96,42 @@ cd "$ROOT_DIR"
 
 log "Booting Docker Compose stack ($COMPOSE_FILE)"
 compose up -d --build
+
+dump_stack_state() {
+  log '--- docker compose ps ---'
+  compose ps | log_block ps || true
+  if command -v docker >/dev/null 2>&1; then
+    log '--- docker stats (no-stream) ---'
+    docker stats --no-stream \
+      | log_block stats || true
+  fi
+  log '--- end of snapshot ---'
+}
+
+start_log_stream() {
+  local services_raw="$1"
+  local trimmed="${services_raw// }"
+
+  if [[ -z "$trimmed" ]]; then
+    log "Live log streaming disabled"
+    return
+  fi
+
+  read -ra services <<< "$services_raw"
+  log "Starting live log stream for: ${services[*]} (-> $LOG_STREAM_FILE)"
+  (
+    set +e
+    compose logs --timestamps --no-color --follow "${services[@]}" 2>&1 \
+      | tee -a "$LOG_STREAM_FILE" \
+      | while IFS= read -r line; do
+          log "[stream] $line"
+        done
+  ) &
+  LOG_STREAM_PID=$!
+}
+
+dump_stack_state
+start_log_stream "$LOG_STREAM_SERVICES"
 
 wait_for_url() {
   local url="$1"
@@ -80,6 +163,7 @@ wait_for_url() {
     compose logs --tail 200 "$service_name" || true
     log "--- End of $service_name logs ---"
   fi
+  dump_stack_state
   exit 1
 }
 
