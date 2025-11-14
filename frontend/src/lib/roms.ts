@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './apiClient';
+import { ApiError, apiClient } from './apiClient';
 import type { RomDetails } from '@/types/rom';
 
 interface RomDetailsResponse {
@@ -6,21 +6,16 @@ interface RomDetailsResponse {
 }
 
 export async function fetchRomDetails(romId: string): Promise<RomDetails | null> {
-  const response = await fetch(`${API_BASE_URL}/roms/${romId}`, {
-    cache: 'no-store',
-  });
-
-  if (response.status === 404) {
-    return null;
+  try {
+    const payload = await apiClient.get<RomDetailsResponse>(`/roms/${romId}`);
+    return {
+      ...payload.rom,
+      isFavorite: payload.rom.isFavorite ?? false,
+    };
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return null;
+    }
+    throw error;
   }
-
-  if (!response.ok) {
-    throw new Error(`Failed to load ROM (${response.status})`);
-  }
-
-  const payload = (await response.json()) as RomDetailsResponse;
-  return {
-    ...payload.rom,
-    isFavorite: payload.rom.isFavorite ?? false,
-  };
 }
