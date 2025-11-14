@@ -23,14 +23,16 @@ const generateInviteCode = (length = 20): string => {
 const readOptionalEmail = async (
   label: string,
   envKey?: string,
-  options: { allowEmpty?: boolean } = {}
+  options: { allowEmpty?: boolean } = {},
 ): Promise<string | null> => {
   if (envKey) {
     const envValue = process.env[envKey]?.trim();
     if (envValue) {
       const parsed = emailSchema.safeParse(envValue.toLowerCase());
       if (!parsed.success) {
-        throw new Error(`${envKey} is invalid: ${parsed.error.errors[0]?.message ?? parsed.error.message}`);
+        throw new Error(
+          `${envKey} is invalid: ${parsed.error.errors[0]?.message ?? parsed.error.message}`,
+        );
       }
 
       console.log(`${label}: ${parsed.data} (from ${envKey})`);
@@ -39,7 +41,9 @@ const readOptionalEmail = async (
   }
 
   while (true) {
-    const answer = await prompt.ask(`${label}${options.allowEmpty ? ' (leave blank to skip)' : ''}: `);
+    const answer = await prompt.ask(
+      `${label}${options.allowEmpty ? ' (leave blank to skip)' : ''}: `,
+    );
     const value = answer.trim();
     if (!value && options.allowEmpty) {
       return null;
@@ -52,7 +56,9 @@ const readOptionalEmail = async (
 
     const parsed = emailSchema.safeParse(value.toLowerCase());
     if (!parsed.success) {
-      console.error(`${label} is invalid: ${parsed.error.errors[0]?.message ?? parsed.error.message}`);
+      console.error(
+        `${label} is invalid: ${parsed.error.errors[0]?.message ?? parsed.error.message}`,
+      );
       continue;
     }
 
@@ -65,7 +71,9 @@ const getCreatorId = async (): Promise<string | null> => {
   if (envCreator) {
     const parsed = emailSchema.safeParse(envCreator.toLowerCase());
     if (!parsed.success) {
-      throw new Error(`INVITE_CREATOR_EMAIL is invalid: ${parsed.error.errors[0]?.message ?? parsed.error.message}`);
+      throw new Error(
+        `INVITE_CREATOR_EMAIL is invalid: ${parsed.error.errors[0]?.message ?? parsed.error.message}`,
+      );
     }
 
     console.log(`Creator email: ${parsed.data} (from INVITE_CREATOR_EMAIL)`);
@@ -122,7 +130,9 @@ const getExpirationInDays = async (): Promise<number> => {
 
 const main = async () => {
   try {
-    const inviteeEmail = await readOptionalEmail('Invitee email (optional)', 'INVITE_EMAIL', { allowEmpty: true });
+    const inviteeEmail = await readOptionalEmail('Invitee email (optional)', 'INVITE_EMAIL', {
+      allowEmpty: true,
+    });
     const creatorId = await getCreatorId();
     const expiresInDays = await getExpirationInDays();
 
@@ -131,7 +141,8 @@ const main = async () => {
         code: generateInviteCode(),
         email: inviteeEmail,
         createdById: creatorId ?? undefined,
-        expiresAt: expiresInDays === 0 ? null : new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000),
+        expiresAt:
+          expiresInDays === 0 ? null : new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000),
       },
     });
 

@@ -4,13 +4,13 @@ This guide standardises the local development toolchain so that future bootstrap
 
 ## Required tool versions
 
-| Tool | Version | Notes |
-| --- | --- | --- |
-| Node.js | 20.14.0 (LTS) | Aligns with current pnpm compatibility and will be enforced via asdf and the `package.json` `engines` field. |
-| pnpm | 9.5.0 | Matches pnpm releases verified against Node.js 20. |
-| Docker Desktop / Docker Engine | 26.1.x | Required for the forthcoming bootstrap script that builds and starts containers. |
-| PostgreSQL | 16.3 | Matches the target production major version; use either local binaries or Docker image `postgres:16`. |
-| Redis | 7.2.4 | Matches the cache layer the services are designed to run against. |
+| Tool                           | Version       | Notes                                                                                                        |
+| ------------------------------ | ------------- | ------------------------------------------------------------------------------------------------------------ |
+| Node.js                        | 20.14.0 (LTS) | Aligns with current pnpm compatibility and will be enforced via asdf and the `package.json` `engines` field. |
+| pnpm                           | 9.5.0         | Matches pnpm releases verified against Node.js 20.                                                           |
+| Docker Desktop / Docker Engine | 26.1.x        | Required for the forthcoming bootstrap script that builds and starts containers.                             |
+| PostgreSQL                     | 16.3          | Matches the target production major version; use either local binaries or Docker image `postgres:16`.        |
+| Redis                          | 7.2.4         | Matches the cache layer the services are designed to run against.                                            |
 
 > **Tip:** If you are using asdf, these versions are pinned in `.tool-versions`. Adjustments to production or staging infrastructure should be reflected here to keep environments aligned.
 

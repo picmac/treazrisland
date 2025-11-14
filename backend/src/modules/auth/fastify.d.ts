@@ -1,4 +1,3 @@
-
 import { RedisSessionStore } from './session-store';
 
 import type { AuthUser } from './types';

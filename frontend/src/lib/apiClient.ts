@@ -1,14 +1,19 @@
 import { getStoredAccessToken } from '@/lib/authTokens';
 
-const DEFAULT_BROWSER_API_BASE_URL = process.env.NODE_ENV === 'development' ? '/api' : 'http://localhost:3333';
+const DEFAULT_BROWSER_API_BASE_URL =
+  process.env.NODE_ENV === 'development' ? '/api' : 'http://localhost:3333';
 const DEFAULT_SERVER_API_BASE_URL = 'http://localhost:4000';
 
-const resolveBrowserBaseUrl = () => process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_BROWSER_API_BASE_URL;
+const resolveBrowserBaseUrl = () =>
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_BROWSER_API_BASE_URL;
 
 const resolveServerBaseUrl = () =>
-  process.env.NEXT_INTERNAL_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_SERVER_API_BASE_URL;
+  process.env.NEXT_INTERNAL_API_BASE_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  DEFAULT_SERVER_API_BASE_URL;
 
-export const API_BASE_URL = typeof window === 'undefined' ? resolveServerBaseUrl() : resolveBrowserBaseUrl();
+export const API_BASE_URL =
+  typeof window === 'undefined' ? resolveServerBaseUrl() : resolveBrowserBaseUrl();
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -16,7 +21,10 @@ const isRecord = (value: unknown): value is JsonRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export class ApiError extends Error {
-  constructor(message: string, readonly status?: number) {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
     super(message);
     this.name = 'ApiError';
   }
@@ -25,7 +33,11 @@ export class ApiError extends Error {
 class ApiClient {
   constructor(private readonly baseUrl: string) {}
 
-  private async request<T>(path: string, init: RequestInit, options?: { requiresAuth?: boolean }): Promise<T> {
+  private async request<T>(
+    path: string,
+    init: RequestInit,
+    options?: { requiresAuth?: boolean },
+  ): Promise<T> {
     const accessToken = getStoredAccessToken();
 
     if (options?.requiresAuth && !accessToken) {
@@ -37,10 +49,10 @@ class ApiClient {
       headers: {
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        ...(init.headers ?? {})
+        ...(init.headers ?? {}),
       },
       cache: 'no-store',
-      credentials: 'include'
+      credentials: 'include',
     });
 
     const contentType = response.headers.get('content-type') ?? '';
@@ -65,10 +77,14 @@ class ApiClient {
   }
 
   post<T>(path: string, body?: JsonRecord, options?: { requiresAuth?: boolean }): Promise<T> {
-    return this.request<T>(path, {
-      method: 'POST',
-      body: body ? JSON.stringify(body) : undefined
-    }, options);
+    return this.request<T>(
+      path,
+      {
+        method: 'POST',
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      options,
+    );
   }
 }
 
@@ -101,7 +117,10 @@ export function exchangeMagicLinkToken(token: string) {
   return apiClient.post<AuthResponse>('/auth/magic-link', { token });
 }
 
-export function redeemInviteToken(token: string, payload: { email: string; password: string; displayName?: string }) {
+export function redeemInviteToken(
+  token: string,
+  payload: { email: string; password: string; displayName?: string },
+) {
   return apiClient.post<InviteRedemptionResponse>(`/invites/${token}/redeem`, payload);
 }
 
@@ -111,5 +130,7 @@ export interface RomFavoriteResponse {
 }
 
 export function toggleRomFavorite(romId: string) {
-  return apiClient.post<RomFavoriteResponse>(`/roms/${romId}/favorite`, undefined, { requiresAuth: true });
+  return apiClient.post<RomFavoriteResponse>(`/roms/${romId}/favorite`, undefined, {
+    requiresAuth: true,
+  });
 }

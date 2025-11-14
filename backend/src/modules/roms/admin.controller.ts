@@ -53,7 +53,11 @@ export const adminRomController: FastifyPluginAsync = async (fastify) => {
       return reply.status(400).send({ error: 'Checksum mismatch' });
     }
 
-    await ensureBucket(minioClient, fastify.config.OBJECT_STORAGE_BUCKET, fastify.config.OBJECT_STORAGE_REGION);
+    await ensureBucket(
+      minioClient,
+      fastify.config.OBJECT_STORAGE_BUCKET,
+      fastify.config.OBJECT_STORAGE_REGION,
+    );
 
     const objectKey = `roms/${randomUUID()}-${asset.filename}`;
     const uploadUrl = await minioClient.presignedPutObject(

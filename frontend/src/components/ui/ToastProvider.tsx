@@ -33,7 +33,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         window.setTimeout(() => dismissToast(id), durationMs);
       }
     },
-    [dismissToast]
+    [dismissToast],
   );
 
   const contextValue = useMemo<ToastContextValue>(() => ({ pushToast }), [pushToast]);
@@ -48,7 +48,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <p className={styles.toastTitle}>{toast.title}</p>
               {toast.description && <p className={styles.toastDescription}>{toast.description}</p>}
             </div>
-            <button type="button" className={styles.dismissButton} onClick={() => dismissToast(toast.id)}>
+            <button
+              type="button"
+              className={styles.dismissButton}
+              onClick={() => dismissToast(toast.id)}
+            >
               ×
             </button>
           </div>

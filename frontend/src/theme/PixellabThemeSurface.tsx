@@ -18,14 +18,14 @@ export function PixellabThemeSurface({ children }: { children: ReactNode }) {
         backgroundSize: `${tokens.gridOverlay.size}px ${tokens.gridOverlay.size}px`,
         color: tokens.palette.foreground,
         fontFamily: tokens.typography.family,
-        fontWeight: tokens.typography.weight
+        fontWeight: tokens.typography.weight,
       }}
     >
       <header
         className="pixellab-content pixellab-theme__header"
         style={{
           paddingBlock: tokens.spacing.sm,
-          letterSpacing: '0.25rem'
+          letterSpacing: '0.25rem',
         }}
       >
         Pixellab.ai Core Theme
@@ -42,7 +42,7 @@ export function PixellabThemeSurface({ children }: { children: ReactNode }) {
         className="pixellab-content"
         style={{
           color: tokens.palette.secondary,
-          paddingBottom: tokens.spacing.lg
+          paddingBottom: tokens.spacing.lg,
         }}
       >
         Inspired by Pixellab.ai concept art drops — swap assets here when the API integration lands.

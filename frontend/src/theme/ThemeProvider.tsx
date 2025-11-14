@@ -7,7 +7,7 @@ import {
   useEffect,
   useMemo,
   useState,
-  type ReactNode
+  type ReactNode,
 } from 'react';
 import {
   FALLBACK_ASSETS,
@@ -15,7 +15,7 @@ import {
   type PixellabAsset,
   type PixellabThemeManifest,
   type PixellabThemeTokens,
-  mergeThemeTokens
+  mergeThemeTokens,
 } from './pixellabTheme';
 
 type ThemeProviderProps = {
@@ -35,10 +35,13 @@ const PixellabThemeContext = createContext<PixellabThemeContextValue>({
   tokens: FALLBACK_PIXELLAB_THEME,
   assets: FALLBACK_ASSETS,
   status: 'idle',
-  refresh: () => {}
+  refresh: () => {},
 });
 
-export function ThemeProvider({ children, manifestPath = '/themes/pixellab/manifest.json' }: ThemeProviderProps) {
+export function ThemeProvider({
+  children,
+  manifestPath = '/themes/pixellab/manifest.json',
+}: ThemeProviderProps) {
   const [tokens, setTokens] = useState<PixellabThemeTokens>(FALLBACK_PIXELLAB_THEME);
   const [assets, setAssets] = useState<PixellabAsset[]>(FALLBACK_ASSETS);
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -95,9 +98,9 @@ export function ThemeProvider({ children, manifestPath = '/themes/pixellab/manif
       assets,
       status,
       error,
-      refresh
+      refresh,
     }),
-    [tokens, assets, status, error, refresh]
+    [tokens, assets, status, error, refresh],
   );
 
   return <PixellabThemeContext.Provider value={value}>{children}</PixellabThemeContext.Provider>;

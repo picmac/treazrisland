@@ -44,17 +44,20 @@ export default function InvitePage({ params }: InvitePageProps) {
       const response = await redeemInviteToken(token, {
         email: email.trim(),
         password,
-        displayName: displayName.trim() || undefined
+        displayName: displayName.trim() || undefined,
       });
       if (response.accessToken) {
         storeAccessToken(response.accessToken);
       }
       setResult(response);
-      setStatus({ state: 'success', message: response.message || 'Invite redeemed. You can now sign in.' });
+      setStatus({
+        state: 'success',
+        message: response.message || 'Invite redeemed. You can now sign in.',
+      });
     } catch (error) {
       setStatus({
         state: 'error',
-        message: error instanceof Error ? error.message : 'Invite redemption failed.'
+        message: error instanceof Error ? error.message : 'Invite redemption failed.',
       });
     }
   };
@@ -65,8 +68,8 @@ export default function InvitePage({ params }: InvitePageProps) {
         <p className="eyebrow">Invitation detected</p>
         <h1>Unlock your Treazr Island profile</h1>
         <p className="lede">
-          Token <strong>{token}</strong> is ready to be redeemed. Provide your contact info and a secure password to activate
-          your account.
+          Token <strong>{token}</strong> is ready to be redeemed. Provide your contact info and a
+          secure password to activate your account.
         </p>
       </header>
 
@@ -128,7 +131,11 @@ export default function InvitePage({ params }: InvitePageProps) {
           </button>
         </form>
         {status.state !== 'idle' && (
-          <div className={`auth-status auth-status--${status.state}`} role="status" aria-live="polite">
+          <div
+            className={`auth-status auth-status--${status.state}`}
+            role="status"
+            aria-live="polite"
+          >
             <p>{status.message}</p>
             {result?.accessToken && <p>Access token preview: {result.accessToken.slice(0, 16)}…</p>}
           </div>

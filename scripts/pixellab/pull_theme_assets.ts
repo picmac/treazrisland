@@ -12,7 +12,7 @@ import type {
   PixellabAssetMetadata,
   PixellabThemeManifest,
   PixellabThemeMetadata,
-  PixellabThemeTokens
+  PixellabThemeTokens,
 } from '../../frontend/src/theme/pixellabTheme';
 
 type PixellabApiAsset = {
@@ -49,7 +49,7 @@ const repoRoot = path.resolve(__dirname, '..', '..');
 function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = {
     themeId: process.env.PIXELLAB_THEME_ID ?? 'treazr-island-core',
-    outputDir: path.join(repoRoot, 'frontend', 'public', 'themes', 'pixellab')
+    outputDir: path.join(repoRoot, 'frontend', 'public', 'themes', 'pixellab'),
   };
 
   for (let index = 2; index < argv.length; index += 1) {
@@ -97,10 +97,13 @@ function computeRetryDelayMs(attempt: number, retryAfter?: string | null): numbe
 
 async function requestWithRetry(url: string, init: RequestInit, attempt = 1): Promise<Response> {
   const response = await fetch(url, init);
-  if ((response.status === 429 || (response.status >= 500 && response.status < 600)) && attempt < MAX_RETRY_ATTEMPTS) {
+  if (
+    (response.status === 429 || (response.status >= 500 && response.status < 600)) &&
+    attempt < MAX_RETRY_ATTEMPTS
+  ) {
     const retryDelay = computeRetryDelayMs(attempt, response.headers.get('retry-after'));
     console.warn(
-      `\u26a0\ufe0f  Pixellab API responded with ${response.status}. Retrying in ${retryDelay}ms (attempt ${attempt}/${MAX_RETRY_ATTEMPTS}).`
+      `\u26a0\ufe0f  Pixellab API responded with ${response.status}. Retrying in ${retryDelay}ms (attempt ${attempt}/${MAX_RETRY_ATTEMPTS}).`,
     );
     if (response.body) {
       try {
@@ -125,8 +128,8 @@ async function fetchThemeManifest(themeId: string, token: string): Promise<Pixel
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
-      'User-Agent': 'treazrisland-pixellab-fetcher'
-    }
+      'User-Agent': 'treazrisland-pixellab-fetcher',
+    },
   });
 
   if (!response.ok) {
@@ -160,7 +163,10 @@ function deriveExtension(downloadUrl: string): string {
 
 function sanitizeFileName(baseName: string, extension: string): string {
   const normalizedExtension = extension.startsWith('.') ? extension : `.${extension}`;
-  const safeBase = baseName.toLowerCase().replace(/[^a-z0-9-_]+/g, '-').replace(/^-+|-+$/g, '');
+  const safeBase = baseName
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]+/g, '-')
+    .replace(/^-+|-+$/g, '');
   return `${safeBase || 'asset'}${normalizedExtension}`;
 }
 
@@ -177,7 +183,7 @@ function resolveAssetFileName(asset: PixellabApiAsset, fallbackExtension: string
     }
 
     console.warn(
-      `\u26a0\ufe0f  Asset ${asset.id} provided an invalid file name "${providedFileName}". Falling back to a sanitized identifier.`
+      `\u26a0\ufe0f  Asset ${asset.id} provided an invalid file name "${providedFileName}". Falling back to a sanitized identifier.`,
     );
   }
 
@@ -188,7 +194,9 @@ function ensureSafeDestination(outputDir: string, fileName: string): string {
   const resolvedOutput = path.resolve(outputDir);
   const resolvedDestination = path.resolve(resolvedOutput, fileName);
   if (!resolvedDestination.startsWith(`${resolvedOutput}${path.sep}`)) {
-    throw new Error(`Resolved asset path ${resolvedDestination} is outside the output directory ${resolvedOutput}`);
+    throw new Error(
+      `Resolved asset path ${resolvedDestination} is outside the output directory ${resolvedOutput}`,
+    );
   }
   return resolvedDestination;
 }
@@ -196,7 +204,7 @@ function ensureSafeDestination(outputDir: string, fileName: string): string {
 async function downloadAsset(
   asset: PixellabApiAsset,
   outputDir: string,
-  token: string
+  token: string,
 ): Promise<PixellabAsset | undefined> {
   if (!asset.downloadUrl) {
     console.warn(`\u26a0\ufe0f  Asset ${asset.id} is missing a download URL. Skipping.`);
@@ -213,8 +221,8 @@ async function downloadAsset(
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
-      'User-Agent': 'treazrisland-pixellab-fetcher'
-    }
+      'User-Agent': 'treazrisland-pixellab-fetcher',
+    },
   });
 
   if (!response.ok || !response.body) {
@@ -231,7 +239,7 @@ async function downloadAsset(
     type: asset.type,
     src: toPublicPath(fileName),
     description: asset.description,
-    metadata: asset.metadata
+    metadata: asset.metadata,
   };
 
   return manifestAsset;
@@ -240,14 +248,14 @@ async function downloadAsset(
 function buildManifest(
   apiManifest: PixellabApiManifest,
   assets: PixellabAsset[],
-  themeId: string
+  themeId: string,
 ): PixellabThemeManifest {
   const sortedAssets = [...assets].sort((a, b) => a.id.localeCompare(b.id));
   const metadata: PixellabThemeMetadata = {
     themeId,
     source: 'pixellab.ai',
     assetCount: sortedAssets.length,
-    apiVersion: apiManifest.metadata?.apiVersion
+    apiVersion: apiManifest.metadata?.apiVersion,
   };
 
   return {
@@ -255,7 +263,7 @@ function buildManifest(
     generatedAt: apiManifest.generatedAt ?? new Date().toISOString(),
     tokens: apiManifest.tokens,
     assets: sortedAssets,
-    metadata
+    metadata,
   };
 }
 

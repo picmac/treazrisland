@@ -41,8 +41,7 @@ type HealthResponse = {
   dependencies: HealthDependencies;
 };
 
-const redisStatus = (redis: Redis): DependencyStatus =>
-  redis.status === 'ready' ? 'up' : 'down';
+const redisStatus = (redis: Redis): DependencyStatus => (redis.status === 'ready' ? 'up' : 'down');
 
 const buildHealthResponse = (redis: Redis, env: Env): HealthResponse => {
   const redisState = redisStatus(redis);
@@ -81,19 +80,16 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
     },
   });
 
-  fastify.decorate(
-    'authenticate',
-    async function authenticate(request, _reply) {
-      const payload = await request.jwtVerify<{ sub: string; email?: string }>();
+  fastify.decorate('authenticate', async function authenticate(request, _reply) {
+    const payload = await request.jwtVerify<{ sub: string; email?: string }>();
 
-      const user: AuthUser = {
-        id: payload.sub,
-        email: payload.email ?? payload.sub,
-      };
+    const user: AuthUser = {
+      id: payload.sub,
+      email: payload.email ?? payload.sub,
+    };
 
-      request.user = user;
-    },
-  );
+    request.user = user;
+  });
 
   await fastify.register(fastifyRedis, {
     client: createRedisClient(env),

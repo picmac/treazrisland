@@ -44,7 +44,7 @@ export function RomHero({ rom }: RomHeroProps) {
           ? 'Sign in to manage your favorites.'
           : error instanceof Error
             ? error.message
-            : 'Unable to update favorites right now.'
+            : 'Unable to update favorites right now.',
       );
     }
   };
@@ -86,7 +86,11 @@ export function RomHero({ rom }: RomHeroProps) {
         )}
 
         <div className="rom-hero__actions">
-          <a className="rom-hero__cta" href={`/play/${rom.id}`} aria-label={`Launch ${rom.title} in EmulatorJS.`}>
+          <a
+            className="rom-hero__cta"
+            href={`/play/${rom.id}`}
+            aria-label={`Launch ${rom.title} in EmulatorJS.`}
+          >
             Play Now
           </a>
           <button

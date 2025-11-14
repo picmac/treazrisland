@@ -15,18 +15,18 @@ export async function generateMetadata({ params }: RomPageParams): Promise<Metad
     const rom = await fetchRomDetails(params.id);
     if (!rom) {
       return {
-        title: 'ROM not found | Treazr Island'
+        title: 'ROM not found | Treazr Island',
       };
     }
 
     return {
       title: `${rom.title} | Treazr Island`,
-      description: rom.description ?? `Treazr Island dossier for ${rom.title}.`
+      description: rom.description ?? `Treazr Island dossier for ${rom.title}.`,
     };
   } catch (error) {
     return {
       title: 'ROM overview | Treazr Island',
-      description: error instanceof Error ? error.message : 'Unable to load ROM metadata.'
+      description: error instanceof Error ? error.message : 'Unable to load ROM metadata.',
     };
   }
 }

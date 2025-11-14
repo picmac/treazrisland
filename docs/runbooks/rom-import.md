@@ -45,9 +45,9 @@ Create one JSON manifest per ROM and place it next to the binary asset.
 }
 ```
 
-* `filename` is resolved relative to `data/import`.
-* `contentType` must match what the backend expects for the given ROM.
-* `checksum` must be the lowercase SHA-256 hex digest of the ROM file. The script
+- `filename` is resolved relative to `data/import`.
+- `contentType` must match what the backend expects for the given ROM.
+- `checksum` must be the lowercase SHA-256 hex digest of the ROM file. The script
   recomputes the checksum before sending data to the API and fails the import if
   it does not match the manifest.
 
@@ -61,9 +61,9 @@ ROM_IMPORT_API_TOKEN="<optional JWT>" \
 pnpm ts-node scripts/roms/import_from_folder.ts
 ```
 
-* `ROM_IMPORT_API_URL` defaults to `http://localhost:3000`. Override it if the
+- `ROM_IMPORT_API_URL` defaults to `http://localhost:3000`. Override it if the
   backend lives elsewhere.
-* `ROM_IMPORT_API_TOKEN` is optional. When set, the script sends it as a Bearer
+- `ROM_IMPORT_API_TOKEN` is optional. When set, the script sends it as a Bearer
   token.
 
 The script scans `data/import` for `*.json` files, validates each manifest, and
@@ -72,9 +72,9 @@ both the manifest and its ROM binary into `data/import/processed/<manifest>-<tim
 
 ## Handling Failures
 
-* If the checksum check fails, the script logs the mismatch and leaves the files
+- If the checksum check fails, the script logs the mismatch and leaves the files
   in place so you can fix the manifest.
-* API errors (HTTP 4xx/5xx) are logged with the upstream response body. No files
+- API errors (HTTP 4xx/5xx) are logged with the upstream response body. No files
   are moved in this case.
-* The script prints a summary when it finishes so you can confirm how many ROMs
+- The script prints a summary when it finishes so you can confirm how many ROMs
   were processed.

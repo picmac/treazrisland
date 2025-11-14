@@ -1,7 +1,6 @@
 import type { AuthUser, MagicLinkSession } from './types';
 import type { Redis } from 'ioredis';
 
-
 type RedisCompatibleClient = Pick<Redis, 'get' | 'set' | 'del'>;
 
 export class RedisSessionStore {

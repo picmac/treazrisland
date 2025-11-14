@@ -7,7 +7,7 @@ interface RomDetailsResponse {
 
 export async function fetchRomDetails(romId: string): Promise<RomDetails | null> {
   const response = await fetch(`${API_BASE_URL}/roms/${romId}`, {
-    cache: 'no-store'
+    cache: 'no-store',
   });
 
   if (response.status === 404) {
@@ -21,6 +21,6 @@ export async function fetchRomDetails(romId: string): Promise<RomDetails | null>
   const payload = (await response.json()) as RomDetailsResponse;
   return {
     ...payload.rom,
-    isFavorite: payload.rom.isFavorite ?? false
+    isFavorite: payload.rom.isFavorite ?? false,
   };
 }

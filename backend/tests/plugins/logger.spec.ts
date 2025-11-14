@@ -10,7 +10,11 @@ class LogCollector extends Writable {
   private buffer = '';
   public readonly logs: string[] = [];
 
-  override _write(chunk: Buffer, _encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
+  override _write(
+    chunk: Buffer,
+    _encoding: BufferEncoding,
+    callback: (error?: Error | null) => void,
+  ): void {
     this.buffer += chunk.toString();
     let newlineIndex = this.buffer.indexOf('\n');
 

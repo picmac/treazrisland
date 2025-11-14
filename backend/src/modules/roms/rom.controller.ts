@@ -1,6 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-
 import { z } from 'zod';
 
 import { createMinioClient, ensureBucket } from './storage';
@@ -29,12 +28,7 @@ const saveStateBodySchema = z.object({
     .string()
     .min(1)
     .regex(/^[A-Za-z0-9+/=]+$/, 'Save data must be base64-encoded'),
-  label: z
-    .string()
-    .trim()
-    .min(1)
-    .max(100)
-    .optional(),
+  label: z.string().trim().min(1).max(100).optional(),
   slot: z.coerce.number().int().min(0).max(9).default(0),
   contentType: z.string().min(1).max(255).default('application/octet-stream'),
 });
@@ -91,7 +85,11 @@ const getRequestUserId = (user: FastifyRequest['user']): string | undefined => {
     return undefined;
   }
 
-  if (typeof user === 'object' && 'id' in user && typeof (user as { id?: unknown }).id === 'string') {
+  if (
+    typeof user === 'object' &&
+    'id' in user &&
+    typeof (user as { id?: unknown }).id === 'string'
+  ) {
     return user.id as string;
   }
 
@@ -226,9 +224,7 @@ export const romController: FastifyPluginAsync = async (fastify) => {
       bodyLimit: MAX_SAVE_STATE_BODY_BYTES,
       errorHandler: (error: FastifyError, request, reply) => {
         if (error.code === 'FST_ERR_CTP_BODY_TOO_LARGE') {
-          return reply
-            .status(413)
-            .send({ error: 'Save state exceeds maximum allowed size' });
+          return reply.status(413).send({ error: 'Save state exceeds maximum allowed size' });
         }
 
         throw error;
@@ -273,9 +269,7 @@ export const romController: FastifyPluginAsync = async (fastify) => {
       }
 
       if (saveBuffer.byteLength > MAX_SAVE_STATE_BYTES) {
-        return reply
-          .status(413)
-          .send({ error: 'Save state exceeds maximum allowed size' });
+        return reply.status(413).send({ error: 'Save state exceeds maximum allowed size' });
       }
 
       const bucket = fastify.config.OBJECT_STORAGE_BUCKET;
@@ -286,13 +280,9 @@ export const romController: FastifyPluginAsync = async (fastify) => {
       const objectKey = `save-states/${userId}/${rom.id}/${Date.now()}-${randomUUID()}.bin`;
 
       try {
-        await minioClient.putObject(
-          bucket,
-          objectKey,
-          saveBuffer,
-          saveBuffer.byteLength,
-          { 'Content-Type': contentType },
-        );
+        await minioClient.putObject(bucket, objectKey, saveBuffer, saveBuffer.byteLength, {
+          'Content-Type': contentType,
+        });
       } catch (error) {
         request.log.error({ err: error }, 'Failed to persist save state object');
         return reply.status(502).send({ error: 'Unable to persist save state' });

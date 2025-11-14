@@ -22,11 +22,7 @@ const config: UserConfig = {
     ],
     'type-case': [2, 'always', 'lower-case'],
     'scope-case': [2, 'always', ['lower-case', 'kebab-case']],
-    'subject-case': [
-      2,
-      'never',
-      ['pascal-case', 'upper-case', 'snake-case', 'start-case'],
-    ],
+    'subject-case': [2, 'never', ['pascal-case', 'upper-case', 'snake-case', 'start-case']],
     'subject-full-stop': [2, 'never', '.'],
     'header-max-length': [2, 'always', 100],
   },

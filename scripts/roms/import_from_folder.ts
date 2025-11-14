@@ -35,7 +35,8 @@ const readManifest = async (manifestPath: string): Promise<RomImportManifest> =>
     throw new Error('Manifest must be a JSON object');
   }
 
-  const { title, description, platformId, releaseYear, genres, asset } = parsed as RomImportManifest;
+  const { title, description, platformId, releaseYear, genres, asset } =
+    parsed as RomImportManifest;
 
   if (!title || !platformId || !asset) {
     throw new Error('Manifest must include title, platformId, and asset definitions');
@@ -53,7 +54,8 @@ const ensureDirectories = async (): Promise<void> => {
   await mkdir(PROCESSED_ROOT, { recursive: true });
 };
 
-const calculateChecksum = (buffer: Buffer): string => createHash('sha256').update(buffer).digest('hex');
+const calculateChecksum = (buffer: Buffer): string =>
+  createHash('sha256').update(buffer).digest('hex');
 
 const buildRomPayload = (manifest: RomImportManifest, romBuffer: Buffer) => ({
   title: manifest.title,
@@ -72,7 +74,10 @@ const buildRomPayload = (manifest: RomImportManifest, romBuffer: Buffer) => ({
 
 const moveProcessedFiles = async (manifestPath: string, romPath: string): Promise<void> => {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const destinationDir = path.join(PROCESSED_ROOT, `${path.basename(manifestPath, '.json')}-${timestamp}`);
+  const destinationDir = path.join(
+    PROCESSED_ROOT,
+    `${path.basename(manifestPath, '.json')}-${timestamp}`,
+  );
 
   await mkdir(destinationDir, { recursive: true });
 
@@ -123,7 +128,9 @@ const processManifestFile = async (manifestPath: string): Promise<void> => {
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(`API rejected ROM ${manifest.title}: ${response.status} ${response.statusText} ${errorBody}`);
+    throw new Error(
+      `API rejected ROM ${manifest.title}: ${response.status} ${response.statusText} ${errorBody}`,
+    );
   }
 
   log(`Successfully registered ROM ${manifest.title}`);

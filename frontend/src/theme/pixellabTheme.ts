@@ -83,9 +83,9 @@ export const FALLBACK_PIXELLAB_THEME: PixellabThemeTokens = {
     secondary: '#b958f6',
     background: {
       base: '#060014',
-      panel: '#12052b'
+      panel: '#12052b',
     },
-    foreground: '#fefae0'
+    foreground: '#fefae0',
   },
   spacing: {
     none: '0',
@@ -95,27 +95,28 @@ export const FALLBACK_PIXELLAB_THEME: PixellabThemeTokens = {
     md: '1rem',
     lg: '1.5rem',
     xl: '2rem',
-    xxl: '3rem'
+    xxl: '3rem',
   },
   typography: {
-    family: '"Press Start 2P", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    family:
+      '"Press Start 2P", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     weight: 400,
     size: {
       base: '1rem',
       small: '0.85rem',
       medium: '1.1rem',
-      large: '1.35rem'
+      large: '1.35rem',
     },
     lineHeight: {
       compact: '1.1',
       normal: '1.4',
-      relaxed: '1.75'
-    }
+      relaxed: '1.75',
+    },
   },
   gridOverlay: {
     size: 32,
-    opacity: 0.15
-  }
+    opacity: 0.15,
+  },
 };
 
 export const FALLBACK_ASSETS: PixellabAsset[] = [
@@ -124,20 +125,20 @@ export const FALLBACK_ASSETS: PixellabAsset[] = [
     label: 'Neon grid wallpaper',
     type: 'background',
     src: '/themes/pixellab/hero-grid.png',
-    description: 'Placeholder reference for the Pixellab grid wallpaper export.'
+    description: 'Placeholder reference for the Pixellab grid wallpaper export.',
   },
   {
     id: 'treazr-wordmark',
     label: 'Treazr Island wordmark',
     type: 'logo',
     src: '/themes/pixellab/wordmark.png',
-    description: 'Wordmark produced from Pixellab prompt set A.'
-  }
+    description: 'Wordmark produced from Pixellab prompt set A.',
+  },
 ];
 
 export function mergeThemeTokens(
   base: PixellabThemeTokens,
-  overrides?: Partial<PixellabThemeTokens>
+  overrides?: Partial<PixellabThemeTokens>,
 ): PixellabThemeTokens {
   if (!overrides) {
     return base;
@@ -149,28 +150,28 @@ export function mergeThemeTokens(
       ...overrides.palette,
       background: {
         ...base.palette.background,
-        ...(overrides.palette?.background ?? {})
-      }
+        ...(overrides.palette?.background ?? {}),
+      },
     },
     spacing: {
       ...base.spacing,
-      ...(overrides.spacing ?? {})
+      ...(overrides.spacing ?? {}),
     },
     typography: {
       ...base.typography,
       ...(overrides.typography ?? {}),
       size: {
         ...base.typography.size,
-        ...(overrides.typography?.size ?? {})
+        ...(overrides.typography?.size ?? {}),
       },
       lineHeight: {
         ...base.typography.lineHeight,
-        ...(overrides.typography?.lineHeight ?? {})
-      }
+        ...(overrides.typography?.lineHeight ?? {}),
+      },
     },
     gridOverlay: {
       ...base.gridOverlay,
-      ...(overrides.gridOverlay ?? {})
-    }
+      ...(overrides.gridOverlay ?? {}),
+    },
   };
 }
