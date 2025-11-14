@@ -1,5 +1,9 @@
 name: CI
 
+permissions:
+  pull-requests: write
+  issues: write
+
 on:
   workflow_dispatch:
   push:
