@@ -1,6 +1,7 @@
 import './config/observability-bootstrap';
 
 import fastifyCookie from '@fastify/cookie';
+import fastifyCors from '@fastify/cors';
 import fastifyJwt from '@fastify/jwt';
 import fastifyRedis from '@fastify/redis';
 import Fastify from 'fastify';
@@ -67,6 +68,11 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
   fastify.decorate('config', env);
 
   await fastify.register(loggerPlugin);
+
+  await fastify.register(fastifyCors, {
+    origin: true,
+    credentials: true,
+  });
 
   await fastify.register(fastifyCookie, {
     parseOptions: {
