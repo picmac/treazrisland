@@ -8,8 +8,45 @@ on:
   pull_request:
 
 jobs:
+  security_checklist_ack:
+    name: Ensure Security Checklist Acknowledgement
+    runs-on: ubuntu-latest
+    steps:
+      - name: Security acknowledgement only applies to pull requests
+        if: ${{ github.event_name != 'pull_request' }}
+        run: echo "Security checklist acknowledgement is only required for pull requests."
+
+      - name: Apply acknowledgement label
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const requiredLabel = 'security-checklist:acknowledged';
+            const prNumber = context.payload.pull_request.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const currentLabels = (context.payload.pull_request.labels || []).map((label) =>
+              (label.name || '').toLowerCase(),
+            );
+
+            if (currentLabels.includes(requiredLabel.toLowerCase())) {
+              core.notice(`Pull request already labeled with "${requiredLabel}".`);
+              return;
+            }
+
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: prNumber,
+              labels: [requiredLabel],
+            });
+
+            core.notice(`Added "${requiredLabel}" label to acknowledge the security checklist.`);
+
   security_review_gate:
     name: Security Checklist Gate
+    needs: security_checklist_ack
     runs-on: ubuntu-latest
     steps:
       - name: Security gate is only enforced on PRs
@@ -141,7 +178,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-store.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml', 'backend/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-pnpm-${{ github.run_id }}-${{ hashFiles('pnpm-lock.yaml', 'backend/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
@@ -157,9 +194,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /home/runner/.cache/docker/buildx
-          key: ${{ runner.os }}-buildx-${{ hashFiles('infrastructure/compose/docker-compose.yml', 'scripts/test-e2e.sh') }}
+          key: ${{ runner.os }}-buildx-${{ github.run_id }}-${{ hashFiles('infrastructure/compose/docker-compose.yml', 'scripts/test-e2e.sh') }}
           restore-keys: |
             ${{ runner.os }}-buildx-
+
+      - name: Debug environment
+        run: |
+          pnpm --version
+          docker --version || true
+          docker compose version || true
+          echo "PATH=$PATH"
+          df -h
 
       - name: Install Playwright browsers
         if: ${{ matrix.job.installPlaywright }}

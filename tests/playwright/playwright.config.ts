@@ -15,6 +15,7 @@ export default defineConfig({
     timeout: 10_000,
   },
   reporter: [
+    [path.join(dirname, 'utils', 'debugReporter.ts')],
     ['list'],
     ['html', { outputFolder: path.join(artifactsRoot, 'html-report'), open: 'never' }],
   ],

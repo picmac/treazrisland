@@ -1,4 +1,4 @@
-import { ApiError, API_BASE_URL, apiClient } from './apiClient';
+import { ApiError, API_BASE_URL, apiClient, resolveRequestScopedServerBaseUrl } from './apiClient';
 import { getStoredAccessToken } from './authTokens';
 import type { RomDetails } from '@/types/rom';
 
@@ -40,7 +40,8 @@ async function fetchRomDetailsWithRequestInit(
     headers.set('Accept', 'application/json');
   }
 
-  const response = await fetch(`${API_BASE_URL}/roms/${romId}`, {
+  const baseUrl = resolveRequestScopedServerBaseUrl(headers);
+  const response = await fetch(`${baseUrl}/roms/${romId}`, {
     ...requestInit,
     headers,
     cache: requestInit.cache ?? 'no-store',

@@ -5,7 +5,7 @@ export type LoginCredentials = {
   password: string;
 };
 
-const defaultCredentials: LoginCredentials = {
+export const defaultCredentials: LoginCredentials = {
   email: 'operator@treazrisland.test',
   password: 'password123',
 };

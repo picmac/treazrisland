@@ -3,6 +3,7 @@ import { cookies, headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { RomHero } from '@/components/rom/RomHero';
 import { RomMetadataPanel } from '@/components/rom/RomMetadataPanel';
+import { ACCESS_TOKEN_KEY } from '@/constants/auth';
 import { fetchRomDetails } from '@/lib/roms';
 
 interface RomPageParams {
@@ -51,26 +52,39 @@ function createServerRequestInit(): RequestInit | undefined {
   const headerList = headers();
   const cookieStore = cookies();
   const forwardedHeaders = new Headers();
+  let hasForwardedHeaders = false;
 
   const cookieHeader = cookieStore.toString();
   if (cookieHeader.length > 0) {
     forwardedHeaders.set('cookie', cookieHeader);
+    hasForwardedHeaders = true;
   }
 
   const authHeader = headerList.get('authorization');
   if (authHeader) {
     forwardedHeaders.set('authorization', authHeader);
+    hasForwardedHeaders = true;
   }
 
-  const forwardedHost = headerList.get('x-forwarded-host');
+  if (!forwardedHeaders.has('authorization')) {
+    const accessToken = cookieStore.get(ACCESS_TOKEN_KEY)?.value;
+    if (accessToken) {
+      forwardedHeaders.set('authorization', `Bearer ${accessToken}`);
+      hasForwardedHeaders = true;
+    }
+  }
+
+  const forwardedHost = headerList.get('x-forwarded-host') ?? headerList.get('host');
   if (forwardedHost) {
     forwardedHeaders.set('x-forwarded-host', forwardedHost);
+    hasForwardedHeaders = true;
   }
 
   const forwardedProto = headerList.get('x-forwarded-proto');
   if (forwardedProto) {
     forwardedHeaders.set('x-forwarded-proto', forwardedProto);
+    hasForwardedHeaders = true;
   }
 
-  return forwardedHeaders.size > 0 ? { headers: forwardedHeaders } : undefined;
+  return hasForwardedHeaders ? { headers: forwardedHeaders } : undefined;
 }
