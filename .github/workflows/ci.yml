@@ -28,8 +28,26 @@ jobs:
             const requiredLabel = 'security-checklist:acknowledged';
             const acknowledgementPhrase = /security checklist acknowledged/i;
 
-            const labels = (context.payload.pull_request.labels || []).map(label => label.name.toLowerCase());
-            if (labels.includes(requiredLabel.toLowerCase())) {
+            const knownLabelNames = new Set(
+              (context.payload.pull_request.labels || [])
+                .map(label => label?.name?.toLowerCase())
+                .filter(Boolean)
+            );
+
+            const fetchedLabels = await github.paginate(github.rest.issues.listLabelsOnIssue, {
+              owner,
+              repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+
+            fetchedLabels.forEach(label => {
+              if (label?.name) {
+                knownLabelNames.add(label.name.toLowerCase());
+              }
+            });
+
+            if (knownLabelNames.has(requiredLabel.toLowerCase())) {
               core.notice(`Security checklist acknowledged through label "${requiredLabel}".`);
               return;
             }
