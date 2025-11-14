@@ -178,7 +178,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-store.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml', 'backend/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-pnpm-${{ github.run_id }}-${{ hashFiles('pnpm-lock.yaml', 'backend/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
@@ -194,9 +194,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /home/runner/.cache/docker/buildx
-          key: ${{ runner.os }}-buildx-${{ hashFiles('infrastructure/compose/docker-compose.yml', 'scripts/test-e2e.sh') }}
+          key: ${{ runner.os }}-buildx-${{ github.run_id }}-${{ hashFiles('infrastructure/compose/docker-compose.yml', 'scripts/test-e2e.sh') }}
           restore-keys: |
             ${{ runner.os }}-buildx-
+
+      - name: Debug environment
+        run: |
+          pnpm --version
+          docker --version || true
+          docker compose version || true
+          echo "PATH=$PATH"
+          df -h
 
       - name: Install Playwright browsers
         if: ${{ matrix.job.installPlaywright }}
