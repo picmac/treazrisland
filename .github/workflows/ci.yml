@@ -26,7 +26,7 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const requiredLabel = 'security-checklist:acknowledged';
-            const acknowledgementPhrase = /security checklist acknowledged/i;
+            const acknowledgementPhrase = /security[\s\W]*checklist[\s\W]*(acknowledg(e(d|ment)?|es|ing)|acknowledg?ment)/i;
 
             const isApprovedBotUser = user => {
               if (!user) return false;
