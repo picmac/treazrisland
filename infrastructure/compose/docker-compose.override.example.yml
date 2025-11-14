@@ -14,6 +14,7 @@ services:
   backend:
     environment:
       DATABASE_URL: postgresql://treazr:treazr@localhost:5432/treazr
+      JWT_SECRET: change_me_in_local_dev_and_keep_it_long
       OBJECT_STORAGE_ACCESS_KEY: local_dev_access_key
       OBJECT_STORAGE_SECRET_KEY: local_dev_secret_key
     ports:

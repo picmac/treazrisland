@@ -18,6 +18,7 @@ Copy them to `.env` (repository root) or `backend/.env` before running the boots
 | `NODE_ENV`                     | Execution environment shared by Docker Compose services (default `development`). |
 | `BACKEND_PORT`                 | Port exposed by the backend container.                                           |
 | `DATABASE_URL`                 | PostgreSQL connection string used by the backend container.                      |
+| `JWT_SECRET`                   | Symmetric signing key for Fastify's JWT plugin (min length 32 characters).       |
 | `REDIS_URL`                    | Redis connection string exposed to the backend container.                        |
 | `OBJECT_STORAGE_ENDPOINT`      | Hostname for the MinIO object storage service (no protocol).                     |
 | `OBJECT_STORAGE_PORT`          | Port exposed by the MinIO object storage service.                                |
