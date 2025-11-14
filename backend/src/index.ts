@@ -12,6 +12,8 @@ import { getEnv, type Env } from './config/env';
 import { stopObservability } from './config/observability';
 import { authRoutes } from './modules/auth/routes';
 import { RedisSessionStore } from './modules/auth/session-store';
+import { defaultInviteSeeds, InMemoryInviteStore } from './modules/invites/invite.store';
+import { inviteRoutes } from './modules/invites/routes';
 import { RomService } from './modules/roms/rom.service';
 import { romRoutes } from './modules/roms/routes';
 import { SaveStateService } from './modules/roms/save-state.service';
@@ -101,12 +103,14 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
 
   fastify.decorate('romService', new RomService());
   fastify.decorate('saveStateService', new SaveStateService());
+  fastify.decorate('inviteStore', new InMemoryInviteStore(defaultInviteSeeds));
 
   fastify.addHook('onClose', async () => {
     await fastify.redis.quit();
   });
 
   await fastify.register(authRoutes, { prefix: '/auth' });
+  await fastify.register(inviteRoutes, { prefix: '/invites' });
   await fastify.register(romRoutes);
 
   fastify.get('/health', async () => buildHealthResponse(fastify.redis, env));
