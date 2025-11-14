@@ -21,4 +21,29 @@ test.describe('rom favorites', () => {
     await page.reload();
     await expect(page.getByRole('button', { name: '★ Favorited' })).toBeVisible();
   });
+
+  test('favorite status can be removed after toggling off', async ({ page, request }) => {
+    const rom = await registerTestRom(request, { title: 'Playwright Favorite Toggle' });
+
+    await loginWithPassword(page);
+
+    await page.goto(`/rom/${rom.id}`);
+    const favoriteButton = page.getByRole('button', { name: FAVORITE_BUTTON_LABEL });
+
+    // Ensure the ROM is favorited before verifying the removal path
+    await favoriteButton.click();
+    await expect(favoriteButton).toHaveText('★ Favorited');
+
+    await page.reload();
+    const favoritedButton = page.getByRole('button', { name: FAVORITE_BUTTON_LABEL });
+    await expect(favoritedButton).toHaveText('★ Favorited');
+
+    await favoritedButton.click();
+    await expect(favoritedButton).toHaveText('☆ Add to favorites');
+
+    await page.reload();
+    await expect(page.getByRole('button', { name: FAVORITE_BUTTON_LABEL })).toHaveText(
+      '☆ Add to favorites',
+    );
+  });
 });
