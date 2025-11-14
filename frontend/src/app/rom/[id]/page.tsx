@@ -3,6 +3,7 @@ import { cookies, headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { RomHero } from '@/components/rom/RomHero';
 import { RomMetadataPanel } from '@/components/rom/RomMetadataPanel';
+import { ACCESS_TOKEN_KEY } from '@/constants/auth';
 import { fetchRomDetails } from '@/lib/roms';
 
 interface RomPageParams {
@@ -63,6 +64,14 @@ function createServerRequestInit(): RequestInit | undefined {
   if (authHeader) {
     forwardedHeaders.set('authorization', authHeader);
     hasForwardedHeaders = true;
+  }
+
+  if (!forwardedHeaders.has('authorization')) {
+    const accessToken = cookieStore.get(ACCESS_TOKEN_KEY)?.value;
+    if (accessToken) {
+      forwardedHeaders.set('authorization', `Bearer ${accessToken}`);
+      hasForwardedHeaders = true;
+    }
   }
 
   const forwardedHost = headerList.get('x-forwarded-host');
