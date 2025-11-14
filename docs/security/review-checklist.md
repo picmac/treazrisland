@@ -1,6 +1,6 @@
 # Security Review Checklist
 
-This checklist is used for release readiness and must be acknowledged on every pull request that can impact the security posture of Treazrisland. Add the `security-checklist:acknowledged` label to the PR or trigger the comment bot to respond with `Security checklist acknowledged` so that the CI gate can proceed.
+This checklist is used for release readiness and must be acknowledged on every pull request that can impact the security posture of Treazrisland. Add the `security-checklist:acknowledged` label to the PR or trigger the comment bot to respond with `Security checklist acknowledged` (either as a conversation comment or review) so that the CI gate can proceed.
 
 ## Authentication & Authorization
 

@@ -28,6 +28,11 @@ jobs:
             const requiredLabel = 'security-checklist:acknowledged';
             const acknowledgementPhrase = /security checklist acknowledged/i;
 
+            const isApprovedBotUser = user => {
+              if (!user) return false;
+              return user.type === 'Bot' || /\[bot\]/i.test(user.login || '');
+            };
+
             const knownLabelNames = new Set(
               (context.payload.pull_request.labels || [])
                 .map(label => label?.name?.toLowerCase())
@@ -60,17 +65,31 @@ jobs:
             });
 
             const acknowledgedViaComment = comments.some(comment => {
-              if (!comment?.user) return false;
-              const isBot = comment.user.type === 'Bot' || /\[bot\]/i.test(comment.user.login || '');
-              return isBot && acknowledgementPhrase.test(comment.body || '');
+              return isApprovedBotUser(comment?.user) && acknowledgementPhrase.test(comment?.body || '');
             });
 
-            if (!acknowledgedViaComment) {
-              core.setFailed('Security checklist must be acknowledged via label or an approved bot comment before CI can run.');
+            if (acknowledgedViaComment) {
+              core.notice('Security checklist acknowledged via issue comment from a bot user.');
               return;
             }
 
-            core.notice('Security checklist acknowledged via comment from a bot user.');
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner,
+              repo,
+              pull_number: prNumber,
+              per_page: 100,
+            });
+
+            const acknowledgedViaReview = reviews.some(review => {
+              return isApprovedBotUser(review?.user) && acknowledgementPhrase.test(review?.body || '');
+            });
+
+            if (acknowledgedViaReview) {
+              core.notice('Security checklist acknowledged via pull request review from a bot user.');
+              return;
+            }
+
+            core.setFailed('Security checklist must be acknowledged via label or an approved bot comment before CI can run.');
 
   dependency_security:
     name: Dependency Security Scan
