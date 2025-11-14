@@ -21,6 +21,30 @@ const resolveServerBaseUrl = () => {
   return DEFAULT_SERVER_API_BASE_URL;
 };
 
+export const resolveRequestScopedServerBaseUrl = (headers: Headers) => {
+  if (isAbsoluteUrl(process.env.NEXT_INTERNAL_API_BASE_URL)) {
+    return process.env.NEXT_INTERNAL_API_BASE_URL;
+  }
+
+  if (isAbsoluteUrl(process.env.NEXT_PUBLIC_API_BASE_URL)) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+
+  const forwardedHostHeader = headers.get('x-forwarded-host');
+  if (forwardedHostHeader) {
+    const forwardedHost = forwardedHostHeader.split(',')[0]?.trim();
+
+    if (forwardedHost) {
+      const forwardedProtoHeader = headers.get('x-forwarded-proto');
+      const forwardedProto = forwardedProtoHeader?.split(',')[0]?.trim();
+      const protocol = forwardedProto && forwardedProto.length > 0 ? forwardedProto : 'http';
+      return `${protocol}://${forwardedHost}${DEFAULT_BROWSER_API_BASE_URL}`;
+    }
+  }
+
+  return DEFAULT_SERVER_API_BASE_URL;
+};
+
 export const API_BASE_URL =
   typeof window === 'undefined' ? resolveServerBaseUrl() : resolveBrowserBaseUrl();
 

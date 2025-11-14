@@ -74,7 +74,7 @@ function createServerRequestInit(): RequestInit | undefined {
     }
   }
 
-  const forwardedHost = headerList.get('x-forwarded-host');
+  const forwardedHost = headerList.get('x-forwarded-host') ?? headerList.get('host');
   if (forwardedHost) {
     forwardedHeaders.set('x-forwarded-host', forwardedHost);
     hasForwardedHeaders = true;
