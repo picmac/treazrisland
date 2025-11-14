@@ -49,6 +49,9 @@ export function RomHero({ rom }: RomHeroProps) {
     }
   };
 
+  const favoriteButtonLabel = isFavorite ? '★ Favorited' : '☆ Add to favorites';
+  const favoriteButtonPressed = isFavorite ? 'true' : 'false';
+
   return (
     <article className="rom-hero">
       <div className="rom-hero__media" aria-hidden={!heroAsset}>
@@ -97,10 +100,10 @@ export function RomHero({ rom }: RomHeroProps) {
             type="button"
             className="rom-hero__favorite"
             onClick={handleToggleFavorite}
-            aria-pressed={isFavorite}
+            aria-pressed={favoriteButtonPressed}
             disabled={favoriteStatus === 'saving'}
           >
-            {isFavorite ? '★ Favorited' : '☆ Add to favorites'}
+            {favoriteButtonLabel}
           </button>
         </div>
 
@@ -109,6 +112,7 @@ export function RomHero({ rom }: RomHeroProps) {
             className={`rom-hero__favorite-message rom-hero__favorite-message--${favoriteStatus}`}
             role="status"
             aria-live="polite"
+            aria-atomic="true"
           >
             {favoriteMessage}
           </p>
