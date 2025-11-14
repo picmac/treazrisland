@@ -1,5 +1,27 @@
 const ACKNOWLEDGEMENT_REGEX = /\backnowledg\w*/i;
 
+function hasSecurityChecklistMention(text) {
+  return text.includes('checklist') && text.includes('security');
+}
+
+function hasAcknowledgementAfterChecklist(text) {
+  if (!hasSecurityChecklistMention(text)) {
+    return false;
+  }
+
+  const acknowledgementSearch = new RegExp(ACKNOWLEDGEMENT_REGEX.source, 'gi');
+  let match;
+
+  while ((match = acknowledgementSearch.exec(text)) !== null) {
+    const prefix = text.slice(0, match.index);
+    if (hasSecurityChecklistMention(prefix)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function cleanWhitespace(text) {
   return text.replace(/\s+/g, ' ').trim();
 }
@@ -22,7 +44,7 @@ function hasAcknowledgementPhrase(text) {
 
   return segments.some((paragraph) => {
     const cleanedParagraph = cleanWhitespace(paragraph);
-    if (!cleanedParagraph.includes('checklist') || !cleanedParagraph.includes('security')) {
+    if (!hasSecurityChecklistMention(cleanedParagraph)) {
       return false;
     }
 
@@ -32,17 +54,14 @@ function hasAcknowledgementPhrase(text) {
       .filter(Boolean);
 
     const sentenceMatch = sentences.some(
-      (sentence) =>
-        sentence.includes('checklist') &&
-        sentence.includes('security') &&
-        ACKNOWLEDGEMENT_REGEX.test(sentence)
+      (sentence) => hasSecurityChecklistMention(sentence) && ACKNOWLEDGEMENT_REGEX.test(sentence),
     );
 
     if (sentenceMatch) {
       return true;
     }
 
-    return ACKNOWLEDGEMENT_REGEX.test(cleanedParagraph);
+    return hasAcknowledgementAfterChecklist(cleanedParagraph);
   });
 }
 

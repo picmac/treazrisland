@@ -31,6 +31,16 @@ const testCases = [
     text: 'Security updates are in progress.\n\nThe checklist has been acknowledged.',
     expected: false,
   },
+  {
+    description: 'acknowledgement sentence follows acknowledgement summary heading',
+    text: 'Acknowledgement summary: Security checklist review is complete. I acknowledge the checklist requirements.',
+    expected: true,
+  },
+  {
+    description: 'acknowledgement summary heading on its own line with valid sentence after',
+    text: 'Acknowledgement summary\nSecurity checklist completed this sprint and I acknowledge fulfilling it.',
+    expected: true,
+  },
 ];
 
 let failures = 0;
@@ -40,7 +50,9 @@ testCases.forEach(({ description, text, expected }, index) => {
   const passed = actual === expected;
   if (!passed) {
     failures += 1;
-    console.error(`Test ${index + 1} failed (${description}). Expected ${expected} but received ${actual}.`);
+    console.error(
+      `Test ${index + 1} failed (${description}). Expected ${expected} but received ${actual}.`,
+    );
   }
 });
 
