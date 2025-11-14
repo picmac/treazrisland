@@ -2,7 +2,7 @@
 
 ## Overview
 
-This checklist guarantees a flawless first impression when unveiling Treazrisland. Complete every item before inviting the first external playtester. Track status in your project management tool and link supporting evidence (screenshots, logs, sign-off notes).
+This checklist guarantees a flawless first impression when unveiling Treazrisland and maps directly to the [MVP release criteria](./mvp_scope.md#release-criteria). Complete every item before inviting the first external playtester. Track status in your project management tool and link supporting evidence (screenshots, logs, sign-off notes).
 
 ## Timeline
 
@@ -21,7 +21,7 @@ This checklist guarantees a flawless first impression when unveiling Treazrislan
 - [ ] Local runner profile verified to auto-launch EmulatorJS with seeded ROM after bootstrap.
 - [ ] Backups configured for PostgreSQL and object storage volumes; restoration test documented.
 - [ ] Monitoring dashboard (logs, metrics) bookmarked and shared with the team.
-- [ ] Dependency matrix reviewed to confirm every container, runtime, and database is on the most recent LTS release.
+- [ ] [Dependency matrix](./dependency-matrix.md) reviewed to confirm every container, runtime, and database is on the most recent LTS release.
 
 ### 2. Pixellab.ai Theming
 
@@ -33,7 +33,7 @@ This checklist guarantees a flawless first impression when unveiling Treazrislan
 
 ### 3. Security & Compliance
 
-- [ ] Secure coding checklist completed for all merged changes (dependency review, input validation, logging hygiene).
+- [ ] [Security review checklist](./security/review-checklist.md) completed for all merged changes (dependency review, input validation, logging hygiene).
 - [ ] Static analysis (e.g., `npm run lint`, `npm run typecheck`, `npm audit --production`) executed and green.
 - [ ] Pen-test or threat modelling session completed; action items tracked.
 - [ ] Secrets inventory documented with rotation cadence.
@@ -64,6 +64,13 @@ This checklist guarantees a flawless first impression when unveiling Treazrislan
 - [ ] Security reviewer sign-off recorded post-checklist review.
 - [ ] QA lead sign-off recorded post-test execution.
 - [ ] Retrospective scheduled for T+2 days with agenda drafted.
+
+### 7. Manual Playtest & Documentation Updates
+
+- [ ] End-to-end manual playtest executed according to the [MVP release criteria scenario](./mvp_scope.md#release-criteria), covering admin provisioning through save-state validation.
+- [ ] Playtest findings logged with sign-off notes from QA, product, and operations leads, and stored alongside other launch artefacts.
+- [ ] Resulting documentation updates (README, installation guide, runbooks) filed and merged so the published guidance reflects the validated flow.
+- [ ] Links to evidence (screenshots, recordings, telemetry) captured in the project tracker for quick audit.
 
 ## Post-Launch Follow-up
 
