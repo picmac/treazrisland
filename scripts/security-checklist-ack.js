@@ -35,7 +35,7 @@ function hasAcknowledgementPhrase(text) {
       (sentence) =>
         sentence.includes('checklist') &&
         sentence.includes('security') &&
-        ACKNOWLEDGEMENT_REGEX.test(sentence)
+        ACKNOWLEDGEMENT_REGEX.test(sentence),
     );
 
     if (sentenceMatch) {

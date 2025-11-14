@@ -40,7 +40,9 @@ testCases.forEach(({ description, text, expected }, index) => {
   const passed = actual === expected;
   if (!passed) {
     failures += 1;
-    console.error(`Test ${index + 1} failed (${description}). Expected ${expected} but received ${actual}.`);
+    console.error(
+      `Test ${index + 1} failed (${description}). Expected ${expected} but received ${actual}.`,
+    );
   }
 });
 
