@@ -31,7 +31,9 @@ describe('ROM catalogue routes', () => {
     });
   };
 
-  const loginAndGetToken = async (email: string): Promise<string> => {
+  type TestCookie = { name: string; value: string };
+
+  const performLogin = async (email: string) => {
     const response = await app.inject({
       method: 'POST',
       url: '/auth/login',
@@ -40,7 +42,23 @@ describe('ROM catalogue routes', () => {
 
     expect(response.statusCode).toBe(200);
     const body = response.json() as { accessToken: string };
+    const refreshCookie = response.cookies.find(
+      (cookie: TestCookie) => cookie.name === 'refreshToken',
+    );
+
+    return { body, refreshCookie };
+  };
+
+  const loginAndGetToken = async (email: string): Promise<string> => {
+    const { body } = await performLogin(email);
     return body.accessToken;
+  };
+
+  const loginAndGetRefreshCookie = async (email: string): Promise<string> => {
+    const { refreshCookie } = await performLogin(email);
+
+    expect(refreshCookie).toBeDefined();
+    return `${refreshCookie!.name}=${refreshCookie!.value}`;
   };
 
   beforeEach(async () => {
@@ -199,5 +217,20 @@ describe('ROM catalogue routes', () => {
     expect(unfavoriteResponse.statusCode).toBe(200);
     const secondBody = unfavoriteResponse.json() as { isFavorite: boolean };
     expect(secondBody.isFavorite).toBe(false);
+  });
+
+  it('does not allow refresh cookies to toggle favorites', async () => {
+    const rom = createRom({ title: 'Cookie Locked ROM' });
+    const refreshCookie = await loginAndGetRefreshCookie('cookie-only@example.com');
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/roms/${rom.id}/favorite`,
+      headers: {
+        cookie: refreshCookie,
+      },
+    });
+
+    expect(response.statusCode).toBe(401);
   });
 });

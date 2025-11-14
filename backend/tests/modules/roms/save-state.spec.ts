@@ -49,7 +49,9 @@ describe('ROM save state endpoints', () => {
     return body.rom.id;
   };
 
-  const getAccessToken = async (): Promise<string> => {
+  type TestCookie = { name: string; value: string };
+
+  const login = async () => {
     const response = await getApp().inject({
       method: 'POST',
       url: '/auth/login',
@@ -58,8 +60,40 @@ describe('ROM save state endpoints', () => {
 
     expect(response.statusCode).toBe(200);
     const body = response.json() as { accessToken: string };
+    const refreshCookie = response.cookies.find(
+      (cookie: TestCookie) => cookie.name === 'refreshToken',
+    );
+
+    return { body, refreshCookie };
+  };
+
+  const getAccessToken = async (): Promise<string> => {
+    const { body } = await login();
     return body.accessToken;
   };
+
+  const getRefreshCookie = async (): Promise<string> => {
+    const { refreshCookie } = await login();
+
+    expect(refreshCookie).toBeDefined();
+    return `${refreshCookie!.name}=${refreshCookie!.value}`;
+  };
+
+  const registerRomRecord = (): string =>
+    getApp().romService.registerRom({
+      title: 'Save State Cookie Test',
+      platformId: 'nes',
+      releaseYear: 1990,
+      genres: ['action'],
+      asset: {
+        type: 'ROM',
+        uri: 's3://roms/save-state-cookie.zip',
+        objectKey: 'roms/save-state-cookie.zip',
+        checksum: 'a'.repeat(64),
+        contentType: 'application/zip',
+        size: 1024,
+      },
+    }).id;
 
   beforeAll(async () => {
     container = await new GenericContainer('quay.io/minio/minio')
@@ -174,5 +208,34 @@ describe('ROM save state endpoints', () => {
 
     expect(response.statusCode).toBe(413);
     expect(response.json()).toEqual({ error: 'Save state exceeds maximum allowed size' });
+  });
+
+  it('rejects refresh cookies for save state routes', async ({ skip }) => {
+    if (runtimeError) {
+      skip();
+    }
+
+    const refreshCookie = await getRefreshCookie();
+    const romId = registerRomRecord();
+
+    const saveResponse = await getApp().inject({
+      method: 'POST',
+      url: `/roms/${romId}/save-state`,
+      headers: { cookie: refreshCookie },
+      payload: {
+        data: Buffer.from('cookie-only').toString('base64'),
+        contentType: 'application/octet-stream',
+      },
+    });
+
+    expect(saveResponse.statusCode).toBe(401);
+
+    const latestResponse = await getApp().inject({
+      method: 'GET',
+      url: `/roms/${romId}/save-state/latest`,
+      headers: { cookie: refreshCookie },
+    });
+
+    expect(latestResponse.statusCode).toBe(401);
   });
 });

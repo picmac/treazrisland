@@ -101,10 +101,10 @@ const tryAuthenticateRequest = async (request: FastifyRequest): Promise<void> =>
     return;
   }
 
-  const hasAuthHeader = typeof request.headers.authorization === 'string';
-  const hasRefreshCookie = typeof request.cookies?.refreshToken === 'string';
+  const hasAuthHeader =
+    typeof request.headers.authorization === 'string' && request.headers.authorization.trim().length > 0;
 
-  if (!hasAuthHeader && !hasRefreshCookie) {
+  if (!hasAuthHeader) {
     return;
   }
 

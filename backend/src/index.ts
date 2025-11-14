@@ -74,10 +74,6 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
 
   await fastify.register(fastifyJwt, {
     secret: env.JWT_SECRET,
-    cookie: {
-      cookieName: 'refreshToken',
-      signed: false,
-    },
   });
 
   fastify.decorate('authenticate', async function authenticate(request, _reply) {
