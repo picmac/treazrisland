@@ -42,7 +42,9 @@ describe('POST /invites/:code/redeem', () => {
     const body = response.json() as { accessToken: string; user: { email: string; id: string } };
     expect(body.accessToken).toBeTypeOf('string');
     expect(body.user.email).toBe('new-player@example.com');
-    expect(response.cookies.some((cookie) => cookie.name === 'refreshToken')).toBe(true);
+    expect(
+      response.cookies.some((cookie: { name: string }) => cookie.name === 'refreshToken'),
+    ).toBe(true);
     expect(app.inviteStore.getInvite(invite.code)?.redeemedAt).toBeInstanceOf(Date);
   });
 
