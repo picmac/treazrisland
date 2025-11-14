@@ -1,6 +1,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
+import { createRequire } from 'node:module';
 import type {
   FullConfig,
   FullResult,
@@ -54,10 +55,17 @@ const renderErrors = (errors: TestError[]): string[] =>
 
 const interestingEnvKeys = [
   'PLAYWRIGHT_BASE_URL',
+  'PLAYWRIGHT_API_URL',
   'PLAYWRIGHT_ARTIFACTS_DIR',
+  'PLAYWRIGHT_WORKERS',
   'CI',
   'GITHUB_RUN_ID',
+  'GITHUB_SHA',
+  'NODE_ENV',
 ];
+
+const require = createRequire(import.meta.url);
+const { version: playwrightVersion } = require('@playwright/test/package.json');
 
 class DebugReporter implements Reporter {
   private runStartedAt = Date.now();
@@ -65,6 +73,8 @@ class DebugReporter implements Reporter {
   onBegin(config: FullConfig, suite: Suite): void {
     this.runStartedAt = Date.now();
     log('--- Test run diagnostics ---');
+    log(`Playwright version: ${playwrightVersion}`);
+    log(`Node version: ${process.version}`);
     log(`Suites: ${suite.allTests().length}`);
     log(
       `Projects: ${config.projects
@@ -88,18 +98,31 @@ class DebugReporter implements Reporter {
     }
 
     log(`Host: ${os.hostname()} (${os.type()} ${os.release()})`);
+    log(
+      `CPU cores: ${os.cpus().length}, total memory: ${Math.round(os.totalmem() / (1024 * 1024))} MB`,
+    );
     log(`Working directory: ${process.cwd()}`);
     log('---');
   }
 
   onTestBegin(test: TestCase): void {
     const relativeFile = path.relative(process.cwd(), test.location.file);
-    log(`↗︎ ${formatTitle(test)} [${relativeFile}:${test.location.line}]`);
+    const projectName = test.parent?.project()?.name ?? 'unknown-project';
+    log(
+      `↗︎ ${formatTitle(test)} [${relativeFile}:${test.location.line}] (project: ${projectName})`,
+    );
   }
 
   onTestEnd(test: TestCase, result: TestResult): void {
     const outcome = result.status.toUpperCase();
-    log(`⇣ ${formatTitle(test)} -> ${outcome} in ${formatDuration(result.duration)}`);
+    const projectName = test.parent?.project()?.name ?? 'unknown-project';
+    const metadata = [
+      `project=${projectName}`,
+      `worker=${result.workerIndex}`,
+      `retry=${result.retry}`,
+      `repeat=${result.repeatEachIndex}`,
+    ].join(', ');
+    log(`⇣ ${formatTitle(test)} -> ${outcome} in ${formatDuration(result.duration)} (${metadata})`);
 
     if (result.status === 'skipped') {
       return;
