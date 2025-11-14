@@ -8,6 +8,15 @@ const nextConfig = {
   experimental: {
     typedRoutes: true
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'minio',
+        port: '9000'
+      }
+    ]
+  },
   async rewrites() {
     if (!apiProxyTarget) {
       return [];

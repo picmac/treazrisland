@@ -15,6 +15,7 @@ test.describe('rom favorites', () => {
     await page.goto(`/rom/${rom.id}`);
     const favoriteButton = page.getByRole('button', { name: FAVORITE_BUTTON_LABEL });
 
+    await expect(favoriteButton).toBeVisible();
     await expect(favoriteButton).toHaveText('☆ Add to favorites');
 
     await favoriteButton.click();
@@ -25,6 +26,7 @@ test.describe('rom favorites', () => {
 
     await page.reload();
     const favoritedButton = page.getByRole('button', { name: FAVORITE_BUTTON_LABEL });
+    await expect(favoritedButton).toBeVisible();
     await expect(favoritedButton).toHaveText('★ Favorited');
     await expect(favoritedButton).toHaveAttribute('aria-pressed', 'true');
   });
@@ -38,6 +40,7 @@ test.describe('rom favorites', () => {
     await page.goto(`/rom/${rom.id}`);
     const favoriteButton = page.getByRole('button', { name: FAVORITE_BUTTON_LABEL });
 
+    await expect(favoriteButton).toBeVisible();
     // Ensure the ROM is favorited before verifying the removal path
     await favoriteButton.click();
     await expect(favoriteButton).toHaveText('★ Favorited');
@@ -45,6 +48,7 @@ test.describe('rom favorites', () => {
 
     await page.reload();
     const favoritedButton = page.getByRole('button', { name: FAVORITE_BUTTON_LABEL });
+    await expect(favoritedButton).toBeVisible();
     await expect(favoritedButton).toHaveText('★ Favorited');
     await expect(favoritedButton).toHaveAttribute('aria-pressed', 'true');
 
@@ -56,6 +60,7 @@ test.describe('rom favorites', () => {
 
     await page.reload();
     const unfavoritedButton = page.getByRole('button', { name: FAVORITE_BUTTON_LABEL });
+    await expect(unfavoritedButton).toBeVisible();
     await expect(unfavoritedButton).toHaveText('☆ Add to favorites');
     await expect(unfavoritedButton).toHaveAttribute('aria-pressed', 'false');
   });
