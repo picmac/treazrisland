@@ -3,7 +3,7 @@ import { loginWithPassword } from '../utils/auth';
 import { obtainAccessToken, fetchFavoriteState } from '../utils/backendApi';
 import { registerTestRom } from '../utils/rom-fixtures';
 
-const FAVORITE_BUTTON_LABEL = /favorites/i;
+const FAVORITE_BUTTON_LABEL = /favorite/i;
 
 test.describe('rom favorites', () => {
   test('favorite status persists across reloads', async ({ page, request }) => {
