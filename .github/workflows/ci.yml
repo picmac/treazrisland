@@ -16,6 +16,10 @@ jobs:
         if: ${{ github.event_name != 'pull_request' }}
         run: echo "Security checklist acknowledgement is only required for pull requests."
 
+      - name: Checkout repository
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/checkout@v4
+
       - name: Require acknowledgement label or bot comment
         if: ${{ github.event_name == 'pull_request' }}
         uses: actions/github-script@v7
@@ -26,7 +30,7 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const requiredLabel = 'security-checklist:acknowledged';
-            const acknowledgementPhrase = /security checklist acknowledged/i;
+            const { hasAcknowledgementPhrase } = require('./scripts/security-checklist-ack.js');
 
             const labels = (context.payload.pull_request.labels || []).map(label => label.name.toLowerCase());
             if (labels.includes(requiredLabel.toLowerCase())) {
@@ -44,7 +48,7 @@ jobs:
             const acknowledgedViaComment = comments.some(comment => {
               if (!comment?.user) return false;
               const isBot = comment.user.type === 'Bot' || /\[bot\]/i.test(comment.user.login || '');
-              return isBot && acknowledgementPhrase.test(comment.body || '');
+              return isBot && hasAcknowledgementPhrase(comment.body || '');
             });
 
             if (!acknowledgedViaComment) {
