@@ -157,8 +157,10 @@ class DebugReporter implements Reporter {
     log('--- Test run summary ---');
     log(`Final status: ${result.status}`);
     log(`Total duration: ${duration}`);
-    log(`Flaky tests: ${result.flaky.length}`);
-    log(`Unexpected failures: ${result.unexpected.length}`);
+    const flakyCount = Array.isArray(result.flaky) ? result.flaky.length : 0;
+    const unexpectedCount = Array.isArray(result.unexpected) ? result.unexpected.length : 0;
+    log(`Flaky tests: ${flakyCount}`);
+    log(`Unexpected failures: ${unexpectedCount}`);
     log('---');
   }
 }

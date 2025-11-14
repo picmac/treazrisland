@@ -3,13 +3,23 @@ import { getStoredAccessToken } from '@/lib/authTokens';
 const DEFAULT_BROWSER_API_BASE_URL = '/api';
 const DEFAULT_SERVER_API_BASE_URL = 'http://localhost:4000';
 
+const isAbsoluteUrl = (value: string | undefined): value is string =>
+  typeof value === 'string' && /^https?:\/\//i.test(value);
+
 const resolveBrowserBaseUrl = () =>
   process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_BROWSER_API_BASE_URL;
 
-const resolveServerBaseUrl = () =>
-  process.env.NEXT_INTERNAL_API_BASE_URL ??
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  DEFAULT_SERVER_API_BASE_URL;
+const resolveServerBaseUrl = () => {
+  if (isAbsoluteUrl(process.env.NEXT_INTERNAL_API_BASE_URL)) {
+    return process.env.NEXT_INTERNAL_API_BASE_URL;
+  }
+
+  if (isAbsoluteUrl(process.env.NEXT_PUBLIC_API_BASE_URL)) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+
+  return DEFAULT_SERVER_API_BASE_URL;
+};
 
 export const API_BASE_URL =
   typeof window === 'undefined' ? resolveServerBaseUrl() : resolveBrowserBaseUrl();
