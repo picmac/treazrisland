@@ -118,7 +118,7 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
 
 export const createApp = (env: Env = getEnv()): ReturnType<typeof Fastify> => {
   const app = Fastify({
-    logger: buildLogger(env),
+    loggerInstance: buildLogger(env),
   });
 
   void app.register(appPlugin, { env });

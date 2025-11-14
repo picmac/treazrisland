@@ -28,12 +28,14 @@ const routeFromRequest = (request: FastifyRequest): string => {
 };
 
 const responseTimeForReply = (reply: FastifyReply): number | undefined => {
-  if (typeof (reply as FastifyReply & { elapsedTime?: number }).elapsedTime === 'number') {
-    return (reply as FastifyReply & { elapsedTime: number }).elapsedTime;
+  const replyWithElapsedTime = reply as FastifyReply & { elapsedTime?: number };
+  if (typeof replyWithElapsedTime.elapsedTime === 'number') {
+    return replyWithElapsedTime.elapsedTime;
   }
 
-  if (typeof reply.getResponseTime === 'function') {
-    return reply.getResponseTime();
+  const legacyReply = reply as FastifyReply & { getResponseTime?: () => number };
+  if (typeof legacyReply.getResponseTime === 'function') {
+    return legacyReply.getResponseTime();
   }
 
   return undefined;

@@ -39,7 +39,7 @@ describe('logger plugin', () => {
     collector = new LogCollector();
     const logger = pino({ level: 'info', base: undefined }, collector);
 
-    app = Fastify({ logger });
+    app = Fastify({ loggerInstance: logger });
     await app.register(loggerPlugin);
 
     app.get('/sensitive', async () => ({ ok: true }));
