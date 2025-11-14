@@ -74,7 +74,7 @@ jobs:
         run: pnpm install --recursive --frozen-lockfile
 
       - name: pnpm audit
-        run: pnpm audit --recursive --prod
+        run: pnpm audit --prod
 
       - name: Install Snyk CLI
         if: ${{ secrets.SNYK_TOKEN != '' }}
