@@ -9,4 +9,4 @@ if [[ ! -f node_modules/.modules.yaml ]]; then
   pnpm install --frozen-lockfile=false
 fi
 
-exec pnpm dev --hostname "${HOST}" --port "${PORT}"
+exec pnpm exec next dev --hostname "${HOST}" --port "${PORT}"
