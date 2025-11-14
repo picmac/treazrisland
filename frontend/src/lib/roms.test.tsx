@@ -1,9 +1,10 @@
 /* eslint-disable @next/next/no-img-element */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { RomHero } from '@/components/rom/RomHero';
+import { ApiError, apiClient } from '@/lib/apiClient';
 import { fetchRomDetails } from '@/lib/roms';
 import type { RomDetails } from '@/types/rom';
 
@@ -26,64 +27,52 @@ describe('fetchRomDetails', () => {
     isFavorite: true,
   };
 
-  let fetchMock: ReturnType<typeof vi.fn>;
-  let localStorageMock: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
-  let originalLocalStorage: Storage | undefined;
-
-  beforeEach(() => {
-    originalLocalStorage = typeof window !== 'undefined' ? window.localStorage : undefined;
-    localStorageMock = {
-      getItem: vi.fn(() => 'valid-token'),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-    };
-    if (typeof window !== 'undefined') {
-      Object.defineProperty(window, 'localStorage', {
-        value: localStorageMock,
-        configurable: true,
-      });
-    } else {
-      vi.stubGlobal('window', { localStorage: localStorageMock });
-    }
-    fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve({ rom: romFixture }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
-  });
-
   afterEach(() => {
-    if (typeof window !== 'undefined' && originalLocalStorage) {
-      Object.defineProperty(window, 'localStorage', {
-        value: originalLocalStorage,
-        configurable: true,
-      });
-    }
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
-    vi.clearAllMocks();
   });
 
-  it('sends auth headers and renders favorited rom data when a token is available', async () => {
+  it('loads rom details through the API client and renders the hero', async () => {
+    const getSpy = vi
+      .spyOn(apiClient, 'get')
+      .mockResolvedValue({ rom: romFixture } satisfies { rom: RomDetails });
+
     const rom = await fetchRomDetails(romFixture.id);
 
-    expect(localStorageMock.getItem).toHaveBeenCalledWith('treazr.accessToken');
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining(`/roms/${romFixture.id}`),
-      expect.any(Object),
-    );
-
-    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
-    expect(requestInit.credentials).toBe('include');
-    expect(requestInit.headers).toBeInstanceOf(Headers);
-    const requestHeaders = requestInit.headers as Headers;
-    expect(requestHeaders.get('Authorization')).toBe('Bearer valid-token');
-
+    expect(getSpy).toHaveBeenCalledWith(`/roms/${romFixture.id}`);
     expect(rom?.isFavorite).toBe(true);
 
     render(<RomHero rom={rom!} />);
 
     const favoriteButton = screen.getByRole('button', { name: /favorited/i });
     expect(favoriteButton).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('returns null when the rom is not found', async () => {
+    vi.spyOn(apiClient, 'get').mockRejectedValue(new ApiError('Not found', 404));
+
+    await expect(fetchRomDetails(romFixture.id)).resolves.toBeNull();
+  });
+
+  it('falls back to fetch when server request init is provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ rom: { ...romFixture, isFavorite: undefined } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const getSpy = vi.spyOn(apiClient, 'get');
+
+    const rom = await fetchRomDetails(romFixture.id, {
+      headers: { 'x-forwarded-host': 'example.test' },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(`/roms/${romFixture.id}`),
+      expect.objectContaining({ credentials: 'include' }),
+    );
+    expect(getSpy).not.toHaveBeenCalled();
+    expect(rom?.isFavorite).toBe(false);
   });
 });
