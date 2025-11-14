@@ -26,7 +26,39 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const requiredLabel = 'security-checklist:acknowledged';
-            const acknowledgementPhrase = /security[\s\W]*checklist[\s\W]*(acknowledg(e(d|ment)?|es|ing)|acknowledg?ment)/i;
+            const acknowledgementWordPattern = /acknowledg(?:e(?:d|ment)?|es|ing|ment)/i;
+
+            const hasAcknowledgementPhrase = text => {
+              if (!text) return false;
+              const normalized = text.toLowerCase();
+
+              const acknowledgementMatch = normalized.match(acknowledgementWordPattern);
+              if (!acknowledgementMatch || acknowledgementMatch.index == null) {
+                return false;
+              }
+
+              const acknowledgementIndex = acknowledgementMatch.index;
+              const securityIndex = normalized.indexOf('security');
+              if (securityIndex === -1 || securityIndex > acknowledgementIndex) {
+                return false;
+              }
+
+              const checklistIndex = normalized.indexOf('checklist', securityIndex);
+              if (checklistIndex === -1 || checklistIndex > acknowledgementIndex) {
+                return false;
+              }
+
+              const betweenChecklistAndAcknowledgement = normalized.slice(
+                checklistIndex + 'checklist'.length,
+                acknowledgementIndex
+              );
+
+              if (/\bnot\b/.test(betweenChecklistAndAcknowledgement)) {
+                return false;
+              }
+
+              return true;
+            };
 
             const isApprovedBotUser = user => {
               if (!user) return false;
@@ -65,7 +97,7 @@ jobs:
             });
 
             const acknowledgedViaComment = comments.some(comment => {
-              return isApprovedBotUser(comment?.user) && acknowledgementPhrase.test(comment?.body || '');
+              return isApprovedBotUser(comment?.user) && hasAcknowledgementPhrase(comment?.body || '');
             });
 
             if (acknowledgedViaComment) {
@@ -81,7 +113,7 @@ jobs:
             });
 
             const acknowledgedViaReview = reviews.some(review => {
-              return isApprovedBotUser(review?.user) && acknowledgementPhrase.test(review?.body || '');
+              return isApprovedBotUser(review?.user) && hasAcknowledgementPhrase(review?.body || '');
             });
 
             if (acknowledgedViaReview) {
