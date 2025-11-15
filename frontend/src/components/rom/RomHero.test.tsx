@@ -39,7 +39,10 @@ describe('RomHero favorite button', () => {
 
   it('announces success after the backend confirms a favorite', async () => {
     vi.spyOn(authTokens, 'getStoredAccessToken').mockReturnValue('token-123');
-    vi.spyOn(apiClient, 'toggleRomFavorite').mockResolvedValue({ isFavorite: true });
+    vi.spyOn(apiClient, 'toggleRomFavorite').mockResolvedValue({
+      romId: romFixture.id,
+      isFavorite: true,
+    });
     const user = userEvent.setup();
 
     render(<RomHero rom={{ ...romFixture, isFavorite: false }} />);
@@ -74,7 +77,7 @@ describe('RomHero favorite button', () => {
   });
 
   it('requires authentication before toggling favorites', async () => {
-    vi.spyOn(authTokens, 'getStoredAccessToken').mockReturnValue(undefined);
+    vi.spyOn(authTokens, 'getStoredAccessToken').mockReturnValue(null);
     const toggleSpy = vi.spyOn(apiClient, 'toggleRomFavorite');
     const user = userEvent.setup();
 
