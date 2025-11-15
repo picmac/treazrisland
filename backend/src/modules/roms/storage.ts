@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { Readable } from 'node:stream';
 
 import { Client } from 'minio';
 
@@ -9,6 +10,7 @@ export interface RomStorageUploadInput {
   contentType: string;
   data: string;
   checksum: string;
+  directory?: string;
 }
 
 export interface RomStorageUploadedAsset {
@@ -22,6 +24,7 @@ export interface RomStorageUploadedAsset {
 export interface RomStorage {
   uploadAsset(input: RomStorageUploadInput): Promise<RomStorageUploadedAsset>;
   getSignedAssetUrl(objectKey: string): Promise<string>;
+  downloadAsset(objectKey: string): Promise<Buffer>;
 }
 
 export class RomStorageError extends Error {
@@ -63,7 +66,8 @@ export class S3RomStorage implements RomStorage {
 
     await this.ensureBucket();
 
-    const objectKey = `roms/${randomUUID()}-${input.filename}`;
+    const directory = this.normalizeDirectory(input.directory);
+    const objectKey = `${directory}/${randomUUID()}-${input.filename}`;
 
     try {
       await this.client.putObject(this.options.bucket, objectKey, buffer, buffer.length, {
@@ -96,6 +100,18 @@ export class S3RomStorage implements RomStorage {
     }
   }
 
+  async downloadAsset(objectKey: string): Promise<Buffer> {
+    await this.ensureBucket();
+
+    try {
+      const stream = (await this.client.getObject(this.options.bucket, objectKey)) as Readable;
+
+      return await streamToBuffer(stream);
+    } catch (error) {
+      throw new RomStorageError('Unable to download ROM asset', 502, { cause: error });
+    }
+  }
+
   private async ensureBucket(): Promise<void> {
     if (this.bucketEnsured) {
       return;
@@ -108,6 +124,11 @@ export class S3RomStorage implements RomStorage {
     }
 
     this.bucketEnsured = true;
+  }
+
+  private normalizeDirectory(directory?: string): string {
+    const normalized = (directory ?? 'roms').replace(/^\/+|\/+$/g, '');
+    return normalized.length > 0 ? normalized : 'roms';
   }
 }
 
@@ -138,4 +159,14 @@ export const ensureBucket = async (
   if (!exists) {
     await client.makeBucket(bucket, region);
   }
+};
+
+const streamToBuffer = async (stream: Readable): Promise<Buffer> => {
+  const chunks: Buffer[] = [];
+
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+
+  return Buffer.concat(chunks);
 };

@@ -113,7 +113,7 @@ const appPlugin = fp(async (fastify, { env, prisma, romStorage }: AppPluginOptio
   );
 
   fastify.decorate('romService', new RomService(prisma, romStorage));
-  fastify.decorate('saveStateService', new SaveStateService());
+  fastify.decorate('saveStateService', new SaveStateService(prisma, romStorage));
   fastify.decorate('inviteStore', new InMemoryInviteStore(defaultInviteSeeds));
 
   fastify.addHook('onClose', async () => {
