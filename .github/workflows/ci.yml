@@ -263,6 +263,12 @@ jobs:
         with:
           node-version: 20.14.0
 
+      - name: Install Docker Compose v2
+        if: ${{ matrix.job.needsDocker }}
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y docker-compose-v2
+
       - name: Determine pnpm store
         id: pnpm-store
         run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_OUTPUT"
