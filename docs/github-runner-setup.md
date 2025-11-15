@@ -81,8 +81,9 @@ Pushes to `main` now trigger a `Deploy to self-hosted runner` job after linting,
 
 1. **Create production `.env` files** — copy `infrastructure/env/root.env.example` to `.env` and `infrastructure/env/backend.env.example` to `backend/.env`, then replace every placeholder with real values (database URLs, JWT secrets, ports, etc.). The deployment script refuses to run until both files exist, preventing accidental default credentials.
 2. **Store secrets locally** — keep the `.env` files outside version control (they are already gitignored) and ensure filesystem permissions restrict read/write access to the runner user.
-3. **Test the flow manually** — from the repository root, run `pnpm deploy:runner`. The script installs pnpm dependencies, applies Prisma migrations, rebuilds the Docker Compose stack, and waits for the EmulatorJS, backend, and frontend health checks. Verify the services stay healthy before trusting automated deploys.
-4. **Monitor the job** — in GitHub → **Actions**, confirm that pushes to `main` show the deploy job targeting `ubuntu-runner-01`. Any failure will surface directly in the workflow logs, so keep an eye on disk space, Docker daemon health, and Prisma migration output.
+3. **Let GitHub Actions preserve your `.env` files** — the `Deploy to self-hosted runner` job uses `actions/checkout` with `clean: false`, so untracked files such as `.env` and `backend/.env` stay in place between runs. If you manually run `git clean -ffdx` or delete the workspace, recreate the files before the next deploy.
+4. **Test the flow manually** — from the repository root, run `pnpm deploy:runner`. The script installs pnpm dependencies, applies Prisma migrations, rebuilds the Docker Compose stack, and waits for the EmulatorJS, backend, and frontend health checks. Verify the services stay healthy before trusting automated deploys.
+5. **Monitor the job** — in GitHub → **Actions**, confirm that pushes to `main` show the deploy job targeting `ubuntu-runner-01`. Any failure will surface directly in the workflow logs, so keep an eye on disk space, Docker daemon health, and Prisma migration output.
 
 If you add additional runners, label them with `treazrisland` (or update `.github/workflows/ci.yml`) so the deploy stage continues to target only trusted hosts.
 
