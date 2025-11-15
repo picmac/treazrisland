@@ -39,8 +39,8 @@ Customize the install by passing `--repo-dir <path>` or `--branch <name>` (or by
 1. Templates `.env` files from the canonical samples in `infrastructure/env/*.env.example`.
 2. Runs `pnpm install` to hydrate the workspace.
 3. Applies Prisma migrations and seeds the database via `pnpm --filter backend prisma migrate deploy` and `pnpm --filter backend prisma db seed`.
-4. Starts the stack with `docker compose -f infrastructure/compose/docker-compose.yml up -d emulator backend frontend`.
-5. Waits for the emulator (`http://localhost:4566/health`), backend (`http://localhost:4000/health`), and frontend (`http://localhost:5173/health`) health checks before returning.
+4. Starts the stack with `docker compose -f infrastructure/compose/docker-compose.yml up -d emulatorjs backend frontend`.
+5. Waits for the emulator (`http://localhost:8080/healthz`), backend (`http://localhost:4000/health`), and frontend (`http://localhost:5173/health`) health checks before returning.
 
 ## Continuous integration
 

@@ -1,0 +1,9 @@
+:80 {
+  root * /srv/emulatorjs/dist
+
+  handle_path /healthz* {
+    respond "ok" 200
+  }
+
+  file_server
+}

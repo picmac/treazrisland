@@ -12,8 +12,8 @@ x-backend-environment: &backend-environment
   OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-treazr-assets}
   OBJECT_STORAGE_REGION: ${OBJECT_STORAGE_REGION:-us-east-1}
   OBJECT_STORAGE_PRESIGNED_TTL: ${OBJECT_STORAGE_PRESIGNED_TTL:-300}
-  EMULATOR_HOST: ${EMULATOR_HOST:-emulator}
-  EMULATOR_PORT: ${EMULATOR_PORT:-4566}
+  EMULATORJS_HOST: ${EMULATORJS_HOST:-emulatorjs}
+  EMULATORJS_PORT: ${EMULATORJS_PORT:-8080}
 
 services:
   frontend:
@@ -65,7 +65,7 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      emulator:
+      emulatorjs:
         condition: service_started
     healthcheck:
       test: ['CMD-SHELL', 'curl -f http://localhost:4000/health || exit 1']
@@ -121,19 +121,18 @@ services:
       retries: 5
       start_period: 30s
 
-  emulator:
-    image: localstack/localstack:3.5
-    environment:
-      SERVICES: ${LOCALSTACK_SERVICES:-sns,sqs}
-      DEBUG: ${LOCALSTACK_DEBUG:-0}
-      AWS_DEFAULT_REGION: ${LOCALSTACK_REGION:-us-east-1}
-      EDGE_PORT: ${LOCALSTACK_EDGE_PORT:-4566}
+  emulatorjs:
+    build:
+      context: ../emulator
+      dockerfile: Dockerfile
+      args:
+        EMULATORJS_REF: ${EMULATORJS_REF:-v4.2.3}
     ports:
-      - '${LOCALSTACK_EDGE_PORT:-4566}:4566'
+      - '${EMULATORJS_PORT:-8080}:80'
     volumes:
-      - localstack_data:/var/lib/localstack
+      - emulatorjs_data:/srv/emulatorjs/dist/data
     healthcheck:
-      test: ['CMD-SHELL', 'curl -f http://localhost:4566/health || exit 1']
+      test: ['CMD-SHELL', 'curl -f http://localhost/healthz || exit 1']
       interval: 30s
       timeout: 5s
       retries: 5
@@ -144,4 +143,4 @@ volumes:
   backend_node_modules:
   postgres_data:
   minio_data:
-  localstack_data:
+  emulatorjs_data:

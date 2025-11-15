@@ -42,6 +42,8 @@ fi
 
 inform "All prerequisites detected."
 
+EMULATORJS_PORT="${EMULATORJS_PORT:-8080}"
+
 copy_env_template() {
   local example_path="$1"
   local target_path="$2"
@@ -111,12 +113,12 @@ pnpm install
 
 # Start infrastructure dependencies first so migrations have a live database
 COMPOSE_FILE="$REPO_ROOT/infrastructure/compose/docker-compose.yml"
-inform "Starting infrastructure services required for migrations (postgres, redis, minio, emulator)..."
-docker compose -f "$COMPOSE_FILE" up -d postgres redis minio emulator
+inform "Starting infrastructure services required for migrations (postgres, redis, minio, emulatorjs)..."
+docker compose -f "$COMPOSE_FILE" up -d postgres redis minio emulatorjs
 
 inform "Waiting for postgres, redis, and minio to report healthy..."
 docker compose -f "$COMPOSE_FILE" wait postgres redis minio >/dev/null
-wait_for_http_health "emulator" "http://localhost:4566/health"
+wait_for_http_health "emulatorjs" "http://localhost:${EMULATORJS_PORT}/healthz"
 
 # Apply database migrations and seed data now that dependencies are running
 inform "Applying Prisma migrations..."
@@ -129,7 +131,7 @@ pnpm --filter backend prisma db seed
 inform "Starting Docker services (docker compose -f ${COMPOSE_FILE#$REPO_ROOT/} up -d backend frontend)..."
 docker compose -f "$COMPOSE_FILE" up -d backend frontend
 
-wait_for_http_health "emulator" "http://localhost:4566/health"
+wait_for_http_health "emulatorjs" "http://localhost:${EMULATORJS_PORT}/healthz"
 wait_for_http_health "backend" "http://localhost:4000/health"
 wait_for_http_health "frontend" "http://localhost:5173/health" "http://localhost:5173"
 
