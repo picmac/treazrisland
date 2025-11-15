@@ -1,24 +1,64 @@
 import '../../setup-env';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { parseEnv, type Env } from '../../../src/config/env';
 import { createApp } from '../../../src/index';
-
-let app: ReturnType<typeof createApp>;
-
-beforeEach(() => {
-  app = createApp();
-});
-
-afterEach(async () => {
-  await app.close();
-});
+import {
+  resetDatabase,
+  startTestDatabase,
+  stopTestDatabase,
+  type TestDatabase,
+} from '../../helpers/postgres';
 
 describe('POST /auth/login', () => {
-  it('returns access and refresh tokens for valid credentials', async () => {
-    await app.ready();
+  let app: ReturnType<typeof createApp> | null = null;
+  let database: TestDatabase | null = null;
+  let databaseError: Error | null = null;
+  let env: Env | null = null;
 
-    const response = await app.inject({
+  beforeAll(async () => {
+    try {
+      database = await startTestDatabase();
+      env = parseEnv({ ...process.env, DATABASE_URL: database.connectionString });
+    } catch (error) {
+      databaseError = error as Error;
+      console.warn('[auth-login] Skipping Postgres integration tests:', databaseError.message);
+    }
+  }, 120_000);
+
+  afterAll(async () => {
+    await stopTestDatabase(database);
+  });
+
+  beforeEach(async () => {
+    if (databaseError || !database || !env) {
+      return;
+    }
+
+    await resetDatabase(database.prisma);
+    app = createApp(env, { prisma: database.prisma });
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    if (!app) {
+      return;
+    }
+
+    await app.close();
+    app = null;
+  });
+
+  it('returns access and refresh tokens for valid credentials', async ({ skip }) => {
+    if (databaseError || !app) {
+      skip();
+      return;
+    }
+
+    const activeApp = app;
+
+    const response = await activeApp.inject({
       method: 'POST',
       url: '/auth/login',
       payload: {
@@ -38,10 +78,15 @@ describe('POST /auth/login', () => {
     ).toBe(true);
   });
 
-  it('rejects invalid credentials', async () => {
-    await app.ready();
+  it('rejects invalid credentials', async ({ skip }) => {
+    if (databaseError || !app) {
+      skip();
+      return;
+    }
 
-    const response = await app.inject({
+    const activeApp = app;
+
+    const response = await activeApp.inject({
       method: 'POST',
       url: '/auth/login',
       payload: {
@@ -53,10 +98,15 @@ describe('POST /auth/login', () => {
     expect(response.statusCode).toBe(401);
   });
 
-  it('validates the login payload', async () => {
-    await app.ready();
+  it('validates the login payload', async ({ skip }) => {
+    if (databaseError || !app) {
+      skip();
+      return;
+    }
 
-    const response = await app.inject({
+    const activeApp = app;
+
+    const response = await activeApp.inject({
       method: 'POST',
       url: '/auth/login',
       payload: {
