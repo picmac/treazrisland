@@ -159,16 +159,14 @@ export function RomHero({ rom }: RomHeroProps) {
           </button>
         </div>
 
-        {favoriteMessage && (
-          <p
-            className={`rom-hero__favorite-message rom-hero__favorite-message--${favoriteStatus}`}
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            {favoriteMessage}
-          </p>
-        )}
+        <p
+          className={`rom-hero__favorite-message${favoriteMessage ? ` rom-hero__favorite-message--${favoriteStatus}` : ''}`}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {favoriteMessage ?? ''}
+        </p>
       </div>
     </article>
   );
