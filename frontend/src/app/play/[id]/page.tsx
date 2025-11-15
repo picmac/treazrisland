@@ -26,16 +26,18 @@ type EmulatorWindow = Window & {
   EJS_onGameStart?: () => void;
 };
 
-const EMULATOR_EMBED_URL = process.env.NEXT_PUBLIC_EMULATOR_EMBED_URL;
+const envEmulatorEmbedUrl = process.env.NEXT_PUBLIC_EMULATOR_EMBED_URL;
 
 const ENABLE_VIEWPORT_SCALING = process.env.NEXT_PUBLIC_ENABLE_VIEWPORT_SCALE !== 'false';
 const ENABLE_TOUCH_OVERLAY = process.env.NEXT_PUBLIC_ENABLE_TOUCH_OVERLAY !== 'false';
 
-if (!EMULATOR_EMBED_URL) {
+if (!envEmulatorEmbedUrl) {
   throw new Error(
     'NEXT_PUBLIC_EMULATOR_EMBED_URL must be defined to load the EmulatorJS embed script.',
   );
 }
+
+const EMULATOR_EMBED_URL: string = envEmulatorEmbedUrl;
 
 const CORE_BY_PLATFORM: Record<string, string> = {
   nes: 'nes',
