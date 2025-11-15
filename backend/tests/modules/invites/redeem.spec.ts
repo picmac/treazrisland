@@ -1,20 +1,39 @@
 import '../../setup-env';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { parseEnv } from '../../../src/config/env';
 import { createApp } from '../../../src/index';
+import {
+  resetDatabase,
+  startTestDatabase,
+  stopTestDatabase,
+  type TestDatabase,
+} from '../../helpers/postgres';
 
 import type { InviteSeed } from '../../../src/modules/invites/invite.store';
 
-describe('POST /invites/:code/redeem', () => {
+describe('POST /auth/invitations/:code/redeem', () => {
   let app: ReturnType<typeof createApp>;
+  let database: TestDatabase;
+  let env: ReturnType<typeof parseEnv>;
 
-  const seedInvites = (invites: InviteSeed[]) => {
-    app.inviteStore.reset(invites);
+  const seedInvites = async (invites: InviteSeed[]) => {
+    await app.inviteStore.reset(invites);
   };
 
-  beforeEach(() => {
-    app = createApp();
+  beforeAll(async () => {
+    database = await startTestDatabase();
+    env = parseEnv({ ...process.env, DATABASE_URL: database.connectionString });
+  });
+
+  afterAll(async () => {
+    await stopTestDatabase(database);
+  });
+
+  beforeEach(async () => {
+    await resetDatabase(database.prisma);
+    app = createApp(env, { prisma: database.prisma });
   });
 
   afterEach(async () => {
@@ -27,11 +46,11 @@ describe('POST /invites/:code/redeem', () => {
       code: 'VALID-INVITE',
       expiresAt: new Date(Date.now() + 1000 * 60),
     } satisfies InviteSeed;
-    seedInvites([invite]);
+    await seedInvites([invite]);
 
     const response = await app.inject({
       method: 'POST',
-      url: `/invites/${invite.code}/redeem`,
+      url: `/auth/invitations/${invite.code}/redeem`,
       payload: {
         email: 'new-player@example.com',
         password: 'strong-password',
@@ -45,17 +64,18 @@ describe('POST /invites/:code/redeem', () => {
     expect(
       response.cookies.some((cookie: { name: string }) => cookie.name === 'refreshToken'),
     ).toBe(true);
-    expect(app.inviteStore.getInvite(invite.code)?.redeemedAt).toBeInstanceOf(Date);
+    const storedInvite = await app.inviteStore.getInvite(invite.code);
+    expect(storedInvite?.redeemedAt).toBeInstanceOf(Date);
   });
 
   it('rejects expired invites', async () => {
     await app.ready();
     const invite = { code: 'EXPIRED', expiresAt: new Date(Date.now() - 1000) } satisfies InviteSeed;
-    seedInvites([invite]);
+    await seedInvites([invite]);
 
     const response = await app.inject({
       method: 'POST',
-      url: `/invites/${invite.code}/redeem`,
+      url: `/auth/invitations/${invite.code}/redeem`,
       payload: {
         email: 'player@example.com',
         password: 'strong-password',
@@ -69,11 +89,11 @@ describe('POST /invites/:code/redeem', () => {
   it('validates reserved email addresses', async () => {
     await app.ready();
     const invite = { code: 'RESERVED', email: 'reserved@example.com' } satisfies InviteSeed;
-    seedInvites([invite]);
+    await seedInvites([invite]);
 
     const response = await app.inject({
       method: 'POST',
-      url: `/invites/${invite.code}/redeem`,
+      url: `/auth/invitations/${invite.code}/redeem`,
       payload: {
         email: 'different@example.com',
         password: 'strong-password',
@@ -91,11 +111,11 @@ describe('POST /invites/:code/redeem', () => {
       redeemedAt: new Date(),
       redeemedById: 'user-123',
     } satisfies InviteSeed;
-    seedInvites([invite]);
+    await seedInvites([invite]);
 
     const response = await app.inject({
       method: 'POST',
-      url: `/invites/${invite.code}/redeem`,
+      url: `/auth/invitations/${invite.code}/redeem`,
       payload: {
         email: 'player@example.com',
         password: 'strong-password',

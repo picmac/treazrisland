@@ -2,9 +2,10 @@ import { PrismaClient } from '@prisma/client';
 
 import { RedisSessionStore } from './session-store';
 
+import type { AuthMailer } from './mailer';
 import type { AuthUser } from './types';
 import type { Env } from '../../config/env';
-import type { InMemoryInviteStore } from '../invites/invite.store';
+import type { PrismaInviteStore } from '../invites/invite.store';
 import type { RomService } from '../roms/rom.service';
 import type { SaveStateService } from '../roms/save-state.service';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -16,7 +17,8 @@ declare module 'fastify' {
     sessionStore: RedisSessionStore;
     romService: RomService;
     saveStateService: SaveStateService;
-    inviteStore: InMemoryInviteStore;
+    inviteStore: PrismaInviteStore;
+    authMailer: AuthMailer;
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 
