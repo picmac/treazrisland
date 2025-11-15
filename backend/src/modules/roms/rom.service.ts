@@ -1,4 +1,10 @@
-import { PrismaClient, type Prisma, type Rom, type RomAsset, type RomAssetType } from '@prisma/client';
+import {
+  PrismaClient,
+  type Prisma,
+  type Rom,
+  type RomAsset,
+  type RomAssetType,
+} from '@prisma/client';
 
 import type { RomStorage } from './storage';
 

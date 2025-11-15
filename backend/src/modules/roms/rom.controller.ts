@@ -18,8 +18,10 @@ const listQuerySchema = z.object({
   favorites: z.enum(['true', 'false']).optional(),
 });
 
+const romIdSchema = z.union([z.string().uuid(), z.string().cuid()]);
+
 const romIdParamsSchema = z.object({
-  id: z.string().uuid(),
+  id: romIdSchema,
 });
 
 const saveStateBodySchema = z.object({

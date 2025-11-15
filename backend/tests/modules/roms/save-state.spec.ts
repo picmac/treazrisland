@@ -8,7 +8,12 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { parseEnv, type Env } from '../../../src/config/env';
 import { createApp } from '../../../src/index';
 import { MAX_SAVE_STATE_BYTES } from '../../../src/modules/roms/rom.controller';
-import { resetDatabase, startTestDatabase, stopTestDatabase, type TestDatabase } from '../../helpers/postgres';
+import {
+  resetDatabase,
+  startTestDatabase,
+  stopTestDatabase,
+  type TestDatabase,
+} from '../../helpers/postgres';
 
 describe('ROM save state endpoints', () => {
   const bucket = 'rom-save-state-tests';

@@ -6,7 +6,12 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 
 import { RomService } from '../src/modules/roms/rom.service';
 
-import { resetDatabase, startTestDatabase, stopTestDatabase, type TestDatabase } from './helpers/postgres';
+import {
+  resetDatabase,
+  startTestDatabase,
+  stopTestDatabase,
+  type TestDatabase,
+} from './helpers/postgres';
 import { TestRomStorage } from './helpers/test-rom-storage';
 
 const buildAssetInput = (name: string) => {

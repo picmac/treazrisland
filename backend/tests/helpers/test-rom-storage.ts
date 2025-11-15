@@ -1,9 +1,17 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { RomStorageError, type RomStorage, type RomStorageUploadInput, type RomStorageUploadedAsset } from '../../src/modules/roms/storage';
+import {
+  RomStorageError,
+  type RomStorage,
+  type RomStorageUploadInput,
+  type RomStorageUploadedAsset,
+} from '../../src/modules/roms/storage';
 
 export class TestRomStorage implements RomStorage {
-  private readonly objects = new Map<string, { data: Buffer; checksum: string; contentType: string }>();
+  private readonly objects = new Map<
+    string,
+    { data: Buffer; checksum: string; contentType: string }
+  >();
 
   async uploadAsset(input: RomStorageUploadInput): Promise<RomStorageUploadedAsset> {
     let buffer: Buffer;

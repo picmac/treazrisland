@@ -66,15 +66,9 @@ export class S3RomStorage implements RomStorage {
     const objectKey = `roms/${randomUUID()}-${input.filename}`;
 
     try {
-      await this.client.putObject(
-        this.options.bucket,
-        objectKey,
-        buffer,
-        buffer.length,
-        {
-          'Content-Type': input.contentType,
-        },
-      );
+      await this.client.putObject(this.options.bucket, objectKey, buffer, buffer.length, {
+        'Content-Type': input.contentType,
+      });
     } catch (error) {
       throw new RomStorageError('Unable to upload ROM asset to storage', 502, { cause: error });
     }

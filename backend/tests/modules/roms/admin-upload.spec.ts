@@ -8,7 +8,12 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 
 import { parseEnv, type Env } from '../../../src/config/env';
 import { createApp } from '../../../src/index';
-import { resetDatabase, startTestDatabase, stopTestDatabase, type TestDatabase } from '../../helpers/postgres';
+import {
+  resetDatabase,
+  startTestDatabase,
+  stopTestDatabase,
+  type TestDatabase,
+} from '../../helpers/postgres';
 
 import type { Readable } from 'node:stream';
 
