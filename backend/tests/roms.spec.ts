@@ -1,6 +1,6 @@
 import './setup-env';
 
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -31,6 +31,30 @@ describe('RomService integration', () => {
   let databaseError: Error | null = null;
   let storage: TestRomStorage;
   let service: RomService | null = null;
+
+  const createTestUser = async (email: string) => {
+    if (!database) {
+      throw new Error('Database not initialized');
+    }
+
+    const normalizedEmail = email.toLowerCase();
+    const baseUsername =
+      normalizedEmail
+        .split('@')[0]
+        .replace(/[^a-z0-9_]/gi, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 24) || 'player';
+    const username = `${baseUsername}_${randomUUID().slice(0, 8)}`.slice(0, 32);
+
+    return database.prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        username,
+        passwordHash: 'test-hash',
+      },
+    });
+  };
 
   beforeAll(async () => {
     try {
@@ -104,10 +128,11 @@ describe('RomService integration', () => {
       asset: { type: 'ROM', ...buildAssetInput('puzzle-snes') },
     });
 
-    await activeService.toggleFavorite('player@example.com', action.id);
+    const user = await createTestUser('player@example.com');
+    await activeService.toggleFavorite(user.id, action.id);
 
     const filtered = await activeService.list({
-      filters: { platformId: 'nes', genre: 'action', favoriteForUserId: 'player@example.com' },
+      filters: { platformId: 'nes', genre: 'action', favoriteForUserId: user.id },
       pagination: { page: 1, pageSize: 10 },
     });
 

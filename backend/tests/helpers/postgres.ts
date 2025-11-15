@@ -57,8 +57,11 @@ export const resetDatabase = async (prisma?: PrismaClient | null): Promise<void>
   await prisma.$transaction([
     prisma.favorite.deleteMany(),
     prisma.saveState.deleteMany(),
+    prisma.session.deleteMany(),
+    prisma.invite.deleteMany(),
     prisma.romAsset.deleteMany(),
     prisma.rom.deleteMany(),
     prisma.platform.deleteMany(),
+    prisma.user.deleteMany(),
   ]);
 };

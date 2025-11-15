@@ -70,6 +70,7 @@ type AppPluginOptions = { env: Env; prisma: PrismaClient; romStorage: RomStorage
 
 const appPlugin = fp(async (fastify, { env, prisma, romStorage }: AppPluginOptions) => {
   fastify.decorate('config', env);
+  fastify.decorate('prisma', prisma);
 
   await fastify.register(loggerPlugin);
 

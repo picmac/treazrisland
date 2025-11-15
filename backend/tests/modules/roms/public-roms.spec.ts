@@ -47,6 +47,8 @@ describe('ROM catalogue routes', () => {
 
   type TestCookie = { name: string; value: string };
 
+  type LoginResponseBody = { accessToken: string; user: { id: string; email: string } };
+
   const performLogin = async (email: string) => {
     const response = await app.inject({
       method: 'POST',
@@ -55,7 +57,7 @@ describe('ROM catalogue routes', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = response.json() as { accessToken: string };
+    const body = response.json() as LoginResponseBody;
     const refreshCookie = response.cookies.find(
       (cookie: TestCookie) => cookie.name === 'refreshToken',
     );
@@ -184,9 +186,9 @@ describe('ROM catalogue routes', () => {
     await createRom({ title: 'Other ROM' });
     const userEmail = 'player@example.com';
 
-    await app.romService.toggleFavorite(userEmail, romOne.id);
-
-    const accessToken = await loginAndGetToken(userEmail);
+    const login = await performLogin(userEmail);
+    await app.romService.toggleFavorite(login.body.user.id, romOne.id);
+    const accessToken = login.body.accessToken;
 
     const response = await app.inject({
       method: 'GET',
@@ -242,9 +244,9 @@ describe('ROM catalogue routes', () => {
 
     const rom = await createRom({ title: 'Favorite aware ROM' });
     const userEmail = 'favorite-state@example.com';
-    await app.romService.toggleFavorite(userEmail, rom.id);
-
-    const accessToken = await loginAndGetToken(userEmail);
+    const login = await performLogin(userEmail);
+    await app.romService.toggleFavorite(login.body.user.id, rom.id);
+    const accessToken = login.body.accessToken;
 
     const response = await app.inject({
       method: 'GET',
