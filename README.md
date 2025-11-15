@@ -34,6 +34,14 @@ TREAZRISLAND_DIR="$HOME/src/treazrisland" \
 
 Customize the install by passing `--repo-dir <path>` or `--branch <name>` (or by exporting `TREAZRISLAND_DIR` / `TREAZRISLAND_BRANCH`). After the script finishes, run `./scripts/bootstrap.sh` from the cloned repository to install Node dependencies and start the stack.
 
+`scripts/bootstrap.sh` is the canonical local workflow. It:
+
+1. Templates `.env` files from the canonical samples in `infrastructure/env/*.env.example`.
+2. Runs `pnpm install` to hydrate the workspace.
+3. Applies Prisma migrations and seeds the database via `pnpm --filter backend prisma migrate deploy` and `pnpm --filter backend prisma db seed`.
+4. Starts the stack with `docker compose -f infrastructure/compose/docker-compose.yml up -d emulator backend frontend`.
+5. Waits for the emulator (`http://localhost:4566/health`), backend (`http://localhost:4000/health`), and frontend (`http://localhost:5173/health`) health checks before returning.
+
 ## Continuous integration
 
 Every push and pull request runs the `CI` workflow, which fans out linting, type-checking (`pnpm typecheck`), unit tests, and the Playwright suite. Branch protection rules require this workflow to succeed before merges land on `main`, so expect to see a green check from GitHub Actions prior to completing a PR.
