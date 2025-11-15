@@ -16,6 +16,7 @@
     "test": "pnpm -r test",
     "test:watch": "pnpm -r run test:watch",
     "test:e2e": "./scripts/test-e2e.sh",
+    "deploy:runner": "./scripts/deploy/self-hosted-runner.sh",
     "test:security-ack": "node tests/security-checklist-ack.test.js"
   },
   "devDependencies": {
