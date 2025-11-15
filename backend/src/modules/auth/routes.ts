@@ -4,6 +4,8 @@ import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
+import { recordAuthAttempt } from '../../config/observability';
+
 import type { AuthUser, RefreshTokenPayload } from './types';
 import type { InviteRecord, InviteSeed } from '../invites/invite.store';
 import type { FastifyInstance, FastifyPluginAsync, FastifyReply } from 'fastify';
@@ -238,17 +240,20 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     const parsedBody = loginSchema.safeParse(request.body);
 
     if (!parsedBody.success) {
+      recordAuthAttempt({ method: 'password', outcome: 'failure' });
       return reply.status(400).send({ error: 'Invalid login payload' });
     }
 
     const { email, password } = parsedBody.data;
 
     if (password !== 'password123') {
+      recordAuthAttempt({ method: 'password', outcome: 'failure' });
       return reply.status(401).send({ error: 'Invalid credentials' });
     }
 
     const user = await ensureUserRecord(email, fastify.prisma);
     const { accessToken } = await createSessionTokens(fastify, reply, user);
+    recordAuthAttempt({ method: 'password', outcome: 'success' });
 
     reply.setCookie('treazr.accessToken', accessToken, {
       httpOnly: true,
@@ -315,16 +320,19 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     const parsed = magicLinkSchema.safeParse(request.body);
 
     if (!parsed.success) {
+      recordAuthAttempt({ method: 'magic-link', outcome: 'failure' });
       return reply.status(400).send({ error: 'Invalid magic link payload' });
     }
 
     const user = await fastify.sessionStore.consumeMagicLinkToken(parsed.data.token);
 
     if (!user) {
+      recordAuthAttempt({ method: 'magic-link', outcome: 'failure' });
       return reply.status(401).send({ error: 'Magic link expired or invalid' });
     }
 
     const { accessToken } = await createSessionTokens(fastify, reply, user);
+    recordAuthAttempt({ method: 'magic-link', outcome: 'success' });
 
     return reply.send({
       accessToken,

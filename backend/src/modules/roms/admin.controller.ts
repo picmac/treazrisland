@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { recordRomUpload } from '../../config/observability';
+
 import { romAssetTypes, type RomAssetType } from './rom.service';
 import { RomStorageError } from './storage';
 
@@ -48,14 +50,18 @@ export const adminRomController: FastifyPluginAsync = async (fastify) => {
         },
       });
 
+      recordRomUpload({ source: 'admin', outcome: 'success' });
+
       return reply.status(201).send({ rom });
     } catch (error) {
       if (error instanceof RomStorageError) {
         const status = error.statusCode >= 500 ? 502 : 400;
+        recordRomUpload({ source: 'admin', outcome: 'failure' });
         return reply.status(status).send({ error: error.message });
       }
 
       request.log.error({ err: error }, 'Failed to register ROM');
+      recordRomUpload({ source: 'admin', outcome: 'failure' });
       return reply.status(500).send({ error: 'Unable to register ROM' });
     }
   });
