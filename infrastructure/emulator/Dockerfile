@@ -1,9 +1,11 @@
 # syntax=docker/dockerfile:1.7
 
-ARG NODE_IMAGE=node:20-alpine
+ARG NODE_IMAGE=node:20-bookworm-slim
 FROM ${NODE_IMAGE} AS build
 
-RUN apk add --no-cache git
+RUN apt-get update \
+  && apt-get install -y git p7zip-full \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 
