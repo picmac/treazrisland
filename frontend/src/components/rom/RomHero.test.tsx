@@ -1,12 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RomHero } from '@/components/rom/RomHero';
 import * as apiClient from '@/lib/apiClient';
 import * as authTokens from '@/lib/authTokens';
+import { fetchRomDetails } from '@/lib/roms';
 import type { RomDetails } from '@/types/rom';
 
 vi.mock('next/image', () => ({
@@ -14,9 +15,9 @@ vi.mock('next/image', () => ({
   default: (props: React.ComponentProps<'img'>) => <img {...props} alt={props.alt ?? ''} />,
 }));
 
-vi.mock('@/lib/roms', () => ({
-  fetchRomDetails: vi.fn().mockResolvedValue(null),
-}));
+vi.mock('@/lib/roms');
+
+const fetchRomDetailsMock = vi.mocked(fetchRomDetails);
 
 const romFixture: RomDetails = {
   id: 'rom-hero-fixture',
@@ -32,6 +33,11 @@ const romFixture: RomDetails = {
 };
 
 describe('RomHero favorite button', () => {
+  beforeEach(() => {
+    fetchRomDetailsMock.mockReset();
+    fetchRomDetailsMock.mockResolvedValue(null);
+  });
+
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
@@ -91,5 +97,39 @@ describe('RomHero favorite button', () => {
     const statusMessage = await screen.findByRole('status');
     expect(statusMessage).toHaveTextContent('Sign in to manage your favorites.');
     expect(favoriteButton).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('ignores stale refresh responses that resolve after a confirmed toggle', async () => {
+    vi.spyOn(authTokens, 'getStoredAccessToken').mockReturnValue('token-123');
+    vi.spyOn(apiClient, 'toggleRomFavorite').mockResolvedValue({
+      romId: romFixture.id,
+      isFavorite: true,
+    });
+    let resolveRefresh: ((rom: RomDetails | null) => void) | undefined;
+    fetchRomDetailsMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRefresh = resolve;
+        }),
+    );
+    const user = userEvent.setup();
+
+    render(<RomHero rom={{ ...romFixture, isFavorite: false }} />);
+
+    const favoriteButton = screen.getByRole('button', { name: '☆ Add to favorites' });
+
+    await user.click(favoriteButton);
+
+    await screen.findByRole('status');
+    expect(favoriteButton).toHaveTextContent('★ Favorited');
+    expect(favoriteButton).toHaveAttribute('aria-pressed', 'true');
+
+    await act(async () => {
+      resolveRefresh?.({ ...romFixture, isFavorite: false });
+      await Promise.resolve();
+    });
+
+    expect(favoriteButton).toHaveTextContent('★ Favorited');
+    expect(favoriteButton).toHaveAttribute('aria-pressed', 'true');
   });
 });
