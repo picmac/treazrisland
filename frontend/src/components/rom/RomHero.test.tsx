@@ -43,6 +43,28 @@ describe('RomHero favorite button', () => {
     vi.restoreAllMocks();
   });
 
+  it('disables the favorite button until hydration completes', async () => {
+    vi.spyOn(authTokens, 'getStoredAccessToken').mockReturnValue('token-123');
+    vi.useFakeTimers();
+
+    try {
+      render(<RomHero rom={{ ...romFixture, isFavorite: false }} />);
+
+      const favoriteButton = screen.getByRole('button', { name: '☆ Add to favorites' });
+      expect(favoriteButton).toBeDisabled();
+      expect(favoriteButton).toHaveAttribute('data-ready', 'false');
+
+      await act(async () => {
+        vi.runOnlyPendingTimers();
+      });
+
+      expect(favoriteButton).not.toBeDisabled();
+      expect(favoriteButton).toHaveAttribute('data-ready', 'true');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('announces success after the backend confirms a favorite', async () => {
     vi.spyOn(authTokens, 'getStoredAccessToken').mockReturnValue('token-123');
     vi.spyOn(apiClient, 'toggleRomFavorite').mockResolvedValue({

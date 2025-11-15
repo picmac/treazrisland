@@ -235,18 +235,22 @@ jobs:
             command: pnpm lint
             needsDocker: false
             installPlaywright: false
+            saveCache: false
           - name: Type Check
             command: pnpm typecheck
             needsDocker: false
             installPlaywright: false
+            saveCache: false
           - name: Unit Tests
             command: pnpm test
             needsDocker: false
             installPlaywright: false
+            saveCache: false
           - name: Playwright
             command: pnpm test:e2e
             needsDocker: true
             installPlaywright: true
+            saveCache: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -263,11 +267,12 @@ jobs:
         id: pnpm-store
         run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_OUTPUT"
 
-      - name: Cache pnpm store
-        uses: actions/cache@v4
+      - name: Restore pnpm store
+        id: pnpm-cache
+        uses: actions/cache/restore@v4
         with:
           path: ${{ steps.pnpm-store.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-${{ github.run_id }}-${{ hashFiles('pnpm-lock.yaml', 'backend/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml', 'backend/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
@@ -278,12 +283,17 @@ jobs:
         if: ${{ matrix.job.needsDocker }}
         uses: docker/setup-buildx-action@v3
 
-      - name: Cache Docker layers
+      - name: Prepare Docker cache directory
         if: ${{ matrix.job.needsDocker }}
-        uses: actions/cache@v4
+        run: mkdir -p /home/runner/.cache/docker/buildx
+
+      - name: Restore Docker layers
+        if: ${{ matrix.job.needsDocker }}
+        id: docker-cache
+        uses: actions/cache/restore@v4
         with:
           path: /home/runner/.cache/docker/buildx
-          key: ${{ runner.os }}-buildx-${{ github.run_id }}-${{ hashFiles('infrastructure/compose/docker-compose.yml', 'scripts/test-e2e.sh') }}
+          key: ${{ runner.os }}-buildx-${{ hashFiles('infrastructure/compose/docker-compose.yml', 'scripts/test-e2e.sh') }}
           restore-keys: |
             ${{ runner.os }}-buildx-
 
@@ -301,3 +311,17 @@ jobs:
 
       - name: Run ${{ matrix.job.name }}
         run: ${{ matrix.job.command }}
+
+      - name: Save Docker layers cache
+        if: ${{ matrix.job.needsDocker && steps.docker-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: /home/runner/.cache/docker/buildx
+          key: ${{ steps.docker-cache.outputs.cache-primary-key }}
+
+      - name: Save pnpm store
+        if: ${{ matrix.job.saveCache && steps.pnpm-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.STORE_PATH }}
+          key: ${{ steps.pnpm-cache.outputs.cache-primary-key }}

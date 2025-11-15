@@ -77,13 +77,19 @@ class ApiClient {
       throw new ApiError('You must be signed in to perform this action.', 401);
     }
 
+    const authHeaders = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+    const mergedHeaders = {
+      ...authHeaders,
+      ...(init.headers ?? {}),
+    } as Record<string, string>;
+
+    if (init.body !== undefined && !('Content-Type' in mergedHeaders)) {
+      mergedHeaders['Content-Type'] = 'application/json';
+    }
+
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        ...(init.headers ?? {}),
-      },
+      headers: mergedHeaders,
       cache: 'no-store',
       credentials: 'include',
     });
