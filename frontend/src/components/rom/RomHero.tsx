@@ -57,9 +57,13 @@ export function RomHero({ rom }: RomHeroProps) {
   const releaseLabel = rom.releaseYear ? rom.releaseYear.toString() : 'Unreleased';
 
   const handleToggleFavorite = async () => {
+    if (!getStoredAccessToken()) {
+      setFavoriteStatus('error');
+      setFavoriteMessage('Sign in to manage your favorites.');
+      return;
+    }
+
     const previousValue = isFavorite;
-    const optimisticValue = !previousValue;
-    setIsFavorite(optimisticValue);
     setFavoriteStatus('saving');
     setFavoriteMessage(undefined);
 
