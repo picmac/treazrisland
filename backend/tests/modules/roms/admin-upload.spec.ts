@@ -8,6 +8,12 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 
 import { parseEnv, type Env } from '../../../src/config/env';
 import { createApp } from '../../../src/index';
+import {
+  resetDatabase,
+  startTestDatabase,
+  stopTestDatabase,
+  type TestDatabase,
+} from '../../helpers/postgres';
 
 import type { Readable } from 'node:stream';
 
@@ -27,6 +33,8 @@ describe('POST /admin/roms', () => {
   let minioClient: Client | null = null;
   let app: ReturnType<typeof createApp> | null = null;
   let runtimeError: Error | null = null;
+  let database: TestDatabase | null = null;
+  let databaseError: Error | null = null;
 
   const getApp = (): NonNullable<typeof app> => {
     if (!app) {
@@ -37,6 +45,15 @@ describe('POST /admin/roms', () => {
   };
 
   beforeAll(async () => {
+    try {
+      database = await startTestDatabase();
+      process.env.DATABASE_URL = database.connectionString;
+    } catch (error) {
+      databaseError = error as Error;
+      console.warn('[rom-upload] Skipping Postgres integration tests:', databaseError.message);
+      return;
+    }
+
     container = await new GenericContainer('quay.io/minio/minio')
       .withEnvironment({
         MINIO_ROOT_USER: 'minioadmin',
@@ -81,14 +98,17 @@ describe('POST /admin/roms', () => {
     if (container && !runtimeError) {
       await container.stop();
     }
+
+    await stopTestDatabase(database);
   });
 
   beforeEach(async () => {
-    if (runtimeError) {
+    if (runtimeError || databaseError) {
       return;
     }
 
-    app = createApp(env);
+    await resetDatabase(database?.prisma);
+    app = createApp(env, { prisma: database!.prisma });
     await app.ready();
   });
 
@@ -102,7 +122,7 @@ describe('POST /admin/roms', () => {
   });
 
   it('uploads ROM assets to MinIO and registers metadata', async ({ skip }) => {
-    if (runtimeError) {
+    if (runtimeError || databaseError) {
       skip();
     }
 
@@ -153,7 +173,7 @@ describe('POST /admin/roms', () => {
   });
 
   it('rejects uploads when the checksum does not match the payload', async ({ skip }) => {
-    if (runtimeError) {
+    if (runtimeError || databaseError) {
       skip();
     }
 

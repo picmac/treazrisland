@@ -8,6 +8,12 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { parseEnv, type Env } from '../../../src/config/env';
 import { createApp } from '../../../src/index';
 import { MAX_SAVE_STATE_BYTES } from '../../../src/modules/roms/rom.controller';
+import {
+  resetDatabase,
+  startTestDatabase,
+  stopTestDatabase,
+  type TestDatabase,
+} from '../../helpers/postgres';
 
 describe('ROM save state endpoints', () => {
   const bucket = 'rom-save-state-tests';
@@ -15,6 +21,8 @@ describe('ROM save state endpoints', () => {
   let env: Env;
   let app: ReturnType<typeof createApp> | null = null;
   let runtimeError: Error | null = null;
+  let database: TestDatabase | null = null;
+  let databaseError: Error | null = null;
 
   const getApp = (): NonNullable<typeof app> => {
     if (!app) {
@@ -79,23 +87,18 @@ describe('ROM save state endpoints', () => {
     return `${refreshCookie!.name}=${refreshCookie!.value}`;
   };
 
-  const registerRomRecord = (): string =>
-    getApp().romService.registerRom({
-      title: 'Save State Cookie Test',
-      platformId: 'nes',
-      releaseYear: 1990,
-      genres: ['action'],
-      asset: {
-        type: 'ROM',
-        uri: 's3://roms/save-state-cookie.zip',
-        objectKey: 'roms/save-state-cookie.zip',
-        checksum: 'a'.repeat(64),
-        contentType: 'application/zip',
-        size: 1024,
-      },
-    }).id;
+  const registerRomRecord = async (): Promise<string> => createRom();
 
   beforeAll(async () => {
+    try {
+      database = await startTestDatabase();
+      process.env.DATABASE_URL = database.connectionString;
+    } catch (error) {
+      databaseError = error as Error;
+      console.warn('[save-state] Skipping Postgres integration tests:', databaseError.message);
+      return;
+    }
+
     container = await new GenericContainer('quay.io/minio/minio')
       .withEnvironment({
         MINIO_ROOT_USER: 'minioadmin',
@@ -131,14 +134,17 @@ describe('ROM save state endpoints', () => {
     if (container && !runtimeError) {
       await container.stop();
     }
+
+    await stopTestDatabase(database);
   });
 
   beforeEach(async () => {
-    if (runtimeError) {
+    if (runtimeError || databaseError) {
       return;
     }
 
-    app = createApp(env);
+    await resetDatabase(database?.prisma);
+    app = createApp(env, { prisma: database!.prisma });
     await app.ready();
   });
 
@@ -152,7 +158,7 @@ describe('ROM save state endpoints', () => {
   });
 
   it('persists save states and returns the latest blob', async ({ skip }) => {
-    if (runtimeError) {
+    if (runtimeError || databaseError) {
       skip();
     }
 
@@ -188,7 +194,7 @@ describe('ROM save state endpoints', () => {
   });
 
   it('rejects payloads that exceed the configured limit', async ({ skip }) => {
-    if (runtimeError) {
+    if (runtimeError || databaseError) {
       skip();
     }
 
@@ -211,12 +217,12 @@ describe('ROM save state endpoints', () => {
   });
 
   it('rejects refresh cookies for save state routes', async ({ skip }) => {
-    if (runtimeError) {
+    if (runtimeError || databaseError) {
       skip();
     }
 
     const refreshCookie = await getRefreshCookie();
-    const romId = registerRomRecord();
+    const romId = await registerRomRecord();
 
     const saveResponse = await getApp().inject({
       method: 'POST',

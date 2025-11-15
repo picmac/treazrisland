@@ -16,6 +16,7 @@ yarn-error.log*
 frontend/.next/
 frontend/out/
 frontend/coverage/
+backend/coverage/
 frontend/test-results/
 
 # Playwright artifacts
