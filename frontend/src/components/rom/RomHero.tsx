@@ -17,6 +17,9 @@ export function RomHero({ rom }: RomHeroProps) {
   const [isFavorite, setIsFavorite] = useState<boolean>(rom.isFavorite ?? false);
   const [favoriteStatus, setFavoriteStatus] = useState<FavoriteStatus>('idle');
   const [favoriteMessage, setFavoriteMessage] = useState<string>();
+  const [favoriteAnnouncement, setFavoriteAnnouncement] = useState<'added' | 'removed' | null>(
+    null,
+  );
   const [isHydrated, setIsHydrated] = useState(false);
   const mutationVersionRef = useRef(0);
 
@@ -90,6 +93,7 @@ export function RomHero({ rom }: RomHeroProps) {
       setIsFavorite(response.isFavorite);
       setFavoriteStatus('success');
       setFavoriteMessage(response.isFavorite ? 'Added to favorites.' : 'Removed from favorites.');
+      setFavoriteAnnouncement(response.isFavorite ? 'added' : 'removed');
     } catch (error) {
       setIsFavorite(previousValue);
       setFavoriteStatus('error');
@@ -100,12 +104,19 @@ export function RomHero({ rom }: RomHeroProps) {
             ? error.message
             : 'Unable to update favorites right now.',
       );
+      setFavoriteAnnouncement(null);
     }
   };
 
   const favoriteButtonLabel = isFavorite ? '★ Favorited' : '☆ Add to favorites';
   const favoriteButtonPressed = isFavorite ? 'true' : 'false';
   const isFavoriteButtonDisabled = !isHydrated || favoriteStatus === 'saving';
+  const favoriteLiveText =
+    favoriteAnnouncement === 'added'
+      ? 'Added to favorites.'
+      : favoriteAnnouncement === 'removed'
+        ? 'Removed from favorites.'
+        : (favoriteMessage ?? '');
 
   return (
     <article className="rom-hero">
@@ -161,11 +172,13 @@ export function RomHero({ rom }: RomHeroProps) {
 
         <p
           className={`rom-hero__favorite-message${favoriteMessage ? ` rom-hero__favorite-message--${favoriteStatus}` : ''}`}
-          role="status"
           aria-live="polite"
           aria-atomic="true"
         >
           {favoriteMessage ?? ''}
+        </p>
+        <p role="status" aria-live="polite" data-testid="favorite-status" className="sr-only">
+          {favoriteLiveText}
         </p>
       </div>
     </article>
