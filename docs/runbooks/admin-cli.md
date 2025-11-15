@@ -16,28 +16,22 @@ instance (local or production via secure tunnel).
 Run the helper to provision the first administrator:
 
 ```bash
-pnpm cli:create-admin
+pnpm --filter backend create-admin
 ```
 
 The script prompts for:
 
 - **Admin email** – must be unique and is normalised to lowercase.
-- **Admin username** – defaults to the email prefix, must be unique, and only allows letters, numbers, and underscores.
-- **Display name** – optional; blank answers fallback to the username.
 - **Password** – captured securely (input is masked) and confirmed before submission. The stored value uses a bcrypt hash with
   12 rounds.
 
-### Non-interactive overrides
+Successful execution only proceeds when the users table is empty to prevent accidental duplicate admins. The username and
+display name default to the email prefix.
 
-Set any of the following environment variables to pre-fill the prompts (useful for automation). Invalid values will stop the
-script before touching the database.
+### Non-interactive flags
 
-| Variable             | Purpose                                                |
-| -------------------- | ------------------------------------------------------ |
-| `ADMIN_EMAIL`        | Email for the admin account.                           |
-| `ADMIN_USERNAME`     | Username for the admin account.                        |
-| `ADMIN_DISPLAY_NAME` | Optional display name.                                 |
-| `ADMIN_PASSWORD`     | Plain text password that will be hashed before saving. |
+Pass `--email <address>` and `--password <value>` to run the command non-interactively (for example from CI or bootstrap
+scripts). Invalid values stop execution before any database writes occur.
 
 ## Generate manual invite codes
 

@@ -42,7 +42,7 @@ This plan outlines the fastest path to deliver a professional, self-hosted retro
 
 - Implement passwordless email invitations using magic links (signed JWT with short TTL) and fallback admin password login.
 - Store sessions in Redis with rolling refresh tokens to balance security and convenience for local deployments.
-- Offer CLI utilities (`npm run cli:create-admin`) to generate the first administrator without touching the database manually.
+- Offer CLI utilities (`pnpm --filter backend create-admin`) to generate the first administrator without touching the database manually.
 - Provide copy templates for invitation emails and onboarding tooltips so tone stays consistent with the brand voice.
 
 ### 5. Observability, Security & QA
@@ -65,7 +65,7 @@ This plan outlines the fastest path to deliver a professional, self-hosted retro
 ## Deployment Checklist for First Play
 
 1. Clone repository and run `./scripts/bootstrap.sh` to start services.
-2. Execute `npm run cli:create-admin` from the backend container to issue the first admin invitation.
+2. Execute `pnpm --filter backend create-admin` from the backend container to issue the first admin invitation.
 3. Upload a ROM through the admin dashboard or place a ROM file in `./data/import/` for auto-ingestion.
 4. Browse to the library, tap the featured ROM, and launch the emulator.
 5. Save state and confirm persistence by refreshing the page and resuming play.

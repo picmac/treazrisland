@@ -43,6 +43,24 @@ Customize the install by passing `--repo-dir <path>` or `--branch <name>` (or by
 4. Starts the stack with `docker compose -f infrastructure/compose/docker-compose.yml up -d emulatorjs backend frontend`.
 5. Waits for the emulator (`http://localhost:8080/healthz`), backend (`http://localhost:4000/health`), and frontend (`http://localhost:5173/health`) health checks before returning.
 
+## Admin onboarding
+
+Creating the first administrator unlocks the invite- and ROM-management APIs. Run the bootstrap CLI once per environment after the database is migrated.
+
+**Prerequisites**
+
+- `DATABASE_URL` must point at the target Postgres instance (local Docker, staging, etc.).
+- Prisma migrations should be applied (`pnpm --filter backend prisma migrate deploy`).
+
+**Usage**
+
+```bash
+pnpm --filter backend create-admin            # prompts for the email and password
+pnpm --filter backend create-admin --email ops@example.com --password "super-secure"  # non-interactive
+```
+
+The script refuses to run if a user already exists, ensuring that exactly one bootstrap admin is created manually.
+
 ## Continuous integration
 
 Every push and pull request runs the `CI` workflow, which fans out linting, type-checking (`pnpm typecheck`), unit tests, and the Playwright suite. Branch protection rules require this workflow to succeed before merges land on `main`, so expect to see a green check from GitHub Actions prior to completing a PR.
