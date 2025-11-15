@@ -22,6 +22,7 @@ CREATE TABLE "Rom" (
     "description" TEXT,
     "releaseYear" INTEGER,
     "platformId" TEXT NOT NULL,
+    "genres" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -34,7 +35,10 @@ CREATE TABLE "RomAsset" (
     "romId" TEXT NOT NULL,
     "type" "RomAssetType" NOT NULL,
     "uri" TEXT NOT NULL,
-    "checksum" TEXT,
+    "objectKey" TEXT NOT NULL,
+    "checksum" TEXT NOT NULL,
+    "contentType" TEXT NOT NULL,
+    "size" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "RomAsset_pkey" PRIMARY KEY ("id")
@@ -88,7 +92,10 @@ CREATE TABLE "SaveState" (
     "romId" TEXT NOT NULL,
     "slot" INTEGER NOT NULL DEFAULT 0,
     "label" TEXT,
-    "data" BYTEA NOT NULL,
+    "objectKey" TEXT NOT NULL,
+    "checksum" TEXT NOT NULL,
+    "contentType" TEXT NOT NULL,
+    "size" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -109,6 +116,21 @@ CREATE TABLE "Favorite" (
 CREATE UNIQUE INDEX "Platform_slug_key" ON "Platform"("slug");
 
 -- CreateIndex
+CREATE INDEX "Platform_name_idx" ON "Platform"("name");
+
+-- CreateIndex
+CREATE INDEX "Rom_platformId_idx" ON "Rom"("platformId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RomAsset_checksum_key" ON "RomAsset"("checksum");
+
+-- CreateIndex
+CREATE INDEX "RomAsset_romId_idx" ON "RomAsset"("romId");
+
+-- CreateIndex
+CREATE INDEX "RomAsset_type_idx" ON "RomAsset"("type");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
@@ -119,6 +141,9 @@ CREATE UNIQUE INDEX "Invite_code_key" ON "Invite"("code");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Session_sessionToken_key" ON "Session"("sessionToken");
+
+-- CreateIndex
+CREATE INDEX "SaveState_romId_idx" ON "SaveState"("romId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "SaveState_userId_romId_slot_key" ON "SaveState"("userId", "romId", "slot");
@@ -152,4 +177,3 @@ ALTER TABLE "Favorite" ADD CONSTRAINT "Favorite_userId_fkey" FOREIGN KEY ("userI
 
 -- AddForeignKey
 ALTER TABLE "Favorite" ADD CONSTRAINT "Favorite_romId_fkey" FOREIGN KEY ("romId") REFERENCES "Rom"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-

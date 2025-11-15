@@ -1,29 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-export interface SaveStateRecord {
-  id: string;
-  userId: string;
-  romId: string;
-  slot: number;
-  label?: string;
-  objectKey: string;
-  checksum: string;
-  size: number;
-  contentType: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import type { SaveState } from '@prisma/client';
 
-export interface CreateSaveStateInput {
-  userId: string;
-  romId: string;
-  slot: number;
-  label?: string;
-  objectKey: string;
-  checksum: string;
-  size: number;
-  contentType: string;
-}
+export type SaveStateRecord = SaveState;
+
+export type CreateSaveStateInput = Omit<SaveStateRecord, 'id' | 'createdAt' | 'updatedAt'>;
 
 export class SaveStateService {
   private readonly statesByUserAndRom = new Map<string, SaveStateRecord[]>();
@@ -33,14 +14,7 @@ export class SaveStateService {
     const now = new Date();
     const record: SaveStateRecord = {
       id,
-      userId: input.userId,
-      romId: input.romId,
-      slot: input.slot,
-      label: input.label,
-      objectKey: input.objectKey,
-      checksum: input.checksum,
-      size: input.size,
-      contentType: input.contentType,
+      ...input,
       createdAt: now,
       updatedAt: now,
     };

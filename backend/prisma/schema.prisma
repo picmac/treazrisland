@@ -31,6 +31,8 @@ model Platform {
   updatedAt DateTime @updatedAt
 
   roms Rom[]
+
+  @@index([name])
 }
 
 model Rom {
@@ -39,6 +41,7 @@ model Rom {
   description String?
   releaseYear Int?
   platformId  String
+  genres      String[] @default([])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -46,17 +49,25 @@ model Rom {
   assets    RomAsset[]
   saves     SaveState[]
   favorites Favorite[]
+
+  @@index([platformId])
 }
 
 model RomAsset {
-  id        String       @id @default(cuid())
-  romId     String
-  type      RomAssetType
-  uri       String
-  checksum  String?
-  createdAt DateTime     @default(now())
+  id          String       @id @default(cuid())
+  romId       String
+  type        RomAssetType
+  uri         String
+  objectKey   String
+  checksum    String       @unique
+  contentType String
+  size        Int
+  createdAt   DateTime     @default(now())
 
   rom Rom @relation(fields: [romId], references: [id], onDelete: Cascade)
+
+  @@index([romId])
+  @@index([type])
 }
 
 model User {
@@ -108,7 +119,10 @@ model SaveState {
   romId     String
   slot      Int      @default(0)
   label     String?
-  data      Bytes
+  objectKey String
+  checksum  String
+  contentType String
+  size      Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -116,6 +130,7 @@ model SaveState {
   rom  Rom  @relation(fields: [romId], references: [id], onDelete: Cascade)
 
   @@unique([userId, romId, slot])
+  @@index([romId])
 }
 
 model Favorite {
