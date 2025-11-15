@@ -11,6 +11,12 @@ on:
     branches:
       - main
   pull_request:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
 
 jobs:
   security_checklist_ack:
@@ -18,11 +24,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Security acknowledgement only applies to pull requests
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name != 'pull_request' && github.event_name != 'pull_request_target' }}
         run: echo "Security checklist acknowledgement is only required for pull requests."
 
-      - name: Apply acknowledgement label
-        if: ${{ github.event_name == 'pull_request' }}
+      - name: Apply acknowledgement label (pull_request_target)
+        if: ${{ github.event_name == 'pull_request_target' }}
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -49,9 +55,79 @@ jobs:
 
             core.notice(`Added "${requiredLabel}" label to acknowledge the security checklist.`);
 
+      - name: Checkout repository for acknowledgement helper
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/checkout@v4
+
+      - name: Wait for acknowledgement signal (pull_request)
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const requiredLabel = 'security-checklist:acknowledged';
+            const prNumber = context.payload.pull_request.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const maxAttempts = 12;
+            const delayMs = 5000;
+            const { hasAcknowledgementPhrase } = require('./scripts/security-checklist-ack.js');
+
+            function hasLabel(labels = []) {
+              return labels
+                .map((label) => (label.name || '').toLowerCase())
+                .includes(requiredLabel.toLowerCase());
+            }
+
+            async function hasBotAcknowledgementComment() {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: prNumber,
+                per_page: 100,
+              });
+
+              return comments.some((comment) => {
+                if (!comment?.user) return false;
+                const isBot = comment.user.type === 'Bot' || /\[bot\]/i.test(comment.user.login || '');
+                return isBot && hasAcknowledgementPhrase(comment.body || '');
+              });
+            }
+
+            for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+              const { data: pullRequest } = await github.rest.pulls.get({
+                owner,
+                repo,
+                pull_number: prNumber,
+              });
+
+              if (hasLabel(pullRequest.labels)) {
+                core.notice(`Security checklist label present (attempt ${attempt}/${maxAttempts}).`);
+                return;
+              }
+
+              if (await hasBotAcknowledgementComment()) {
+                core.notice(`Security checklist acknowledged via bot comment (attempt ${attempt}/${maxAttempts}).`);
+                return;
+              }
+
+              if (attempt === maxAttempts) {
+                core.setFailed(
+                  `Timed out waiting for the security checklist acknowledgement label or bot comment after ${maxAttempts} attempts.`,
+                );
+                return;
+              }
+
+              core.info(
+                `Acknowledgement not detected (attempt ${attempt}/${maxAttempts}). Waiting ${delayMs}ms before checking again...`,
+              );
+              await new Promise((resolve) => setTimeout(resolve, delayMs));
+            }
+
   security_review_gate:
     name: Security Checklist Gate
     needs: security_checklist_ack
+    if: ${{ github.event_name != 'pull_request_target' }}
     runs-on: ubuntu-latest
     steps:
       - name: Security gate is only enforced on PRs
@@ -74,7 +150,13 @@ jobs:
             const requiredLabel = 'security-checklist:acknowledged';
             const { hasAcknowledgementPhrase } = require('./scripts/security-checklist-ack.js');
 
-            const labels = (context.payload.pull_request.labels || []).map(label => label.name.toLowerCase());
+            const { data: pullRequest } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: prNumber,
+            });
+
+            const labels = (pullRequest.labels || []).map((label) => (label.name || '').toLowerCase());
             if (labels.includes(requiredLabel.toLowerCase())) {
               core.notice(`Security checklist acknowledged through label "${requiredLabel}".`);
               return;
@@ -102,6 +184,7 @@ jobs:
 
   dependency_security:
     name: Dependency Security Scan
+    if: ${{ github.event_name != 'pull_request_target' }}
     runs-on: ubuntu-latest
     needs: security_review_gate
     env:
@@ -137,6 +220,7 @@ jobs:
   checks:
     needs: security_review_gate
     name: ${{ matrix.job.name }}
+    if: ${{ github.event_name != 'pull_request_target' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:

@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { RomAsset, RomDetails } from '@/types/rom';
 import { ApiError, toggleRomFavorite } from '@/lib/apiClient';
 import { getStoredAccessToken } from '@/lib/authTokens';
@@ -17,10 +17,15 @@ export function RomHero({ rom }: RomHeroProps) {
   const [isFavorite, setIsFavorite] = useState<boolean>(rom.isFavorite ?? false);
   const [favoriteStatus, setFavoriteStatus] = useState<FavoriteStatus>('idle');
   const [favoriteMessage, setFavoriteMessage] = useState<string>();
+  const mutationVersionRef = useRef(0);
 
   useEffect(() => {
     setIsFavorite(rom.isFavorite ?? false);
   }, [rom.id, rom.isFavorite]);
+
+  useEffect(() => {
+    mutationVersionRef.current = 0;
+  }, [rom.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,10 +37,11 @@ export function RomHero({ rom }: RomHeroProps) {
       };
     }
 
+    const refreshVersion = mutationVersionRef.current;
     const refreshFavoriteState = async () => {
       try {
         const freshRom = await fetchRomDetails(rom.id);
-        if (!cancelled && freshRom) {
+        if (!cancelled && refreshVersion === mutationVersionRef.current && freshRom) {
           setIsFavorite(freshRom.isFavorite ?? false);
         }
       } catch (error) {
@@ -57,11 +63,16 @@ export function RomHero({ rom }: RomHeroProps) {
   const releaseLabel = rom.releaseYear ? rom.releaseYear.toString() : 'Unreleased';
 
   const handleToggleFavorite = async () => {
+    if (!getStoredAccessToken()) {
+      setFavoriteStatus('error');
+      setFavoriteMessage('Sign in to manage your favorites.');
+      return;
+    }
+
+    mutationVersionRef.current += 1;
     const previousValue = isFavorite;
-    const optimisticValue = !previousValue;
-    setIsFavorite(optimisticValue);
     setFavoriteStatus('saving');
-    setFavoriteMessage(undefined);
+    setFavoriteMessage('Saving favorite…');
 
     try {
       const response = await toggleRomFavorite(rom.id);
