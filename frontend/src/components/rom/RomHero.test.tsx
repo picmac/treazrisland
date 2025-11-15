@@ -12,7 +12,13 @@ import type { RomDetails } from '@/types/rom';
 
 vi.mock('next/image', () => ({
   __esModule: true,
-  default: (props: React.ComponentProps<'img'>) => <img {...props} alt={props.alt ?? ''} />,
+  default: ({
+    priority: _priority,
+    ...props
+  }: React.ComponentProps<'img'> & { priority?: boolean }) => (
+    // Next.js strips the `priority` attribute from the DOM, so mirror that behavior in the mock.
+    <img {...props} alt={props.alt ?? ''} />
+  ),
 }));
 
 vi.mock('@/lib/roms');
@@ -31,6 +37,45 @@ const romFixture: RomDetails = {
   assets: [],
   isFavorite: false,
 };
+
+const coverAsset = {
+  id: 'asset-cover',
+  type: 'COVER' as const,
+  checksum: 'abc123',
+  contentType: 'image/png',
+  size: 2048,
+  createdAt: new Date().toISOString(),
+  url: 'http://assets.test/cover.png',
+};
+
+const romBinaryAsset = {
+  id: 'asset-rom',
+  type: 'ROM' as const,
+  checksum: 'def456',
+  contentType: 'application/octet-stream',
+  size: 4096,
+  createdAt: new Date().toISOString(),
+  url: 'http://assets.test/game.rom',
+};
+
+describe('RomHero media rendering', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('renders a hero image when a visual asset is present', () => {
+    render(<RomHero rom={{ ...romFixture, assets: [coverAsset] }} />);
+
+    expect(screen.getByRole('img', { name: `${romFixture.title} artwork` })).toBeVisible();
+  });
+
+  it('falls back to the placeholder when only non-visual assets exist', () => {
+    render(<RomHero rom={{ ...romFixture, assets: [romBinaryAsset] }} />);
+
+    expect(screen.getByText('Artwork coming soon')).toBeVisible();
+    expect(screen.queryByRole('img', { name: `${romFixture.title} artwork` })).toBeNull();
+  });
+});
 
 describe('RomHero favorite button', () => {
   beforeEach(() => {

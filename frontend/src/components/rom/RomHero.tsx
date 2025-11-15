@@ -185,10 +185,17 @@ export function RomHero({ rom }: RomHeroProps) {
   );
 }
 
+const IMAGE_MIME_PATTERN = /^image\//i;
+
 function selectHeroAsset(assets: RomAsset[]): RomAsset | undefined {
+  const imageAssets = assets.filter(isImageAsset);
   return (
-    assets.find((asset) => asset.type === 'COVER') ||
-    assets.find((asset) => asset.type === 'ARTWORK') ||
-    assets[0]
+    imageAssets.find((asset) => asset.type === 'COVER') ||
+    imageAssets.find((asset) => asset.type === 'ARTWORK') ||
+    imageAssets[0]
   );
+}
+
+function isImageAsset(asset: RomAsset): boolean {
+  return IMAGE_MIME_PATTERN.test(asset.contentType);
 }
