@@ -3,10 +3,32 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { createServerRequestInit } from '@/app/rom/[id]/page';
 import { RomHero } from '@/components/rom/RomHero';
+import { ACCESS_TOKEN_KEY } from '@/constants/auth';
 import { ApiError, apiClient } from '@/lib/apiClient';
 import { fetchRomDetails } from '@/lib/roms';
 import type { RomDetails } from '@/types/rom';
+
+type CookieAwareGlobal = typeof globalThis & {
+  __cookieStore?: Record<string, string>;
+};
+
+const cookieAwareGlobal = globalThis as CookieAwareGlobal;
+
+vi.mock('next/headers', () => ({
+  cookies: () => ({
+    get: (name: string) => {
+      const value = cookieAwareGlobal.__cookieStore?.[name];
+      return value ? { name, value } : undefined;
+    },
+    toString: () =>
+      Object.entries(cookieAwareGlobal.__cookieStore ?? {})
+        .map(([key, value]) => `${key}=${value}`)
+        .join('; '),
+  }),
+  headers: () => new Headers(),
+}));
 
 vi.mock('next/image', () => ({
   __esModule: true,
@@ -30,6 +52,7 @@ describe('fetchRomDetails', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    cookieAwareGlobal.__cookieStore = undefined;
   });
 
   it('loads rom details through the API client and renders the hero', async () => {
@@ -77,5 +100,28 @@ describe('fetchRomDetails', () => {
     );
     expect(getSpy).not.toHaveBeenCalled();
     expect(rom?.isFavorite).toBe(false);
+  });
+
+  it('forwards an authorization header derived from the access token cookie', async () => {
+    const cookieAccessToken = 'cookie-access-token-456';
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ rom: romFixture }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    cookieAwareGlobal.__cookieStore = {
+      [ACCESS_TOKEN_KEY]: cookieAccessToken,
+    };
+
+    const requestInit = createServerRequestInit();
+    expect(requestInit).toBeDefined();
+
+    await fetchRomDetails(romFixture.id, requestInit);
+
+    const [, forwardedInit] = fetchMock.mock.calls[0];
+    const forwardedHeaders = new Headers(forwardedInit.headers);
+    expect(forwardedHeaders.get('authorization')).toBe(`Bearer ${cookieAccessToken}`);
   });
 });
