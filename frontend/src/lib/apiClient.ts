@@ -160,7 +160,7 @@ export function redeemInviteToken(
   token: string,
   payload: { email: string; password: string; displayName?: string },
 ) {
-  return apiClient.post<InviteRedemptionResponse>(`/invites/${token}/redeem`, payload);
+  return apiClient.post<InviteRedemptionResponse>(`/auth/invitations/${token}/redeem`, payload);
 }
 
 export interface RomFavoriteResponse {

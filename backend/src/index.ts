@@ -12,10 +12,10 @@ import RedisMock from 'ioredis-mock';
 
 import { getEnv, type Env } from './config/env';
 import { stopObservability } from './config/observability';
+import { createAuthMailer } from './modules/auth/mailer';
 import { authRoutes } from './modules/auth/routes';
 import { RedisSessionStore } from './modules/auth/session-store';
-import { defaultInviteSeeds, InMemoryInviteStore } from './modules/invites/invite.store';
-import { inviteRoutes } from './modules/invites/routes';
+import { PrismaInviteStore } from './modules/invites/invite.store';
 import { RomService } from './modules/roms/rom.service';
 import { romRoutes } from './modules/roms/routes';
 import { SaveStateService } from './modules/roms/save-state.service';
@@ -114,14 +114,14 @@ const appPlugin = fp(async (fastify, { env, prisma, romStorage }: AppPluginOptio
 
   fastify.decorate('romService', new RomService(prisma, romStorage));
   fastify.decorate('saveStateService', new SaveStateService(prisma, romStorage));
-  fastify.decorate('inviteStore', new InMemoryInviteStore(defaultInviteSeeds));
+  fastify.decorate('inviteStore', new PrismaInviteStore(prisma));
+  fastify.decorate('authMailer', createAuthMailer(fastify.log));
 
   fastify.addHook('onClose', async () => {
     await fastify.redis.quit();
   });
 
   await fastify.register(authRoutes, { prefix: '/auth' });
-  await fastify.register(inviteRoutes, { prefix: '/invites' });
   await fastify.register(romRoutes);
 
   fastify.get('/health', async () => buildHealthResponse(fastify.redis, env));

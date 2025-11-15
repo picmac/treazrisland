@@ -1,96 +1,75 @@
-import { randomUUID } from 'node:crypto';
-
-import type { AuthUser } from '../auth/types';
+import { Prisma, PrismaClient, type Invite } from '@prisma/client';
 
 export type InviteSeed = {
   code: string;
-  email?: string;
-  expiresAt?: Date;
-  redeemedAt?: Date;
-  redeemedById?: string;
+  email?: string | null;
+  createdById?: string | null;
+  expiresAt?: Date | null;
+  redeemedAt?: Date | null;
+  redeemedById?: string | null;
 };
 
-export type InviteRecord = InviteSeed & {
-  createdAt: Date;
-};
+export type InviteRecord = Invite;
 
-export type StoredInviteUser = AuthUser & {
-  passwordHash: string;
-  createdAt: Date;
-};
-
-export class InMemoryInviteStore {
-  private readonly invites = new Map<string, InviteRecord>();
-
-  private readonly usersByEmail = new Map<string, StoredInviteUser>();
-
-  constructor(initialInvites: InviteSeed[] = []) {
-    this.reset(initialInvites);
+const normalizeEmail = (email?: string | null): string | null => {
+  if (!email) {
+    return null;
   }
 
-  reset(invites: InviteSeed[] = []): void {
-    this.invites.clear();
-    this.usersByEmail.clear();
+  return email.trim().toLowerCase();
+};
 
-    invites.forEach((invite) => {
-      this.setInvite(invite);
+const mapInviteSeed = (seed: InviteSeed) => ({
+  code: seed.code,
+  email: normalizeEmail(seed.email),
+  createdById: seed.createdById ?? null,
+  expiresAt: seed.expiresAt ?? null,
+  redeemedAt: seed.redeemedAt ?? null,
+  redeemedById: seed.redeemedById ?? null,
+});
+
+export class PrismaInviteStore {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  async reset(invites: InviteSeed[] = []): Promise<void> {
+    await this.prisma.invite.deleteMany();
+
+    if (invites.length === 0) {
+      return;
+    }
+
+    await this.prisma.invite.createMany({
+      data: invites.map(mapInviteSeed),
+      skipDuplicates: true,
     });
   }
 
-  setInvite(invite: InviteSeed): InviteRecord {
-    const record: InviteRecord = {
-      createdAt: new Date(),
-      ...invite,
-    };
+  async setInvite(invite: InviteSeed): Promise<InviteRecord> {
+    const payload = mapInviteSeed(invite);
 
-    this.invites.set(record.code, record);
-    return record;
+    return this.prisma.invite.upsert({
+      where: { code: payload.code },
+      update: payload,
+      create: payload,
+    });
   }
 
-  getInvite(code: string): InviteRecord | undefined {
-    return this.invites.get(code);
+  getInvite(code: string): Promise<InviteRecord | null> {
+    return this.prisma.invite.findUnique({ where: { code } });
   }
 
-  markRedeemed(code: string, userId: string): InviteRecord | undefined {
-    const invite = this.invites.get(code);
+  async markRedeemed(code: string, userId: string): Promise<InviteRecord | null> {
+    try {
+      return await this.prisma.invite.update({
+        where: { code },
+        data: { redeemedAt: new Date(), redeemedById: userId },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return null;
+      }
 
-    if (!invite) {
-      return undefined;
+      throw error;
     }
-
-    invite.redeemedAt = new Date();
-    invite.redeemedById = userId;
-    this.invites.set(code, invite);
-    return invite;
-  }
-
-  createUser(email: string, passwordHash: string): StoredInviteUser {
-    const normalizedEmail = email.toLowerCase();
-    const existing = this.usersByEmail.get(normalizedEmail);
-
-    if (existing) {
-      return existing;
-    }
-
-    const user: StoredInviteUser = {
-      id: randomUUID(),
-      email,
-      passwordHash,
-      createdAt: new Date(),
-    };
-
-    this.usersByEmail.set(normalizedEmail, user);
-    return user;
-  }
-
-  getUserByEmail(email: string): StoredInviteUser | undefined {
-    return this.usersByEmail.get(email.toLowerCase());
   }
 }
-
-export const defaultInviteSeeds: InviteSeed[] = [
-  {
-    code: 'WELCOME-2024',
-    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
-  },
-];
