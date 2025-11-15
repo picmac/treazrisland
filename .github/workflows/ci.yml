@@ -74,7 +74,13 @@ jobs:
             const requiredLabel = 'security-checklist:acknowledged';
             const { hasAcknowledgementPhrase } = require('./scripts/security-checklist-ack.js');
 
-            const labels = (context.payload.pull_request.labels || []).map(label => label.name.toLowerCase());
+            const { data: pullRequest } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: prNumber,
+            });
+
+            const labels = (pullRequest.labels || []).map((label) => (label.name || '').toLowerCase());
             if (labels.includes(requiredLabel.toLowerCase())) {
               core.notice(`Security checklist acknowledged through label "${requiredLabel}".`);
               return;
