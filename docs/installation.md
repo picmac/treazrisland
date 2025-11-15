@@ -127,10 +127,10 @@ Leave the Compose stack running in a dedicated terminal so the frontend and back
 Open a new terminal tab so you keep Docker logs visible in the original shell, then run:
 
 ```bash
-pnpm cli:create-admin
+pnpm --filter backend create-admin
 ```
 
-Provide the email, username, and password when prompted. When running from inside Docker containers, prefix the command with `docker compose exec backend`. Successful execution prints the admin ID.
+Provide the email and password when prompted (or pass `--email` / `--password` to avoid interaction). When running from inside Docker containers, prefix the command with `docker compose exec backend`. Successful execution prints the admin ID.
 
 ### 5. Import or seed a ROM
 
