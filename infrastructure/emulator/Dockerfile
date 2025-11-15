@@ -13,7 +13,13 @@ ARG EMULATORJS_REPOSITORY=https://github.com/EmulatorJS/EmulatorJS.git
 RUN git clone --filter=blob:none "$EMULATORJS_REPOSITORY" . \
   && git checkout "$EMULATORJS_REF"
 
-RUN npm ci
+# EmulatorJS does not provide a package-lock.json, so fall back to
+# `npm install` when `npm ci` cannot run.
+RUN if [ -f package-lock.json ]; then \
+      npm ci; \
+    else \
+      npm install; \
+    fi
 RUN npm run build
 
 FROM caddy:2.9.1-alpine AS runtime
