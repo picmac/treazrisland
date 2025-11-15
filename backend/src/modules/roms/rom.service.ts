@@ -77,9 +77,9 @@ export class RomService {
     const rom: RomRecord = {
       id,
       title: input.title,
-      description: input.description,
+      description: input.description ?? null,
       platformId: input.platformId,
-      releaseYear: input.releaseYear,
+      releaseYear: input.releaseYear ?? null,
       genres,
       createdAt: now,
       updatedAt: now,
