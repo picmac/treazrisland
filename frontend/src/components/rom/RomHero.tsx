@@ -72,7 +72,7 @@ export function RomHero({ rom }: RomHeroProps) {
     mutationVersionRef.current += 1;
     const previousValue = isFavorite;
     setFavoriteStatus('saving');
-    setFavoriteMessage(undefined);
+    setFavoriteMessage('Saving favorite…');
 
     try {
       const response = await toggleRomFavorite(rom.id);

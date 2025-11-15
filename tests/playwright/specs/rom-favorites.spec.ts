@@ -78,8 +78,9 @@ async function expectFavoriteButtonState(button: Locator, isFavorited: boolean) 
 }
 
 async function expectFavoriteStatus(page: Page, message: string) {
-  const status = page.getByRole('status', { name: message });
+  const status = page.getByRole('status').filter({ hasText: message });
   await expect(status).toBeVisible();
+  await expect(status).toHaveText(message);
 }
 
 async function waitForFavoriteState(

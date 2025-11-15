@@ -58,8 +58,9 @@ describe('RomHero favorite button', () => {
 
     await user.click(favoriteButton);
 
-    const statusMessage = await screen.findByRole('status');
-    expect(statusMessage).toHaveTextContent('Added to favorites.');
+    const statusMessage = await screen.findByText('Added to favorites.', {
+      selector: '[role="status"]',
+    });
     expect(favoriteButton).toHaveTextContent('★ Favorited');
     expect(favoriteButton).toHaveAttribute('aria-pressed', 'true');
   });
@@ -76,8 +77,9 @@ describe('RomHero favorite button', () => {
 
     await user.click(favoriteButton);
 
-    const statusMessage = await screen.findByRole('status');
-    expect(statusMessage).toHaveTextContent('Network offline');
+    const statusMessage = await screen.findByText('Network offline', {
+      selector: '[role="status"]',
+    });
     expect(favoriteButton).toHaveTextContent('★ Favorited');
     expect(favoriteButton).toHaveAttribute('aria-pressed', 'true');
   });
@@ -94,8 +96,9 @@ describe('RomHero favorite button', () => {
     await user.click(favoriteButton);
 
     expect(toggleSpy).not.toHaveBeenCalled();
-    const statusMessage = await screen.findByRole('status');
-    expect(statusMessage).toHaveTextContent('Sign in to manage your favorites.');
+    const statusMessage = await screen.findByText('Sign in to manage your favorites.', {
+      selector: '[role="status"]',
+    });
     expect(favoriteButton).toHaveAttribute('aria-pressed', 'false');
   });
 
@@ -120,7 +123,7 @@ describe('RomHero favorite button', () => {
 
     await user.click(favoriteButton);
 
-    await screen.findByRole('status');
+    await screen.findByText('Added to favorites.', { selector: '[role="status"]' });
     expect(favoriteButton).toHaveTextContent('★ Favorited');
     expect(favoriteButton).toHaveAttribute('aria-pressed', 'true');
 
