@@ -12,3 +12,5 @@ process.env.OBJECT_STORAGE_SECRET_KEY = process.env.OBJECT_STORAGE_SECRET_KEY ??
 process.env.OBJECT_STORAGE_BUCKET = process.env.OBJECT_STORAGE_BUCKET ?? 'roms';
 process.env.OBJECT_STORAGE_REGION = process.env.OBJECT_STORAGE_REGION ?? 'us-east-1';
 process.env.OBJECT_STORAGE_PRESIGNED_TTL = process.env.OBJECT_STORAGE_PRESIGNED_TTL ?? '60';
+process.env.DATABASE_URL =
+  process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:5432/treazrisland';

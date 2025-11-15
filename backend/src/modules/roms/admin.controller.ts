@@ -1,9 +1,7 @@
-import { createHash, randomUUID } from 'node:crypto';
-
 import { z } from 'zod';
 
 import { romAssetTypes, type RomAssetType } from './rom.service';
-import { createMinioClient, ensureBucket } from './storage';
+import { RomStorageError } from './storage';
 
 import type { FastifyPluginAsync } from 'fastify';
 
@@ -25,8 +23,6 @@ const createRomSchema = z.object({
 });
 
 export const adminRomController: FastifyPluginAsync = async (fastify) => {
-  const minioClient = createMinioClient(fastify.config);
-
   fastify.post('/roms', async (request, reply) => {
     const parsed = createRomSchema.safeParse(request.body);
 
@@ -36,67 +32,31 @@ export const adminRomController: FastifyPluginAsync = async (fastify) => {
 
     const { title, description, platformId, releaseYear, genres, asset } = parsed.data;
 
-    let assetBuffer: Buffer;
     try {
-      assetBuffer = Buffer.from(asset.data, 'base64');
-    } catch {
-      return reply.status(400).send({ error: 'Asset data must be a base64-encoded string' });
+      const rom = await fastify.romService.registerRom({
+        title,
+        description,
+        platformId,
+        releaseYear,
+        genres,
+        asset: {
+          type: asset.type,
+          filename: asset.filename,
+          contentType: asset.contentType,
+          data: asset.data,
+          checksum: asset.checksum,
+        },
+      });
+
+      return reply.status(201).send({ rom });
+    } catch (error) {
+      if (error instanceof RomStorageError) {
+        const status = error.statusCode >= 500 ? 502 : 400;
+        return reply.status(status).send({ error: error.message });
+      }
+
+      request.log.error({ err: error }, 'Failed to register ROM');
+      return reply.status(500).send({ error: 'Unable to register ROM' });
     }
-
-    if (!assetBuffer.length) {
-      return reply.status(400).send({ error: 'Asset data cannot be empty' });
-    }
-
-    const checksum = createHash('sha256').update(assetBuffer).digest('hex');
-
-    if (checksum !== asset.checksum.toLowerCase()) {
-      return reply.status(400).send({ error: 'Checksum mismatch' });
-    }
-
-    await ensureBucket(
-      minioClient,
-      fastify.config.OBJECT_STORAGE_BUCKET,
-      fastify.config.OBJECT_STORAGE_REGION,
-    );
-
-    const objectKey = `roms/${randomUUID()}-${asset.filename}`;
-    const uploadUrl = await minioClient.presignedPutObject(
-      fastify.config.OBJECT_STORAGE_BUCKET,
-      objectKey,
-      fastify.config.OBJECT_STORAGE_PRESIGNED_TTL,
-    );
-
-    const uploadResponse = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': asset.contentType,
-        'Content-Length': assetBuffer.byteLength.toString(),
-      },
-      body: assetBuffer,
-    });
-
-    if (!uploadResponse.ok) {
-      const failureMessage = await uploadResponse.text();
-      request.log.error({ failureMessage }, 'Failed to upload ROM asset to MinIO');
-      return reply.status(502).send({ error: 'Unable to upload ROM asset to storage' });
-    }
-
-    const rom = fastify.romService.registerRom({
-      title,
-      description,
-      platformId,
-      releaseYear,
-      genres,
-      asset: {
-        type: asset.type,
-        objectKey,
-        uri: `s3://${fastify.config.OBJECT_STORAGE_BUCKET}/${objectKey}`,
-        checksum,
-        contentType: asset.contentType,
-        size: assetBuffer.byteLength,
-      },
-    });
-
-    return reply.status(201).send({ rom });
   });
 };

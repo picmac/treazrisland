@@ -4,6 +4,7 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
 import fastifyJwt from '@fastify/jwt';
 import fastifyRedis from '@fastify/redis';
+import { PrismaClient } from '@prisma/client';
 import Fastify from 'fastify';
 import fp from 'fastify-plugin';
 import Redis from 'ioredis';
@@ -18,6 +19,7 @@ import { inviteRoutes } from './modules/invites/routes';
 import { RomService } from './modules/roms/rom.service';
 import { romRoutes } from './modules/roms/routes';
 import { SaveStateService } from './modules/roms/save-state.service';
+import { createRomStorage, type RomStorage } from './modules/roms/storage';
 import { buildLogger, loggerPlugin } from './plugins/logger';
 
 import type { AuthUser } from './modules/auth/types';
@@ -64,7 +66,9 @@ const buildHealthResponse = (redis: Redis, env: Env): HealthResponse => {
   };
 };
 
-const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
+type AppPluginOptions = { env: Env; prisma: PrismaClient; romStorage: RomStorage };
+
+const appPlugin = fp(async (fastify, { env, prisma, romStorage }: AppPluginOptions) => {
   fastify.decorate('config', env);
 
   await fastify.register(loggerPlugin);
@@ -107,7 +111,7 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
     }),
   );
 
-  fastify.decorate('romService', new RomService());
+  fastify.decorate('romService', new RomService(prisma, romStorage));
   fastify.decorate('saveStateService', new SaveStateService());
   fastify.decorate('inviteStore', new InMemoryInviteStore(defaultInviteSeeds));
 
@@ -122,14 +126,30 @@ const appPlugin = fp(async (fastify, { env }: { env: Env }) => {
   fastify.get('/health', async () => buildHealthResponse(fastify.redis, env));
 });
 
-export const createApp = (env: Env = getEnv()): ReturnType<typeof Fastify> => {
+type AppDependencies = {
+  prisma?: PrismaClient;
+  romStorage?: RomStorage;
+};
+
+export const createApp = (
+  env: Env = getEnv(),
+  dependencies: AppDependencies = {},
+): ReturnType<typeof Fastify> => {
+  const prisma = dependencies.prisma ?? new PrismaClient();
+  const romStorage = dependencies.romStorage ?? createRomStorage(env);
+  const ownsPrisma = !dependencies.prisma;
+
   const app = Fastify({
     loggerInstance: buildLogger(env),
   });
 
-  void app.register(appPlugin, { env });
+  void app.register(appPlugin, { env, prisma, romStorage });
 
   app.addHook('onClose', async () => {
+    if (ownsPrisma) {
+      await prisma.$disconnect();
+    }
+
     await stopObservability();
   });
 

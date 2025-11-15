@@ -6,7 +6,6 @@ import { createMinioClient, ensureBucket } from './storage';
 
 import type { RomAssetRecord, RomRecord } from './rom.service';
 import type { SaveStateRecord } from './save-state.service';
-import type { Env } from '../../config/env';
 import type { AuthUser } from '../auth/types';
 import type { FastifyError, FastifyPluginAsync, FastifyRequest } from 'fastify';
 import type { Readable } from 'node:stream';
@@ -37,16 +36,6 @@ export const MAX_SAVE_STATE_BYTES = 5 * 1024 * 1024; // 5 MiB
 const BASE64_OVERHEAD_FACTOR = 4 / 3; // base64 inflates payload size by ~33%
 const MAX_SAVE_STATE_BODY_BYTES = Math.ceil(MAX_SAVE_STATE_BYTES * BASE64_OVERHEAD_FACTOR);
 
-const buildAssetUrl = (env: Env, objectKey: string): string => {
-  const protocol = env.OBJECT_STORAGE_USE_SSL ? 'https' : 'http';
-  const encodedKey = objectKey
-    .split('/')
-    .map((segment) => encodeURIComponent(segment))
-    .join('/');
-
-  return `${protocol}://${env.OBJECT_STORAGE_ENDPOINT}:${env.OBJECT_STORAGE_PORT}/${env.OBJECT_STORAGE_BUCKET}/${encodedKey}`;
-};
-
 const serializeRomSummary = (rom: RomRecord) => ({
   id: rom.id,
   title: rom.title,
@@ -58,14 +47,14 @@ const serializeRomSummary = (rom: RomRecord) => ({
   updatedAt: rom.updatedAt.toISOString(),
 });
 
-const serializeRomAsset = (env: Env, asset: RomAssetRecord) => ({
+const serializeRomAsset = (asset: RomAssetRecord) => ({
   id: asset.id,
   type: asset.type,
   checksum: asset.checksum,
   contentType: asset.contentType,
   size: asset.size,
   createdAt: asset.createdAt.toISOString(),
-  url: buildAssetUrl(env, asset.objectKey),
+  url: asset.url,
 });
 
 const serializeSaveState = (saveState: SaveStateRecord) => ({
@@ -145,7 +134,7 @@ export const romController: FastifyPluginAsync = async (fastify) => {
       }
     }
 
-    const result = fastify.romService.list({
+    const result = await fastify.romService.list({
       filters: {
         platformId: parsed.data.platform,
         genre: parsed.data.genre,
@@ -172,19 +161,19 @@ export const romController: FastifyPluginAsync = async (fastify) => {
 
     await tryAuthenticateRequest(request);
 
-    const rom = fastify.romService.findById(parsed.data.id);
+    const rom = await fastify.romService.findById(parsed.data.id);
 
     if (!rom) {
       return reply.status(404).send({ error: 'ROM not found' });
     }
 
     const userId = getRequestUserId(request.user);
-    const isFavorite = userId ? fastify.romService.isFavorite(userId, rom.id) : false;
+    const isFavorite = userId ? await fastify.romService.isFavorite(userId, rom.id) : false;
 
     return reply.send({
       rom: {
         ...serializeRomSummary(rom),
-        assets: rom.assets.map((asset) => serializeRomAsset(fastify.config, asset)),
+        assets: rom.assets.map((asset) => serializeRomAsset(asset)),
         isFavorite,
       },
     });
@@ -200,7 +189,7 @@ export const romController: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Invalid ROM identifier' });
       }
 
-      const rom = fastify.romService.findById(parsed.data.id);
+      const rom = await fastify.romService.findById(parsed.data.id);
 
       if (!rom) {
         return reply.status(404).send({ error: 'ROM not found' });
@@ -212,7 +201,7 @@ export const romController: FastifyPluginAsync = async (fastify) => {
         return reply.status(401).send({ error: 'Unauthorized' });
       }
 
-      const isFavorite = fastify.romService.toggleFavorite(userId, rom.id);
+      const isFavorite = await fastify.romService.toggleFavorite(userId, rom.id);
 
       return reply.send({ romId: rom.id, isFavorite });
     },
@@ -238,7 +227,7 @@ export const romController: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Invalid ROM identifier' });
       }
 
-      const rom = fastify.romService.findById(params.data.id);
+      const rom = await fastify.romService.findById(params.data.id);
 
       if (!rom) {
         return reply.status(404).send({ error: 'ROM not found' });
@@ -314,7 +303,7 @@ export const romController: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Invalid ROM identifier' });
       }
 
-      const rom = fastify.romService.findById(params.data.id);
+      const rom = await fastify.romService.findById(params.data.id);
 
       if (!rom) {
         return reply.status(404).send({ error: 'ROM not found' });
