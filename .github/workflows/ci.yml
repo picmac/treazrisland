@@ -325,3 +325,40 @@ jobs:
         with:
           path: ${{ steps.pnpm-store.outputs.STORE_PATH }}
           key: ${{ steps.pnpm-cache.outputs.cache-primary-key }}
+
+  deploy_runner:
+    name: Deploy to self-hosted runner
+    needs:
+      - checks
+      - dependency_security
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - treazrisland
+    timeout-minutes: 45
+    concurrency:
+      group: deploy-main
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.5.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.14.0
+          cache: 'pnpm'
+
+      - name: Deploy via pnpm script
+        env:
+          # Provide explicit CI context for pnpm and scripts
+          CI: true
+        run: pnpm deploy:runner

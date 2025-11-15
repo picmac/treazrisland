@@ -75,6 +75,17 @@ This guide walks through provisioning a self-hosted GitHub Actions runner for th
 
 The CI workflow expects Node.js 20.14 and pnpm 9.5, matching the dependency matrix. Use the NodeSource or Volta installers (or `asdf`) to provision those versions under the `actions` user, and run `pnpm install --global pnpm@9.5.0` if the default install drifts. When you upgrade tooling, update both the host and the pinned versions in `docs/dependency-matrix.md` plus the workflow files.
 
+## Preparing for CI-triggered deployments
+
+Pushes to `main` now trigger a `Deploy to self-hosted runner` job after linting, tests, and dependency security scans succeed. That job targets runners labeled `self-hosted,linux,x64,treazrisland` and calls `pnpm deploy:runner`, which executes `scripts/deploy/self-hosted-runner.sh`. Before allowing the pipeline to manage your host:
+
+1. **Create production `.env` files** — copy `infrastructure/env/root.env.example` to `.env` and `infrastructure/env/backend.env.example` to `backend/.env`, then replace every placeholder with real values (database URLs, JWT secrets, ports, etc.). The deployment script refuses to run until both files exist, preventing accidental default credentials.
+2. **Store secrets locally** — keep the `.env` files outside version control (they are already gitignored) and ensure filesystem permissions restrict read/write access to the runner user.
+3. **Test the flow manually** — from the repository root, run `pnpm deploy:runner`. The script installs pnpm dependencies, applies Prisma migrations, rebuilds the Docker Compose stack, and waits for the EmulatorJS, backend, and frontend health checks. Verify the services stay healthy before trusting automated deploys.
+4. **Monitor the job** — in GitHub → **Actions**, confirm that pushes to `main` show the deploy job targeting `ubuntu-runner-01`. Any failure will surface directly in the workflow logs, so keep an eye on disk space, Docker daemon health, and Prisma migration output.
+
+If you add additional runners, label them with `treazrisland` (or update `.github/workflows/ci.yml`) so the deploy stage continues to target only trusted hosts.
+
 ## Upgrading or removing a runner
 
 1. Stop the service: `sudo ./svc.sh stop`.
