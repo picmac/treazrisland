@@ -20,6 +20,20 @@ pnpm --filter frontend start # serve the production build locally
 
 Additional scripts (linting, formatting, Husky hooks, etc.) are defined in the root `package.json` and automatically cover both the backend and frontend.
 
+## Quick local setup (curl \| bash)
+
+> ⚠️ **Security warning:** `curl | bash` bypasses your normal code-review flow. Inspect [`scripts/install/local-setup.sh`](scripts/install/local-setup.sh) before running it, or download the script and execute it manually if you are unsure about piping remote content into your shell.
+
+The helper script clones/updates this repository, copies `.env` templates, and pre-pulls/builds the Docker containers referenced by `infrastructure/compose/docker-compose.yml`. Run it from the directory where you want the repo to live:
+
+```bash
+TREAZRISLAND_DIR="$HOME/src/treazrisland" \
+  curl -fsSL https://raw.githubusercontent.com/treazrisland/treazrisland/main/scripts/install/local-setup.sh \
+  | bash -s -- --non-interactive
+```
+
+Customize the install by passing `--repo-dir <path>` or `--branch <name>` (or by exporting `TREAZRISLAND_DIR` / `TREAZRISLAND_BRANCH`). After the script finishes, run `./scripts/bootstrap.sh` from the cloned repository to install Node dependencies and start the stack.
+
 ## Continuous integration
 
 Every push and pull request runs the `CI` workflow, which fans out linting, type-checking (`pnpm typecheck`), unit tests, and the Playwright suite. Branch protection rules require this workflow to succeed before merges land on `main`, so expect to see a green check from GitHub Actions prior to completing a PR.
