@@ -1,3 +1,5 @@
+import { decrementActiveSessions, incrementActiveSessions } from '../../config/observability';
+
 import type { AuthUser, MagicLinkSession } from './types';
 import type { Redis } from 'ioredis';
 
@@ -23,6 +25,7 @@ export class RedisSessionStore {
       'EX',
       this.config.refreshTokenTtlSeconds,
     );
+    incrementActiveSessions();
   }
 
   async renewRefreshSession(sessionId: string, user: AuthUser): Promise<void> {
@@ -45,7 +48,11 @@ export class RedisSessionStore {
   }
 
   async deleteRefreshSession(sessionId: string): Promise<void> {
-    await this.client.del(this.refreshPrefix + sessionId);
+    const deleted = await this.client.del(this.refreshPrefix + sessionId);
+
+    if (deleted > 0) {
+      decrementActiveSessions();
+    }
   }
 
   async saveMagicLinkToken(token: string, user: AuthUser): Promise<void> {

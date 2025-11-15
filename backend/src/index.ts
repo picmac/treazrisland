@@ -3,6 +3,7 @@ import './config/observability-bootstrap';
 import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
 import fastifyJwt from '@fastify/jwt';
+import fastifyRateLimit from '@fastify/rate-limit';
 import fastifyRedis from '@fastify/redis';
 import { PrismaClient } from '@prisma/client';
 import Fastify from 'fastify';
@@ -11,7 +12,11 @@ import Redis from 'ioredis';
 import RedisMock from 'ioredis-mock';
 
 import { getEnv, type Env } from './config/env';
-import { stopObservability } from './config/observability';
+import {
+  hasMetricsExporter,
+  respondWithMetricsSnapshot,
+  stopObservability,
+} from './config/observability';
 import { createAuthMailer } from './modules/auth/mailer';
 import { authRoutes } from './modules/auth/routes';
 import { RedisSessionStore } from './modules/auth/session-store';
@@ -23,6 +28,7 @@ import { createRomStorage, type RomStorage } from './modules/roms/storage';
 import { buildLogger, loggerPlugin } from './plugins/logger';
 
 import type { AuthUser } from './modules/auth/types';
+import type { FastifyRequest } from 'fastify';
 
 const createRedisClient = (env: Env): Redis => {
   if (env.NODE_ENV === 'test' || !env.REDIS_URL) {
@@ -67,6 +73,15 @@ const buildHealthResponse = (redis: Redis, env: Env): HealthResponse => {
 };
 
 type AppPluginOptions = { env: Env; prisma: PrismaClient; romStorage: RomStorage };
+
+const resolveRateLimitIdentity = (request: FastifyRequest): string | undefined => {
+  const user = request.user;
+  if (user && typeof user === 'object' && 'id' in user) {
+    return (user as AuthUser).id;
+  }
+
+  return undefined;
+};
 
 const appPlugin = fp(async (fastify, { env, prisma, romStorage }: AppPluginOptions) => {
   fastify.decorate('config', env);
@@ -117,6 +132,60 @@ const appPlugin = fp(async (fastify, { env, prisma, romStorage }: AppPluginOptio
   fastify.decorate('inviteStore', new PrismaInviteStore(prisma));
   fastify.decorate('authMailer', createAuthMailer(fastify.log));
 
+  await fastify.register(fastifyRateLimit, {
+    global: true,
+    max: 120,
+    timeWindow: '1 minute',
+    hook: 'preHandler',
+    skipOnError: true,
+    keyGenerator: (request: FastifyRequest) =>
+      resolveRateLimitIdentity(request) ?? request.ip ?? request.hostname ?? 'global',
+  });
+
+  const strictRateLimitBuckets = {
+    auth: { max: 15, timeWindow: '1 minute' },
+    uploads: { max: 5, timeWindow: '1 minute' },
+  } as const;
+
+  const uploadRouteMatchers = [
+    /^\/roms\/:id\/save-state/,
+    /^\/roms\/:id\/save-states/,
+    /^\/admin\/roms$/,
+  ];
+
+  fastify.addHook('onRoute', (routeOptions) => {
+    const url = routeOptions.url ?? '';
+    const methods = (
+      Array.isArray(routeOptions.method) ? routeOptions.method : [routeOptions.method]
+    ).filter((method): method is string => typeof method === 'string');
+
+    const applyBucket = (bucket: { max: number; timeWindow: string }) => {
+      const existingConfig = routeOptions.config ?? {};
+      const existingRateLimit =
+        (existingConfig as { rateLimit?: Record<string, unknown> }).rateLimit ?? {};
+
+      routeOptions.config = {
+        ...existingConfig,
+        rateLimit: {
+          ...existingRateLimit,
+          ...bucket,
+        },
+      };
+    };
+
+    if (url.startsWith('/auth')) {
+      applyBucket(strictRateLimitBuckets.auth);
+      return;
+    }
+
+    const isUploadRoute =
+      methods.includes('POST') && uploadRouteMatchers.some((matcher) => matcher.test(url));
+
+    if (isUploadRoute) {
+      applyBucket(strictRateLimitBuckets.uploads);
+    }
+  });
+
   fastify.addHook('onClose', async () => {
     await fastify.redis.quit();
   });
@@ -125,6 +194,15 @@ const appPlugin = fp(async (fastify, { env, prisma, romStorage }: AppPluginOptio
   await fastify.register(romRoutes);
 
   fastify.get('/health', async () => buildHealthResponse(fastify.redis, env));
+  fastify.get('/metrics', async (request, reply) => {
+    if (!hasMetricsExporter()) {
+      return reply.status(503).send({ error: 'Metrics exporter disabled' });
+    }
+
+    reply.hijack();
+    respondWithMetricsSnapshot(request.raw, reply.raw);
+    return;
+  });
 });
 
 type AppDependencies = {

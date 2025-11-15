@@ -1,6 +1,8 @@
 import fp from 'fastify-plugin';
 import pino, { type LoggerOptions } from 'pino';
 
+import { emitStructuredLog } from '../config/observability';
+
 import type { Env } from '../config/env';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 
@@ -49,20 +51,33 @@ const plugin: FastifyPluginAsync = async (fastify) => {
     });
 
     request.log = requestLogger;
-    requestLogger.info({ method: request.method, url: request.url }, 'request received');
+    const payload = { method: request.method, url: request.url };
+    requestLogger.info(payload, 'request received');
+    emitStructuredLog({
+      event: 'request.received',
+      level: 'info',
+      requestId: request.id,
+      route: routeFromRequest(request),
+      data: payload,
+    });
     done();
   });
 
   fastify.addHook('onResponse', (request, reply, done) => {
-    request.log.info(
-      {
-        method: request.method,
-        url: request.url,
-        statusCode: reply.statusCode,
-        responseTime: responseTimeForReply(reply),
-      },
-      'request completed',
-    );
+    const payload = {
+      method: request.method,
+      url: request.url,
+      statusCode: reply.statusCode,
+      responseTime: responseTimeForReply(reply),
+    };
+    request.log.info(payload, 'request completed');
+    emitStructuredLog({
+      event: 'request.completed',
+      level: 'info',
+      requestId: request.id,
+      route: routeFromRequest(request),
+      data: payload,
+    });
     done();
   });
 };
