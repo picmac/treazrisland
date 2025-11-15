@@ -4,9 +4,12 @@ set -euo pipefail
 REPO_URL_DEFAULT="https://github.com/treazrisland/treazrisland.git"
 REPO_URL=${TREAZRISLAND_REPO_URL:-$REPO_URL_DEFAULT}
 DEFAULT_DIR=""
-if [[ -n "${BASH_SOURCE[0]:-}" && -f "${BASH_SOURCE[0]}" ]]; then
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  DEFAULT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+  SOURCE_PATH="${BASH_SOURCE[0]}"
+  if [[ -f "$SOURCE_PATH" && "$SOURCE_PATH" != /dev/* ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "$SOURCE_PATH")" && pwd)"
+    DEFAULT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+  fi
 fi
 REPO_DIR_DEFAULT=${TREAZRISLAND_DIR:-${DEFAULT_DIR:-"$PWD/treazrisland"}}
 BRANCH_DEFAULT=${TREAZRISLAND_BRANCH:-main}
