@@ -11,6 +11,7 @@ DEFAULT_BACKEND_URL="http://localhost:${BACKEND_PORT}"
 ARTIFACT_DIR="$ROOT_DIR/tests/playwright/artifacts"
 PLAYWRIGHT_BASE_URL="${PLAYWRIGHT_BASE_URL:-$DEFAULT_FRONTEND_URL}"
 PLAYWRIGHT_API_URL="${PLAYWRIGHT_API_URL:-$DEFAULT_BACKEND_URL}"
+SKIP_PLAYWRIGHT_INSTALL="${SKIP_PLAYWRIGHT_INSTALL:-0}"
 KEEP_STACK="${KEEP_E2E_STACK:-0}"
 WAIT_ATTEMPTS="${E2E_WAIT_ATTEMPTS:-120}"
 WAIT_DELAY_SECONDS="${E2E_WAIT_DELAY_SECONDS:-3}"
@@ -42,6 +43,7 @@ log "  WAIT_ATTEMPTS=$WAIT_ATTEMPTS"
 log "  WAIT_DELAY_SECONDS=${WAIT_DELAY_SECONDS}s"
 log "  PLAYWRIGHT_BASE_URL=$PLAYWRIGHT_BASE_URL"
 log "  PLAYWRIGHT_API_URL=$PLAYWRIGHT_API_URL"
+log "  SKIP_PLAYWRIGHT_INSTALL=$SKIP_PLAYWRIGHT_INSTALL"
 if [[ -n "${LOG_STREAM_SERVICES// }" ]]; then
   log "  E2E_LOG_STREAM_SERVICES=$LOG_STREAM_SERVICES"
 else
@@ -66,6 +68,19 @@ compose() {
 }
 
 mkdir -p "$ARTIFACT_DIR"
+
+ensure_playwright_browsers() {
+  if [[ "$SKIP_PLAYWRIGHT_INSTALL" == "1" ]]; then
+    log "Skipping Playwright browser install (SKIP_PLAYWRIGHT_INSTALL=1)"
+    return
+  fi
+
+  log "Ensuring Playwright browsers are installed"
+  pnpm --filter @treazrisland/playwright exec playwright install --with-deps 2>&1 \
+    | log_block playwright
+}
+
+ensure_playwright_browsers
 
 stop_log_stream() {
   if [[ -n "$LOG_STREAM_PID" ]] && kill -0 "$LOG_STREAM_PID" >/dev/null 2>&1; then

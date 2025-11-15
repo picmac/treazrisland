@@ -5,7 +5,10 @@ This workspace contains the end-to-end smoke tests that exercise Treazr Island t
 ## Prerequisites
 
 - Docker and Docker Compose plugin
-- Browsers installed via `pnpm --filter @treazrisland/playwright exec playwright install --with-deps`
+- Playwright browsers. Running `pnpm test:e2e` installs them automatically via
+  `playwright install --with-deps`, but you can also pre-install them manually with
+  `pnpm --filter @treazrisland/playwright exec playwright install --with-deps` (set
+  `SKIP_PLAYWRIGHT_INSTALL=1` to opt out when the browsers already exist).
 
 ## Running the suite
 
