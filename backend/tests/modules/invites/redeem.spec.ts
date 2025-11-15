@@ -139,17 +139,27 @@ describe('POST /auth/invitations/:code/redeem', () => {
   });
 
   it('prevents duplicate redemption attempts', async ({ skip }) => {
-    if (databaseError || !app) {
+    if (databaseError || !app || !database) {
       skip();
       return;
     }
 
     const activeApp = app;
+    const activeDatabase = database;
     const invite = {
       code: 'USED-INVITE',
       redeemedAt: new Date(),
       redeemedById: 'user-123',
     } satisfies InviteSeed;
+
+    await activeDatabase.prisma.user.create({
+      data: {
+        id: invite.redeemedById,
+        email: 'already-redeemed@example.com',
+        username: 'redeemed-user',
+        passwordHash: 'hashed-password',
+      },
+    });
     await seedInvites(activeApp, [invite]);
 
     const response = await activeApp.inject({
