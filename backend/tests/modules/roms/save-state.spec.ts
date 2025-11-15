@@ -178,7 +178,9 @@ describe('ROM save state endpoints', () => {
     });
 
     expect(saveResponse.statusCode).toBe(201);
-    const saved = saveResponse.json() as { saveState: { checksum: string; size: number } };
+    const saved = saveResponse.json() as {
+      saveState: { id: string; checksum: string; size: number };
+    };
     expect(saved.saveState.checksum).toBeDefined();
     expect(saved.saveState.size).toBe(saveData.byteLength);
 

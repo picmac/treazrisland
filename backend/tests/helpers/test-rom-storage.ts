@@ -56,4 +56,14 @@ export class TestRomStorage implements RomStorage {
 
     return `https://mock-rom-storage/${encodedKey}`;
   }
+
+  async downloadAsset(objectKey: string): Promise<Buffer> {
+    const object = this.objects.get(objectKey);
+
+    if (!object) {
+      throw new RomStorageError('Asset not found');
+    }
+
+    return Buffer.from(object.data);
+  }
 }
