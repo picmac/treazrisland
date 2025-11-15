@@ -47,6 +47,17 @@ const DEV_PASSWORD_HASH = 'dev-placeholder-password-hash';
 
 const normalizeEmail = (email: string): string => email.trim().toLowerCase();
 
+const fallbackUserIdFromEmail = (email: string): string => {
+  const normalized = normalizeEmail(email);
+  const hex = Buffer.from(normalized).toString('hex').slice(0, 24);
+  return `dev-${hex || 'user'}`;
+};
+
+const fallbackUserRecord = (email: string): AuthUser => ({
+  id: fallbackUserIdFromEmail(email),
+  email: normalizeEmail(email),
+});
+
 const buildUsernameSeed = (email: string): string => {
   const [localPart] = email.split('@');
   const sanitized = localPart
@@ -234,6 +245,19 @@ const appendQueryParam = (url: string, key: string, value: string): string => {
 };
 
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
+  const resolveUserForLogin = async (email: string): Promise<AuthUser> => {
+    try {
+      return await ensureUserRecord(email, fastify.prisma);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientInitializationError) {
+        fastify.log.warn({ err: error }, 'prisma unavailable for login, using fallback user');
+        return fallbackUserRecord(email);
+      }
+
+      throw error;
+    }
+  };
+
   fastify.post('/login', async (request, reply) => {
     const parsedBody = loginSchema.safeParse(request.body);
 
@@ -247,7 +271,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.status(401).send({ error: 'Invalid credentials' });
     }
 
-    const user = await ensureUserRecord(email, fastify.prisma);
+    const user = await resolveUserForLogin(email);
     const { accessToken } = await createSessionTokens(fastify, reply, user);
 
     reply.setCookie('treazr.accessToken', accessToken, {
