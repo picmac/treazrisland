@@ -44,6 +44,14 @@ export const loginController: FastifyPluginAsync = async (fastify) => {
       { expiresIn: fastify.config.JWT_REFRESH_TOKEN_TTL },
     );
 
+    reply.setCookie('treazr.accessToken', accessToken, {
+      httpOnly: true,
+      path: '/',
+      sameSite: 'lax',
+      secure: fastify.config.NODE_ENV === 'production',
+      maxAge: fastify.config.JWT_ACCESS_TOKEN_TTL,
+    });
+
     reply.setCookie('refreshToken', refreshToken, {
       httpOnly: true,
       path: '/auth/refresh',

@@ -51,7 +51,7 @@ export default async function RomPage({ params }: RomPageParams) {
   );
 }
 
-function createServerRequestInit(): RequestInit | undefined {
+export function createServerRequestInit(): RequestInit | undefined {
   const headerList = headers();
   const cookieStore = cookies();
   const forwardedHeaders = new Headers();
@@ -63,18 +63,15 @@ function createServerRequestInit(): RequestInit | undefined {
     hasForwardedHeaders = true;
   }
 
-  const authHeader = headerList.get('authorization');
-  if (authHeader) {
-    forwardedHeaders.set('authorization', authHeader);
-    hasForwardedHeaders = true;
-  }
+  const requestAuthorization = headerList.get('authorization');
+  const cookieAccessToken = cookieStore.get(ACCESS_TOKEN_KEY)?.value;
 
-  if (!forwardedHeaders.has('authorization')) {
-    const accessToken = cookieStore.get(ACCESS_TOKEN_KEY)?.value;
-    if (accessToken) {
-      forwardedHeaders.set('authorization', `Bearer ${accessToken}`);
-      hasForwardedHeaders = true;
-    }
+  if (requestAuthorization) {
+    forwardedHeaders.set('authorization', requestAuthorization);
+    hasForwardedHeaders = true;
+  } else if (cookieAccessToken) {
+    forwardedHeaders.set('authorization', `Bearer ${cookieAccessToken}`);
+    hasForwardedHeaders = true;
   }
 
   const forwardedHost = headerList.get('x-forwarded-host') ?? headerList.get('host');
