@@ -32,7 +32,8 @@
     "eslint-plugin-react-hooks": "^4.6.2",
     "husky": "^9.0.11",
     "prettier": "^3.3.2",
-    "ts-node": "10.9.2"
+    "ts-node": "10.9.2",
+    "yaml": "^2.7.0"
   },
   "pnpm": {
     "overrides": {

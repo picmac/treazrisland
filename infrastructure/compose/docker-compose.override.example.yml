@@ -40,8 +40,8 @@ services:
       - '9000:9000'
       - '9001:9001'
 
-  emulator:
+  emulatorjs:
     environment:
-      LOCALSTACK_SERVICES: sns,sqs,lambda
+      EMULATORJS_REF: v4.2.3
     ports:
-      - '4566:4566'
+      - '8080:80'

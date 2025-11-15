@@ -4,7 +4,7 @@ This guide takes a new operator from cloning the Treazr Island monorepo to launc
 
 ## Goals
 
-- ✅ Deliver a reproducible local stack (frontend, backend API, PostgreSQL, Redis, MinIO-compatible object storage, LocalStack) via Docker Compose.
+- ✅ Deliver a reproducible local stack (frontend, backend API, PostgreSQL, Redis, MinIO-compatible object storage, EmulatorJS) via Docker Compose.
 - ✅ Produce an administrator account and import at least one ROM so the `/play/:romId` route can start EmulatorJS immediately.
 - ✅ Capture runtime metrics for critical steps (`pnpm install`, `pnpm --filter treazrisland-frontend build`, `docker compose up --build`) and log which host OS validated the flow.
 
@@ -108,7 +108,7 @@ The script performs:
 1. Dependency checks for Docker, Docker Compose v2, Node.js, and pnpm.
 2. `pnpm install` for the entire workspace.
 3. Copies `.env.example` files to `.env` (root and backend) when they are missing.
-4. `docker compose up --build` to build images and start services (frontend on port `5173`, backend API on `4000`, Postgres on `5432`, Redis on `6379`, MinIO on `9000/9001`, LocalStack on `4566`).
+4. `docker compose up --build` to build images and start services (frontend on port `5173`, backend API on `4000`, Postgres on `5432`, Redis on `6379`, MinIO on `9000/9001`, EmulatorJS on `8080`).
 
 **Manual alternative:**
 

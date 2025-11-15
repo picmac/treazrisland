@@ -2,6 +2,7 @@
 
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { parse as parseYaml } from 'yaml';
 
 const repoRoot = process.cwd();
 
@@ -31,37 +32,63 @@ function parseToolVersions(content) {
   return entries;
 }
 
-function parseComposeImages(content) {
+function parseComposeServices(content) {
+  try {
+    const doc = parseYaml(content);
+    return doc?.services ?? {};
+  } catch (error) {
+    throw new Error(`Failed to parse docker-compose.yml: ${error.message}`);
+  }
+}
+
+function collectComposeImages(services) {
   const images = new Map();
-  let inServices = false;
-  let currentService = null;
-  const lines = content.split(/\r?\n/);
-  for (const line of lines) {
-    if (/^services:\s*$/.test(line)) {
-      inServices = true;
-      currentService = null;
-      continue;
-    }
-    if (!inServices) {
-      continue;
-    }
-    if (/^[^\s]/.test(line)) {
-      // Left the services block.
-      inServices = false;
-      currentService = null;
-      continue;
-    }
-    const serviceMatch = line.match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
-    if (serviceMatch) {
-      currentService = serviceMatch[1];
-      continue;
-    }
-    const imageMatch = line.match(/^ {4}image:\s+(.+)\s*$/);
-    if (imageMatch && currentService) {
-      images.set(currentService, imageMatch[1].trim());
+  for (const [name, config] of Object.entries(services)) {
+    if (config && typeof config.image === 'string') {
+      images.set(name, config.image.trim());
     }
   }
   return images;
+}
+
+function collectComposeBuilds(services) {
+  const builds = new Map();
+  for (const [name, config] of Object.entries(services)) {
+    if (config && config.build) {
+      builds.set(name, config.build);
+    }
+  }
+  return builds;
+}
+
+function resolveComposeDefault(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  const defaultMatch = value.match(/^\$\{[^:}]+:-([^}]+)\}$/);
+  if (defaultMatch) {
+    return defaultMatch[1];
+  }
+  if (/^\$\{[^}]+\}$/.test(value)) {
+    return '';
+  }
+  return value;
+}
+
+function describeBuildArtifact(buildConfig, fallbackContext = '') {
+  if (!buildConfig) {
+    return { label: 'N/A', ref: 'N/A' };
+  }
+
+  if (typeof buildConfig === 'string') {
+    return { label: `build:${buildConfig}`, ref: 'N/A' };
+  }
+
+  const context = buildConfig.context || fallbackContext || 'build-context';
+  const args = buildConfig.args ?? {};
+  const refValue = resolveComposeDefault(args.EMULATORJS_REF);
+  const label = refValue ? `build:${context}@${refValue}` : `build:${context}`;
+  return { label, ref: refValue || 'N/A' };
 }
 
 function parseMatrix(content) {
@@ -90,7 +117,7 @@ function parseMatrix(content) {
     if (cells.length < 5) {
       continue;
     }
-    const [dependency,, version, imageTag, updateCadence] = cells;
+    const [dependency,, version, , imageTag, updateCadence] = cells;
     records.set(dependency, {
       version,
       imageTag,
@@ -122,7 +149,9 @@ function normalizeImage(value) {
 
   const matrix = parseMatrix(matrixContent);
   const toolVersions = parseToolVersions(toolVersionsContent);
-  const composeImages = parseComposeImages(composeContent);
+  const composeServices = parseComposeServices(composeContent);
+  const composeImages = collectComposeImages(composeServices);
+  const composeBuilds = collectComposeBuilds(composeServices);
 
   const expected = new Map();
 
@@ -188,14 +217,14 @@ function normalizeImage(value) {
     imageTag: minioImage,
   });
 
-  const localstackImage = composeImages.get('emulator');
-  if (!localstackImage) {
-    throw new Error('Missing emulator (LocalStack) image definition in docker-compose.yml.');
+  const emulatorBuild = composeBuilds.get('emulatorjs');
+  if (!emulatorBuild) {
+    throw new Error('Missing emulatorjs build definition in docker-compose.yml.');
   }
-  const localstackVersion = localstackImage.includes(':') ? localstackImage.split(':')[1] : localstackImage;
-  expected.set('LocalStack', {
-    version: localstackVersion,
-    imageTag: localstackImage,
+  const { label: emulatorImageTag, ref: emulatorVersion } = describeBuildArtifact(emulatorBuild, '../emulator');
+  expected.set('EmulatorJS embed server', {
+    version: emulatorVersion,
+    imageTag: emulatorImageTag,
   });
 
   const issues = [];

@@ -28,8 +28,9 @@ Copy them to `.env` (repository root) or `backend/.env` before running the boots
 | `OBJECT_STORAGE_BUCKET`        | MinIO bucket where generated assets are stored.                                  |
 | `OBJECT_STORAGE_REGION`        | Region string assigned to the MinIO bucket.                                      |
 | `OBJECT_STORAGE_PRESIGNED_TTL` | Expiration (seconds) for presigned object storage URLs.                          |
-| `EMULATOR_HOST`                | Hostname for the LocalStack (AWS emulator) bridge.                               |
-| `EMULATOR_PORT`                | Port for the LocalStack (AWS emulator) bridge.                                   |
+| `EMULATORJS_HOST`              | Hostname for the self-hosted EmulatorJS build context.                           |
+| `EMULATORJS_PORT`              | Port for the EmulatorJS static file server.                                      |
+| `EMULATORJS_REF`               | Git tag or commit that the EmulatorJS Dockerfile clones before building.         |
 | `FRONTEND_PORT`                | Port exposed by the frontend container.                                          |
 | `NEXT_PUBLIC_API_BASE_URL`     | Public HTTP base URL (default `/api`) that the browser uses for API requests.    |
 | `NEXT_INTERNAL_API_BASE_URL`   | Internal HTTP base URL used by the frontend server (SSR/data fetching).          |
@@ -42,10 +43,6 @@ Copy them to `.env` (repository root) or `backend/.env` before running the boots
 | `MINIO_ROOT_PASSWORD`          | Administrative password configured for the MinIO service.                        |
 | `MINIO_PORT`                   | Host port published by the MinIO API.                                            |
 | `MINIO_CONSOLE_PORT`           | Host port published by the MinIO console.                                        |
-| `LOCALSTACK_SERVICES`          | Comma-separated list of LocalStack services to enable.                           |
-| `LOCALSTACK_DEBUG`             | Enables verbose logging for LocalStack when set to `1`.                          |
-| `LOCALSTACK_REGION`            | AWS region emulated by LocalStack.                                               |
-| `LOCALSTACK_EDGE_PORT`         | Host port published by the LocalStack edge endpoint.                             |
 
 The frontend dev server proxies every request that hits `NEXT_PUBLIC_API_BASE_URL` to
 `NEXT_INTERNAL_API_BASE_URL`, keeping browser traffic same-origin while still reaching the
