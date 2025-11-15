@@ -91,6 +91,29 @@ export class SaveStateService {
     return { saveState, data };
   }
 
+  async getLatest(
+    userId: string,
+    romId: string,
+    options?: GetSaveStateOptions,
+  ): Promise<SaveStateWithData | undefined> {
+    const saveState = await this.prisma.saveState.findFirst({
+      where: { userId, romId },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    if (!saveState) {
+      return undefined;
+    }
+
+    if (!options?.includeData) {
+      return { saveState };
+    }
+
+    const data = await this.storage.downloadAsset(saveState.objectKey);
+
+    return { saveState, data };
+  }
+
   private async uploadBinary(input: CreateSaveStateInput): Promise<SaveStateMetadataInput> {
     if (!input.binary) {
       throw new Error('Binary payload missing for save state upload');

@@ -195,6 +195,44 @@ describe('ROM save state endpoints', () => {
     expect(Buffer.from(latestBody.data, 'base64').equals(saveData)).toBe(true);
   });
 
+  it('supports the save-state alias endpoints and latest lookup', async ({ skip }) => {
+    if (runtimeError || databaseError) {
+      skip();
+    }
+
+    const token = await getAccessToken();
+    const romId = await createRom();
+    const payload = Buffer.from('alias-endpoint-payload');
+
+    const aliasResponse = await getApp().inject({
+      method: 'POST',
+      url: `/roms/${romId}/save-state`,
+      headers: { Authorization: `Bearer ${token}` },
+      payload: {
+        data: payload.toString('base64'),
+        contentType: 'application/octet-stream',
+        slot: 1,
+      },
+    });
+
+    expect(aliasResponse.statusCode).toBe(201);
+
+    const latestResponse = await getApp().inject({
+      method: 'GET',
+      url: `/roms/${romId}/save-state/latest`,
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    expect(latestResponse.statusCode).toBe(200);
+    const latestBody = latestResponse.json() as {
+      saveState: { slot: number; romId: string };
+      data: string;
+    };
+    expect(latestBody.saveState.slot).toBe(1);
+    expect(latestBody.saveState.romId).toBe(romId);
+    expect(Buffer.from(latestBody.data, 'base64').equals(payload)).toBe(true);
+  });
+
   it('rejects payloads that exceed the configured limit', async ({ skip }) => {
     if (runtimeError || databaseError) {
       skip();
