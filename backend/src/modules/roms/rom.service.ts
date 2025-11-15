@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import type { Rom, RomAsset, RomAssetType } from '@prisma/client';
 
+export type { RomAssetType };
+
 export const romAssetTypes: readonly RomAssetType[] = ['ROM', 'COVER', 'ARTWORK', 'MANUAL'];
 
 export interface RegisterRomAssetInput {
