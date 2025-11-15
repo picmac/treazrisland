@@ -344,6 +344,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          clean: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
