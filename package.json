@@ -10,7 +10,7 @@
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,css,scss,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,css,scss,json,md,yml,yaml}\"",
     "prepare": "husky install",
-    "cli:create-admin": "pnpm --filter backend create-admin",
+    "cli:create-admin": "pnpm --filter @treazrisland/backend create-admin",
     "cli:generate-invite": "pnpm --filter @treazrisland/backend cli:generate-invite",
     "typecheck": "pnpm --filter @treazrisland/backend run typecheck && pnpm --filter treazrisland-frontend run typecheck",
     "test": "pnpm -r test",
