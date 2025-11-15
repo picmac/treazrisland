@@ -4,6 +4,8 @@ import { metrics, type Counter, type UpDownCounter } from '@opentelemetry/api';
 import {
   SeverityNumber,
   logs as otelLogs,
+  type AnyValue,
+  type AnyValueMap,
   type Logger as OtelLogger,
 } from '@opentelemetry/api-logs';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
@@ -82,7 +84,7 @@ const shouldStartObservability = (env: Env): boolean => {
 
 const ensurePrometheusExporter = (): PrometheusExporter => {
   if (!prometheusExporter) {
-    prometheusExporter = new PrometheusExporter({ endpoint: '/metrics' }, (error) => {
+    prometheusExporter = new PrometheusExporter({ endpoint: '/metrics' }, (error: Error | void) => {
       if (error) {
         console.error('[otel] failed to start Prometheus exporter', error);
       }
@@ -97,8 +99,10 @@ const initializeLoggerProvider = (resource: Resource): void => {
     return;
   }
 
-  loggerProvider = new LoggerProvider({ resource });
-  loggerProvider.addLogRecordProcessor(new BatchLogRecordProcessor(new ConsoleLogRecordExporter()));
+  loggerProvider = new LoggerProvider({
+    resource,
+    processors: [new BatchLogRecordProcessor(new ConsoleLogRecordExporter())],
+  });
   otelLogs.setGlobalLoggerProvider(loggerProvider);
   structuredLogger = otelLogs.getLogger('treazrisland-backend');
 };
@@ -133,9 +137,44 @@ const severityLookup: Record<NonNullable<StructuredLogInput['level']>, SeverityN
   error: SeverityNumber.ERROR,
 };
 
-const sanitizeAttributes = (input: Record<string, unknown>): Record<string, unknown> => {
-  return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined));
-};
+function buildAnyValueMap(input: Record<string, unknown>): AnyValueMap {
+  const entries: Array<readonly [string, AnyValue]> = [];
+  for (const [key, value] of Object.entries(input)) {
+    const normalized = toAnyValue(value);
+    if (normalized !== undefined) {
+      entries.push([key, normalized]);
+    }
+  }
+
+  return Object.fromEntries(entries) as AnyValueMap;
+}
+
+function toAnyValue(value: unknown): AnyValue | undefined {
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
+    return value;
+  }
+
+  if (value instanceof Uint8Array) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => toAnyValue(item))
+      .filter((item): item is AnyValue => item !== undefined);
+  }
+
+  if (typeof value === 'object' && value) {
+    return buildAnyValueMap(value as Record<string, unknown>);
+  }
+
+  return undefined;
+}
 
 export const emitStructuredLog = (entry: StructuredLogInput): void => {
   if (!structuredLogger) {
@@ -144,7 +183,7 @@ export const emitStructuredLog = (entry: StructuredLogInput): void => {
 
   const level = entry.level ?? 'info';
   const severityNumber = severityLookup[level];
-  const attributes = sanitizeAttributes({
+  const attributes = buildAnyValueMap({
     requestId: entry.requestId,
     route: entry.route,
     ...entry.data,
@@ -154,11 +193,11 @@ export const emitStructuredLog = (entry: StructuredLogInput): void => {
     eventName: entry.event,
     severityNumber,
     severityText: level.toUpperCase(),
-    body: {
+    body: buildAnyValueMap({
       event: entry.event,
       level,
       data: entry.data ?? {},
-    },
+    }),
     attributes,
   });
 };
@@ -228,17 +267,15 @@ export const startObservability = (env: Env): void => {
     ],
   });
 
-  sdk
-    .start()
-    .then(() => {
-      initializeRuntimeMetrics();
-      if (env.NODE_ENV === 'development') {
-        console.info('[otel] tracing and metrics initialized');
-      }
-    })
-    .catch((error) => {
-      console.error('[otel] failed to start SDK', error);
-    });
+  try {
+    sdk.start();
+    initializeRuntimeMetrics();
+    if (env.NODE_ENV === 'development') {
+      console.info('[otel] tracing and metrics initialized');
+    }
+  } catch (error: unknown) {
+    console.error('[otel] failed to start SDK', error);
+  }
 };
 
 export const stopObservability = async (): Promise<void> => {

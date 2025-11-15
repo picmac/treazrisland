@@ -28,6 +28,7 @@ import { createRomStorage, type RomStorage } from './modules/roms/storage';
 import { buildLogger, loggerPlugin } from './plugins/logger';
 
 import type { AuthUser } from './modules/auth/types';
+import type { FastifyRequest } from 'fastify';
 
 const createRedisClient = (env: Env): Redis => {
   if (env.NODE_ENV === 'test' || !env.REDIS_URL) {
@@ -72,6 +73,15 @@ const buildHealthResponse = (redis: Redis, env: Env): HealthResponse => {
 };
 
 type AppPluginOptions = { env: Env; prisma: PrismaClient; romStorage: RomStorage };
+
+const resolveRateLimitIdentity = (request: FastifyRequest): string | undefined => {
+  const user = request.user;
+  if (user && typeof user === 'object' && 'id' in user) {
+    return (user as AuthUser).id;
+  }
+
+  return undefined;
+};
 
 const appPlugin = fp(async (fastify, { env, prisma, romStorage }: AppPluginOptions) => {
   fastify.decorate('config', env);
@@ -128,7 +138,8 @@ const appPlugin = fp(async (fastify, { env, prisma, romStorage }: AppPluginOptio
     timeWindow: '1 minute',
     hook: 'preHandler',
     skipOnError: true,
-    keyGenerator: (request) => request.user?.id ?? request.ip ?? request.hostname,
+    keyGenerator: (request: FastifyRequest) =>
+      resolveRateLimitIdentity(request) ?? request.ip ?? request.hostname ?? 'global',
   });
 
   const strictRateLimitBuckets = {
