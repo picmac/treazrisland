@@ -1,13 +1,13 @@
 import '../../setup-env';
 
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseEnv, type Env } from '../../../src/config/env';
 import { createApp } from '../../../src/index';
-import { MAX_SAVE_STATE_BYTES } from '../../../src/modules/roms/rom.controller';
+import { MAX_SAVE_STATE_BYTES } from '../../../src/modules/roms/routes';
 import {
   resetDatabase,
   startTestDatabase,
@@ -59,11 +59,11 @@ describe('ROM save state endpoints', () => {
 
   type TestCookie = { name: string; value: string };
 
-  const login = async () => {
+  const login = async (email = 'player@example.com') => {
     const response = await getApp().inject({
       method: 'POST',
       url: '/auth/login',
-      payload: { email: 'player@example.com', password: 'password123' },
+      payload: { email, password: 'password123' },
     });
 
     expect(response.statusCode).toBe(200);
@@ -75,8 +75,8 @@ describe('ROM save state endpoints', () => {
     return { body, refreshCookie };
   };
 
-  const getAccessToken = async (): Promise<string> => {
-    const { body } = await login();
+  const getAccessToken = async (email = 'player@example.com'): Promise<string> => {
+    const { body } = await login(email);
     return body.accessToken;
   };
 
@@ -168,7 +168,7 @@ describe('ROM save state endpoints', () => {
     const saveData = Buffer.from('state-blob');
     const saveResponse = await getApp().inject({
       method: 'POST',
-      url: `/roms/${romId}/save-state`,
+      url: `/roms/${romId}/save-states`,
       headers: { Authorization: `Bearer ${token}` },
       payload: {
         data: saveData.toString('base64'),
@@ -184,7 +184,7 @@ describe('ROM save state endpoints', () => {
 
     const latestResponse = await getApp().inject({
       method: 'GET',
-      url: `/roms/${romId}/save-state/latest`,
+      url: `/roms/${romId}/save-states/${saved.saveState.id}`,
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -204,7 +204,7 @@ describe('ROM save state endpoints', () => {
 
     const response = await getApp().inject({
       method: 'POST',
-      url: `/roms/${romId}/save-state`,
+      url: `/roms/${romId}/save-states`,
       headers: { Authorization: `Bearer ${token}` },
       payload: {
         data: oversized.toString('base64'),
@@ -226,7 +226,7 @@ describe('ROM save state endpoints', () => {
 
     const saveResponse = await getApp().inject({
       method: 'POST',
-      url: `/roms/${romId}/save-state`,
+      url: `/roms/${romId}/save-states`,
       headers: { cookie: refreshCookie },
       payload: {
         data: Buffer.from('cookie-only').toString('base64'),
@@ -238,10 +238,42 @@ describe('ROM save state endpoints', () => {
 
     const latestResponse = await getApp().inject({
       method: 'GET',
-      url: `/roms/${romId}/save-state/latest`,
+      url: `/roms/${romId}/save-states/${randomUUID()}`,
       headers: { cookie: refreshCookie },
     });
 
     expect(latestResponse.statusCode).toBe(401);
+  });
+
+  it('prevents users from accessing save states they do not own', async ({ skip }) => {
+    if (runtimeError || databaseError) {
+      skip();
+    }
+
+    const ownerToken = await getAccessToken('owner@example.com');
+    const intruderToken = await getAccessToken('intruder@example.com');
+    const romId = await createRom();
+    const saveData = Buffer.from('private-state');
+
+    const saveResponse = await getApp().inject({
+      method: 'POST',
+      url: `/roms/${romId}/save-states`,
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      payload: {
+        data: saveData.toString('base64'),
+        contentType: 'application/octet-stream',
+      },
+    });
+
+    expect(saveResponse.statusCode).toBe(201);
+    const { saveState } = saveResponse.json() as { saveState: { id: string } };
+
+    const unauthorizedResponse = await getApp().inject({
+      method: 'GET',
+      url: `/roms/${romId}/save-states/${saveState.id}`,
+      headers: { Authorization: `Bearer ${intruderToken}` },
+    });
+
+    expect(unauthorizedResponse.statusCode).toBe(404);
   });
 });
