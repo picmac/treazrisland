@@ -21,9 +21,8 @@ FROM caddy:2.9.1-alpine AS runtime
 WORKDIR /srv/emulatorjs
 
 COPY --from=build /src/dist ./dist
-# The Docker build context for this image is the repository root, so the
-# Caddyfile must be referenced relative to that root.
-COPY infrastructure/emulator/Caddyfile /etc/caddy/Caddyfile
+# Copy the local Caddyfile so we can proxy the compiled EmulatorJS assets.
+COPY Caddyfile /etc/caddy/Caddyfile
 
 RUN mkdir -p /srv/emulatorjs/dist/data
 
