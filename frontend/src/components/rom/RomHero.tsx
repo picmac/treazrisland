@@ -17,6 +17,7 @@ export function RomHero({ rom }: RomHeroProps) {
   const [isFavorite, setIsFavorite] = useState<boolean>(rom.isFavorite ?? false);
   const [favoriteStatus, setFavoriteStatus] = useState<FavoriteStatus>('idle');
   const [favoriteMessage, setFavoriteMessage] = useState<string>();
+  const [isHydrated, setIsHydrated] = useState(false);
   const mutationVersionRef = useRef(0);
 
   useEffect(() => {
@@ -26,6 +27,16 @@ export function RomHero({ rom }: RomHeroProps) {
   useEffect(() => {
     mutationVersionRef.current = 0;
   }, [rom.id]);
+
+  useEffect(() => {
+    const hydrationTimeout = setTimeout(() => {
+      setIsHydrated(true);
+    }, 0);
+
+    return () => {
+      clearTimeout(hydrationTimeout);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +105,7 @@ export function RomHero({ rom }: RomHeroProps) {
 
   const favoriteButtonLabel = isFavorite ? '★ Favorited' : '☆ Add to favorites';
   const favoriteButtonPressed = isFavorite ? 'true' : 'false';
+  const isFavoriteButtonDisabled = !isHydrated || favoriteStatus === 'saving';
 
   return (
     <article className="rom-hero">
@@ -140,7 +152,8 @@ export function RomHero({ rom }: RomHeroProps) {
             className="rom-hero__favorite"
             onClick={handleToggleFavorite}
             aria-pressed={favoriteButtonPressed}
-            disabled={favoriteStatus === 'saving'}
+            disabled={isFavoriteButtonDisabled}
+            data-ready={isHydrated ? 'true' : 'false'}
           >
             {favoriteButtonLabel}
           </button>
