@@ -1,12 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-export const romAssetTypes: ['ROM', 'COVER', 'ARTWORK', 'MANUAL'] = [
-  'ROM',
-  'COVER',
-  'ARTWORK',
-  'MANUAL',
-];
-export type RomAssetType = (typeof romAssetTypes)[number];
+import type { Rom, RomAsset, RomAssetType } from '@prisma/client';
+
+export type { RomAssetType };
+
+export const romAssetTypes: readonly RomAssetType[] = ['ROM', 'COVER', 'ARTWORK', 'MANUAL'];
 
 export interface RegisterRomAssetInput {
   type: RomAssetType;
@@ -26,22 +24,9 @@ export interface RegisterRomInput {
   asset: RegisterRomAssetInput;
 }
 
-export interface RomAssetRecord extends RegisterRomAssetInput {
-  id: string;
-  createdAt: Date;
-}
+export type RomAssetRecord = RomAsset;
 
-export interface RomRecord {
-  id: string;
-  title: string;
-  description?: string;
-  platformId: string;
-  releaseYear?: number;
-  genres: string[];
-  createdAt: Date;
-  updatedAt: Date;
-  assets: RomAssetRecord[];
-}
+export type RomRecord = Rom & { assets: RomAssetRecord[] };
 
 export interface ListRomFilters {
   platformId?: string;
@@ -77,8 +62,13 @@ export class RomService {
     const now = new Date();
     const asset: RomAssetRecord = {
       id: randomUUID(),
-      ...input.asset,
+      romId: id,
+      type: input.asset.type,
+      uri: input.asset.uri,
+      objectKey: input.asset.objectKey,
       checksum: input.asset.checksum.toLowerCase(),
+      contentType: input.asset.contentType,
+      size: input.asset.size,
       createdAt: now,
     };
 
@@ -87,9 +77,9 @@ export class RomService {
     const rom: RomRecord = {
       id,
       title: input.title,
-      description: input.description,
+      description: input.description ?? null,
       platformId: input.platformId,
-      releaseYear: input.releaseYear,
+      releaseYear: input.releaseYear ?? null,
       genres,
       createdAt: now,
       updatedAt: now,

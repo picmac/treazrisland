@@ -293,7 +293,7 @@ export const romController: FastifyPluginAsync = async (fastify) => {
         userId,
         romId: rom.id,
         slot,
-        label,
+        label: label ?? null,
         objectKey,
         checksum,
         size: saveBuffer.byteLength,
