@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ControlOverlay } from '@/components/emulator/ControlOverlay';
+import { TouchOverlay } from '@/components/emulator/TouchOverlay';
 import { SessionPrepDialog } from '@/components/emulator/SessionPrepDialog';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useSaveStates } from '@/hooks/useSaveStates';
+import { useViewportScale } from '@/hooks/useViewportScale';
 import { fetchRomDetails } from '@/lib/roms';
 import { persistSaveState } from '@/lib/saveStates';
 import type { RomAsset, RomDetails } from '@/types/rom';
@@ -25,6 +27,9 @@ type EmulatorWindow = Window & {
 };
 
 const EMULATOR_EMBED_URL = process.env.NEXT_PUBLIC_EMULATOR_EMBED_URL;
+
+const ENABLE_VIEWPORT_SCALING = process.env.NEXT_PUBLIC_ENABLE_VIEWPORT_SCALE !== 'false';
+const ENABLE_TOUCH_OVERLAY = process.env.NEXT_PUBLIC_ENABLE_TOUCH_OVERLAY !== 'false';
 
 if (!EMULATOR_EMBED_URL) {
   throw new Error(
@@ -137,6 +142,10 @@ export default function PlayPage({ params }: PlayPageProps) {
     return CORE_BY_PLATFORM[key] ?? 'nes';
   }, [rom]);
 
+  useViewportScale(emulatorContainerRef, {
+    enabled: ENABLE_VIEWPORT_SCALING && isSessionReady,
+  });
+
   useEffect(() => {
     if (!isSessionReady || !romAsset || !emulatorContainerRef.current) {
       return undefined;
@@ -150,7 +159,13 @@ export default function PlayPage({ params }: PlayPageProps) {
     emulatorWindow.EJS_color = '#f7b733';
 
     const container = emulatorContainerRef.current;
-    container.innerHTML = '<div id="emulator-layer" class="play-session__viewport"></div>';
+    container.innerHTML = '';
+    const viewportNode = document.createElement('div');
+    viewportNode.id = 'emulator-layer';
+    viewportNode.className = 'play-session__viewport';
+    viewportNode.setAttribute('aria-label', 'Emulator viewport');
+    viewportNode.setAttribute('role', 'application');
+    container.appendChild(viewportNode);
 
     const script = document.createElement('script');
     script.src = EMULATOR_EMBED_URL;
@@ -276,24 +291,28 @@ export default function PlayPage({ params }: PlayPageProps) {
       </header>
 
       <div className="play-session__stage">
-        <div
-          ref={emulatorContainerRef}
-          className="play-session__canvas"
-          aria-label="Emulator viewport"
-        >
-          {!isSessionReady && (
-            <p className="play-session__status">Confirm your controller to start the emulator.</p>
-          )}
-          {loadState === 'loading' && <p className="play-session__status">Fetching ROM dossier…</p>}
-          {loadState === 'error' && error && (
-            <p className="play-session__status" role="alert">
-              {error}
-            </p>
-          )}
-          {loadState === 'ready' && !romAsset && (
-            <p className="play-session__status" role="alert">
-              No playable asset was found for this ROM.
-            </p>
+        <div className="play-session__canvas">
+          <div ref={emulatorContainerRef} className="play-session__viewport-shell" />
+          <div className="play-session__status-layer" aria-live="polite">
+            {!isSessionReady && (
+              <p className="play-session__status">Confirm your controller to start the emulator.</p>
+            )}
+            {loadState === 'loading' && (
+              <p className="play-session__status">Fetching ROM dossier…</p>
+            )}
+            {loadState === 'error' && error && (
+              <p className="play-session__status" role="alert">
+                {error}
+              </p>
+            )}
+            {loadState === 'ready' && !romAsset && (
+              <p className="play-session__status" role="alert">
+                No playable asset was found for this ROM.
+              </p>
+            )}
+          </div>
+          {ENABLE_TOUCH_OVERLAY && (
+            <TouchOverlay enabled={isSessionReady && loadState === 'ready'} />
           )}
         </div>
 

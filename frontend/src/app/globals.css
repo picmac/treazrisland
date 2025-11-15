@@ -439,6 +439,7 @@ body {
 }
 
 .play-session__canvas {
+  position: relative;
   width: 100%;
   min-height: 420px;
   display: flex;
@@ -446,12 +447,42 @@ body {
   justify-content: center;
 }
 
+.play-session__viewport-shell {
+  --emulator-scale: 1;
+  --emulator-base-width: 960px;
+  --emulator-base-height: calc(var(--emulator-base-width) * 0.75);
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(var(--emulator-base-height) * var(--emulator-scale));
+  padding: 1rem;
+  transition: min-height 200ms ease-in-out;
+}
+
 .play-session__viewport {
-  width: min(960px, 100%);
-  aspect-ratio: 4 / 3;
+  width: var(--emulator-base-width);
+  height: var(--emulator-base-height);
   background: #04000d;
   border-radius: 0.5rem;
   border: 1px solid rgba(254, 250, 224, 0.15);
+  transform-origin: top center;
+  transform: scale(var(--emulator-scale));
+}
+
+.play-session__status-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+  gap: 0.5rem;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .play-session__status {
@@ -528,6 +559,10 @@ body {
 
   .play-session__canvas {
     min-height: 360px;
+  }
+
+  .play-session__viewport-shell {
+    padding: 0.5rem;
   }
 
   .play-session__status {
