@@ -24,6 +24,14 @@ type EmulatorWindow = Window & {
   EJS_onGameStart?: () => void;
 };
 
+const EMULATOR_EMBED_URL = process.env.NEXT_PUBLIC_EMULATOR_EMBED_URL;
+
+if (!EMULATOR_EMBED_URL) {
+  throw new Error(
+    'NEXT_PUBLIC_EMULATOR_EMBED_URL must be defined to load the EmulatorJS embed script.',
+  );
+}
+
 const CORE_BY_PLATFORM: Record<string, string> = {
   nes: 'nes',
   snes: 'snes',
@@ -145,7 +153,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     container.innerHTML = '<div id="emulator-layer" class="play-session__viewport"></div>';
 
     const script = document.createElement('script');
-    script.src = 'https://cdn.emulatorjs.org/dist/embed.js';
+    script.src = EMULATOR_EMBED_URL;
     script.async = true;
     scriptRef.current = script;
     container.appendChild(script);

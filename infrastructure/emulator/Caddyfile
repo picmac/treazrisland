@@ -1,9 +1,20 @@
 :80 {
-  root * /srv/emulatorjs/dist
-
   handle_path /healthz* {
     respond "ok" 200
   }
 
-  file_server
+  handle /dist* {
+    root * /srv/emulatorjs
+    file_server
+  }
+
+  handle_path /emulator/* {
+    root * /srv/emulatorjs/dist
+    file_server
+  }
+
+  handle {
+    root * /srv/emulatorjs/dist
+    file_server
+  }
 }
