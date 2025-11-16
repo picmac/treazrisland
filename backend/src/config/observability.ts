@@ -1,13 +1,6 @@
 import { IncomingMessage, ServerResponse } from 'node:http';
 
 import { metrics, type Counter, type UpDownCounter } from '@opentelemetry/api';
-import {
-  SeverityNumber,
-  logs as otelLogs,
-  type AnyValue,
-  type AnyValueMap,
-  type Logger as OtelLogger,
-} from '@opentelemetry/api-logs';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { ExportResultCode } from '@opentelemetry/core';
 import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
@@ -23,8 +16,41 @@ import { ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 
 import type { Env } from './env';
+import type {
+  SeverityNumber,
+  AnyValue,
+  AnyValueMap,
+  Logger as OtelLogger,
+} from '@opentelemetry/api-logs';
 import type { ExportResult } from '@opentelemetry/core';
 import type { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
+
+type OtelLogsModule = typeof import('@opentelemetry/api-logs');
+
+let otelLogsModule: OtelLogsModule | null | undefined;
+let hasLoggedOtelFallback = false;
+
+const loadOtelLogsModule = (): OtelLogsModule | null => {
+  if (otelLogsModule !== undefined) {
+    return otelLogsModule;
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    otelLogsModule = require('@opentelemetry/api-logs');
+  } catch (error) {
+    if (!hasLoggedOtelFallback) {
+      console.warn(
+        '[otel] structured logging disabled because @opentelemetry/api-logs could not be loaded',
+        error,
+      );
+      hasLoggedOtelFallback = true;
+    }
+    otelLogsModule = null;
+  }
+
+  return otelLogsModule;
+};
 
 class NoopSpanExporter implements SpanExporter {
   export(_spans: ReadableSpan[], resultCallback: (result: ExportResult) => void): void {
@@ -49,6 +75,10 @@ let prometheusExporter: PrometheusExporter | null = null;
 let loggerProvider: LoggerProvider | null = null;
 let structuredLogger: OtelLogger | null = null;
 let runtimeMetrics: RuntimeMetrics | null = null;
+let severityLookup:
+  | Record<NonNullable<StructuredLogInput['level']>, SeverityNumber>
+  | null
+  | undefined;
 
 const buildResourceAttributes = (env: Env) => ({
   [SemanticResourceAttributes.SERVICE_NAME]: 'treazrisland-backend',
@@ -99,12 +129,17 @@ const initializeLoggerProvider = (resource: Resource): void => {
     return;
   }
 
+  const apiLogs = loadOtelLogsModule();
+  if (!apiLogs) {
+    return;
+  }
+
   loggerProvider = new LoggerProvider({
     resource,
     processors: [new BatchLogRecordProcessor(new ConsoleLogRecordExporter())],
   });
-  otelLogs.setGlobalLoggerProvider(loggerProvider);
-  structuredLogger = otelLogs.getLogger('treazrisland-backend');
+  apiLogs.logs.setGlobalLoggerProvider(loggerProvider);
+  structuredLogger = apiLogs.logs.getLogger('treazrisland-backend');
 };
 
 const initializeRuntimeMetrics = (): void => {
@@ -130,11 +165,25 @@ type StructuredLogInput = {
   data?: Record<string, unknown>;
 };
 
-const severityLookup: Record<NonNullable<StructuredLogInput['level']>, SeverityNumber> = {
-  debug: SeverityNumber.DEBUG,
-  info: SeverityNumber.INFO,
-  warn: SeverityNumber.WARN,
-  error: SeverityNumber.ERROR,
+const ensureSeverityLookup = () => {
+  if (severityLookup !== undefined) {
+    return severityLookup;
+  }
+
+  const apiLogs = loadOtelLogsModule();
+  if (!apiLogs) {
+    severityLookup = null;
+    return severityLookup;
+  }
+
+  severityLookup = {
+    debug: apiLogs.SeverityNumber.DEBUG,
+    info: apiLogs.SeverityNumber.INFO,
+    warn: apiLogs.SeverityNumber.WARN,
+    error: apiLogs.SeverityNumber.ERROR,
+  } satisfies Record<NonNullable<StructuredLogInput['level']>, SeverityNumber>;
+
+  return severityLookup;
 };
 
 function buildAnyValueMap(input: Record<string, unknown>): AnyValueMap {
@@ -177,12 +226,13 @@ function toAnyValue(value: unknown): AnyValue | undefined {
 }
 
 export const emitStructuredLog = (entry: StructuredLogInput): void => {
-  if (!structuredLogger) {
+  const severityMap = ensureSeverityLookup();
+  if (!structuredLogger || !severityMap) {
     return;
   }
 
   const level = entry.level ?? 'info';
-  const severityNumber = severityLookup[level];
+  const severityNumber = severityMap[level];
   const attributes = buildAnyValueMap({
     requestId: entry.requestId,
     route: entry.route,
