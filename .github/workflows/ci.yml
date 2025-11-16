@@ -335,7 +335,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-videos
-          path: tests/playwright/artifacts/videos/**/*
+          path: tests/playwright/artifacts/test-results/**/*.webm
           if-no-files-found: ignore
 
       - name: Upload Playwright traces
@@ -343,7 +343,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-traces
-          path: tests/playwright/artifacts/traces/**/*
+          path: tests/playwright/artifacts/test-results/**/trace.zip
           if-no-files-found: ignore
 
       - name: Upload Playwright screenshots
@@ -351,7 +351,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-screenshots
-          path: tests/playwright/artifacts/screenshots/**/*
+          path: tests/playwright/artifacts/test-results/**/*.png
           if-no-files-found: ignore
 
       - name: Upload Playwright logs
