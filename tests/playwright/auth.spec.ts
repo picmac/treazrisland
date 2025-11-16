@@ -22,7 +22,7 @@ test.describe('authentication onboarding', () => {
     await page.goto(`/invite/${inviteCode}`);
     await page.getByLabel('Email').fill(email);
     await page.getByLabel('Display name (optional)').fill('Deckhand Voyager');
-    await page.getByLabel('Password').fill(invitePassword);
+    await page.getByLabel('Password', { exact: true }).fill(invitePassword);
     await page.getByLabel('Confirm password').fill(invitePassword);
     await page.getByRole('button', { name: 'Redeem invite' }).click();
 
@@ -51,7 +51,8 @@ test.describe('authentication onboarding', () => {
     });
 
     await page.goto(`/magic-link/${magicToken}`);
-    await expect(page.getByRole('status')).toContainText('Magic link accepted');
+    const magicLinkStatus = page.getByRole('region', { name: 'Magic link' }).getByRole('status');
+    await expect(magicLinkStatus).toContainText('Magic link accepted');
     await page.waitForURL('**/library');
     const magicTokenHandle = await page.waitForFunction(() =>
       window.localStorage.getItem('treazr.accessToken'),

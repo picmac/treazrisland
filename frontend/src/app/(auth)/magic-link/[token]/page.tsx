@@ -1,7 +1,7 @@
 'use client';
 
 import type { Route } from 'next';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { exchangeMagicLinkToken } from '@/lib/apiClient';
@@ -22,10 +22,14 @@ const loadingStatus: RedemptionStatus = {
   message: 'Confirming your magic link token…',
 };
 
+const successRedirectDelayMs = 1200;
+
 export default function MagicLinkPage({ params }: MagicLinkPageProps) {
   const router = useRouter();
   const { token } = params;
   const [status, setStatus] = useState<RedemptionStatus>(loadingStatus);
+  const redirectTimerRef = useRef<number>();
+  const successRedirectTarget = useMemo(() => '/library' as Route, []);
 
   const redeemMagicLink = useCallback(async () => {
     setStatus({ ...loadingStatus });
@@ -37,17 +41,34 @@ export default function MagicLinkPage({ params }: MagicLinkPageProps) {
         message: 'Magic link accepted. Redirecting to your library…',
         detail: `Welcome back ${response.user.email}`,
       });
-      router.replace('/library' as Route);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Magic link exchange failed. Try again.';
       setStatus({ state: 'error', message });
     }
-  }, [router, token]);
+  }, [token]);
 
   useEffect(() => {
     void redeemMagicLink();
   }, [redeemMagicLink]);
+
+  useEffect(() => {
+    if (status.state !== 'success') {
+      return undefined;
+    }
+
+    router.prefetch(successRedirectTarget);
+    redirectTimerRef.current = window.setTimeout(() => {
+      router.replace(successRedirectTarget);
+    }, successRedirectDelayMs);
+
+    return () => {
+      if (redirectTimerRef.current) {
+        window.clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = undefined;
+      }
+    };
+  }, [router, status.state, successRedirectTarget]);
 
   return (
     <section aria-label="Magic link" className="auth-section">

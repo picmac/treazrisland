@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import MagicLinkPage from './page';
 import { exchangeMagicLinkToken } from '@/lib/apiClient';
@@ -14,7 +14,8 @@ vi.mock('@/lib/authTokens', () => ({
 }));
 
 const replace = vi.fn();
-const mockRouter = { replace };
+const prefetch = vi.fn();
+const mockRouter = { replace, prefetch };
 
 vi.mock('next/navigation', () => ({
   useRouter: () => mockRouter,
@@ -28,6 +29,7 @@ describe('MagicLinkPage', () => {
     mockedExchange.mockReset();
     mockedStore.mockReset();
     replace.mockReset();
+    prefetch.mockReset();
   });
 
   it('redeems the token on mount and navigates to the library', async () => {
@@ -40,7 +42,11 @@ describe('MagicLinkPage', () => {
 
     await waitFor(() => expect(mockedExchange).toHaveBeenCalledWith('token-123'));
     await waitFor(() => expect(mockedStore).toHaveBeenCalledWith('token-123'));
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/library'));
+    expect(prefetch).toHaveBeenCalledWith('/library');
+    expect(replace).not.toHaveBeenCalled();
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/library'), {
+      timeout: 2000,
+    });
     expect(await screen.findByText(/magic link accepted/i)).toBeVisible();
   });
 
