@@ -1,3 +1,5 @@
+'use client';
+
 import styles from './ProgressSteps.module.css';
 
 export type ProgressStepStatus = 'pending' | 'current' | 'completed';
