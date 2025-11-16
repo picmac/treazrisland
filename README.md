@@ -65,6 +65,8 @@ The script refuses to run if a user already exists, ensuring that exactly one bo
 
 Every push and pull request runs the `CI` workflow, which fans out linting, type-checking (`pnpm typecheck`), unit tests, and the Playwright suite. Branch protection rules require this workflow to succeed before merges land on `main`, so expect to see a green check from GitHub Actions prior to completing a PR.
 
+Older workflow attempts automatically cancel themselves when a newer push or PR update targeting the same branch arrives. This keeps the CI queue responsive and guarantees that only the freshest commit for a branch or pull request finishes executing.
+
 ## End-to-end tests
 
 Playwright smoke tests live under `tests/playwright/`. Run them against the Docker Compose stack with:
