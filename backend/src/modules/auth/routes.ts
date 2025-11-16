@@ -8,7 +8,7 @@ import { recordAuthAttempt } from '../../config/observability';
 
 import type { AuthUser, RefreshTokenPayload } from './types';
 import type { InviteRecord, InviteSeed } from '../invites/invite.store';
-import type { FastifyInstance, FastifyPluginAsync, FastifyReply } from 'fastify';
+import type { FastifyInstance, FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -46,6 +46,10 @@ const inviteRedeemBodySchema = z.object({
 const magicLinkRequestSchema = z.object({
   email: z.string().email(),
   redirectUrl: z.string().url(),
+});
+
+const profileUpdateSchema = z.object({
+  displayName: z.string().trim().min(2).max(100),
 });
 
 const normalizeEmail = (email: string): string => email.trim().toLowerCase();
@@ -234,6 +238,19 @@ const appendQueryParam = (url: string, key: string, value: string): string => {
   const parsed = new URL(url);
   parsed.searchParams.set(key, value);
   return parsed.toString();
+};
+
+const getRequestUser = (request: FastifyRequest): AuthUser | null => {
+  const user = request.user;
+
+  if (user && typeof user === 'object' && 'id' in user && 'email' in user) {
+    const candidate = user as Partial<AuthUser>;
+    if (typeof candidate.id === 'string' && typeof candidate.email === 'string') {
+      return { id: candidate.id, email: candidate.email };
+    }
+  }
+
+  return null;
 };
 
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
@@ -452,4 +469,67 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.send({ accessToken: tokens.accessToken, user });
     },
   );
+
+  fastify.get('/profile', { preHandler: fastify.authenticate }, async (request, reply) => {
+    const authUser = getRequestUser(request);
+
+    if (!authUser) {
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+
+    const user = await fastify.prisma.user.findUnique({
+      where: { id: authUser.id },
+      select: { id: true, email: true, displayName: true, createdAt: true, updatedAt: true },
+    });
+
+    if (!user) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
+
+    const payload = {
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      },
+      isProfileComplete: Boolean(user.displayName && user.displayName.trim().length > 1),
+    };
+
+    return reply.send(payload);
+  });
+
+  fastify.patch('/profile', { preHandler: fastify.authenticate }, async (request, reply) => {
+    const authUser = getRequestUser(request);
+
+    if (!authUser) {
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+
+    const parsed = profileUpdateSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'Invalid profile payload' });
+    }
+
+    const user = await fastify.prisma.user.update({
+      where: { id: authUser.id },
+      data: { displayName: parsed.data.displayName },
+      select: { id: true, email: true, displayName: true, createdAt: true, updatedAt: true },
+    });
+
+    const payload = {
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      },
+      isProfileComplete: Boolean(user.displayName && user.displayName.trim().length > 1),
+    };
+
+    return reply.send(payload);
+  });
 };

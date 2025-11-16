@@ -125,6 +125,28 @@ class ApiClient {
       options,
     );
   }
+
+  patch<T>(path: string, body?: JsonRecord, options?: { requiresAuth?: boolean }): Promise<T> {
+    return this.request<T>(
+      path,
+      {
+        method: 'PATCH',
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      options,
+    );
+  }
+
+  put<T>(path: string, body?: JsonRecord, options?: { requiresAuth?: boolean }): Promise<T> {
+    return this.request<T>(
+      path,
+      {
+        method: 'PUT',
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      options,
+    );
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);
