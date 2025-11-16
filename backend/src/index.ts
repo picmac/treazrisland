@@ -17,6 +17,7 @@ import {
   respondWithMetricsSnapshot,
   stopObservability,
 } from './config/observability';
+import { adminRoutes } from './modules/admin/routes';
 import { createAuthMailer } from './modules/auth/mailer';
 import { authRoutes } from './modules/auth/routes';
 import { RedisSessionStore } from './modules/auth/session-store';
@@ -192,6 +193,7 @@ const appPlugin = fp(async (fastify, { env, prisma, romStorage }: AppPluginOptio
 
   await fastify.register(authRoutes, { prefix: '/auth' });
   await fastify.register(romRoutes);
+  await fastify.register(adminRoutes, { prefix: '/admin' });
 
   fastify.get('/health', async () => buildHealthResponse(fastify.redis, env));
   fastify.get('/metrics', async (request, reply) => {

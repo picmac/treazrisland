@@ -1,0 +1,214 @@
+.layout {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: minmax(0, 1fr);
+  padding-block: 2rem 4rem;
+}
+
+.heroCard,
+.progressCard,
+.stepCard {
+  background: var(--surface-elevated, #fff);
+  border-radius: 1rem;
+  padding: 1.75rem;
+  box-shadow: 0 20px 45px rgba(15, 16, 31, 0.12);
+}
+
+.heroCard p {
+  margin: 0.5rem 0;
+}
+
+.timestamp {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+.progressCard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.progressHeading {
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #4b5563;
+}
+
+.stepNav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.stepNav button {
+  border-radius: 999px;
+  border: 1px solid rgba(75, 85, 99, 0.3);
+  background: transparent;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.stepNav button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.stepWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.stepCard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.stepHeader h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.stepHeader p {
+  margin: 0.5rem 0 0;
+  color: #4b5563;
+}
+
+.primaryButton,
+.secondaryButton,
+.stepNav button,
+.formGrid input,
+.formGrid select,
+.formGrid textarea {
+  font-family: inherit;
+}
+
+.primaryButton {
+  align-self: flex-start;
+  background: linear-gradient(120deg, #f6d365, #fda085);
+  border: none;
+  color: #0f101f;
+  font-weight: 600;
+  padding: 0.65rem 1.25rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.primaryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondaryButton {
+  border-radius: 999px;
+  border: 1px solid rgba(75, 85, 99, 0.3);
+  padding: 0.6rem 1rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.errorMessage {
+  color: #b91c1c;
+  margin: 0;
+  font-weight: 600;
+}
+
+.successMessage {
+  color: #047857;
+  margin: 0;
+  font-weight: 600;
+}
+
+.statusPanel {
+  border: 1px solid rgba(15, 16, 31, 0.08);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  background: rgba(15, 16, 31, 0.02);
+}
+
+.dependencyList {
+  margin: 1rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.dependencyList div {
+  display: flex;
+  flex-direction: column;
+}
+
+.dependencyList dt {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.dependencyList dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.inlineActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.formGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.formGrid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+
+.formGrid input,
+.formGrid select,
+.formGrid textarea {
+  border-radius: 0.5rem;
+  border: 1px solid rgba(15, 16, 31, 0.15);
+  padding: 0.6rem 0.8rem;
+  font-size: 1rem;
+}
+
+.formGrid textarea {
+  resize: vertical;
+}
+
+.fullWidthField {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 960px) {
+  .layout {
+    grid-template-columns: 320px minmax(0, 1fr);
+  }
+
+  .heroCard,
+  .progressCard {
+    position: sticky;
+  }
+
+  .heroCard {
+    top: 2rem;
+  }
+
+  .progressCard {
+    top: 12rem;
+  }
+}

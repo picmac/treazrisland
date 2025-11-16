@@ -1,3 +1,8 @@
+'use client';
+
+// The onboarding wizard imports this component from a client page, so it must
+// be marked as a client component to satisfy Next.js' server/client boundaries.
+
 import styles from './ProgressSteps.module.css';
 
 export type ProgressStepStatus = 'pending' | 'current' | 'completed';
