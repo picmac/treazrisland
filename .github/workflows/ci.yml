@@ -34,13 +34,11 @@ on:
 
 concurrency:
   group: >-
-    ${{ format(
-      '{0}-{1}',
-      github.workflow,
-      (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')
-        ? format('pr-{0}-{1}', github.event.pull_request.head.ref, github.event.pull_request.number)
-        : format('ref-{0}', github.ref)
-    ) }}
+    ${{
+      github.event.pull_request.number
+        && format('{0}-{1}-{2}', github.workflow, github.ref, github.event.pull_request.number)
+        || format('{0}-{1}', github.workflow, github.ref)
+    }}
   cancel-in-progress: true
 
 jobs:
