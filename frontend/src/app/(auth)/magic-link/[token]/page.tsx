@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -36,7 +37,7 @@ export default function MagicLinkPage({ params }: MagicLinkPageProps) {
         message: 'Magic link accepted. Redirecting to your library…',
         detail: `Welcome back ${response.user.email}`,
       });
-      router.replace('/library');
+      router.replace('/library' as Route);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Magic link exchange failed. Try again.';

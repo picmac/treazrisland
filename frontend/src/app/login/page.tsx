@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { Suspense, useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { exchangeMagicLinkToken, loginWithPassword, type AuthResponse } from '@/lib/apiClient';
 import { storeAccessToken } from '@/lib/authTokens';
@@ -14,6 +14,24 @@ type FormStatus = {
 const idleStatus: FormStatus = { state: 'idle' };
 
 export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <section aria-label="Operator login" className="auth-section">
+          <header>
+            <p className="eyebrow">Secure Docking</p>
+            <h1>Loading authentication portal…</h1>
+            <p className="lede">Preparing the magic link and password flows.</p>
+          </header>
+        </section>
+      }
+    >
+      <LoginFormShell />
+    </Suspense>
+  );
+}
+
+function LoginFormShell() {
   const searchParams = useSearchParams();
   const [magicToken, setMagicToken] = useState('');
   const [magicStatus, setMagicStatus] = useState<FormStatus>(idleStatus);

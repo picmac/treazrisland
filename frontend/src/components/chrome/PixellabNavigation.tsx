@@ -1,10 +1,11 @@
+import type { Route } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { HTMLAttributes } from 'react';
 import { PIXELLAB_TOKENS } from '@/theme/tokens';
 
 type NavLink = {
-  href: string;
+  href: Route | string;
   label: string;
 };
 
@@ -112,24 +113,34 @@ export function PixellabNavigation({
             justifyContent: 'flex-end',
           }}
         >
-          {links.map((link) => (
-            <li key={link.href}>
-              <Link
-                href={link.href}
-                target={link.href.startsWith('http') ? '_blank' : undefined}
-                rel={link.href.startsWith('http') ? 'noreferrer' : undefined}
-                style={{
-                  color: colors.text.primary,
-                  textDecoration: 'none',
-                  fontSize: '0.65rem',
-                  letterSpacing: '0.15rem',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {link.label}
-              </Link>
-            </li>
-          ))}
+          {links.map((link) => {
+            const isExternal = typeof link.href === 'string' && link.href.startsWith('http');
+            const commonProps = {
+              style: {
+                color: colors.text.primary,
+                textDecoration: 'none',
+                fontSize: '0.65rem',
+                letterSpacing: '0.15rem',
+                textTransform: 'uppercase',
+              },
+              target: isExternal ? '_blank' : undefined,
+              rel: isExternal ? 'noreferrer' : undefined,
+            } as const;
+
+            return (
+              <li key={link.href}>
+                {isExternal ? (
+                  <a href={link.href} {...commonProps}>
+                    {link.label}
+                  </a>
+                ) : (
+                  <Link href={link.href as Route} {...commonProps}>
+                    {link.label}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </nav>
     </header>

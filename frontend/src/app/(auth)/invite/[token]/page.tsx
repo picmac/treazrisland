@@ -1,9 +1,11 @@
 'use client';
 
+import type { Route } from 'next';
+import { useRouter } from 'next/navigation';
+
 import AuthInviteForm from '@/components/forms/AuthInviteForm';
 import { storeAccessToken } from '@/lib/authTokens';
 import type { InviteRedemptionResponse } from '@/lib/apiClient';
-import { useRouter } from 'next/navigation';
 
 interface InvitePageProps {
   params: { token: string };
@@ -18,7 +20,7 @@ export default function InvitePage({ params }: InvitePageProps) {
       storeAccessToken(response.accessToken);
     }
 
-    router.replace('/library');
+    router.replace('/library' as Route);
   };
 
   return (
