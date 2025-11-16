@@ -1,0 +1,137 @@
+import Image from 'next/image';
+import Link from 'next/link';
+import type { HTMLAttributes } from 'react';
+import { PIXELLAB_TOKENS } from '@/theme/tokens';
+
+type NavLink = {
+  href: string;
+  label: string;
+};
+
+type PixellabNavigationProps = {
+  links: NavLink[];
+  eyebrow?: string;
+  description?: string;
+} & HTMLAttributes<HTMLElement>;
+
+export function PixellabNavigation({
+  links,
+  eyebrow = 'Pixellab drop 07',
+  description = 'Retro operating frame rendered with Pixellab.ai tokens.',
+  style,
+  ...rest
+}: PixellabNavigationProps) {
+  const { colors, spacing, layout } = PIXELLAB_TOKENS;
+
+  return (
+    <header
+      role="banner"
+      {...rest}
+      style={{
+        borderBottom: `1px solid ${colors.border.subtle}`,
+        backdropFilter: `blur(${PIXELLAB_TOKENS.effects.panelBlur})`,
+        backgroundColor: 'rgba(6, 0, 20, 0.7)',
+        boxShadow: PIXELLAB_TOKENS.effects.panelShadow,
+        position: 'sticky',
+        top: 0,
+        zIndex: 2,
+        ...style,
+      }}
+    >
+      <nav
+        aria-label="Primary"
+        style={{
+          maxWidth: layout.contentMaxWidth,
+          margin: '0 auto',
+          padding: `${spacing.sm} ${layout.pagePadding}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: spacing.lg,
+          minHeight: layout.navHeight,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p
+            style={{
+              textTransform: 'uppercase',
+              letterSpacing: '0.35rem',
+              color: colors.accent.secondary,
+              fontSize: '0.6rem',
+              margin: '0 0 0.35rem',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {eyebrow}
+          </p>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: spacing.xs,
+            }}
+          >
+            <Link
+              href="/"
+              aria-label="Treazr Island home"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: spacing.xs,
+                color: colors.accent.primary,
+                textDecoration: 'none',
+                fontSize: '0.85rem',
+              }}
+            >
+              <Image
+                src={PIXELLAB_TOKENS.assets.wordmark}
+                alt="Treazr Island wordmark"
+                width={200}
+                height={60}
+                style={{
+                  width: 'auto',
+                  height: '2rem',
+                  objectFit: 'contain',
+                }}
+              />
+            </Link>
+            <p
+              style={{ margin: 0, color: colors.text.muted, fontSize: '0.65rem', maxWidth: '40ch' }}
+            >
+              {description}
+            </p>
+          </div>
+        </div>
+        <ul
+          style={{
+            listStyle: 'none',
+            margin: 0,
+            padding: 0,
+            display: 'flex',
+            gap: spacing.md,
+            flexWrap: 'wrap',
+            justifyContent: 'flex-end',
+          }}
+        >
+          {links.map((link) => (
+            <li key={link.href}>
+              <Link
+                href={link.href}
+                target={link.href.startsWith('http') ? '_blank' : undefined}
+                rel={link.href.startsWith('http') ? 'noreferrer' : undefined}
+                style={{
+                  color: colors.text.primary,
+                  textDecoration: 'none',
+                  fontSize: '0.65rem',
+                  letterSpacing: '0.15rem',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {link.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </header>
+  );
+}

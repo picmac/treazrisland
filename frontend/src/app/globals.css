@@ -1,6 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-
 :root {
+  color-scheme: dark;
   --pixellab-bg-primary: #060014;
   --pixellab-bg-secondary: #12052b;
   --pixellab-accent: #f7b733;
@@ -20,7 +19,9 @@
 
 body {
   margin: 0;
+  min-height: 100vh;
   font-family:
+    var(--font-pixellab),
     'Press Start 2P',
     system-ui,
     -apple-system,
@@ -29,6 +30,34 @@ body {
     sans-serif;
   background-color: var(--pixellab-bg-primary);
   color: var(--pixellab-foreground);
+  background-attachment: fixed;
+}
+
+a {
+  color: inherit;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--pixellab-accent);
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateY(-150%);
+  background: var(--pixellab-accent);
+  color: #060014;
+  padding: 0.65rem 1rem;
+  font-size: 0.75rem;
+  z-index: 10;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
 }
 
 .pixellab-grid {
