@@ -27,11 +27,12 @@ import type { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
 type OtelLogsModule = typeof import('@opentelemetry/api-logs');
 
-let otelLogsModule: OtelLogsModule | null | undefined;
+let otelLogsModule: OtelLogsModule | null = null;
+let hasAttemptedOtelLogsLoad = false;
 let hasLoggedOtelFallback = false;
 
 const loadOtelLogsModule = (): OtelLogsModule | null => {
-  if (otelLogsModule !== undefined) {
+  if (hasAttemptedOtelLogsLoad) {
     return otelLogsModule;
   }
 
@@ -48,6 +49,8 @@ const loadOtelLogsModule = (): OtelLogsModule | null => {
     }
     otelLogsModule = null;
   }
+
+  hasAttemptedOtelLogsLoad = true;
 
   return otelLogsModule;
 };
