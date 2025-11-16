@@ -18,12 +18,12 @@ export function PixellabGrid({
   style,
   ...rest
 }: PixellabGridProps) {
-  const Component = as as keyof JSX.IntrinsicElements;
+  const ComponentTag: GridElement = as;
   const spacing = PIXELLAB_TOKENS.spacing[gap];
   const { layout } = PIXELLAB_TOKENS;
 
   return (
-    <Component
+    <ComponentTag
       {...rest}
       style={{
         display: 'grid',
@@ -36,6 +36,6 @@ export function PixellabGrid({
       }}
     >
       {children}
-    </Component>
+    </ComponentTag>
   );
 }

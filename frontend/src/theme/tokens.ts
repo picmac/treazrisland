@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react';
 import { Press_Start_2P } from 'next/font/google';
 
+type PixellabCssVariables = CSSProperties & Record<`--pixellab-${string}`, string>;
+
 export type PixellabTokens = {
   colors: {
     background: {
@@ -104,8 +106,10 @@ export const pixellabFont = Press_Start_2P({
   variable: '--font-pixellab',
 });
 
-export function getPixellabCssVariables(tokens: PixellabTokens = PIXELLAB_TOKENS): CSSProperties {
-  return {
+export function getPixellabCssVariables(
+  tokens: PixellabTokens = PIXELLAB_TOKENS,
+): PixellabCssVariables {
+  const cssVariables: PixellabCssVariables = {
     '--pixellab-bg-primary': tokens.colors.background.base,
     '--pixellab-bg-secondary': tokens.colors.background.glow,
     '--pixellab-accent': tokens.colors.accent.primary,
@@ -129,5 +133,7 @@ export function getPixellabCssVariables(tokens: PixellabTokens = PIXELLAB_TOKENS
     '--pixellab-layout-max-width': tokens.layout.contentMaxWidth,
     '--pixellab-layout-padding': tokens.layout.pagePadding,
     '--pixellab-layout-nav-height': tokens.layout.navHeight,
-  } satisfies CSSProperties;
+  };
+
+  return cssVariables;
 }
