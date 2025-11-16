@@ -1,12 +1,14 @@
+import type { Route } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { PixellabGrid, PixellabNavigation, PixellabTexture } from '@/components/chrome';
 import { PIXELLAB_TOKENS } from '@/theme/tokens';
 
 const docsUrl = 'https://github.com/treazrisland/treazrisland/blob/main/docs/ui/theme.md';
+const featuredRomRoute = '/rom/favorite-rom' as Route;
 
 const navLinks = [
-  { href: '/rom', label: 'ROM dossier' },
+  { href: featuredRomRoute, label: 'ROM dossier' },
   { href: '/login', label: 'Crew login' },
   { href: docsUrl, label: 'Docs' },
 ];
@@ -115,7 +117,7 @@ export default function HomePage() {
               }}
             >
               <Link
-                href="/rom"
+                href={featuredRomRoute}
                 style={{
                   background: `linear-gradient(120deg, ${colors.accent.primary}, ${colors.accent.secondary})`,
                   color: '#060014',
@@ -243,7 +245,7 @@ export default function HomePage() {
                 <p style={{ margin: 0, color: colors.text.muted, lineHeight: 1.6 }}>
                   {touchpoint.copy}
                 </p>
-                <Link
+                <a
                   href={touchpoint.href}
                   target={touchpoint.href.startsWith('http') ? '_blank' : undefined}
                   rel={touchpoint.href.startsWith('http') ? 'noreferrer' : undefined}
@@ -257,7 +259,7 @@ export default function HomePage() {
                   }}
                 >
                   Open
-                </Link>
+                </a>
               </article>
             ))}
           </PixellabGrid>

@@ -3,11 +3,11 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createServerRequestInit } from '@/app/rom/[id]/page';
 import { RomHero } from '@/components/rom/RomHero';
 import { ACCESS_TOKEN_KEY } from '@/constants/auth';
 import { ApiError, apiClient } from '@/lib/apiClient';
 import { fetchRomDetails } from '@/lib/roms';
+import { createServerRequestInit } from '@/lib/serverRequestInit';
 import type { RomDetails } from '@/types/rom';
 
 type CookieAwareGlobal = typeof globalThis & {

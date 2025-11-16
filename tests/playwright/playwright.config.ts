@@ -6,7 +6,7 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
 const artifactsRoot = process.env.PLAYWRIGHT_ARTIFACTS_DIR ?? path.join(dirname, 'artifacts');
 
 export default defineConfig({
-  testDir: path.join(dirname, 'specs'),
+  testDir: dirname,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

@@ -1,5 +1,6 @@
 import '../../setup-env';
 
+import bcrypt from 'bcryptjs';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseEnv, type Env } from '../../../src/config/env';
@@ -76,6 +77,37 @@ describe('POST /auth/login', () => {
     expect(
       response.cookies.some((cookie: { name: string }) => cookie.name === 'refreshToken'),
     ).toBe(true);
+  });
+
+  it('authenticates users created via invite redemption', async ({ skip }) => {
+    if (databaseError || !app || !database) {
+      skip();
+      return;
+    }
+
+    const activeApp = app;
+    const password = 'InvitePass123!';
+    const passwordHash = await bcrypt.hash(password, 10);
+    const email = 'redeemed@example.com';
+
+    await database.prisma.user.create({
+      data: {
+        email,
+        username: 'redeemed_user',
+        displayName: 'Redeemed User',
+        passwordHash,
+      },
+    });
+
+    const response = await activeApp.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { email, password },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { user: { email: string } };
+    expect(body.user.email).toBe(email);
   });
 
   it('rejects invalid credentials', async ({ skip }) => {
