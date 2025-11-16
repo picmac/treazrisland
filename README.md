@@ -65,6 +65,8 @@ The script refuses to run if a user already exists, ensuring that exactly one bo
 
 Every push and pull request runs the `CI` workflow, which fans out linting, type-checking (`pnpm typecheck`), unit tests, and the Playwright suite. Branch protection rules require this workflow to succeed before merges land on `main`, so expect to see a green check from GitHub Actions prior to completing a PR.
 
+When the Playwright matrix job runs, GitHub Actions uploads the generated videos, traces, screenshots, and `.log` files from `tests/playwright/artifacts/` as discrete artifacts (`playwright-videos`, `playwright-traces`, `playwright-screenshots`, `playwright-logs`). Download them from the CI workflow run page's **Artifacts** panel to debug flaky or failing tests without reproducing the run locally.
+
 Older workflow attempts automatically cancel themselves when a newer push or PR update targeting the same branch arrives. This keeps the CI queue responsive and guarantees that only the freshest commit for a branch or pull request finishes executing.
 
 ## End-to-end tests
