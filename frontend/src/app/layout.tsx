@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { ToastProvider } from '@/components/ui/ToastProvider';
-import { PixellabThemeSurface } from '@/theme/PixellabThemeSurface';
 import { ThemeProvider } from '@/theme/ThemeProvider';
+import { getPixellabCssVariables, pixellabFont } from '@/theme/tokens';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -12,13 +12,16 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const cssVariables = getPixellabCssVariables();
+
   return (
     <html lang="en">
-      <body>
+      <body className={pixellabFont.variable} style={cssVariables}>
+        <a className="skip-link" href="#main-content">
+          Skip to main content
+        </a>
         <ThemeProvider>
-          <ToastProvider>
-            <PixellabThemeSurface>{children}</PixellabThemeSurface>
-          </ToastProvider>
+          <ToastProvider>{children}</ToastProvider>
         </ThemeProvider>
       </body>
     </html>

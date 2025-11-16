@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 320" role="img" aria-labelledby="gridTitle gridDesc">
+  <title id="gridTitle">Pixellab grid wallpaper</title>
+  <desc id="gridDesc">Neon grid texture inspired by Pixellab.ai prompts.</desc>
+  <defs>
+    <linearGradient id="horizon" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#12052b" />
+      <stop offset="50%" stop-color="#060014" />
+      <stop offset="100%" stop-color="#020009" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="320" fill="url(#horizon)" />
+  <g stroke="#b958f6" stroke-width="0.5" opacity="0.4">
+    <path d="M0 160 H512" />
+    <path d="M0 190 H512" />
+    <path d="M0 220 H512" />
+    <path d="M0 250 H512" />
+    <path d="M0 280 H512" />
+    <path d="M0 310 H512" />
+    <path d="M0 340 H512" />
+  </g>
+  <g stroke="#f7b733" stroke-width="0.6" opacity="0.45">
+    <path d="M64 160 V400" />
+    <path d="M128 160 V400" />
+    <path d="M192 160 V400" />
+    <path d="M256 160 V400" />
+    <path d="M320 160 V400" />
+    <path d="M384 160 V400" />
+    <path d="M448 160 V400" />
+  </g>
+</svg>
