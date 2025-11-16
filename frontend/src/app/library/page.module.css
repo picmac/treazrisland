@@ -1,0 +1,63 @@
+.page {
+  min-height: 100vh;
+  padding: clamp(1rem, 4vw, 2.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.header h1 {
+  margin: 0;
+}
+
+.header p {
+  margin: 0;
+  color: rgba(254, 250, 224, 0.75);
+}
+
+.gridViewport {
+  flex: 1;
+  min-height: 400px;
+  max-height: calc(100vh - 280px);
+  border: 1px solid rgba(249, 96, 204, 0.3);
+  border-radius: 1rem;
+  background: rgba(4, 0, 16, 0.6);
+  overflow: auto;
+  position: relative;
+}
+
+.gridInner {
+  position: relative;
+  width: 100%;
+}
+
+.virtualRow {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.status {
+  padding: 1rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(254, 250, 224, 0.3);
+  background: rgba(12, 5, 32, 0.75);
+}
+
+.emptyState {
+  text-align: center;
+  padding: 2rem;
+  border-radius: 1rem;
+  border: 1px dashed rgba(254, 250, 224, 0.4);
+  background: rgba(6, 0, 20, 0.5);
+}
