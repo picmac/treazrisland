@@ -33,7 +33,14 @@ on:
       - ready_for_review
 
 concurrency:
-  group: "${{ github.workflow }}-${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' ? format('pr-{0}-{1}', github.head_ref, github.event.pull_request.number) : format('ref-{0}', github.ref) }}"
+  group: >-
+    ${{ format(
+      '{0}-{1}',
+      github.workflow,
+      (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')
+        ? format('pr-{0}-{1}', github.event.pull_request.head.ref, github.event.pull_request.number)
+        : format('ref-{0}', github.ref)
+    ) }}
   cancel-in-progress: true
 
 jobs:
