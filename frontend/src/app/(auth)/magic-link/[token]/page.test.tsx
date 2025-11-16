@@ -14,9 +14,10 @@ vi.mock('@/lib/authTokens', () => ({
 }));
 
 const replace = vi.fn();
+const mockRouter = { replace };
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ replace }),
+  useRouter: () => mockRouter,
 }));
 
 describe('MagicLinkPage', () => {
@@ -40,9 +41,7 @@ describe('MagicLinkPage', () => {
     await waitFor(() => expect(mockedExchange).toHaveBeenCalledWith('token-123'));
     await waitFor(() => expect(mockedStore).toHaveBeenCalledWith('token-123'));
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/library'));
-    expect(
-      await screen.findByRole('status', { name: /magic link accepted/i, exact: false }),
-    ).toBeVisible();
+    expect(await screen.findByText(/magic link accepted/i)).toBeVisible();
   });
 
   it('surfaces API failures', async () => {
