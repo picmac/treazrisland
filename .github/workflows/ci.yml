@@ -330,6 +330,40 @@ jobs:
       - name: Run ${{ matrix.job.name }}
         run: ${{ matrix.job.command }}
 
+      - name: Upload Playwright videos
+        if: ${{ always() && matrix.job.name == 'Playwright' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-videos
+          path: tests/playwright/artifacts/test-results/**/*.webm
+          if-no-files-found: ignore
+
+      - name: Upload Playwright traces
+        if: ${{ always() && matrix.job.name == 'Playwright' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: tests/playwright/artifacts/test-results/**/trace.zip
+          if-no-files-found: ignore
+
+      - name: Upload Playwright screenshots
+        if: ${{ always() && matrix.job.name == 'Playwright' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots
+          path: tests/playwright/artifacts/test-results/**/*.png
+          if-no-files-found: ignore
+
+      - name: Upload Playwright logs
+        if: ${{ always() && matrix.job.name == 'Playwright' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-logs
+          path: |
+            tests/playwright/artifacts/**/*.log
+            tests/playwright/**/*.log
+          if-no-files-found: ignore
+
       - name: Save Docker layers cache
         if: ${{ matrix.job.needsDocker && steps.docker-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
