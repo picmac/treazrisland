@@ -18,6 +18,10 @@ on:
       - synchronize
       - ready_for_review
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' ? format('pr-{0}-{1}', github.head_ref, github.event.pull_request.number) : format('ref-{0}', github.ref) }}
+  cancel-in-progress: true
+
 jobs:
   security_checklist_ack:
     name: Ensure Security Checklist Acknowledgement
