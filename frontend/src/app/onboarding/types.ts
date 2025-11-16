@@ -27,17 +27,17 @@ export interface StepStatus<T> {
   data?: T;
 }
 
-export interface OnboardingProgress {
-  health: StepStatus<HealthCheckResult>;
-  profile: StepStatus<ProfileVerificationResult>;
-  emulator: StepStatus<EmulatorConfigResult>;
-  rom: StepStatus<RomUploadResult>;
-  lastUpdated: string;
-}
-
 export type StepDataMap = {
   health: HealthCheckResult;
   profile: ProfileVerificationResult;
   emulator: EmulatorConfigResult;
   rom: RomUploadResult;
 };
+
+export type StepProgressMap = {
+  [K in StepKey]: StepStatus<StepDataMap[K]>;
+};
+
+export interface OnboardingProgress extends StepProgressMap {
+  lastUpdated: string;
+}

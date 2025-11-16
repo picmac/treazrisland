@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+import { apiClient, type JsonRecord } from './apiClient';
 
 export type DependencyStatus = 'up' | 'down';
 
@@ -16,7 +16,7 @@ export function runHealthCheck() {
   return apiClient.get<HealthResponse>('/health');
 }
 
-export interface AdminProfilePayload {
+export interface AdminProfilePayload extends JsonRecord {
   displayName: string;
 }
 
@@ -56,7 +56,7 @@ export function saveEmulatorConfig(payload: { embedUrl: string }) {
   });
 }
 
-export interface AdminRomUploadPayload {
+export interface AdminRomUploadPayload extends JsonRecord {
   title: string;
   description?: string;
   platformId: string;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import ProgressSteps, { type ProgressStep } from '@/components/ProgressSteps';
 
@@ -8,7 +8,7 @@ import { EmulatorConfigStep } from './steps/EmulatorConfigStep';
 import { HealthCheckStep } from './steps/HealthCheckStep';
 import { ProfileVerificationStep } from './steps/ProfileVerificationStep';
 import { RomUploadStep } from './steps/RomUploadStep';
-import type { OnboardingProgress, StepDataMap, StepKey, StepStatus } from './types';
+import type { OnboardingProgress, StepDataMap, StepKey } from './types';
 import styles from './page.module.css';
 
 const STORAGE_KEY = 'treazr.adminOnboarding.v1';
@@ -59,42 +59,34 @@ const persistProgress = (progress: OnboardingProgress) => {
   }
 };
 
-type StepConfig<K extends StepKey> = {
-  key: K;
+type StepConfig = {
+  key: StepKey;
   title: string;
   description: string;
-  component: ComponentType<{
-    state: StepStatus<StepDataMap[K]>;
-    onComplete: (result: StepDataMap[K]) => void;
-  }>;
 };
 
-const wizardSteps: StepConfig<StepKey>[] = [
+const wizardSteps = [
   {
     key: 'health',
     title: 'Check API health',
     description: 'Call /health and confirm Redis and MinIO respond.',
-    component: HealthCheckStep,
   },
   {
     key: 'profile',
     title: 'Verify profile',
     description: 'Update the admin display name and support contact.',
-    component: ProfileVerificationStep,
   },
   {
     key: 'emulator',
     title: 'Configure EmulatorJS',
     description: 'Save the embed.js endpoint that EmulatorJS hosts.',
-    component: EmulatorConfigStep,
   },
   {
     key: 'rom',
     title: 'Upload first ROM',
     description: 'Call /admin/roms with a cleared build.',
-    component: RomUploadStep,
   },
-];
+] as const satisfies ReadonlyArray<StepConfig>;
 
 const findNextStepIndex = (value: OnboardingProgress): number => {
   const index = wizardSteps.findIndex((step) => !value[step.key].completed);
@@ -159,7 +151,6 @@ export default function OnboardingPage() {
   );
 
   const activeStep = wizardSteps[currentStepIndex];
-  const ActiveComponent = activeStep.component;
 
   const canJumpToStep = (index: number) => {
     if (index === currentStepIndex) {
@@ -207,10 +198,24 @@ export default function OnboardingPage() {
           </section>
 
           <section className={styles.stepWrapper}>
-            <ActiveComponent
-              state={progress[activeStep.key]}
-              onComplete={handleCompletion(activeStep.key)}
-            />
+            {activeStep.key === 'health' && (
+              <HealthCheckStep state={progress.health} onComplete={handleCompletion('health')} />
+            )}
+            {activeStep.key === 'profile' && (
+              <ProfileVerificationStep
+                state={progress.profile}
+                onComplete={handleCompletion('profile')}
+              />
+            )}
+            {activeStep.key === 'emulator' && (
+              <EmulatorConfigStep
+                state={progress.emulator}
+                onComplete={handleCompletion('emulator')}
+              />
+            )}
+            {activeStep.key === 'rom' && (
+              <RomUploadStep state={progress.rom} onComplete={handleCompletion('rom')} />
+            )}
           </section>
         </div>
       </div>
