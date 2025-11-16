@@ -1,4 +1,5 @@
 import { PrismaClient, RomAssetType, SessionStatus } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -74,6 +75,8 @@ async function main() {
     }),
   ]);
 
+  const fallbackPasswordHash = await bcrypt.hash('password123', 10);
+
   const user = await prisma.user.upsert({
     where: { email: 'player@example.com' },
     update: {
@@ -83,7 +86,7 @@ async function main() {
       email: 'player@example.com',
       username: 'player1',
       displayName: 'Player One',
-      passwordHash: 'hashed-password',
+      passwordHash: fallbackPasswordHash,
       lastLoginAt: new Date(),
     },
   });

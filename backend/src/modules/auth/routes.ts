@@ -15,6 +15,9 @@ const loginSchema = z.object({
   password: z.string().min(8),
 });
 
+const FALLBACK_OPERATOR_PASSWORD = 'password123';
+const FALLBACK_PASSWORD_HASH = bcrypt.hashSync(FALLBACK_OPERATOR_PASSWORD, 10);
+
 const magicLinkSchema = z.object({
   token: z.string().min(1),
 });
@@ -44,8 +47,6 @@ const magicLinkRequestSchema = z.object({
   email: z.string().email(),
   redirectUrl: z.string().url(),
 });
-
-const DEV_PASSWORD_HASH = 'dev-placeholder-password-hash';
 
 const normalizeEmail = (email: string): string => email.trim().toLowerCase();
 
@@ -118,7 +119,7 @@ const ensureUserRecord = async (
           email: normalizedEmail,
           username: usernameCandidate,
           displayName: usernameCandidate,
-          passwordHash: DEV_PASSWORD_HASH,
+          passwordHash: FALLBACK_PASSWORD_HASH,
         },
       });
 
@@ -144,7 +145,7 @@ const ensureUserRecord = async (
       email: normalizedEmail,
       username: fallbackUsername,
       displayName: fallbackUsername,
-      passwordHash: DEV_PASSWORD_HASH,
+      passwordHash: FALLBACK_PASSWORD_HASH,
     },
   });
 
@@ -245,13 +246,28 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const { email, password } = parsedBody.data;
+    const normalizedEmail = normalizeEmail(email);
+    const existingUser = await fastify.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
 
-    if (password !== 'password123') {
-      recordAuthAttempt({ method: 'password', outcome: 'failure' });
-      return reply.status(401).send({ error: 'Invalid credentials' });
+    let user: { id: string; email: string } | null = null;
+
+    if (existingUser) {
+      const passwordMatches = await bcrypt.compare(password, existingUser.passwordHash);
+      if (!passwordMatches) {
+        recordAuthAttempt({ method: 'password', outcome: 'failure' });
+        return reply.status(401).send({ error: 'Invalid credentials' });
+      }
+      user = { id: existingUser.id, email: existingUser.email };
+    } else {
+      if (password !== FALLBACK_OPERATOR_PASSWORD) {
+        recordAuthAttempt({ method: 'password', outcome: 'failure' });
+        return reply.status(401).send({ error: 'Invalid credentials' });
+      }
+      user = await ensureUserRecord(email, fastify.prisma);
     }
 
-    const user = await ensureUserRecord(email, fastify.prisma);
     const { accessToken } = await createSessionTokens(fastify, reply, user);
     recordAuthAttempt({ method: 'password', outcome: 'success' });
 
