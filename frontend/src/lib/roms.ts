@@ -1,6 +1,65 @@
-import { ApiError, API_BASE_URL, apiClient, resolveRequestScopedServerBaseUrl } from './apiClient';
+import { ApiError, apiClient, resolveRequestScopedServerBaseUrl } from './apiClient';
 import { getStoredAccessToken } from './authTokens';
-import type { RomDetails } from '@/types/rom';
+import type { RomDetails, RomSummary } from '@/types/rom';
+
+interface RomListMeta {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+interface RomListResponse {
+  items: RomSummary[];
+  meta: RomListMeta;
+}
+
+export interface RomListFilters {
+  page?: number;
+  pageSize?: number;
+  platform?: string;
+  genre?: string;
+  favorites?: boolean;
+}
+
+export async function listRoms(
+  filters: RomListFilters = {},
+): Promise<{ items: RomSummary[]; meta: RomListMeta }> {
+  const params = new URLSearchParams();
+
+  if (filters.page) {
+    params.set('page', filters.page.toString());
+  }
+
+  if (filters.pageSize) {
+    params.set('pageSize', filters.pageSize.toString());
+  }
+
+  if (filters.platform) {
+    params.set('platform', filters.platform);
+  }
+
+  if (filters.genre) {
+    params.set('genre', filters.genre);
+  }
+
+  if (filters.favorites) {
+    params.set('favorites', 'true');
+  }
+
+  const query = params.size > 0 ? `?${params.toString()}` : '';
+  const payload = await apiClient.get<RomListResponse>(`/roms${query}`, {
+    requiresAuth: Boolean(filters.favorites),
+  });
+
+  return {
+    items: payload.items.map((rom) => ({
+      ...rom,
+      isFavorite: rom.isFavorite ?? false,
+    })),
+    meta: payload.meta,
+  };
+}
 
 interface RomDetailsResponse {
   rom: RomDetails;

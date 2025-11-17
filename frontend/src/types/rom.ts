@@ -10,7 +10,7 @@ export interface RomAsset {
   url: string;
 }
 
-export interface RomDetails {
+export interface RomSummary {
   id: string;
   title: string;
   description?: string;
@@ -19,6 +19,9 @@ export interface RomDetails {
   genres: string[];
   createdAt: string;
   updatedAt: string;
-  assets: RomAsset[];
   isFavorite?: boolean;
+}
+
+export interface RomDetails extends RomSummary {
+  assets: RomAsset[];
 }

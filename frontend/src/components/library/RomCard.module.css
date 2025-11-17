@@ -1,0 +1,78 @@
+.card {
+  border-radius: 1rem;
+  border: 1px solid rgba(249, 96, 204, 0.3);
+  background: rgba(12, 5, 32, 0.9);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-height: 200px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+}
+
+.card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.meta {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  letter-spacing: 0.08rem;
+  text-transform: uppercase;
+  color: rgba(254, 250, 224, 0.7);
+}
+
+.badge {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(254, 250, 224, 0.35);
+}
+
+.description {
+  font-size: 0.85rem;
+  color: rgba(254, 250, 224, 0.85);
+  flex: 1;
+}
+
+.genres {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  font-size: 0.7rem;
+  letter-spacing: 0.05rem;
+}
+
+.genres span {
+  border: 1px solid rgba(254, 250, 224, 0.3);
+  border-radius: 0.5rem;
+  padding: 0.2rem 0.5rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.actions a {
+  flex: 1;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 0.65rem;
+  padding: 0.65rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08rem;
+}
+
+.play {
+  background: linear-gradient(120deg, var(--pixellab-accent), var(--pixellab-accent-muted));
+  color: #060014;
+  border: none;
+}
+
+.details {
+  border: 1px dashed rgba(254, 250, 224, 0.35);
+}

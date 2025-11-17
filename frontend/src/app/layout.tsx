@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { AppQueryProvider } from '@/components/providers/AppQueryProvider';
 import { ToastProvider } from '@/components/ui/ToastProvider';
 import { ThemeProvider } from '@/theme/ThemeProvider';
 import { getPixellabCssVariables, pixellabFont } from '@/theme/tokens';
@@ -21,7 +22,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Skip to main content
         </a>
         <ThemeProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <AppQueryProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </AppQueryProvider>
         </ThemeProvider>
       </body>
     </html>

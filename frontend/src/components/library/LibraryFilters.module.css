@@ -1,0 +1,95 @@
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid rgba(249, 96, 204, 0.35);
+  border-radius: 0.75rem;
+  background: rgba(6, 0, 20, 0.65);
+  backdrop-filter: blur(12px);
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 140px;
+}
+
+.label {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.1rem;
+  color: rgba(254, 250, 224, 0.8);
+}
+
+.select {
+  border-radius: 0.5rem;
+  border: 1px solid rgba(254, 250, 224, 0.25);
+  padding: 0.5rem 0.75rem;
+  background: rgba(18, 5, 43, 0.8);
+  color: var(--pixellab-foreground);
+}
+
+.genreList {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.genreButton {
+  border-radius: 999px;
+  border: 1px solid rgba(254, 250, 224, 0.3);
+  background: transparent;
+  color: inherit;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.genreButton[data-active='true'] {
+  background: linear-gradient(120deg, var(--pixellab-accent), var(--pixellab-accent-muted));
+  color: #060014;
+  border-color: transparent;
+}
+
+.genreButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toggleButton {
+  align-self: flex-start;
+  margin-left: auto;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(254, 250, 224, 0.3);
+  background: rgba(17, 6, 44, 0.6);
+  color: inherit;
+  padding: 0.65rem 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.toggleButton[data-active='true'] {
+  background: linear-gradient(120deg, var(--pixellab-accent), var(--pixellab-accent-muted));
+  color: #060014;
+  border-color: transparent;
+}
+
+@media (max-width: 600px) {
+  .filterBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toggleButton {
+    margin-left: 0;
+    width: 100%;
+  }
+}
