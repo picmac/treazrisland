@@ -20,6 +20,7 @@ export interface RomSummary {
   createdAt: string;
   updatedAt: string;
   isFavorite?: boolean;
+  lastPlayedAt?: string;
 }
 
 export interface RomDetails extends RomSummary {
