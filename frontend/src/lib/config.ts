@@ -8,10 +8,10 @@ const deriveEmulatorBase = () => {
 
   const embedUrl = process.env.NEXT_PUBLIC_EMULATOR_EMBED_URL;
   if (embedUrl) {
-    const [baseWithoutQuery] = embedUrl.split(/[?#]/, 1);
+    const [baseWithoutQuery] = embedUrl.trim().split(/[?#]/, 1);
     const sanitized = trimTrailingSlash(baseWithoutQuery);
     const normalized = sanitized.replace(/(?:\/dist)?\/embed\.js$/, '');
-    return trimTrailingSlash(normalized);
+    return trimTrailingSlash(normalized) || '/emulatorjs';
   }
 
   return '/emulatorjs';
