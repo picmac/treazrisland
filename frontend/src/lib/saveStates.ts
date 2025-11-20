@@ -18,9 +18,13 @@ export interface SaveStatePayload extends JsonRecord {
 }
 
 export function fetchLatestSaveState(romId: string) {
-  return apiClient.get<LatestSaveStateResponse>(`/roms/${romId}/save-state/latest`);
+  return apiClient.get<LatestSaveStateResponse>(`/roms/${romId}/save-state/latest`, {
+    requiresAuth: true,
+  });
 }
 
 export function persistSaveState(romId: string, payload: SaveStatePayload) {
-  return apiClient.post<SaveStateCreateResponse>(`/roms/${romId}/save-state`, payload);
+  return apiClient.post<SaveStateCreateResponse>(`/roms/${romId}/save-state`, payload, {
+    requiresAuth: true,
+  });
 }

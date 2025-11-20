@@ -3,39 +3,12 @@
 import { useEffect, useState } from 'react';
 import type { PointerEvent } from 'react';
 
-import styles from './TouchOverlay.module.css';
+import { DEFAULT_KEYBOARD_MAPPING, type KeyboardControl } from '@/lib/config';
 
-type ControlKey =
-  | 'up'
-  | 'down'
-  | 'left'
-  | 'right'
-  | 'a'
-  | 'b'
-  | 'x'
-  | 'y'
-  | 'start'
-  | 'select'
-  | 'l'
-  | 'r';
+import styles from './TouchOverlay.module.css';
 
 type TouchOverlayProps = {
   enabled: boolean;
-};
-
-const KEY_BINDINGS: Record<ControlKey, { key: string; code: string }> = {
-  up: { key: 'ArrowUp', code: 'ArrowUp' },
-  down: { key: 'ArrowDown', code: 'ArrowDown' },
-  left: { key: 'ArrowLeft', code: 'ArrowLeft' },
-  right: { key: 'ArrowRight', code: 'ArrowRight' },
-  a: { key: 'x', code: 'KeyX' },
-  b: { key: 'z', code: 'KeyZ' },
-  x: { key: 's', code: 'KeyS' },
-  y: { key: 'a', code: 'KeyA' },
-  start: { key: 'Enter', code: 'Enter' },
-  select: { key: 'Shift', code: 'ShiftRight' },
-  l: { key: 'q', code: 'KeyQ' },
-  r: { key: 'w', code: 'KeyW' },
 };
 
 export function TouchOverlay({ enabled }: TouchOverlayProps) {
@@ -53,7 +26,7 @@ export function TouchOverlay({ enabled }: TouchOverlayProps) {
     return null;
   }
 
-  const createHandlers = (control: ControlKey) => {
+  const createHandlers = (control: KeyboardControl) => {
     const handlePress = (event: PointerEvent<HTMLButtonElement>) => {
       if (!enabled) {
         return;
@@ -206,11 +179,11 @@ export function TouchOverlay({ enabled }: TouchOverlayProps) {
   );
 }
 
-function emitInput(control: ControlKey, type: 'keydown' | 'keyup') {
+function emitInput(control: KeyboardControl, type: 'keydown' | 'keyup') {
   if (typeof window === 'undefined') {
     return;
   }
-  const binding = KEY_BINDINGS[control];
+  const binding = DEFAULT_KEYBOARD_MAPPING[control];
   if (!binding) {
     return;
   }

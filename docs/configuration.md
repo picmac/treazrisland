@@ -13,48 +13,49 @@ Copy them to `.env` (repository root) or `backend/.env` before running the boots
 
 ## Root (`.env`)
 
-| Variable                         | Description                                                                      |
-| -------------------------------- | -------------------------------------------------------------------------------- |
-| `NODE_ENV`                       | Execution environment shared by Docker Compose services (default `development`). |
-| `BACKEND_PORT`                   | Port exposed by the backend container.                                           |
-| `DATABASE_URL`                   | PostgreSQL connection string used by the backend container.                      |
-| `JWT_SECRET`                     | Symmetric signing key for Fastify's JWT plugin (min length 32 characters).       |
-| `REDIS_URL`                      | Redis connection string exposed to the backend container.                        |
-| `OBJECT_STORAGE_ENDPOINT`        | Hostname for the MinIO object storage service (no protocol).                     |
-| `OBJECT_STORAGE_PORT`            | Port exposed by the MinIO object storage service.                                |
-| `OBJECT_STORAGE_USE_SSL`         | Set to `true` when MinIO is served over HTTPS; `false` otherwise.                |
-| `OBJECT_STORAGE_ACCESS_KEY`      | MinIO access key for the application.                                            |
-| `OBJECT_STORAGE_SECRET_KEY`      | MinIO secret key for the application.                                            |
-| `OBJECT_STORAGE_BUCKET`          | MinIO bucket where generated assets are stored.                                  |
-| `OBJECT_STORAGE_REGION`          | Region string assigned to the MinIO bucket.                                      |
-| `OBJECT_STORAGE_PRESIGNED_TTL`   | Expiration (seconds) for presigned object storage URLs.                          |
-| `EMULATORJS_HOST`                | Hostname for the self-hosted EmulatorJS build context.                           |
-| `EMULATORJS_PORT`                | Port for the EmulatorJS static file server.                                      |
-| `EMULATORJS_REF`                 | Git tag or commit that the EmulatorJS Dockerfile clones before building.         |
-| `FRONTEND_PORT`                  | Port exposed by the frontend container.                                          |
-| `NEXT_PUBLIC_API_BASE_URL`       | Public HTTP base URL (default `/api`) that the browser uses for API requests.    |
-| `NEXT_INTERNAL_API_BASE_URL`     | Internal HTTP base URL used by the frontend server (SSR/data fetching).          |
-| `NEXT_PUBLIC_EMULATOR_EMBED_URL` | Absolute/relative URL for the self-hosted EmulatorJS `embed.js` asset.           |
-| `POSTGRES_USER`                  | Username configured for the PostgreSQL service.                                  |
-| `POSTGRES_PASSWORD`              | Password configured for the PostgreSQL service.                                  |
-| `POSTGRES_DB`                    | Default database created for development.                                        |
-| `POSTGRES_PORT`                  | Host port published by the PostgreSQL container.                                 |
-| `REDIS_PORT`                     | Host port published by the Redis container.                                      |
-| `MINIO_ROOT_USER`                | Administrative user configured for the MinIO service.                            |
-| `MINIO_ROOT_PASSWORD`            | Administrative password configured for the MinIO service.                        |
-| `MINIO_PORT`                     | Host port published by the MinIO API.                                            |
-| `MINIO_CONSOLE_PORT`             | Host port published by the MinIO console.                                        |
+| Variable                         | Description                                                                                |
+| -------------------------------- | ------------------------------------------------------------------------------------------ |
+| `NODE_ENV`                       | Execution environment shared by Docker Compose services (default `development`).           |
+| `BACKEND_PORT`                   | Port exposed by the backend container.                                                     |
+| `DATABASE_URL`                   | PostgreSQL connection string used by the backend container.                                |
+| `JWT_SECRET`                     | Symmetric signing key for Fastify's JWT plugin (min length 32 characters).                 |
+| `REDIS_URL`                      | Redis connection string exposed to the backend container.                                  |
+| `OBJECT_STORAGE_ENDPOINT`        | Hostname for the MinIO object storage service (no protocol).                               |
+| `OBJECT_STORAGE_PORT`            | Port exposed by the MinIO object storage service.                                          |
+| `OBJECT_STORAGE_USE_SSL`         | Set to `true` when MinIO is served over HTTPS; `false` otherwise.                          |
+| `OBJECT_STORAGE_ACCESS_KEY`      | MinIO access key for the application.                                                      |
+| `OBJECT_STORAGE_SECRET_KEY`      | MinIO secret key for the application.                                                      |
+| `OBJECT_STORAGE_BUCKET`          | MinIO bucket where generated assets are stored.                                            |
+| `OBJECT_STORAGE_REGION`          | Region string assigned to the MinIO bucket.                                                |
+| `OBJECT_STORAGE_PRESIGNED_TTL`   | Expiration (seconds) for presigned object storage URLs.                                    |
+| `EMULATORJS_HOST`                | Hostname for the self-hosted EmulatorJS build context.                                     |
+| `EMULATORJS_PORT`                | Port for the EmulatorJS static file server.                                                |
+| `EMULATORJS_REF`                 | Git tag or commit that the EmulatorJS Dockerfile clones before building.                   |
+| `FRONTEND_PORT`                  | Port exposed by the frontend container.                                                    |
+| `NEXT_PUBLIC_API_BASE_URL`       | Public HTTP base URL (default `/api`) that the browser uses for API requests.              |
+| `NEXT_INTERNAL_API_BASE_URL`     | Internal HTTP base URL used by the frontend server (SSR/data fetching).                    |
+| `NEXT_PUBLIC_EMULATOR_BASE_URL`  | Public path/URL that serves the EmulatorJS bundle (default `/emulatorjs`).                 |
+| `NEXT_PUBLIC_EMULATOR_EMBED_URL` | Absolute/relative URL for the self-hosted EmulatorJS `embed.js` asset.                     |
+| `EMULATORJS_BASE_URL`            | Origin that Next.js proxies to for EmulatorJS assets (defaults to `http://emulatorjs:80`). |
+| `POSTGRES_USER`                  | Username configured for the PostgreSQL service.                                            |
+| `POSTGRES_PASSWORD`              | Password configured for the PostgreSQL service.                                            |
+| `POSTGRES_DB`                    | Default database created for development.                                                  |
+| `POSTGRES_PORT`                  | Host port published by the PostgreSQL container.                                           |
+| `REDIS_PORT`                     | Host port published by the Redis container.                                                |
+| `MINIO_ROOT_USER`                | Administrative user configured for the MinIO service.                                      |
+| `MINIO_ROOT_PASSWORD`            | Administrative password configured for the MinIO service.                                  |
+| `MINIO_PORT`                     | Host port published by the MinIO API.                                                      |
+| `MINIO_CONSOLE_PORT`             | Host port published by the MinIO console.                                                  |
 
 The frontend dev server proxies every request that hits `NEXT_PUBLIC_API_BASE_URL` to
 `NEXT_INTERNAL_API_BASE_URL`, keeping browser traffic same-origin while still reaching the
 Fastify backend.
 
-`NEXT_PUBLIC_EMULATOR_EMBED_URL` must point to the exact `embed.js` asset served by the
-`emulatorjs` container. In Docker Compose we default to
-`http://emulatorjs:80/dist/embed.js` so the browser script and its relative assets come from
-the self-hosted build. In production behind Traefik, configure the variable to the external
-path that maps to the same asset (e.g. `/emulator/embed.js` when Traefik forwards that
-prefix to the emulator service).
+`NEXT_PUBLIC_EMULATOR_BASE_URL` configures the public prefix where EmulatorJS assets are
+served (default `/emulatorjs`). `EMULATORJS_BASE_URL` drives a Next.js rewrite so local
+development transparently proxies that prefix to the `emulatorjs` container.
+`NEXT_PUBLIC_EMULATOR_EMBED_URL` can still target a fully-qualified `embed.js` path when
+needed, otherwise it is derived automatically from the base URL.
 
 ## Backend (`backend/.env`)
 
