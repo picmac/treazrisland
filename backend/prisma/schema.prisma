@@ -85,6 +85,7 @@ model User {
   redeemedInvites Invite[]    @relation("InviteRedeemedBy")
   saveStates      SaveState[]
   favorites       Favorite[]
+  avatarObjectKey String?
 }
 
 model Invite {

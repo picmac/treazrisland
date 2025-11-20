@@ -26,6 +26,8 @@ import { RomService } from './modules/roms/rom.service';
 import { romRoutes } from './modules/roms/routes';
 import { SaveStateService } from './modules/roms/save-state.service';
 import { createRomStorage, type RomStorage } from './modules/roms/storage';
+import { createAvatarStorage, type AvatarStorage } from './modules/users/avatar.storage';
+import { userRoutes } from './modules/users/routes';
 import { buildLogger, loggerPlugin } from './plugins/logger';
 
 import type { AuthUser } from './modules/auth/types';
@@ -73,7 +75,12 @@ const buildHealthResponse = (redis: Redis, env: Env): HealthResponse => {
   };
 };
 
-type AppPluginOptions = { env: Env; prisma: PrismaClient; romStorage: RomStorage };
+type AppPluginOptions = {
+  env: Env;
+  prisma: PrismaClient;
+  romStorage: RomStorage;
+  avatarStorage: AvatarStorage;
+};
 
 const resolveRateLimitIdentity = (request: FastifyRequest): string | undefined => {
   const user = request.user;
@@ -84,132 +91,138 @@ const resolveRateLimitIdentity = (request: FastifyRequest): string | undefined =
   return undefined;
 };
 
-const appPlugin = fp(async (fastify, { env, prisma, romStorage }: AppPluginOptions) => {
-  fastify.decorate('config', env);
-  fastify.decorate('prisma', prisma);
+const appPlugin = fp(
+  async (fastify, { env, prisma, romStorage, avatarStorage }: AppPluginOptions) => {
+    fastify.decorate('config', env);
+    fastify.decorate('prisma', prisma);
 
-  await fastify.register(loggerPlugin);
+    await fastify.register(loggerPlugin);
 
-  await fastify.register(fastifyCors, {
-    origin: true,
-    credentials: true,
-  });
+    await fastify.register(fastifyCors, {
+      origin: true,
+      credentials: true,
+    });
 
-  await fastify.register(fastifyCookie, {
-    parseOptions: {
-      sameSite: 'lax',
-    },
-  });
+    await fastify.register(fastifyCookie, {
+      parseOptions: {
+        sameSite: 'lax',
+      },
+    });
 
-  await fastify.register(fastifyJwt, {
-    secret: env.JWT_SECRET,
-  });
+    await fastify.register(fastifyJwt, {
+      secret: env.JWT_SECRET,
+    });
 
-  fastify.decorate('authenticate', async function authenticate(request, _reply) {
-    const payload = await request.jwtVerify<{ sub: string; email?: string }>();
+    fastify.decorate('authenticate', async function authenticate(request, _reply) {
+      const payload = await request.jwtVerify<{ sub: string; email?: string }>();
 
-    const user: AuthUser = {
-      id: payload.sub,
-      email: payload.email ?? payload.sub,
-    };
-
-    request.user = user;
-  });
-
-  await fastify.register(fastifyRedis, {
-    client: createRedisClient(env),
-  });
-
-  fastify.decorate(
-    'sessionStore',
-    new RedisSessionStore(fastify.redis, {
-      refreshTokenTtlSeconds: env.JWT_REFRESH_TOKEN_TTL,
-      magicLinkTokenTtlSeconds: env.MAGIC_LINK_TOKEN_TTL,
-    }),
-  );
-
-  fastify.decorate('romService', new RomService(prisma, romStorage));
-  fastify.decorate('saveStateService', new SaveStateService(prisma, romStorage));
-  fastify.decorate('inviteStore', new PrismaInviteStore(prisma));
-  fastify.decorate('authMailer', createAuthMailer(fastify.log));
-
-  await fastify.register(fastifyRateLimit, {
-    global: true,
-    max: 120,
-    timeWindow: '1 minute',
-    hook: 'preHandler',
-    skipOnError: true,
-    keyGenerator: (request: FastifyRequest) =>
-      resolveRateLimitIdentity(request) ?? request.ip ?? request.hostname ?? 'global',
-  });
-
-  const strictRateLimitBuckets = {
-    auth: { max: 15, timeWindow: '1 minute' },
-    uploads: { max: 5, timeWindow: '1 minute' },
-  } as const;
-
-  const uploadRouteMatchers = [
-    /^\/roms\/:id\/save-state/,
-    /^\/roms\/:id\/save-states/,
-    /^\/admin\/roms$/,
-  ];
-
-  fastify.addHook('onRoute', (routeOptions) => {
-    const url = routeOptions.url ?? '';
-    const methods = (
-      Array.isArray(routeOptions.method) ? routeOptions.method : [routeOptions.method]
-    ).filter((method): method is string => typeof method === 'string');
-
-    const applyBucket = (bucket: { max: number; timeWindow: string }) => {
-      const existingConfig = routeOptions.config ?? {};
-      const existingRateLimit =
-        (existingConfig as { rateLimit?: Record<string, unknown> }).rateLimit ?? {};
-
-      routeOptions.config = {
-        ...existingConfig,
-        rateLimit: {
-          ...existingRateLimit,
-          ...bucket,
-        },
+      const user: AuthUser = {
+        id: payload.sub,
+        email: payload.email ?? payload.sub,
       };
-    };
 
-    if (url.startsWith('/auth')) {
-      applyBucket(strictRateLimitBuckets.auth);
+      request.user = user;
+    });
+
+    await fastify.register(fastifyRedis, {
+      client: createRedisClient(env),
+    });
+
+    fastify.decorate(
+      'sessionStore',
+      new RedisSessionStore(fastify.redis, {
+        refreshTokenTtlSeconds: env.JWT_REFRESH_TOKEN_TTL,
+        magicLinkTokenTtlSeconds: env.MAGIC_LINK_TOKEN_TTL,
+      }),
+    );
+
+    fastify.decorate('romService', new RomService(prisma, romStorage));
+    fastify.decorate('saveStateService', new SaveStateService(prisma, romStorage));
+    fastify.decorate('inviteStore', new PrismaInviteStore(prisma));
+    fastify.decorate('avatarStorage', avatarStorage);
+    fastify.decorate('authMailer', createAuthMailer(fastify.log));
+
+    await fastify.register(fastifyRateLimit, {
+      global: true,
+      max: 120,
+      timeWindow: '1 minute',
+      hook: 'preHandler',
+      skipOnError: true,
+      keyGenerator: (request: FastifyRequest) =>
+        resolveRateLimitIdentity(request) ?? request.ip ?? request.hostname ?? 'global',
+    });
+
+    const strictRateLimitBuckets = {
+      auth: { max: 15, timeWindow: '1 minute' },
+      uploads: { max: 5, timeWindow: '1 minute' },
+    } as const;
+
+    const uploadRouteMatchers = [
+      /^\/roms\/:id\/save-state/,
+      /^\/roms\/:id\/save-states/,
+      /^\/admin\/roms$/,
+      /^\/users\/me\/avatar-upload$/,
+    ];
+
+    fastify.addHook('onRoute', (routeOptions) => {
+      const url = routeOptions.url ?? '';
+      const methods = (
+        Array.isArray(routeOptions.method) ? routeOptions.method : [routeOptions.method]
+      ).filter((method): method is string => typeof method === 'string');
+
+      const applyBucket = (bucket: { max: number; timeWindow: string }) => {
+        const existingConfig = routeOptions.config ?? {};
+        const existingRateLimit =
+          (existingConfig as { rateLimit?: Record<string, unknown> }).rateLimit ?? {};
+
+        routeOptions.config = {
+          ...existingConfig,
+          rateLimit: {
+            ...existingRateLimit,
+            ...bucket,
+          },
+        };
+      };
+
+      if (url.startsWith('/auth')) {
+        applyBucket(strictRateLimitBuckets.auth);
+        return;
+      }
+
+      const isUploadRoute =
+        methods.includes('POST') && uploadRouteMatchers.some((matcher) => matcher.test(url));
+
+      if (isUploadRoute) {
+        applyBucket(strictRateLimitBuckets.uploads);
+      }
+    });
+
+    fastify.addHook('onClose', async () => {
+      await fastify.redis.quit();
+    });
+
+    await fastify.register(authRoutes, { prefix: '/auth' });
+    await fastify.register(romRoutes);
+    await fastify.register(userRoutes);
+    await fastify.register(adminRoutes, { prefix: '/admin' });
+
+    fastify.get('/health', async () => buildHealthResponse(fastify.redis, env));
+    fastify.get('/metrics', async (request, reply) => {
+      if (!hasMetricsExporter()) {
+        return reply.status(503).send({ error: 'Metrics exporter disabled' });
+      }
+
+      reply.hijack();
+      respondWithMetricsSnapshot(request.raw, reply.raw);
       return;
-    }
-
-    const isUploadRoute =
-      methods.includes('POST') && uploadRouteMatchers.some((matcher) => matcher.test(url));
-
-    if (isUploadRoute) {
-      applyBucket(strictRateLimitBuckets.uploads);
-    }
-  });
-
-  fastify.addHook('onClose', async () => {
-    await fastify.redis.quit();
-  });
-
-  await fastify.register(authRoutes, { prefix: '/auth' });
-  await fastify.register(romRoutes);
-  await fastify.register(adminRoutes, { prefix: '/admin' });
-
-  fastify.get('/health', async () => buildHealthResponse(fastify.redis, env));
-  fastify.get('/metrics', async (request, reply) => {
-    if (!hasMetricsExporter()) {
-      return reply.status(503).send({ error: 'Metrics exporter disabled' });
-    }
-
-    reply.hijack();
-    respondWithMetricsSnapshot(request.raw, reply.raw);
-    return;
-  });
-});
+    });
+  },
+);
 
 type AppDependencies = {
   prisma?: PrismaClient;
   romStorage?: RomStorage;
+  avatarStorage?: AvatarStorage;
 };
 
 export const createApp = (
@@ -218,13 +231,14 @@ export const createApp = (
 ): ReturnType<typeof Fastify> => {
   const prisma = dependencies.prisma ?? new PrismaClient();
   const romStorage = dependencies.romStorage ?? createRomStorage(env);
+  const avatarStorage = dependencies.avatarStorage ?? createAvatarStorage(env);
   const ownsPrisma = !dependencies.prisma;
 
   const app = Fastify({
     loggerInstance: buildLogger(env),
   });
 
-  void app.register(appPlugin, { env, prisma, romStorage });
+  void app.register(appPlugin, { env, prisma, romStorage, avatarStorage });
 
   app.addHook('onClose', async () => {
     if (ownsPrisma) {
