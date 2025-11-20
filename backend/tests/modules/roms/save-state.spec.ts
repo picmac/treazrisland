@@ -36,9 +36,14 @@ describe('ROM save state endpoints', () => {
     const romPayload = Buffer.from('test-rom');
     const checksum = createHash('sha256').update(romPayload).digest('hex');
 
+    const accessToken = await getAccessToken();
+
     const response = await getApp().inject({
       method: 'POST',
       url: '/admin/roms',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+      },
       payload: {
         title: 'Save State Test',
         platformId: 'nes',

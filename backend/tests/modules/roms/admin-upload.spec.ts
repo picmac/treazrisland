@@ -44,6 +44,18 @@ describe('POST /admin/roms', () => {
     return app;
   };
 
+  const getAccessToken = async (email = 'operator@example.com'): Promise<string> => {
+    const response = await getApp().inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { email, password: 'password123' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { accessToken: string };
+    return body.accessToken;
+  };
+
   beforeAll(async () => {
     try {
       database = await startTestDatabase();
@@ -128,10 +140,14 @@ describe('POST /admin/roms', () => {
 
     const romData = Buffer.from('retro-bytes');
     const checksum = createHash('sha256').update(romData).digest('hex');
+    const accessToken = await getAccessToken();
 
     const response = await getApp().inject({
       method: 'POST',
       url: '/admin/roms',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+      },
       payload: {
         title: 'Treaz test adventure',
         platformId: 'nes',
@@ -179,10 +195,14 @@ describe('POST /admin/roms', () => {
 
     const romData = Buffer.from('retro-bytes');
     const checksum = createHash('sha256').update('something-else').digest('hex');
+    const accessToken = await getAccessToken();
 
     const response = await getApp().inject({
       method: 'POST',
       url: '/admin/roms',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+      },
       payload: {
         title: 'Checksum mismatch',
         platformId: 'snes',
