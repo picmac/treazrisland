@@ -9,7 +9,7 @@
     "test:e2e:debug": "playwright test --debug"
   },
   "devDependencies": {
-    "@playwright/test": "^1.45.0",
+    "@playwright/test": "^1.56.1",
     "ioredis": "^5.8.2",
     "typescript": "^5.5.4"
   }
