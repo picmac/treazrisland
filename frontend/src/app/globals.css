@@ -461,10 +461,14 @@ input:focus-visible {
   position: relative;
   border-radius: 1.25rem;
   border: 1px solid rgba(249, 96, 204, 0.35);
-  background: rgba(6, 0, 20, 0.75);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(249, 96, 204, 0.08), transparent 45%),
+    radial-gradient(circle at 80% 0%, rgba(91, 192, 235, 0.08), transparent 40%),
+    rgba(6, 0, 20, 0.85);
   min-height: 420px;
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.4);
   overflow: hidden;
+  padding: 0.5rem;
 }
 
 .play-session__canvas {
@@ -474,6 +478,8 @@ input:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: linear-gradient(180deg, rgba(15, 5, 33, 0.6), rgba(15, 5, 33, 0.3));
+  border-radius: 1rem;
 }
 
 .play-session__viewport-shell {
@@ -488,6 +494,15 @@ input:focus-visible {
   min-height: calc(var(--emulator-base-height) * var(--emulator-scale));
   padding: 1rem;
   transition: min-height 200ms ease-in-out;
+}
+
+.play-session__touch-dock {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  pointer-events: none;
 }
 
 .play-session__viewport {
@@ -588,6 +603,7 @@ input:focus-visible {
 
   .play-session__canvas {
     min-height: 360px;
+    border-radius: 0.75rem;
   }
 
   .play-session__viewport-shell {
@@ -596,5 +612,9 @@ input:focus-visible {
 
   .play-session__status {
     font-size: 0.8rem;
+  }
+
+  .play-session__touch-dock {
+    padding: 0.25rem;
   }
 }
