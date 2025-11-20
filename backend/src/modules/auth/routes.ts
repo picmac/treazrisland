@@ -423,33 +423,37 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.status(202).send({ status: 'sent' });
   });
 
-  fastify.post('/invitations', async (request, reply) => {
-    const parsed = inviteIssueSchema.safeParse(request.body);
+  fastify.post(
+    '/invitations',
+    { preHandler: fastify.authorizeAdmin ?? fastify.authenticate },
+    async (request, reply) => {
+      const parsed = inviteIssueSchema.safeParse(request.body);
 
-    if (!parsed.success) {
-      return reply.status(400).send({ error: 'Invalid invite payload' });
-    }
+      if (!parsed.success) {
+        return reply.status(400).send({ error: 'Invalid invite payload' });
+      }
 
-    const normalizedEmail = normalizeEmail(parsed.data.email);
-    const expiresAt =
-      parsed.data.expiresInDays === 0
-        ? null
-        : new Date(Date.now() + parsed.data.expiresInDays * 24 * 60 * 60 * 1000);
+      const normalizedEmail = normalizeEmail(parsed.data.email);
+      const expiresAt =
+        parsed.data.expiresInDays === 0
+          ? null
+          : new Date(Date.now() + parsed.data.expiresInDays * 24 * 60 * 60 * 1000);
 
-    const invite = await createInviteForEmail(fastify, { email: normalizedEmail, expiresAt });
+      const invite = await createInviteForEmail(fastify, { email: normalizedEmail, expiresAt });
 
-    const redeemUrl = parsed.data.redirectUrl
-      ? appendQueryParam(parsed.data.redirectUrl, 'invite', invite.code)
-      : undefined;
+      const redeemUrl = parsed.data.redirectUrl
+        ? appendQueryParam(parsed.data.redirectUrl, 'invite', invite.code)
+        : undefined;
 
-    await fastify.authMailer.sendInviteEmail({
-      email: normalizedEmail,
-      inviteCode: invite.code,
-      redeemUrl,
-    });
+      await fastify.authMailer.sendInviteEmail({
+        email: normalizedEmail,
+        inviteCode: invite.code,
+        redeemUrl,
+      });
 
-    return reply.status(201).send({ code: invite.code, expiresAt: invite.expiresAt });
-  });
+      return reply.status(201).send({ code: invite.code, expiresAt: invite.expiresAt });
+    },
+  );
 
   fastify.post<{ Params: { code: string } }>(
     '/invitations/:code/redeem',
