@@ -55,9 +55,9 @@ const parseStoredConfig = (raw: string | null) => {
 };
 
 export const adminRoutes: FastifyPluginAsync = async (fastify) => {
-  const authenticatedRoute = { preHandler: fastify.authenticate } as const;
+  const adminRoute = { preHandler: fastify.authorizeAdmin } as const;
 
-  fastify.get('/emulator-config', authenticatedRoute, async (_request, reply) => {
+  fastify.get('/emulator-config', adminRoute, async (_request, reply) => {
     const stored = parseStoredConfig(await fastify.redis.get(EMULATOR_CONFIG_REDIS_KEY));
 
     const config = stored ?? {
@@ -68,7 +68,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.send({ config });
   });
 
-  fastify.put('/emulator-config', authenticatedRoute, async (request, reply) => {
+  fastify.put('/emulator-config', adminRoute, async (request, reply) => {
     const parsed = emulatorConfigSchema.safeParse(request.body);
 
     if (!parsed.success) {

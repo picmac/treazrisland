@@ -113,6 +113,7 @@ const main = async () => {
         username,
         displayName: username,
         passwordHash,
+        isAdmin: true,
       },
     });
 

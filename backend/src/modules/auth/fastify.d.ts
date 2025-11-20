@@ -26,6 +26,7 @@ declare module 'fastify' {
     authMailer: AuthMailer;
     avatarStorage: AvatarStorage;
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    authorizeAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 
   interface FastifyRequest {

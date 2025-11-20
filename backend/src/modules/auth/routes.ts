@@ -65,6 +65,11 @@ const buildUsernameSeed = (email: string): string => {
   return sanitized.length > 0 ? sanitized.slice(0, 24) : 'player';
 };
 
+const resolveAdminFlag = async (prisma: FastifyInstance['prisma']): Promise<boolean> => {
+  const userCount = await prisma.user.count();
+  return userCount === 0;
+};
+
 const setRefreshCookie = (fastify: FastifyInstance, reply: FastifyReply, token: string) => {
   reply.setCookie('refreshToken', token, {
     httpOnly: true,
@@ -85,7 +90,7 @@ const createSessionTokens = async (
   await fastify.sessionStore.createRefreshSession(sessionId, user);
 
   const accessToken = await reply.jwtSign(
-    { sub: user.id, email: user.email },
+    { sub: user.id, email: user.email, isAdmin: user.isAdmin },
     { expiresIn: fastify.config.JWT_ACCESS_TOKEN_TTL },
   );
 
@@ -102,16 +107,17 @@ const createSessionTokens = async (
 const ensureUserRecord = async (
   email: string,
   prisma: FastifyInstance['prisma'],
-): Promise<{ id: string; email: string }> => {
+): Promise<AuthUser> => {
   const normalizedEmail = normalizeEmail(email);
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
   if (existing) {
-    return { id: existing.id, email: existing.email };
+    return { id: existing.id, email: existing.email, isAdmin: existing.isAdmin };
   }
 
   const usernameSeed = buildUsernameSeed(normalizedEmail);
   let attempt = 0;
+  const isAdmin = await resolveAdminFlag(prisma);
 
   while (attempt < 5) {
     const suffix = attempt === 0 ? '' : `_${attempt}`;
@@ -124,10 +130,11 @@ const ensureUserRecord = async (
           username: usernameCandidate,
           displayName: usernameCandidate,
           passwordHash: FALLBACK_PASSWORD_HASH,
+          isAdmin,
         },
       });
 
-      return { id: created.id, email: created.email };
+      return { id: created.id, email: created.email, isAdmin: created.isAdmin };
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -150,26 +157,28 @@ const ensureUserRecord = async (
       username: fallbackUsername,
       displayName: fallbackUsername,
       passwordHash: FALLBACK_PASSWORD_HASH,
+      isAdmin,
     },
   });
 
-  return { id: created.id, email: created.email };
+  return { id: created.id, email: created.email, isAdmin: created.isAdmin };
 };
 
 const createUserWithPassword = async (
   prisma: FastifyInstance['prisma'],
   email: string,
   passwordHash: string,
-): Promise<{ id: string; email: string }> => {
+): Promise<AuthUser> => {
   const normalizedEmail = normalizeEmail(email);
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
   if (existing) {
-    return { id: existing.id, email: existing.email };
+    return { id: existing.id, email: existing.email, isAdmin: existing.isAdmin };
   }
 
   const usernameSeed = buildUsernameSeed(normalizedEmail);
   let attempt = 0;
+  const isAdmin = await resolveAdminFlag(prisma);
 
   while (attempt < 5) {
     const suffix = attempt === 0 ? '' : `_${attempt}`;
@@ -182,10 +191,11 @@ const createUserWithPassword = async (
           username: usernameCandidate,
           displayName: usernameCandidate,
           passwordHash,
+          isAdmin,
         },
       });
 
-      return { id: created.id, email: created.email };
+      return { id: created.id, email: created.email, isAdmin: created.isAdmin };
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -208,10 +218,11 @@ const createUserWithPassword = async (
       username: fallbackUsername,
       displayName: fallbackUsername,
       passwordHash,
+      isAdmin,
     },
   });
 
-  return { id: created.id, email: created.email };
+  return { id: created.id, email: created.email, isAdmin: created.isAdmin };
 };
 
 const generateInviteCode = (): string => randomUUID().replace(/-/g, '').slice(0, 20).toUpperCase();
@@ -245,8 +256,16 @@ const getRequestUser = (request: FastifyRequest): AuthUser | null => {
 
   if (user && typeof user === 'object' && 'id' in user && 'email' in user) {
     const candidate = user as Partial<AuthUser>;
+    if (
+      typeof candidate.id === 'string' &&
+      typeof candidate.email === 'string' &&
+      typeof candidate.isAdmin === 'boolean'
+    ) {
+      return { id: candidate.id, email: candidate.email, isAdmin: candidate.isAdmin };
+    }
+
     if (typeof candidate.id === 'string' && typeof candidate.email === 'string') {
-      return { id: candidate.id, email: candidate.email };
+      return { id: candidate.id, email: candidate.email, isAdmin: Boolean(candidate.isAdmin) };
     }
   }
 
@@ -268,7 +287,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       where: { email: normalizedEmail },
     });
 
-    let user: { id: string; email: string } | null = null;
+    let user: AuthUser | null = null;
 
     if (existingUser) {
       const passwordMatches = await bcrypt.compare(password, existingUser.passwordHash);
@@ -276,7 +295,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
         recordAuthAttempt({ method: 'password', outcome: 'failure' });
         return reply.status(401).send({ error: 'Invalid credentials' });
       }
-      user = { id: existingUser.id, email: existingUser.email };
+      user = { id: existingUser.id, email: existingUser.email, isAdmin: existingUser.isAdmin };
     } else {
       if (password !== FALLBACK_OPERATOR_PASSWORD) {
         recordAuthAttempt({ method: 'password', outcome: 'failure' });
@@ -332,7 +351,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     await fastify.sessionStore.createRefreshSession(sessionId, user);
 
     const accessToken = await reply.jwtSign(
-      { sub: user.id, email: user.email },
+      { sub: user.id, email: user.email, isAdmin: user.isAdmin },
       { expiresIn: fastify.config.JWT_ACCESS_TOKEN_TTL },
     );
 
@@ -388,7 +407,11 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const token = randomUUID();
-    await fastify.sessionStore.saveMagicLinkToken(token, { id: user.id, email: user.email });
+    await fastify.sessionStore.saveMagicLinkToken(token, {
+      id: user.id,
+      email: user.email,
+      isAdmin: user.isAdmin,
+    });
 
     const magicLinkUrl = appendQueryParam(parsed.data.redirectUrl, 'token', token);
     await fastify.authMailer.sendMagicLinkEmail({
