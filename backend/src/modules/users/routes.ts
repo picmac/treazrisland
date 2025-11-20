@@ -22,11 +22,15 @@ const avatarUploadSchema = z.object({
     .max(10 * 1024 * 1024),
 });
 
-const isAuthUser = (user: unknown): user is AuthUser =>
-  Boolean(user && typeof user === 'object' && 'id' in user);
+const getRequestUser = (request: FastifyRequest): AuthUser | null => {
+  const user = request.user as Partial<AuthUser> | undefined;
 
-const getRequestUser = (request: FastifyRequest): AuthUser | null =>
-  isAuthUser(request.user) ? request.user : null;
+  if (user && typeof user.id === 'string' && typeof user.email === 'string') {
+    return { id: user.id, email: user.email, isAdmin: Boolean(user.isAdmin) };
+  }
+
+  return null;
+};
 
 export const userRoutes: FastifyPluginAsync = async (fastify) => {
   const serializeUser = async (user: {

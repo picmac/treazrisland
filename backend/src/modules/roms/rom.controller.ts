@@ -69,10 +69,11 @@ const tryAuthenticateRequest = async (request: FastifyRequest): Promise<void> =>
   }
 
   try {
-    const payload = await request.jwtVerify<{ sub: string; email?: string }>();
+    const payload = await request.jwtVerify<{ sub: string; email?: string; isAdmin?: boolean }>();
     const user: AuthUser = {
       id: payload.sub,
       email: payload.email ?? payload.sub,
+      isAdmin: Boolean(payload.isAdmin),
     };
 
     request.user = user;

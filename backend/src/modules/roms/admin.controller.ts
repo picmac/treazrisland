@@ -30,7 +30,7 @@ const createRomSchema = z.object({
 });
 
 export const adminRomController: FastifyPluginAsync = async (fastify) => {
-  fastify.post('/roms/uploads', { preHandler: fastify.authenticate }, async (request, reply) => {
+  fastify.post('/roms/uploads', { preHandler: fastify.authorizeAdmin }, async (request, reply) => {
     const payload = z
       .object({
         filename: z.string().min(1),
@@ -63,7 +63,7 @@ export const adminRomController: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  fastify.post('/roms', { preHandler: fastify.authenticate }, async (request, reply) => {
+  fastify.post('/roms', { preHandler: fastify.authorizeAdmin }, async (request, reply) => {
     const parsed = createRomSchema.safeParse(request.body);
 
     if (!parsed.success) {

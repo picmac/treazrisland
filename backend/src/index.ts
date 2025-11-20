@@ -114,14 +114,25 @@ const appPlugin = fp(
     });
 
     fastify.decorate('authenticate', async function authenticate(request, _reply) {
-      const payload = await request.jwtVerify<{ sub: string; email?: string }>();
+      const payload = await request.jwtVerify<{ sub: string; email?: string; isAdmin?: boolean }>();
 
       const user: AuthUser = {
         id: payload.sub,
         email: payload.email ?? payload.sub,
+        isAdmin: Boolean(payload.isAdmin),
       };
 
       request.user = user;
+    });
+
+    fastify.decorate('authorizeAdmin', async function authorizeAdmin(request, reply) {
+      await fastify.authenticate(request, reply);
+
+      const user = request.user;
+
+      if (!user || !user.isAdmin) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
     });
 
     await fastify.register(fastifyRedis, {

@@ -41,7 +41,13 @@ export class RedisSessionStore {
 
     try {
       const data = JSON.parse(payload) as MagicLinkSession;
-      return data.user;
+      const user = data.user as Partial<AuthUser> | undefined;
+
+      if (user && typeof user.id === 'string' && typeof user.email === 'string') {
+        return { id: user.id, email: user.email, isAdmin: Boolean(user.isAdmin) };
+      }
+
+      return null;
     } catch (error) {
       return null;
     }
@@ -76,7 +82,13 @@ export class RedisSessionStore {
 
     try {
       const data = JSON.parse(payload) as MagicLinkSession;
-      return data.user;
+      const user = data.user as Partial<AuthUser> | undefined;
+
+      if (user && typeof user.id === 'string' && typeof user.email === 'string') {
+        return { id: user.id, email: user.email, isAdmin: Boolean(user.isAdmin) };
+      }
+
+      return null;
     } catch (error) {
       return null;
     }
