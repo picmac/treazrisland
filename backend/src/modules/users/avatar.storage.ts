@@ -39,20 +39,19 @@ class S3AvatarStorage implements AvatarStorage {
     const normalizedContentType = input.contentType || 'application/octet-stream';
     const objectKey = this.buildObjectKey(input.userId, input.filename);
 
+    const headers = { 'Content-Type': normalizedContentType } as const;
+
     try {
       const uploadUrl = await this.client.presignedPutObject(
         this.options.bucket,
         objectKey,
         this.options.presignedTtlSeconds,
-        {
-          'Content-Type': normalizedContentType,
-        },
       );
 
       return {
         objectKey,
         uploadUrl,
-        headers: { 'Content-Type': normalizedContentType },
+        headers,
       };
     } catch (error) {
       throw new Error('Unable to generate avatar upload URL', { cause: error });

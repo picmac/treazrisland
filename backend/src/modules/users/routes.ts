@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
 import type { AuthUser } from '../auth/types';
@@ -22,10 +22,11 @@ const avatarUploadSchema = z.object({
     .max(10 * 1024 * 1024),
 });
 
-const getRequestUser = (request: { user?: AuthUser }): AuthUser | null =>
-  request.user && typeof request.user === 'object' && 'id' in request.user
-    ? (request.user as AuthUser)
-    : null;
+const isAuthUser = (user: unknown): user is AuthUser =>
+  Boolean(user && typeof user === 'object' && 'id' in user);
+
+const getRequestUser = (request: FastifyRequest): AuthUser | null =>
+  isAuthUser(request.user) ? request.user : null;
 
 export const userRoutes: FastifyPluginAsync = async (fastify) => {
   const serializeUser = async (user: {
