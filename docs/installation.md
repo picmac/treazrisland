@@ -22,8 +22,8 @@ This guide takes a new operator from cloning the Treazr Island monorepo to launc
 
 | Tool       | Version               | macOS install                                                              | Linux install                                                             |
 | ---------- | --------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Node.js    | 20.14.0 LTS           | `asdf install nodejs 20.14.0` or `brew install node@20`                    | `asdf install nodejs 20.14.0` after `asdf` bootstrap                      |
-| pnpm       | 9.5.0                 | `asdf plugin add pnpm ... && asdf install`                                 | Same as macOS                                                             |
+| Node.js    | 22.11.0 LTS           | `asdf install nodejs 22.11.0` or `brew install node@22`                    | `asdf install nodejs 22.11.0` after `asdf` bootstrap                      |
+| pnpm       | 10.4.1                | `asdf plugin add pnpm ... && asdf install`                                 | Same as macOS                                                             |
 | Docker     | Desktop/Engine 26.1.x | Download from Docker Desktop installer and enable Rosetta on Apple Silicon | Follow Docker Engine Ubuntu guide and add your user to the `docker` group |
 | PostgreSQL | 16.3                  | `brew install postgresql@16` or `asdf install postgres 16.3`               | `asdf install postgres 16.3` or Docker image `postgres:16`                |
 | Redis      | 7.2.4                 | `asdf install redis 7.2.4`                                                 | `asdf install redis 7.2.4`                                                |
@@ -60,8 +60,8 @@ If you rely on SSH, swap in the SSH remote and ensure your agent is unlocked bef
 3. Install Docker Desktop 26.1.x and enable the "Use Rosetta for x86/amd64 emulation" checkbox on Apple Silicon when prompted.
 4. Verify everything is on PATH:
    ```bash
-   node --version   # expect v20.14.0
-   pnpm --version   # expect 9.5.0
+   node --version   # expect v22.11.0
+   pnpm --version   # expect 10.4.1
    docker version   # Docker Engine 26.1.x
    postgres --version
    redis-server --version
