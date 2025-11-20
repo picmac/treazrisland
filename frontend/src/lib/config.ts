@@ -3,20 +3,20 @@ const ensureLeadingSlash = (value: string) => (value.startsWith('/') ? value : `
 const stripEmbedSuffix = (pathname: string) =>
   trimTrailingSlash(pathname.replace(/(?:\/dist)?\/embed\.js$/i, ''));
 const isAbsoluteUrl = (value: string) => /^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(value);
+const sanitizeEnvValue = (value: string | undefined) => value?.trim() ?? '';
 
 const deriveEmulatorBase = () => {
-  const explicitBase = process.env.NEXT_PUBLIC_EMULATOR_BASE_URL;
+  const explicitBase = sanitizeEnvValue(process.env.NEXT_PUBLIC_EMULATOR_BASE_URL);
   if (explicitBase) {
-    return trimTrailingSlash(explicitBase);
+    return trimTrailingSlash(explicitBase) || '/emulatorjs';
   }
 
-  const embedUrl = process.env.NEXT_PUBLIC_EMULATOR_EMBED_URL;
+  const embedUrl = sanitizeEnvValue(process.env.NEXT_PUBLIC_EMULATOR_EMBED_URL);
   if (embedUrl) {
-    const trimmedEmbed = embedUrl.trim();
-    const absolute = isAbsoluteUrl(trimmedEmbed);
+    const absolute = isAbsoluteUrl(embedUrl);
 
     try {
-      const parsed = new URL(trimmedEmbed, absolute ? undefined : 'http://placeholder');
+      const parsed = new URL(embedUrl, absolute ? undefined : 'http://placeholder');
       const normalizedPath = stripEmbedSuffix(parsed.pathname);
       const basePath = normalizedPath ? ensureLeadingSlash(normalizedPath) : '/emulatorjs';
       if (absolute) {
@@ -24,7 +24,7 @@ const deriveEmulatorBase = () => {
       }
       return trimTrailingSlash(basePath) || '/emulatorjs';
     } catch (error) {
-      const [baseWithoutQuery] = trimmedEmbed.split(/[?#]/);
+      const [baseWithoutQuery] = embedUrl.split(/[?#]/);
       const normalizedPath = stripEmbedSuffix(baseWithoutQuery);
       const basePath = normalizedPath ? ensureLeadingSlash(normalizedPath) : '/emulatorjs';
       return trimTrailingSlash(basePath) || '/emulatorjs';
