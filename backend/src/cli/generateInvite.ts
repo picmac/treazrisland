@@ -1,14 +1,13 @@
 import { randomBytes } from 'node:crypto';
 
-import { PrismaClient } from '@prisma/client';
 import { config as loadEnvFiles } from 'dotenv-flow';
 import { z } from 'zod';
 
 import { Prompt } from './prompt';
+import { prisma } from '../config/prisma';
 
 loadEnvFiles({ silent: true });
 
-const prisma = new PrismaClient();
 const prompt = new Prompt();
 const emailSchema = z.string().email('Please provide a valid email address.');
 

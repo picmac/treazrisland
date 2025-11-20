@@ -11,7 +11,7 @@ type ViewportScaleOptions = {
  * similar to ROMM's responsive emulator viewport strategy.
  */
 export function useViewportScale(
-  targetRef: React.RefObject<HTMLElement>,
+  targetRef: React.RefObject<HTMLElement | null>,
   options: ViewportScaleOptions = {},
 ) {
   const { baseWidth = 960, baseHeight = 720, enabled = true } = options;

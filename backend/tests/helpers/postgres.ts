@@ -1,7 +1,9 @@
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
+import { Pool } from 'pg';
 import { GenericContainer, Wait, type StartedTestContainer } from 'testcontainers';
 
 export type TestDatabase = {
@@ -35,7 +37,8 @@ export const startTestDatabase = async (): Promise<TestDatabase> => {
   const port = container.getMappedPort(5432);
   const connectionString = `postgresql://postgres:postgres@${host}:${port}/treazrisland`;
   runMigrations(connectionString);
-  const prisma = new PrismaClient({ datasources: { db: { url: connectionString } } });
+  const pool = new Pool({ connectionString });
+  const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
   return { container, prisma, connectionString };
 };
