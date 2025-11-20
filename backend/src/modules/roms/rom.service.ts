@@ -6,7 +6,7 @@ import {
   type RomAssetType,
 } from '@prisma/client';
 
-import type { RomStorage } from './storage';
+import { RomStorageError, type RomStorage } from './storage';
 
 export type { RomAssetType };
 
@@ -16,8 +16,9 @@ export interface RegisterRomAssetInput {
   type: RomAssetType;
   filename: string;
   contentType: string;
-  data: string;
   checksum: string;
+  size: number;
+  objectKey: string;
 }
 
 export interface RegisterRomInput {
@@ -64,12 +65,18 @@ export class RomService {
   ) {}
 
   async registerRom(input: RegisterRomInput): Promise<RomRecord> {
-    const upload = await this.storage.uploadAsset({
-      filename: input.asset.filename,
-      contentType: input.asset.contentType,
-      data: input.asset.data,
-      checksum: input.asset.checksum,
-    });
+    const assetMetadata = await this.storage.describeAsset(input.asset.objectKey);
+
+    if (assetMetadata.size !== input.asset.size) {
+      throw new RomStorageError('Uploaded asset size mismatch');
+    }
+
+    if (
+      assetMetadata.checksum &&
+      assetMetadata.checksum.toLowerCase() !== input.asset.checksum.toLowerCase()
+    ) {
+      throw new RomStorageError('Uploaded asset checksum mismatch');
+    }
 
     const genres = this.normalizeGenres(input.genres);
     const platformId = await this.resolvePlatformId(input.platformId);
@@ -84,11 +91,11 @@ export class RomService {
         assets: {
           create: {
             type: input.asset.type,
-            uri: upload.uri,
-            objectKey: upload.objectKey,
-            checksum: upload.checksum,
-            contentType: upload.contentType,
-            size: upload.size,
+            uri: `s3://${input.asset.objectKey}`,
+            objectKey: input.asset.objectKey,
+            checksum: input.asset.checksum.toLowerCase(),
+            contentType: input.asset.contentType,
+            size: input.asset.size,
           },
         },
       },

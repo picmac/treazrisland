@@ -66,8 +66,9 @@ export interface AdminRomUploadPayload extends JsonRecord {
     type: 'ROM';
     filename: string;
     contentType: string;
-    data: string;
     checksum: string;
+    objectKey: string;
+    size: number;
   };
 }
 
@@ -81,4 +82,23 @@ export interface AdminRomUploadResponse {
 
 export function registerAdminRom(payload: AdminRomUploadPayload) {
   return apiClient.post<AdminRomUploadResponse>('/admin/roms', payload, { requiresAuth: true });
+}
+
+export interface RomUploadGrantPayload {
+  filename: string;
+  contentType: string;
+  size: number;
+  checksum: string;
+}
+
+export interface RomUploadGrantResponse {
+  uploadUrl: string;
+  objectKey: string;
+  headers?: Record<string, string>;
+}
+
+export function requestRomUploadGrant(payload: RomUploadGrantPayload) {
+  return apiClient.post<RomUploadGrantResponse>('/admin/roms/uploads', payload, {
+    requiresAuth: true,
+  });
 }

@@ -1,7 +1,5 @@
 import '../../setup-env';
 
-import { createHash } from 'node:crypto';
-
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseEnv, type Env } from '../../../src/config/env';
@@ -27,7 +25,11 @@ describe('ROM catalogue routes', () => {
   const createRom = async (override?: Partial<RegisterRomInput>) => {
     romCounter += 1;
     const payload = Buffer.from(`rom-${romCounter}`);
-    const checksum = createHash('sha256').update(payload).digest('hex');
+    const staged = storage.stageUploadedAsset(
+      override?.asset?.filename ?? `test-${romCounter}.zip`,
+      payload,
+      override?.asset?.contentType ?? 'application/zip',
+    );
 
     return app.romService.registerRom({
       title: override?.title ?? `ROM #${romCounter}`,
@@ -39,8 +41,9 @@ describe('ROM catalogue routes', () => {
         type: override?.asset?.type ?? 'ROM',
         filename: override?.asset?.filename ?? `test-${romCounter}.zip`,
         contentType: override?.asset?.contentType ?? 'application/zip',
-        data: override?.asset?.data ?? payload.toString('base64'),
-        checksum: override?.asset?.checksum ?? checksum,
+        objectKey: override?.asset?.objectKey ?? staged.objectKey,
+        checksum: override?.asset?.checksum ?? staged.checksum,
+        size: override?.asset?.size ?? staged.size,
       },
     });
   };
