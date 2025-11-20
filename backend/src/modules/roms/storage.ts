@@ -114,21 +114,24 @@ export class S3RomStorage implements RomStorage {
     const directory = this.normalizeDirectory(input.directory);
     const objectKey = `${directory}/${randomUUID()}-${input.filename}`;
 
+    const signedHeaders = {
+      'Content-Type': input.contentType,
+      'x-amz-meta-checksum': input.checksum,
+      'x-amz-meta-size': input.size.toString(),
+    };
+
     try {
       const uploadUrl = await this.client.presignedPutObject(
         this.options.bucket,
         objectKey,
         this.options.presignedTtlSeconds,
+        signedHeaders,
       );
 
       return {
         uploadUrl,
         objectKey,
-        headers: {
-          'Content-Type': input.contentType,
-          'x-amz-meta-checksum': input.checksum,
-          'x-amz-meta-size': input.size.toString(),
-        },
+        headers: signedHeaders,
       };
     } catch (error) {
       throw new RomStorageError('Unable to generate upload grant', 502, { cause: error });
