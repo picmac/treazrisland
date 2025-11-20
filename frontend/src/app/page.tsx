@@ -42,6 +42,12 @@ const touchpoints = [
     href: docsUrl,
   },
   {
+    id: 'onboarding',
+    title: 'Crew onboarding',
+    copy: 'Step-by-step checklist for confirming health checks, creating admins, and wiring EmulatorJS.',
+    href: '/onboarding',
+  },
+  {
     id: 'playtest',
     title: 'Playtest cadence',
     copy: 'Greyscale placeholders highlight the beats that still need EmulatorJS wiring + ROM metadata.',

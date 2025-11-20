@@ -1,11 +1,9 @@
 /* eslint-disable @next/next/no-img-element */
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import HomePage from './page';
-
-const docsUrl = 'https://github.com/treazrisland/treazrisland/blob/main/docs/ui/theme.md';
 
 vi.mock('next/image', () => ({
   __esModule: true,
@@ -13,36 +11,49 @@ vi.mock('next/image', () => ({
     priority: _priority,
     ...props
   }: React.ComponentProps<'img'> & { priority?: boolean }) => (
-    // Next.js strips the `priority` attribute from the DOM, so mirror that behavior in the mock.
     <img {...props} alt={props.alt ?? ''} />
   ),
 }));
 
-describe('HomePage', () => {
-  it('renders the navigation landmark and hero heading', () => {
+vi.mock('next/link', () => ({
+  __esModule: true,
+  default: ({
+    href,
+    children,
+    ...props
+  }: { href: string; children: React.ReactNode } & React.HTMLAttributes<HTMLAnchorElement>) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
+describe('HomePage touchpoints', () => {
+  it('opens external touchpoints in a new tab without leaking referrer data', () => {
     render(<HomePage />);
 
-    expect(
-      screen.getByRole('navigation', {
-        name: /primary/i,
-      }),
-    ).toBeVisible();
+    const docsCard = screen
+      .getByRole('heading', { name: 'Theme documentation' })
+      .closest('article');
+    expect(docsCard).not.toBeNull();
 
-    expect(
-      screen.getByRole('heading', {
-        level: 1,
-        name: /treazr island boot screen/i,
-      }),
-    ).toBeVisible();
+    const docsLink = within(docsCard as HTMLElement).getByRole('link', { name: 'Open' });
+    expect(docsLink).toHaveAttribute('target', '_blank');
+    expect(docsLink).toHaveAttribute('rel', 'noreferrer');
   });
 
-  it('links to the theme documentation', () => {
+  it('keeps internal touchpoints in the same tab', () => {
     render(<HomePage />);
 
-    expect(
-      screen.getByRole('link', {
-        name: /theme mdx notes/i,
-      }),
-    ).toHaveAttribute('href', docsUrl);
+    const onboardingCard = screen
+      .getByRole('heading', { name: 'Crew onboarding' })
+      .closest('article');
+    expect(onboardingCard).not.toBeNull();
+
+    const onboardingLink = within(onboardingCard as HTMLElement).getByRole('link', {
+      name: 'Open',
+    });
+    expect(onboardingLink).not.toHaveAttribute('target');
+    expect(onboardingLink).not.toHaveAttribute('rel');
   });
 });
