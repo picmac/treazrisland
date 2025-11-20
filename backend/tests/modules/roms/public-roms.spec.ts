@@ -214,14 +214,18 @@ describe('ROM catalogue routes', () => {
       return;
     }
 
+    const payload = Buffer.from('detailed-rom');
+    const staged = storage.stageUploadedAsset('detailed rom.zip', payload, 'application/zip');
+
     const rom = await createRom({
       title: 'Detailed ROM',
       asset: {
         type: 'ROM',
         filename: 'detailed rom.zip',
         contentType: 'application/zip',
-        data: Buffer.from('detailed-rom').toString('base64'),
-        checksum: createHash('sha256').update('detailed-rom').digest('hex'),
+        objectKey: staged.objectKey,
+        checksum: staged.checksum,
+        size: staged.size,
       },
     });
 

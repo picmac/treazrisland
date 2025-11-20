@@ -119,11 +119,6 @@ export class S3RomStorage implements RomStorage {
         this.options.bucket,
         objectKey,
         this.options.presignedTtlSeconds,
-        {
-          'Content-Type': input.contentType,
-          'x-amz-meta-checksum': input.checksum,
-          'x-amz-meta-size': input.size.toString(),
-        },
       );
 
       return {

@@ -84,7 +84,7 @@ export function registerAdminRom(payload: AdminRomUploadPayload) {
   return apiClient.post<AdminRomUploadResponse>('/admin/roms', payload, { requiresAuth: true });
 }
 
-export interface RomUploadGrantPayload {
+export interface RomUploadGrantPayload extends JsonRecord {
   filename: string;
   contentType: string;
   size: number;
