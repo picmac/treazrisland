@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react';
 
 import { ApiError } from '@/lib/apiClient';
-import { registerAdminRom, type AdminRomUploadResponse } from '@/lib/admin';
+import { registerAdminRom, requestRomUploadGrant, type AdminRomUploadResponse } from '@/lib/admin';
 
 export interface RomUploadInput {
   title: string;
@@ -13,17 +13,6 @@ export interface RomUploadInput {
   file: File;
 }
 
-const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-
-  bytes.forEach((byte) => {
-    binary += String.fromCharCode(byte);
-  });
-
-  return btoa(binary);
-};
-
 const arrayBufferToHex = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer);
   return Array.from(bytes)
@@ -31,18 +20,47 @@ const arrayBufferToHex = (buffer: ArrayBuffer): string => {
     .join('');
 };
 
-const buildAssetPayload = async (file: File) => {
+const normalizeContentType = (contentType: string) => contentType || 'application/octet-stream';
+
+const uploadRomAsset = async (file: File) => {
   const buffer = await file.arrayBuffer();
   const digest = await crypto.subtle.digest('SHA-256', buffer);
   const checksum = arrayBufferToHex(digest);
+  const size = buffer.byteLength;
+  const contentType = normalizeContentType(file.type);
+
+  const grant = await requestRomUploadGrant({
+    filename: file.name,
+    contentType,
+    size,
+    checksum,
+  });
+
+  const uploadHeaders = {
+    'Content-Type': contentType,
+    'x-amz-meta-checksum': checksum,
+    'x-amz-meta-size': size.toString(),
+    ...(grant.headers ?? {}),
+  } as Record<string, string>;
+
+  const response = await fetch(grant.uploadUrl, {
+    method: 'PUT',
+    headers: uploadHeaders,
+    body: buffer,
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to upload ROM asset');
+  }
 
   return {
     type: 'ROM' as const,
     filename: file.name,
-    contentType: file.type || 'application/octet-stream',
-    data: arrayBufferToBase64(buffer),
+    contentType,
     checksum,
-  };
+    objectKey: grant.objectKey,
+    size,
+  } as const;
 };
 
 export function useRomUpload() {
@@ -56,7 +74,7 @@ export function useRomUpload() {
       setError(null);
 
       try {
-        const asset = await buildAssetPayload(input.file);
+        const asset = await uploadRomAsset(input.file);
         const response = await registerAdminRom({
           title: input.title,
           description: input.description,

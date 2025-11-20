@@ -136,6 +136,7 @@ const appPlugin = fp(
       }),
     );
 
+    fastify.decorate('romStorage', romStorage);
     fastify.decorate('romService', new RomService(prisma, romStorage));
     fastify.decorate('saveStateService', new SaveStateService(prisma, romStorage));
     fastify.decorate('inviteStore', new PrismaInviteStore(prisma));
@@ -161,6 +162,7 @@ const appPlugin = fp(
       /^\/roms\/:id\/save-state/,
       /^\/roms\/:id\/save-states/,
       /^\/admin\/roms$/,
+      /^\/admin\/roms\/uploads$/,
       /^\/users\/me\/avatar-upload$/,
     ];
 

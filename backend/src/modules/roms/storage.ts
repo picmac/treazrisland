@@ -21,8 +21,30 @@ export interface RomStorageUploadedAsset {
   size: number;
 }
 
+export interface RomStorageUploadGrantInput {
+  filename: string;
+  contentType: string;
+  size: number;
+  checksum: string;
+  directory?: string;
+}
+
+export interface RomStorageUploadGrant {
+  uploadUrl: string;
+  objectKey: string;
+  headers?: Record<string, string>;
+}
+
+export interface RomStorageAssetMetadata {
+  size: number;
+  contentType?: string;
+  checksum?: string;
+}
+
 export interface RomStorage {
   uploadAsset(input: RomStorageUploadInput): Promise<RomStorageUploadedAsset>;
+  createUploadGrant(input: RomStorageUploadGrantInput): Promise<RomStorageUploadGrant>;
+  describeAsset(objectKey: string): Promise<RomStorageAssetMetadata>;
   getSignedAssetUrl(objectKey: string): Promise<string>;
   downloadAsset(objectKey: string): Promise<Buffer>;
 }
@@ -84,6 +106,59 @@ export class S3RomStorage implements RomStorage {
       contentType: input.contentType,
       size: buffer.length,
     };
+  }
+
+  async createUploadGrant(input: RomStorageUploadGrantInput): Promise<RomStorageUploadGrant> {
+    await this.ensureBucket();
+
+    const directory = this.normalizeDirectory(input.directory);
+    const objectKey = `${directory}/${randomUUID()}-${input.filename}`;
+
+    const signedHeaders = {
+      'Content-Type': input.contentType,
+      'x-amz-meta-checksum': input.checksum,
+      'x-amz-meta-size': input.size.toString(),
+    };
+
+    try {
+      const uploadUrl = await this.client.presignedPutObject(
+        this.options.bucket,
+        objectKey,
+        this.options.presignedTtlSeconds,
+      );
+
+      return {
+        uploadUrl,
+        objectKey,
+        headers: signedHeaders,
+      };
+    } catch (error) {
+      throw new RomStorageError('Unable to generate upload grant', 502, { cause: error });
+    }
+  }
+
+  async describeAsset(objectKey: string): Promise<RomStorageAssetMetadata> {
+    await this.ensureBucket();
+
+    try {
+      const stat = await this.client.statObject(this.options.bucket, objectKey);
+
+      const metadata = stat.metaData ?? {};
+
+      const checksum =
+        metadata['x-amz-meta-checksum'] || metadata['checksum'] || metadata['X-Amz-Meta-Checksum'];
+
+      const contentType =
+        metadata['content-type'] || metadata['Content-Type'] || metadata['contenttype'];
+
+      return {
+        size: stat.size,
+        contentType: contentType ?? undefined,
+        checksum: typeof checksum === 'string' ? checksum : undefined,
+      };
+    } catch (error) {
+      throw new RomStorageError('Unable to locate uploaded ROM asset', 404, { cause: error });
+    }
   }
 
   async getSignedAssetUrl(objectKey: string): Promise<string> {
