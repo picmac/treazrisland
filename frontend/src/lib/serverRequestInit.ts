@@ -2,9 +2,9 @@ import { cookies, headers } from 'next/headers';
 
 import { ACCESS_TOKEN_KEY } from '@/constants/auth';
 
-export function createServerRequestInit(): RequestInit | undefined {
-  const headerList = headers();
-  const cookieStore = cookies();
+export async function createServerRequestInit(): Promise<RequestInit | undefined> {
+  const headerList = await headers();
+  const cookieStore = await cookies();
   const forwardedHeaders = new Headers();
   let hasForwardedHeaders = false;
 

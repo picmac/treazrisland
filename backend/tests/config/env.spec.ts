@@ -19,6 +19,8 @@ describe('config/env', () => {
       NODE_ENV: 'development',
       PORT: '4000',
       JWT_SECRET: 'test-secret-value-123456789012345678',
+      DATABASE_URL: 'postgresql://user:password@localhost:5432/treazrisland',
+      SHADOW_DATABASE_URL: 'postgresql://user:password@localhost:5432/treazrisland_shadow',
       OBJECT_STORAGE_ENDPOINT: '127.0.0.1',
       OBJECT_STORAGE_PORT: '9000',
       OBJECT_STORAGE_USE_SSL: 'false',
@@ -45,6 +47,8 @@ describe('config/env', () => {
       OBJECT_STORAGE_BUCKET: 'roms',
       OBJECT_STORAGE_REGION: 'us-east-1',
       OBJECT_STORAGE_PRESIGNED_TTL: 120,
+      DATABASE_URL: 'postgresql://user:password@localhost:5432/treazrisland',
+      SHADOW_DATABASE_URL: 'postgresql://user:password@localhost:5432/treazrisland_shadow',
     });
   });
 
@@ -75,6 +79,8 @@ describe('config/env', () => {
     process.env.NODE_ENV = 'production';
     process.env.PORT = '5050';
     process.env.JWT_SECRET = 'test-secret-value-123456789012345678';
+    process.env.DATABASE_URL = 'postgresql://user:password@localhost:5432/treazrisland';
+    process.env.SHADOW_DATABASE_URL = 'postgresql://user:password@localhost:5432/treazrisland_shadow';
     process.env.OBJECT_STORAGE_ENDPOINT = '127.0.0.1';
     process.env.OBJECT_STORAGE_PORT = '9000';
     process.env.OBJECT_STORAGE_ACCESS_KEY = 'cache-access';

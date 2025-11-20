@@ -28,7 +28,7 @@ export default function MagicLinkPage({ params }: MagicLinkPageProps) {
   const router = useRouter();
   const { token } = params;
   const [status, setStatus] = useState<RedemptionStatus>(loadingStatus);
-  const redirectTimerRef = useRef<number>();
+  const redirectTimerRef = useRef<number | null>(null);
   const successRedirectTarget = useMemo(() => '/library' as Route, []);
 
   const redeemMagicLink = useCallback(async () => {
@@ -65,7 +65,7 @@ export default function MagicLinkPage({ params }: MagicLinkPageProps) {
     return () => {
       if (redirectTimerRef.current) {
         window.clearTimeout(redirectTimerRef.current);
-        redirectTimerRef.current = undefined;
+        redirectTimerRef.current = null;
       }
     };
   }, [router, status.state, successRedirectTarget]);

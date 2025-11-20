@@ -16,7 +16,7 @@ interface RomPageParams {
 
 export async function generateMetadata({ params }: RomPageParams): Promise<Metadata> {
   try {
-    const rom = await fetchRomDetails(params.id, createServerRequestInit());
+    const rom = await fetchRomDetails(params.id, await createServerRequestInit());
     if (!rom) {
       return {
         title: 'ROM not found | Treazr Island',
@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: RomPageParams): Promise<Metad
 }
 
 export default async function RomPage({ params }: RomPageParams) {
-  const rom = await fetchRomDetails(params.id, createServerRequestInit());
+  const rom = await fetchRomDetails(params.id, await createServerRequestInit());
 
   if (!rom) {
     notFound();

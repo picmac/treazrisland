@@ -17,7 +17,7 @@ type CookieAwareGlobal = typeof globalThis & {
 const cookieAwareGlobal = globalThis as CookieAwareGlobal;
 
 vi.mock('next/headers', () => ({
-  cookies: () => ({
+  cookies: async () => ({
     get: (name: string) => {
       const value = cookieAwareGlobal.__cookieStore?.[name];
       return value ? { name, value } : undefined;
@@ -27,7 +27,7 @@ vi.mock('next/headers', () => ({
         .map(([key, value]) => `${key}=${value}`)
         .join('; '),
   }),
-  headers: () => new Headers(),
+  headers: async () => new Headers(),
 }));
 
 vi.mock('next/image', () => ({
@@ -115,7 +115,7 @@ describe('fetchRomDetails', () => {
       [ACCESS_TOKEN_KEY]: cookieAccessToken,
     };
 
-    const requestInit = createServerRequestInit();
+    const requestInit = await createServerRequestInit();
     expect(requestInit).toBeDefined();
 
     await fetchRomDetails(romFixture.id, requestInit);

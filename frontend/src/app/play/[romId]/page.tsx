@@ -63,7 +63,7 @@ export default function PlayPage({ params }: PlayPageProps) {
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncingCloudSave, setIsSyncingCloudSave] = useState(false);
-  const emulatorContainerRef = useRef<HTMLDivElement>(null);
+  const emulatorContainerRef = useRef<HTMLDivElement | null>(null);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
   const emulatorRef = useRef<EmulatorHandle | null>(null);
   const {

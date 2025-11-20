@@ -1,17 +1,15 @@
-import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { config as loadEnvFiles } from 'dotenv-flow';
 import { z } from 'zod';
 
 import { Prompt } from './prompt';
+import { prisma } from '../config/prisma';
 
 loadEnvFiles({ silent: true });
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL must be set before running the admin bootstrap.');
 }
-
-const prisma = new PrismaClient();
 const prompt = new Prompt();
 
 const emailSchema = z

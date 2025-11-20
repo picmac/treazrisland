@@ -5,13 +5,14 @@ import fastifyCors from '@fastify/cors';
 import fastifyJwt from '@fastify/jwt';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifyRedis from '@fastify/redis';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import Fastify from 'fastify';
 import fp from 'fastify-plugin';
 import Redis from 'ioredis';
 import RedisMock from 'ioredis-mock';
 
 import { getEnv, type Env } from './config/env';
+import { createPrismaClient, prisma as sharedPrisma } from './config/prisma';
 import {
   hasMetricsExporter,
   respondWithMetricsSnapshot,
@@ -128,9 +129,9 @@ const appPlugin = fp(
     fastify.decorate('authorizeAdmin', async function authorizeAdmin(request, reply) {
       await fastify.authenticate(request, reply);
 
-      const user = request.user;
+      const user = request.user as AuthUser | undefined;
 
-      if (!user || !user.isAdmin) {
+      if (!user?.isAdmin) {
         return reply.status(403).send({ error: 'Forbidden' });
       }
     });
@@ -242,7 +243,7 @@ export const createApp = (
   env: Env = getEnv(),
   dependencies: AppDependencies = {},
 ): ReturnType<typeof Fastify> => {
-  const prisma = dependencies.prisma ?? new PrismaClient();
+  const prisma = dependencies.prisma ?? sharedPrisma ?? createPrismaClient();
   const romStorage = dependencies.romStorage ?? createRomStorage(env);
   const avatarStorage = dependencies.avatarStorage ?? createAvatarStorage(env);
   const ownsPrisma = !dependencies.prisma;
