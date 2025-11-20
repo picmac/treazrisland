@@ -19,6 +19,8 @@ pnpm --filter frontend build # create a production build of the frontend
 pnpm --filter frontend start # serve the production build locally
 ```
 
+> ℹ️ `pnpm` is the only supported package manager. We intentionally removed `package-lock.json` from the frontend to prevent accidental `npm ci` runs, which conflict with the workspace's `pnpm` layout.
+
 Additional scripts (linting, formatting, Husky hooks, etc.) are defined in the root `package.json` and automatically cover both the backend and frontend.
 
 ## Quick local setup (curl \| bash)
