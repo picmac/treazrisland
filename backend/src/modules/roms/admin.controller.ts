@@ -11,8 +11,13 @@ const assetSchema = z.object({
   type: z.enum(romAssetTypes as [RomAssetType, ...RomAssetType[]]).default('ROM'),
   filename: z.string().min(1),
   contentType: z.string().min(1),
-  data: z.string().min(1),
   checksum: z.string().regex(/^[a-f0-9]{64}$/i, 'Checksum must be a SHA-256 hex string'),
+  objectKey: z.string().min(1),
+  size: z
+    .number()
+    .int()
+    .min(1)
+    .max(50 * 1024 * 1024),
 });
 
 const createRomSchema = z.object({
@@ -25,7 +30,40 @@ const createRomSchema = z.object({
 });
 
 export const adminRomController: FastifyPluginAsync = async (fastify) => {
-  fastify.post('/roms', async (request, reply) => {
+  fastify.post('/roms/uploads', { preHandler: fastify.authenticate }, async (request, reply) => {
+    const payload = z
+      .object({
+        filename: z.string().min(1),
+        contentType: z.string().min(1),
+        size: z
+          .number()
+          .int()
+          .min(1)
+          .max(50 * 1024 * 1024),
+        checksum: z.string().regex(/^[a-f0-9]{64}$/i, 'Checksum must be a SHA-256 hex string'),
+      })
+      .safeParse(request.body);
+
+    if (!payload.success) {
+      return reply.status(400).send({ error: 'Invalid upload request' });
+    }
+
+    try {
+      const grant = await fastify.romStorage.createUploadGrant({
+        filename: payload.data.filename,
+        contentType: payload.data.contentType,
+        size: payload.data.size,
+        checksum: payload.data.checksum,
+      });
+
+      return reply.status(201).send(grant);
+    } catch (error) {
+      request.log.error({ err: error }, 'Failed to generate ROM upload grant');
+      return reply.status(502).send({ error: 'Unable to prepare ROM upload' });
+    }
+  });
+
+  fastify.post('/roms', { preHandler: fastify.authenticate }, async (request, reply) => {
     const parsed = createRomSchema.safeParse(request.body);
 
     if (!parsed.success) {
@@ -45,8 +83,9 @@ export const adminRomController: FastifyPluginAsync = async (fastify) => {
           type: asset.type,
           filename: asset.filename,
           contentType: asset.contentType,
-          data: asset.data,
           checksum: asset.checksum,
+          objectKey: asset.objectKey,
+          size: asset.size,
         },
       });
 

@@ -1,6 +1,6 @@
 import './setup-env';
 
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -14,15 +14,16 @@ import {
 } from './helpers/postgres';
 import { TestRomStorage } from './helpers/test-rom-storage';
 
-const buildAssetInput = (name: string) => {
+const buildAssetInput = (storage: TestRomStorage, name: string) => {
   const buffer = Buffer.from(`rom-${name}`);
-  const checksum = createHash('sha256').update(buffer).digest('hex');
+  const staged = storage.stageUploadedAsset(`${name}.zip`, buffer, 'application/zip');
 
   return {
     filename: `${name}.zip`,
     contentType: 'application/zip',
-    data: buffer.toString('base64'),
-    checksum,
+    objectKey: staged.objectKey,
+    checksum: staged.checksum,
+    size: staged.size,
   };
 };
 
@@ -96,7 +97,7 @@ describe('RomService integration', () => {
       platformId: 'nes',
       releaseYear: 1990,
       genres: ['Action', 'Adventure'],
-      asset: { type: 'ROM', ...buildAssetInput('service-rom') },
+      asset: { type: 'ROM', ...buildAssetInput(storage, 'service-rom') },
     });
 
     expect(rom.id).toBeTypeOf('string');
@@ -118,14 +119,14 @@ describe('RomService integration', () => {
       title: 'Action NES',
       platformId: 'nes',
       genres: ['Action'],
-      asset: { type: 'ROM', ...buildAssetInput('action-nes') },
+      asset: { type: 'ROM', ...buildAssetInput(storage, 'action-nes') },
     });
 
     await activeService.registerRom({
       title: 'Puzzle SNES',
       platformId: 'snes',
       genres: ['Puzzle'],
-      asset: { type: 'ROM', ...buildAssetInput('puzzle-snes') },
+      asset: { type: 'ROM', ...buildAssetInput(storage, 'puzzle-snes') },
     });
 
     const user = await createTestUser('player@example.com');
@@ -152,7 +153,7 @@ describe('RomService integration', () => {
       title: 'Findable ROM',
       platformId: 'snes',
       genres: ['Adventure'],
-      asset: { type: 'ROM', ...buildAssetInput('findable') },
+      asset: { type: 'ROM', ...buildAssetInput(storage, 'findable') },
     });
 
     const rom = await activeService.findById(created.id);

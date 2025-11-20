@@ -44,6 +44,45 @@ describe('POST /admin/roms', () => {
     return app;
   };
 
+  const getAccessToken = async (email = 'operator@example.com'): Promise<string> => {
+    const response = await getApp().inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { email, password: 'password123' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { accessToken: string };
+    return body.accessToken;
+  };
+
+  const requestUploadGrant = async (
+    accessToken: string,
+    file: { checksum: string; contentType: string; filename: string; size: number },
+  ) => {
+    const grantResponse = await getApp().inject({
+      method: 'POST',
+      url: '/admin/roms/uploads',
+      headers: { authorization: `Bearer ${accessToken}` },
+      payload: file,
+    });
+
+    expect(grantResponse.statusCode).toBe(201);
+
+    return grantResponse.json() as { objectKey: string; headers?: Record<string, string> };
+  };
+
+  const uploadUsingGrant = async (
+    grant: { objectKey: string; headers?: Record<string, string> },
+    data: Buffer,
+  ) => {
+    if (!minioClient) {
+      throw new Error('MinIO client not initialised');
+    }
+
+    await minioClient.putObject(bucket, grant.objectKey, data, data.length, grant.headers ?? {});
+  };
+
   beforeAll(async () => {
     try {
       database = await startTestDatabase();
@@ -128,10 +167,23 @@ describe('POST /admin/roms', () => {
 
     const romData = Buffer.from('retro-bytes');
     const checksum = createHash('sha256').update(romData).digest('hex');
+    const accessToken = await getAccessToken();
+
+    const grant = await requestUploadGrant(accessToken, {
+      filename: 'treaz-test.zip',
+      contentType: 'application/zip',
+      size: romData.byteLength,
+      checksum,
+    });
+
+    await uploadUsingGrant(grant, romData);
 
     const response = await getApp().inject({
       method: 'POST',
       url: '/admin/roms',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+      },
       payload: {
         title: 'Treaz test adventure',
         platformId: 'nes',
@@ -140,7 +192,8 @@ describe('POST /admin/roms', () => {
         asset: {
           filename: 'treaz-test.zip',
           contentType: 'application/zip',
-          data: romData.toString('base64'),
+          objectKey: grant.objectKey,
+          size: romData.byteLength,
           checksum,
           type: 'ROM',
         },
@@ -178,24 +231,39 @@ describe('POST /admin/roms', () => {
     }
 
     const romData = Buffer.from('retro-bytes');
-    const checksum = createHash('sha256').update('something-else').digest('hex');
+    const checksum = createHash('sha256').update(romData).digest('hex');
+    const mismatchedChecksum = createHash('sha256').update('something-else').digest('hex');
+    const accessToken = await getAccessToken();
+
+    const grant = await requestUploadGrant(accessToken, {
+      filename: 'invalid.zip',
+      contentType: 'application/zip',
+      size: romData.byteLength,
+      checksum,
+    });
+
+    await uploadUsingGrant(grant, romData);
 
     const response = await getApp().inject({
       method: 'POST',
       url: '/admin/roms',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+      },
       payload: {
         title: 'Checksum mismatch',
         platformId: 'snes',
         asset: {
           filename: 'invalid.zip',
           contentType: 'application/zip',
-          data: romData.toString('base64'),
-          checksum,
+          objectKey: grant.objectKey,
+          size: romData.byteLength,
+          checksum: mismatchedChecksum,
         },
       },
     });
 
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toEqual({ error: 'Checksum mismatch' });
+    expect(response.json()).toEqual({ error: 'Uploaded asset checksum mismatch' });
   });
 });

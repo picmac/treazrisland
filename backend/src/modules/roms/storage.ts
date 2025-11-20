@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Client } from 'minio';
 
 import type { Env } from '../../config/env';
@@ -21,8 +23,30 @@ export interface RomStorageUploadedAsset {
   size: number;
 }
 
+export interface RomStorageUploadGrantInput {
+  filename: string;
+  contentType: string;
+  size: number;
+  checksum: string;
+  directory?: string;
+}
+
+export interface RomStorageUploadGrant {
+  uploadUrl: string;
+  objectKey: string;
+  headers?: Record<string, string>;
+}
+
+export interface RomStorageAssetMetadata {
+  size: number;
+  contentType?: string;
+  checksum?: string;
+}
+
 export interface RomStorage {
   uploadAsset(input: RomStorageUploadInput): Promise<RomStorageUploadedAsset>;
+  createUploadGrant(input: RomStorageUploadGrantInput): Promise<RomStorageUploadGrant>;
+  describeAsset(objectKey: string): Promise<RomStorageAssetMetadata>;
   getSignedAssetUrl(objectKey: string): Promise<string>;
   downloadAsset(objectKey: string): Promise<Buffer>;
 }
@@ -39,11 +63,26 @@ export class RomStorageError extends Error {
 
 export class S3RomStorage implements RomStorage {
   private bucketEnsured = false;
+  private readonly presignPutObject: (
+    command: PutObjectCommand,
+    expiresInSeconds: number,
+  ) => Promise<string>;
 
   constructor(
     private readonly client: Client,
-    private readonly options: { bucket: string; region: string; presignedTtlSeconds: number },
-  ) {}
+    private readonly options: {
+      bucket: string;
+      region: string;
+      presignedTtlSeconds: number;
+      s3Client: S3Client;
+      presign?: (command: PutObjectCommand, expiresInSeconds: number) => Promise<string>;
+    },
+  ) {
+    this.presignPutObject =
+      options.presign ??
+      ((command, expiresInSeconds) =>
+        getSignedUrl(options.s3Client, command, { expiresIn: expiresInSeconds }));
+  }
 
   async uploadAsset(input: RomStorageUploadInput): Promise<RomStorageUploadedAsset> {
     let buffer: Buffer;
@@ -84,6 +123,64 @@ export class S3RomStorage implements RomStorage {
       contentType: input.contentType,
       size: buffer.length,
     };
+  }
+
+  async createUploadGrant(input: RomStorageUploadGrantInput): Promise<RomStorageUploadGrant> {
+    await this.ensureBucket();
+
+    const directory = this.normalizeDirectory(input.directory);
+    const objectKey = `${directory}/${randomUUID()}-${input.filename}`;
+
+    try {
+      const uploadUrl = await this.presignPutObject(
+        new PutObjectCommand({
+          Bucket: this.options.bucket,
+          Key: objectKey,
+          ContentType: input.contentType,
+          Metadata: {
+            checksum: input.checksum,
+            size: input.size.toString(),
+          },
+        }),
+        this.options.presignedTtlSeconds,
+      );
+
+      return {
+        uploadUrl,
+        objectKey,
+        headers: {
+          'Content-Type': input.contentType,
+          'x-amz-meta-checksum': input.checksum,
+          'x-amz-meta-size': input.size.toString(),
+        },
+      };
+    } catch (error) {
+      throw new RomStorageError('Unable to generate upload grant', 502, { cause: error });
+    }
+  }
+
+  async describeAsset(objectKey: string): Promise<RomStorageAssetMetadata> {
+    await this.ensureBucket();
+
+    try {
+      const stat = await this.client.statObject(this.options.bucket, objectKey);
+
+      const metadata = stat.metaData ?? {};
+
+      const checksum =
+        metadata['x-amz-meta-checksum'] || metadata['checksum'] || metadata['X-Amz-Meta-Checksum'];
+
+      const contentType =
+        metadata['content-type'] || metadata['Content-Type'] || metadata['contenttype'];
+
+      return {
+        size: stat.size,
+        contentType: contentType ?? undefined,
+        checksum: typeof checksum === 'string' ? checksum : undefined,
+      };
+    } catch (error) {
+      throw new RomStorageError('Unable to locate uploaded ROM asset', 404, { cause: error });
+    }
   }
 
   async getSignedAssetUrl(objectKey: string): Promise<string> {
@@ -142,11 +239,25 @@ export const createMinioClient = (env: Env): Client =>
     region: env.OBJECT_STORAGE_REGION,
   });
 
+export const createS3Client = (env: Env): S3Client =>
+  new S3Client({
+    region: env.OBJECT_STORAGE_REGION,
+    endpoint: `${env.OBJECT_STORAGE_USE_SSL ? 'https' : 'http'}://${
+      env.OBJECT_STORAGE_ENDPOINT
+    }:${env.OBJECT_STORAGE_PORT}`,
+    forcePathStyle: true,
+    credentials: {
+      accessKeyId: env.OBJECT_STORAGE_ACCESS_KEY,
+      secretAccessKey: env.OBJECT_STORAGE_SECRET_KEY,
+    },
+  });
+
 export const createRomStorage = (env: Env): RomStorage =>
   new S3RomStorage(createMinioClient(env), {
     bucket: env.OBJECT_STORAGE_BUCKET,
     region: env.OBJECT_STORAGE_REGION,
     presignedTtlSeconds: env.OBJECT_STORAGE_PRESIGNED_TTL,
+    s3Client: createS3Client(env),
   });
 
 export const ensureBucket = async (

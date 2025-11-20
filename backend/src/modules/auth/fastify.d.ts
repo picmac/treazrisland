@@ -8,6 +8,7 @@ import type { Env } from '../../config/env';
 import type { PrismaInviteStore } from '../invites/invite.store';
 import type { RomService } from '../roms/rom.service';
 import type { SaveStateService } from '../roms/save-state.service';
+import type { RomStorage } from '../roms/storage';
 import type { AvatarStorage } from '../users/avatar.storage';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Redis } from 'ioredis';
@@ -18,6 +19,7 @@ declare module 'fastify' {
     prisma: PrismaClient;
     redis: Redis;
     sessionStore: RedisSessionStore;
+    romStorage: RomStorage;
     romService: RomService;
     saveStateService: SaveStateService;
     inviteStore: PrismaInviteStore;
