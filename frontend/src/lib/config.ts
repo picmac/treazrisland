@@ -8,7 +8,7 @@ const deriveEmulatorBase = () => {
 
   const embedUrl = process.env.NEXT_PUBLIC_EMULATOR_EMBED_URL;
   if (embedUrl) {
-    const normalized = embedUrl.replace(/\/embed\.js$/, '');
+    const normalized = embedUrl.replace(/(?:\/dist)?\/embed\.js$/, '');
     return trimTrailingSlash(normalized);
   }
 
