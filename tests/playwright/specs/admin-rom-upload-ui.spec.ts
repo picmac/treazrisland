@@ -1,9 +1,9 @@
-import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { expect, test } from '@playwright/test';
 import { loginWithPassword } from '../utils/auth';
 
-const romFixturePath = path.join(__dirname, '..', 'artifacts', 'sample-rom.smc');
+const romFixturePath = fileURLToPath(new URL('../artifacts/sample-rom.smc', import.meta.url));
 
 test.describe('admin rom uploader UI', () => {
   test('computes checksum and registers a ROM with optimistic UI', async ({ page }) => {
