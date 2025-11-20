@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Client } from 'minio';
 
 import type { Env } from '../../config/env';
@@ -61,11 +63,26 @@ export class RomStorageError extends Error {
 
 export class S3RomStorage implements RomStorage {
   private bucketEnsured = false;
+  private readonly presignPutObject: (
+    command: PutObjectCommand,
+    expiresInSeconds: number,
+  ) => Promise<string>;
 
   constructor(
     private readonly client: Client,
-    private readonly options: { bucket: string; region: string; presignedTtlSeconds: number },
-  ) {}
+    private readonly options: {
+      bucket: string;
+      region: string;
+      presignedTtlSeconds: number;
+      s3Client: S3Client;
+      presign?: (command: PutObjectCommand, expiresInSeconds: number) => Promise<string>;
+    },
+  ) {
+    this.presignPutObject =
+      options.presign ??
+      ((command, expiresInSeconds) =>
+        getSignedUrl(options.s3Client, command, { expiresIn: expiresInSeconds }));
+  }
 
   async uploadAsset(input: RomStorageUploadInput): Promise<RomStorageUploadedAsset> {
     let buffer: Buffer;
@@ -114,23 +131,28 @@ export class S3RomStorage implements RomStorage {
     const directory = this.normalizeDirectory(input.directory);
     const objectKey = `${directory}/${randomUUID()}-${input.filename}`;
 
-    const signedHeaders = {
-      'Content-Type': input.contentType,
-      'x-amz-meta-checksum': input.checksum,
-      'x-amz-meta-size': input.size.toString(),
-    };
-
     try {
-      const uploadUrl = await this.client.presignedPutObject(
-        this.options.bucket,
-        objectKey,
+      const uploadUrl = await this.presignPutObject(
+        new PutObjectCommand({
+          Bucket: this.options.bucket,
+          Key: objectKey,
+          ContentType: input.contentType,
+          Metadata: {
+            checksum: input.checksum,
+            size: input.size.toString(),
+          },
+        }),
         this.options.presignedTtlSeconds,
       );
 
       return {
         uploadUrl,
         objectKey,
-        headers: signedHeaders,
+        headers: {
+          'Content-Type': input.contentType,
+          'x-amz-meta-checksum': input.checksum,
+          'x-amz-meta-size': input.size.toString(),
+        },
       };
     } catch (error) {
       throw new RomStorageError('Unable to generate upload grant', 502, { cause: error });
@@ -217,11 +239,25 @@ export const createMinioClient = (env: Env): Client =>
     region: env.OBJECT_STORAGE_REGION,
   });
 
+export const createS3Client = (env: Env): S3Client =>
+  new S3Client({
+    region: env.OBJECT_STORAGE_REGION,
+    endpoint: `${env.OBJECT_STORAGE_USE_SSL ? 'https' : 'http'}://${
+      env.OBJECT_STORAGE_ENDPOINT
+    }:${env.OBJECT_STORAGE_PORT}`,
+    forcePathStyle: true,
+    credentials: {
+      accessKeyId: env.OBJECT_STORAGE_ACCESS_KEY,
+      secretAccessKey: env.OBJECT_STORAGE_SECRET_KEY,
+    },
+  });
+
 export const createRomStorage = (env: Env): RomStorage =>
   new S3RomStorage(createMinioClient(env), {
     bucket: env.OBJECT_STORAGE_BUCKET,
     region: env.OBJECT_STORAGE_REGION,
     presignedTtlSeconds: env.OBJECT_STORAGE_PRESIGNED_TTL,
+    s3Client: createS3Client(env),
   });
 
 export const ensureBucket = async (
