@@ -2,6 +2,7 @@ import '../../setup-env';
 
 import { createHash, randomUUID } from 'node:crypto';
 
+import { Client } from 'minio';
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -23,6 +24,7 @@ describe('ROM save state endpoints', () => {
   let runtimeError: Error | null = null;
   let database: TestDatabase | null = null;
   let databaseError: Error | null = null;
+  let minioClient: Client | null = null;
 
   const getApp = (): NonNullable<typeof app> => {
     if (!app) {
@@ -38,6 +40,39 @@ describe('ROM save state endpoints', () => {
 
     const accessToken = await getAccessToken();
 
+    if (!minioClient) {
+      throw new Error('MinIO client not initialised');
+    }
+
+    const grantResponse = await getApp().inject({
+      method: 'POST',
+      url: '/admin/roms/uploads',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+      },
+      payload: {
+        filename: 'save-test.zip',
+        contentType: 'application/zip',
+        size: romPayload.byteLength,
+        checksum,
+      },
+    });
+
+    expect(grantResponse.statusCode).toBe(201);
+
+    const grant = grantResponse.json() as {
+      objectKey: string;
+      headers?: Record<string, string>;
+    };
+
+    await minioClient.putObject(
+      bucket,
+      grant.objectKey,
+      romPayload,
+      romPayload.length,
+      grant.headers ?? {},
+    );
+
     const response = await getApp().inject({
       method: 'POST',
       url: '/admin/roms',
@@ -51,7 +86,8 @@ describe('ROM save state endpoints', () => {
         asset: {
           filename: 'save-test.zip',
           contentType: 'application/zip',
-          data: romPayload.toString('base64'),
+          objectKey: grant.objectKey,
+          size: romPayload.byteLength,
           checksum,
         },
       },
@@ -133,6 +169,15 @@ describe('ROM save state endpoints', () => {
     process.env.OBJECT_STORAGE_USE_SSL = 'false';
 
     env = parseEnv(process.env);
+
+    minioClient = new Client({
+      endPoint: host,
+      port,
+      useSSL: false,
+      accessKey: env.OBJECT_STORAGE_ACCESS_KEY,
+      secretKey: env.OBJECT_STORAGE_SECRET_KEY,
+      region: env.OBJECT_STORAGE_REGION,
+    });
   }, 120_000);
 
   afterAll(async () => {
