@@ -15,6 +15,7 @@ import {
   stopTestDatabase,
   type TestDatabase,
 } from '../../helpers/postgres';
+import { ensureUserWithPassword } from '../../helpers/auth';
 
 describe('ROM save state endpoints', () => {
   const bucket = 'rom-save-state-tests';
@@ -38,7 +39,8 @@ describe('ROM save state endpoints', () => {
     const romPayload = Buffer.from('test-rom');
     const checksum = createHash('sha256').update(romPayload).digest('hex');
 
-    const adminAccessToken = accessToken ?? (await getAccessToken());
+    const adminAccessToken =
+      accessToken ?? (await getAccessToken('admin@example.com', { isAdmin: true }));
 
     if (!minioClient) {
       throw new Error('MinIO client not initialised');
@@ -100,7 +102,13 @@ describe('ROM save state endpoints', () => {
 
   type TestCookie = { name: string; value: string };
 
-  const login = async (email = 'player@example.com') => {
+  const login = async (email = 'player@example.com', options?: { isAdmin?: boolean }) => {
+    if (!database) {
+      throw new Error('Test database not initialised');
+    }
+
+    await ensureUserWithPassword(database.prisma, email, { isAdmin: options?.isAdmin });
+
     const response = await getApp().inject({
       method: 'POST',
       url: '/auth/login',
@@ -116,8 +124,11 @@ describe('ROM save state endpoints', () => {
     return { body, refreshCookie };
   };
 
-  const getAccessToken = async (email = 'player@example.com'): Promise<string> => {
-    const { body } = await login(email);
+  const getAccessToken = async (
+    email = 'player@example.com',
+    options?: { isAdmin?: boolean },
+  ): Promise<string> => {
+    const { body } = await login(email, options);
     return body.accessToken;
   };
 
