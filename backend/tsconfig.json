@@ -11,6 +11,13 @@
     "outDir": "dist",
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "tests/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "tests/**/*.ts",
+    "prisma.config.ts",
+    "prisma/**/*.ts",
+    "vitest.config.ts"
+  ],
   "exclude": ["dist"]
 }

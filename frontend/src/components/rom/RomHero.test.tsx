@@ -12,10 +12,7 @@ import type { RomDetails } from '@/types/rom';
 
 vi.mock('next/image', () => ({
   __esModule: true,
-  default: ({
-    priority: _priority,
-    ...props
-  }: React.ComponentProps<'img'> & { priority?: boolean }) => (
+  default: ({ ...props }: React.ComponentProps<'img'> & { priority?: boolean }) => (
     // Next.js strips the `priority` attribute from the DOM, so mirror that behavior in the mock.
     <img {...props} alt={props.alt ?? ''} />
   ),
@@ -125,7 +122,7 @@ describe('RomHero favorite button', () => {
 
     await user.click(favoriteButton);
 
-    const statusMessage = await screen.findByText('Added to favorites.', {
+    await screen.findByText('Added to favorites.', {
       selector: '[role="status"]',
     });
     expect(favoriteButton).toHaveTextContent('★ Favorited');
@@ -144,7 +141,7 @@ describe('RomHero favorite button', () => {
 
     await user.click(favoriteButton);
 
-    const statusMessage = await screen.findByText('Network offline', {
+    await screen.findByText('Network offline', {
       selector: '[role="status"]',
     });
     expect(favoriteButton).toHaveTextContent('★ Favorited');
@@ -163,7 +160,7 @@ describe('RomHero favorite button', () => {
     await user.click(favoriteButton);
 
     expect(toggleSpy).not.toHaveBeenCalled();
-    const statusMessage = await screen.findByText('Sign in to manage your favorites.', {
+    await screen.findByText('Sign in to manage your favorites.', {
       selector: '[role="status"]',
     });
     expect(favoriteButton).toHaveAttribute('aria-pressed', 'false');

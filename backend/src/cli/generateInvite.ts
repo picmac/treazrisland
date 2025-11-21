@@ -39,7 +39,9 @@ const readOptionalEmail = async (
     }
   }
 
-  while (true) {
+  let parsedEmail: string | null = null;
+
+  while (parsedEmail === null) {
     const answer = await prompt.ask(
       `${label}${options.allowEmpty ? ' (leave blank to skip)' : ''}: `,
     );
@@ -61,8 +63,10 @@ const readOptionalEmail = async (
       continue;
     }
 
-    return parsed.data;
+    parsedEmail = parsed.data;
   }
+
+  return parsedEmail;
 };
 
 const getCreatorId = async (): Promise<string | null> => {
@@ -83,7 +87,9 @@ const getCreatorId = async (): Promise<string | null> => {
     return creator.id;
   }
 
-  while (true) {
+  let creatorId: string | null = null;
+
+  while (creatorId === null) {
     const creatorEmail = await readOptionalEmail('Creator email (optional)', undefined, {
       allowEmpty: true,
     });
@@ -94,11 +100,13 @@ const getCreatorId = async (): Promise<string | null> => {
 
     const creator = await prisma.user.findUnique({ where: { email: creatorEmail } });
     if (creator) {
-      return creator.id;
+      creatorId = creator.id;
+    } else {
+      console.error(`No user found for creator email: ${creatorEmail}`);
     }
-
-    console.error(`No user found for creator email: ${creatorEmail}`);
   }
+
+  return creatorId;
 };
 
 const getExpirationInDays = async (): Promise<number> => {
@@ -112,7 +120,9 @@ const getExpirationInDays = async (): Promise<number> => {
     return parsed;
   }
 
-  while (true) {
+  let parsedDays: number | null = null;
+
+  while (parsedDays === null) {
     const answer = await prompt.ask('Expires in days (default 7, 0 for no expiry): ');
     if (!answer.trim()) {
       return 7;
@@ -120,11 +130,13 @@ const getExpirationInDays = async (): Promise<number> => {
 
     const parsed = Number.parseInt(answer.trim(), 10);
     if (!Number.isNaN(parsed) && parsed >= 0) {
-      return parsed;
+      parsedDays = parsed;
+    } else {
+      console.error('Please enter a non-negative number.');
     }
-
-    console.error('Please enter a non-negative number.');
   }
+
+  return parsedDays;
 };
 
 const main = async () => {

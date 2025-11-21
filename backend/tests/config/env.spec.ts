@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+type ProcessEnv = typeof process.env;
+
 const ORIGINAL_ENV = { ...process.env };
 
 describe('config/env', () => {
@@ -29,7 +31,7 @@ describe('config/env', () => {
       OBJECT_STORAGE_BUCKET: 'roms',
       OBJECT_STORAGE_REGION: 'us-east-1',
       OBJECT_STORAGE_PRESIGNED_TTL: '120',
-    } as NodeJS.ProcessEnv);
+    } as ProcessEnv);
 
     expect(result).toMatchObject({
       NODE_ENV: 'development',
@@ -59,7 +61,7 @@ describe('config/env', () => {
       parseEnv({
         NODE_ENV: 'development',
         PORT: '3000',
-      } as NodeJS.ProcessEnv),
+      } as ProcessEnv),
     ).toThrowError('Invalid environment configuration');
   });
 
@@ -71,7 +73,7 @@ describe('config/env', () => {
         NODE_ENV: 'development',
         PORT: '0',
         JWT_SECRET: 'test-secret-value-123456789012345678',
-      } as NodeJS.ProcessEnv),
+      } as ProcessEnv),
     ).toThrowError('Invalid environment configuration');
   });
 

@@ -48,7 +48,7 @@ export class RedisSessionStore {
       }
 
       return null;
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -89,7 +89,7 @@ export class RedisSessionStore {
       }
 
       return null;
-    } catch (error) {
+    } catch {
       return null;
     }
   }

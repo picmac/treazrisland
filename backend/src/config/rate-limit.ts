@@ -1,4 +1,4 @@
-import type { FastifyRouteOptions, OnRouteHookHandler } from 'fastify';
+import type { RouteOptions, onRouteHookHandler } from 'fastify';
 
 type RateLimitBucket = { max: number; timeWindow: string };
 
@@ -15,12 +15,12 @@ export const uploadRouteMatchers = [
   /^\/users\/me\/avatar-upload$/,
 ];
 
-const extractMethods = (method: FastifyRouteOptions['method']): string[] =>
+const extractMethods = (method: RouteOptions['method']): string[] =>
   (Array.isArray(method) ? method : method ? [method] : []).filter(
     (candidate): candidate is string => typeof candidate === 'string',
   );
 
-const applyBucket = (routeOptions: FastifyRouteOptions, bucket: RateLimitBucket) => {
+const applyBucket = (routeOptions: RouteOptions, bucket: RateLimitBucket) => {
   const existingConfig = routeOptions.config ?? {};
   const existingRateLimit =
     (existingConfig as { rateLimit?: Record<string, unknown> }).rateLimit ?? {};
@@ -37,7 +37,7 @@ const applyBucket = (routeOptions: FastifyRouteOptions, bucket: RateLimitBucket)
 export const createRateLimitHook = (
   buckets: typeof strictRateLimitBuckets = strictRateLimitBuckets,
   matchers: RegExp[] = uploadRouteMatchers,
-): OnRouteHookHandler => {
+): onRouteHookHandler => {
   return (routeOptions) => {
     const url = routeOptions.url ?? '';
     const methods = extractMethods(routeOptions.method);

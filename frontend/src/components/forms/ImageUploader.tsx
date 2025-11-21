@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useId, useRef, useState } from 'react';
+import type { DragEventHandler } from 'react';
 
 import { useAvatarUpload } from '@/hooks/useAvatarUpload';
 
@@ -61,18 +62,18 @@ export function ImageUploader({
     }
   };
 
-  const onDrop: React.DragEventHandler<HTMLDivElement> = (event) => {
+  const onDrop: DragEventHandler<HTMLDivElement> = (event) => {
     event.preventDefault();
     setIsDragging(false);
     void handleFiles(event.dataTransfer?.files);
   };
 
-  const onDragOver: React.DragEventHandler<HTMLDivElement> = (event) => {
+  const onDragOver: DragEventHandler<HTMLDivElement> = (event) => {
     event.preventDefault();
     setIsDragging(true);
   };
 
-  const onDragLeave: React.DragEventHandler<HTMLDivElement> = (event) => {
+  const onDragLeave: DragEventHandler<HTMLDivElement> = (event) => {
     event.preventDefault();
     setIsDragging(false);
   };

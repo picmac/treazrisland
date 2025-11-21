@@ -1,4 +1,5 @@
 import readline from 'node:readline';
+import type { WriteStream } from 'node:tty';
 
 type QuestionOptions = {
   hidden?: boolean;
@@ -11,10 +12,10 @@ type MutableInterface = readline.Interface & {
 
 export class Prompt {
   private readonly rl: MutableInterface;
-  private readonly output: NodeJS.WriteStream;
+  private readonly output: WriteStream;
 
   constructor() {
-    this.output = process.stdout as NodeJS.WriteStream;
+    this.output = process.stdout as WriteStream;
     this.rl = readline.createInterface({
       input: process.stdin,
       output: this.output,

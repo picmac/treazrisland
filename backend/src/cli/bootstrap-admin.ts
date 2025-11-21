@@ -68,7 +68,9 @@ const askPassword = async (): Promise<string> => {
     return passwordSchema.parse(cliArgs.password);
   }
 
-  while (true) {
+  let parsedPassword: string | null = null;
+
+  while (parsedPassword === null) {
     const password = await prompt.ask('Password: ', { hidden: true });
     const confirmation = await prompt.ask('Confirm password: ', { hidden: true });
 
@@ -77,8 +79,10 @@ const askPassword = async (): Promise<string> => {
       continue;
     }
 
-    return passwordSchema.parse(password);
+    parsedPassword = passwordSchema.parse(password);
   }
+
+  return parsedPassword;
 };
 
 const ensureNoAdminExists = async () => {

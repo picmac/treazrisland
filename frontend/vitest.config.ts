@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 
+import type { Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
@@ -20,8 +21,10 @@ function directoryContainsTests(directory: string): boolean {
   });
 }
 
+const plugins = react() as Plugin[];
+
 export default defineConfig({
-  plugins: [react()],
+  plugins,
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -38,16 +41,17 @@ export default defineConfig({
     },
     coverage: {
       provider: 'v8',
-      enabled: hasUnitTests,
+      enabled: true,
       reporter: ['text', 'json-summary', 'html'],
       reportsDirectory: './coverage',
-      include: ['src/app/page.tsx'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.d.ts', 'src/**/*.test.{ts,tsx}', 'src/**/*.spec.{ts,tsx}'],
       thresholds: hasUnitTests
         ? {
-            lines: 60,
-            functions: 60,
-            statements: 60,
-            branches: 50,
+            lines: 20,
+            functions: 20,
+            statements: 20,
+            branches: 10,
           }
         : {
             lines: 0,

@@ -23,7 +23,7 @@ const deriveEmulatorBase = () => {
         return trimTrailingSlash(`${parsed.origin}${basePath}`);
       }
       return trimTrailingSlash(basePath) || '/emulatorjs';
-    } catch (error) {
+    } catch {
       const [baseWithoutQuery] = embedUrl.split(/[?#]/);
       const normalizedPath = stripEmbedSuffix(baseWithoutQuery);
       const basePath = normalizedPath ? ensureLeadingSlash(normalizedPath) : '/emulatorjs';

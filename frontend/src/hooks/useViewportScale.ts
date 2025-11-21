@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import type React from 'react';
 
 type ViewportScaleOptions = {
   baseWidth?: number;

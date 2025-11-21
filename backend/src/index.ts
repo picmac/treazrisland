@@ -185,7 +185,8 @@ const appPlugin = fp(
       secret: env.JWT_SECRET,
     });
 
-    fastify.decorate('authenticate', async function authenticate(request, _reply) {
+    fastify.decorate('authenticate', async function authenticate(request, reply) {
+      void reply;
       const payload = await request.jwtVerify<{ sub: string; email?: string; isAdmin?: boolean }>();
 
       const user: AuthUser = {
