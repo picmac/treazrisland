@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { backendBaseUrl } from './utils/env';
+import { obtainAccessToken } from './utils/backendApi';
 import { seedMagicLinkToken } from './utils/magicLink';
 
 const invitePassword = 'InvitePass123!';
@@ -12,7 +13,10 @@ test.describe('authentication onboarding', () => {
   test('redeems an invite and a magic link token', async ({ page, request, context }) => {
     const email = `deckhand+${Date.now()}@treazr.test`;
 
+    const adminToken = await obtainAccessToken(request);
+
     const inviteResponse = await request.post(`${backendBaseUrl}/auth/invitations`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
       data: { email, expiresInDays: 1 },
     });
     expect(inviteResponse.ok()).toBeTruthy();

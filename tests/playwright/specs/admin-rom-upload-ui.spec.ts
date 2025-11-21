@@ -13,8 +13,11 @@ test.describe('admin rom uploader UI', () => {
     await page.goto('/admin/roms/new');
 
     await page.setInputFiles('#rom-file', romFixturePath);
-    const checksumStatus = page.getByRole('status', { name: /Checksum locked/i });
-    await expect(checksumStatus).toBeVisible({ timeout: 10_000 });
+    const checksumStatus = page.getByRole('status', { name: /checksum/i });
+    await expect(checksumStatus).toHaveText(/Computing checksum/i, { timeout: 10_000 });
+    await expect(checksumStatus).toHaveText(/Checksum locked\. Ready to upload\./i, {
+      timeout: 20_000,
+    });
 
     await page.fill('#rom-title', romTitle);
     await page.fill('#rom-platform', 'snes');
