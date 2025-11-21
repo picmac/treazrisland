@@ -50,6 +50,7 @@ type EmulatorHandle = {
 
 const ENABLE_VIEWPORT_SCALING = process.env.NEXT_PUBLIC_ENABLE_VIEWPORT_SCALE !== 'false';
 const ENABLE_TOUCH_OVERLAY = process.env.NEXT_PUBLIC_ENABLE_TOUCH_OVERLAY !== 'false';
+const MIN_LOADING_DURATION_MS = 500;
 
 export default function PlayPage({ params }: PlayPageProps) {
   const romId = params.romId;
@@ -63,9 +64,12 @@ export default function PlayPage({ params }: PlayPageProps) {
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncingCloudSave, setIsSyncingCloudSave] = useState(false);
+  const [hasMinimumLoadingTimeElapsed, setMinimumLoadingTimeElapsed] = useState(false);
+  const [shouldShowLoadingState, setShouldShowLoadingState] = useState(true);
   const emulatorContainerRef = useRef<HTMLDivElement | null>(null);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
   const emulatorRef = useRef<EmulatorHandle | null>(null);
+  const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const {
     latestSaveState,
     isLoading: isLoadingCloudSave,
@@ -87,6 +91,14 @@ export default function PlayPage({ params }: PlayPageProps) {
     setLoadState('loading');
     setError(undefined);
     setRom(null);
+    setMinimumLoadingTimeElapsed(false);
+    setShouldShowLoadingState(true);
+
+    const timer = setTimeout(() => {
+      if (!isMounted) return;
+      setMinimumLoadingTimeElapsed(true);
+    }, MIN_LOADING_DURATION_MS);
+    loadingTimerRef.current = timer;
 
     fetchRomDetails(romId)
       .then((response) => {
@@ -94,6 +106,7 @@ export default function PlayPage({ params }: PlayPageProps) {
         if (!response) {
           setLoadState('error');
           setError('ROM dossier unavailable.');
+          setShouldShowLoadingState(false);
           return;
         }
         setRom(response);
@@ -103,12 +116,24 @@ export default function PlayPage({ params }: PlayPageProps) {
         if (!isMounted) return;
         setLoadState('error');
         setError(romError instanceof Error ? romError.message : 'Unable to load ROM metadata.');
+        setShouldShowLoadingState(false);
       });
 
     return () => {
       isMounted = false;
+      if (loadingTimerRef.current) {
+        clearTimeout(loadingTimerRef.current);
+        loadingTimerRef.current = null;
+      }
     };
   }, [romId]);
+
+  useEffect(() => {
+    if (loadState !== 'ready') return;
+    if (rom && hasMinimumLoadingTimeElapsed) {
+      setShouldShowLoadingState(false);
+    }
+  }, [hasMinimumLoadingTimeElapsed, loadState, rom]);
 
   useEffect(() => {
     setSessionReady(false);
@@ -339,6 +364,8 @@ export default function PlayPage({ params }: PlayPageProps) {
     [],
   );
 
+  const showRomLoadingStatus =
+    loadState === 'loading' || (loadState === 'ready' && shouldShowLoadingState);
   const controlsDisabled = !isSessionReady || loadState !== 'ready';
 
   return (
@@ -360,7 +387,7 @@ export default function PlayPage({ params }: PlayPageProps) {
             {!isSessionReady && (
               <p className="play-session__status">Confirm your controller to start the emulator.</p>
             )}
-            {loadState === 'loading' && (
+            {showRomLoadingStatus && (
               <p className="play-session__status">Fetching ROM dossier…</p>
             )}
             {loadState === 'error' && error && (
