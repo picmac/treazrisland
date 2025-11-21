@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ProcessEnv } from 'node:process';
+
+type ProcessEnv = NodeJS.ProcessEnv;
 
 const ORIGINAL_ENV = { ...process.env };
 

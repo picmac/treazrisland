@@ -1,5 +1,4 @@
 import { Writable } from 'node:stream';
-import type { BufferEncoding } from 'node:buffer';
 
 import Fastify from 'fastify';
 import pino from 'pino';

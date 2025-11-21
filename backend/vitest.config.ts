@@ -12,10 +12,12 @@ export default defineConfig({
       reportsDirectory: './coverage',
       reporter: ['text', 'json-summary', 'html'],
       include: ['src/**/*.{ts,tsx}'],
-      lines: 60,
-      functions: 60,
-      statements: 60,
-      branches: 50,
+      thresholds: {
+        lines: 60,
+        functions: 60,
+        statements: 60,
+        branches: 50,
+      },
     },
     deps: {
       optimizer: {
