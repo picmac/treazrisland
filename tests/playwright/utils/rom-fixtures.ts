@@ -50,13 +50,34 @@ export async function registerTestRom(
     headers?: Record<string, string>;
   };
 
-  const uploadHeaders = { ...(grant.headers ?? {}) };
-  const performUpload = async (targetUrl: string, hostHeader?: string) =>
-    request.fetch(targetUrl, {
+  const signedHeaders = new Set(
+    new URL(grant.uploadUrl)
+      .searchParams.get('X-Amz-SignedHeaders')
+      ?.split(';')
+      .map((header) => header.toLowerCase())
+      .filter(Boolean) ?? [],
+  );
+
+  const uploadHeaders = Object.fromEntries(
+    Object.entries(grant.headers ?? {}).filter(
+      ([header]) => signedHeaders.size === 0 || signedHeaders.has(header.toLowerCase()),
+    ),
+  );
+
+  const performUpload = async (targetUrl: string, hostHeader?: string) => {
+    const headers = {
+      ...uploadHeaders,
+      ...(hostHeader && (signedHeaders.size === 0 || signedHeaders.has('host'))
+        ? { host: hostHeader }
+        : {}),
+    };
+
+    return request.fetch(targetUrl, {
       method: 'PUT',
-      headers: hostHeader ? { ...uploadHeaders, host: hostHeader } : uploadHeaders,
+      headers,
       data: romBuffer,
     });
+  };
 
   let uploadResponse: APIResponse | null = null;
   let uploadError: Error | null = null;
