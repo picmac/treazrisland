@@ -13,6 +13,7 @@ import RedisMock from 'ioredis-mock';
 
 import { getEnv, type Env } from './config/env';
 import { createPrismaClient, prisma as sharedPrisma } from './config/prisma';
+import { createRateLimitHook } from './config/rate-limit';
 import {
   hasMetricsExporter,
   respondWithMetricsSnapshot,
@@ -165,51 +166,7 @@ const appPlugin = fp(
         resolveRateLimitIdentity(request) ?? request.ip ?? request.hostname ?? 'global',
     });
 
-    const strictRateLimitBuckets = {
-      auth: { max: 15, timeWindow: '1 minute' },
-      uploads: { max: 5, timeWindow: '1 minute' },
-    } as const;
-
-    const uploadRouteMatchers = [
-      /^\/roms\/:id\/save-state/,
-      /^\/roms\/:id\/save-states/,
-      /^\/admin\/roms$/,
-      /^\/admin\/roms\/uploads$/,
-      /^\/users\/me\/avatar-upload$/,
-    ];
-
-    fastify.addHook('onRoute', (routeOptions) => {
-      const url = routeOptions.url ?? '';
-      const methods = (
-        Array.isArray(routeOptions.method) ? routeOptions.method : [routeOptions.method]
-      ).filter((method): method is string => typeof method === 'string');
-
-      const applyBucket = (bucket: { max: number; timeWindow: string }) => {
-        const existingConfig = routeOptions.config ?? {};
-        const existingRateLimit =
-          (existingConfig as { rateLimit?: Record<string, unknown> }).rateLimit ?? {};
-
-        routeOptions.config = {
-          ...existingConfig,
-          rateLimit: {
-            ...existingRateLimit,
-            ...bucket,
-          },
-        };
-      };
-
-      if (url.startsWith('/auth')) {
-        applyBucket(strictRateLimitBuckets.auth);
-        return;
-      }
-
-      const isUploadRoute =
-        methods.includes('POST') && uploadRouteMatchers.some((matcher) => matcher.test(url));
-
-      if (isUploadRoute) {
-        applyBucket(strictRateLimitBuckets.uploads);
-      }
-    });
+    fastify.addHook('onRoute', createRateLimitHook());
 
     fastify.addHook('onClose', async () => {
       await fastify.redis.quit();
