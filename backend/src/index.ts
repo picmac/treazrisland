@@ -27,10 +27,12 @@ import { PrismaInviteStore } from './modules/invites/invite.store';
 import { RomService } from './modules/roms/rom.service';
 import { romRoutes } from './modules/roms/routes';
 import { SaveStateService } from './modules/roms/save-state.service';
-import { createRomStorage, type RomStorage } from './modules/roms/storage';
+import { createMinioClient, createRomStorage, type RomStorage } from './modules/roms/storage';
 import { createAvatarStorage, type AvatarStorage } from './modules/users/avatar.storage';
 import { userRoutes } from './modules/users/routes';
 import { buildLogger, loggerPlugin } from './plugins/logger';
+
+import type { Client as MinioClient } from 'minio';
 
 import type { AuthUser } from './modules/auth/types';
 import type { FastifyRequest } from 'fastify';
@@ -47,9 +49,20 @@ const createRedisClient = (env: Env): Redis => {
 
 type DependencyStatus = 'up' | 'down';
 
+type DependencyHealth = {
+  status: DependencyStatus;
+  error?: string;
+};
+
+type ObjectStorageHealth = DependencyHealth & {
+  bucket: string;
+  region: string;
+};
+
 type HealthDependencies = {
-  redis: { status: DependencyStatus };
-  objectStorage: { status: 'configured'; bucket: string; region: string };
+  redis: DependencyHealth;
+  prisma: DependencyHealth;
+  objectStorage: ObjectStorageHealth;
 };
 
 type HealthResponse = {
@@ -57,23 +70,76 @@ type HealthResponse = {
   dependencies: HealthDependencies;
 };
 
-const redisStatus = (redis: Redis): DependencyStatus => (redis.status === 'ready' ? 'up' : 'down');
+const toErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
 
-const buildHealthResponse = (redis: Redis, env: Env): HealthResponse => {
-  const redisState = redisStatus(redis);
+const checkRedisHealth = async (redis: Redis): Promise<DependencyHealth> => {
+  try {
+    if (typeof redis.ping === 'function') {
+      await redis.ping();
+    }
 
-  const dependencies: HealthDependencies = {
-    redis: { status: redisState },
-    objectStorage: {
-      status: 'configured',
+    return { status: 'up' };
+  } catch (error) {
+    return { status: 'down', error: toErrorMessage(error) };
+  }
+};
+
+const checkPrismaHealth = async (prisma: PrismaClient): Promise<DependencyHealth> => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return { status: 'up' };
+  } catch (error) {
+    return { status: 'down', error: toErrorMessage(error) };
+  }
+};
+
+const checkObjectStorageHealth = async (
+  env: Env,
+  client: Pick<MinioClient, 'bucketExists'>,
+): Promise<ObjectStorageHealth> => {
+  try {
+    const bucketExists = await client.bucketExists(env.OBJECT_STORAGE_BUCKET);
+
+    return {
+      status: bucketExists ? 'up' : 'down',
       bucket: env.OBJECT_STORAGE_BUCKET,
       region: env.OBJECT_STORAGE_REGION,
-    },
-  };
+      error: bucketExists ? undefined : 'Bucket not found',
+    };
+  } catch (error) {
+    return {
+      status: 'down',
+      bucket: env.OBJECT_STORAGE_BUCKET,
+      region: env.OBJECT_STORAGE_REGION,
+      error: toErrorMessage(error),
+    };
+  }
+};
+
+const buildHealthResponse = async (
+  redis: Redis,
+  prisma: PrismaClient,
+  env: Env,
+  objectStorageClient: Pick<MinioClient, 'bucketExists'> = createMinioClient(env),
+): Promise<HealthResponse> => {
+  const [redisHealth, prismaHealth, objectStorageHealth] = await Promise.all([
+    checkRedisHealth(redis),
+    checkPrismaHealth(prisma),
+    checkObjectStorageHealth(env, objectStorageClient),
+  ]);
+
+  const hasDegradedDependency = [redisHealth, prismaHealth, objectStorageHealth].some(
+    (dependency) => dependency.status === 'down',
+  );
 
   return {
-    status: redisState === 'up' ? 'ok' : 'degraded',
-    dependencies,
+    status: hasDegradedDependency ? 'degraded' : 'ok',
+    dependencies: {
+      redis: redisHealth,
+      prisma: prismaHealth,
+      objectStorage: objectStorageHealth,
+    },
   };
 };
 
@@ -82,6 +148,7 @@ type AppPluginOptions = {
   prisma: PrismaClient;
   romStorage: RomStorage;
   avatarStorage: AvatarStorage;
+  objectStorageClient?: Pick<MinioClient, 'bucketExists'>;
 };
 
 const resolveRateLimitIdentity = (request: FastifyRequest): string | undefined => {
@@ -94,7 +161,10 @@ const resolveRateLimitIdentity = (request: FastifyRequest): string | undefined =
 };
 
 const appPlugin = fp(
-  async (fastify, { env, prisma, romStorage, avatarStorage }: AppPluginOptions) => {
+  async (
+    fastify,
+    { env, prisma, romStorage, avatarStorage, objectStorageClient }: AppPluginOptions,
+  ) => {
     fastify.decorate('config', env);
     fastify.decorate('prisma', prisma);
 
@@ -177,7 +247,9 @@ const appPlugin = fp(
     await fastify.register(userRoutes);
     await fastify.register(adminRoutes, { prefix: '/admin' });
 
-    fastify.get('/health', async () => buildHealthResponse(fastify.redis, env));
+    fastify.get('/health', async () =>
+      buildHealthResponse(fastify.redis, prisma, env, objectStorageClient),
+    );
     fastify.get('/metrics', async (request, reply) => {
       if (!hasMetricsExporter()) {
         return reply.status(503).send({ error: 'Metrics exporter disabled' });
@@ -194,6 +266,7 @@ type AppDependencies = {
   prisma?: PrismaClient;
   romStorage?: RomStorage;
   avatarStorage?: AvatarStorage;
+  objectStorageClient?: Pick<MinioClient, 'bucketExists'>;
 };
 
 export const createApp = (
@@ -209,7 +282,13 @@ export const createApp = (
     loggerInstance: buildLogger(env),
   });
 
-  void app.register(appPlugin, { env, prisma, romStorage, avatarStorage });
+  void app.register(appPlugin, {
+    env,
+    prisma,
+    romStorage,
+    avatarStorage,
+    objectStorageClient: dependencies.objectStorageClient,
+  });
 
   app.addHook('onClose', async () => {
     if (ownsPrisma) {
