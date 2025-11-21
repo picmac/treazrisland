@@ -2,7 +2,7 @@
 
 ## EmulatorJS
 
-The `emulatorjs` service now builds from source instead of pulling the LinuxServer image. The Dockerfile at `infrastructure/emulator/Dockerfile` clones [`EmulatorJS/EmulatorJS`](https://github.com/EmulatorJS/EmulatorJS), checks out the tag or commit referenced by `EMULATORJS_REF` (default `v4.2.3`), runs `npm ci && npm run build`, and copies the resulting `dist/` bundle into a minimal Caddy server image.
+The `emulatorjs` service now builds from source instead of pulling the LinuxServer image. The Dockerfile at `infrastructure/emulator/Dockerfile` clones [`EmulatorJS/EmulatorJS`](https://github.com/EmulatorJS/EmulatorJS), checks out the tag or commit referenced by `EMULATORJS_REF` (default `v4.2.3`), runs `pnpm install --frozen-lockfile=false && pnpm run build`, and copies the resulting `dist/` bundle into a minimal Caddy server image.
 
 ### Persistent data
 

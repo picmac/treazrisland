@@ -218,11 +218,13 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: 10.23.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22.11.0
+          node-version: 22.21.0
 
       - name: Install dependencies
         run: pnpm install --recursive --frozen-lockfile
@@ -230,15 +232,11 @@ jobs:
       - name: pnpm audit
         run: pnpm audit --prod
 
-      - name: Install Snyk CLI
-        if: ${{ env.SNYK_TOKEN != '' }}
-        run: npm install -g snyk
-
       - name: Snyk test (optional)
         if: ${{ env.SNYK_TOKEN != '' }}
         env:
           SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
-        run: snyk test --all-projects --severity-threshold=medium
+        run: pnpm dlx snyk@latest test --all-projects --severity-threshold=medium
 
   checks:
     needs: security_review_gate
@@ -280,11 +278,13 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: 10.23.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22.11.0
+          node-version: 22.21.0
 
       - name: Determine pnpm store
         id: pnpm-store
@@ -406,11 +406,13 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: 10.23.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22.11.0
+          node-version: 22.21.0
           cache: 'pnpm'
 
       - name: Deploy via pnpm script

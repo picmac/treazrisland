@@ -33,7 +33,7 @@ if ! command_exists node; then
 fi
 
 if ! command_exists pnpm; then
-  die "pnpm is not installed. Install it via 'npm install -g pnpm' or see https://pnpm.io/installation."
+  die "pnpm is not installed. Activate it via 'corepack prepare pnpm@10.23.0 --activate' or see https://pnpm.io/installation."
 fi
 
 if ! command_exists curl; then
@@ -108,8 +108,8 @@ cd "$REPO_ROOT"
 template_env_files
 
 # Install Node dependencies
-inform "Installing Node dependencies with pnpm..."
-pnpm install
+inform "Installing Node dependencies with pnpm (respecting pnpm-lock.yaml)..."
+pnpm install --frozen-lockfile
 
 # Start infrastructure dependencies first so migrations have a live database
 COMPOSE_FILE="$REPO_ROOT/infrastructure/compose/docker-compose.yml"

@@ -10,16 +10,16 @@ Treazr Island is an early-stage retro-gaming platform experiment. This repositor
 
 ## Run commands
 
-This monorepo uses `pnpm` for package management. Install the workspace dependencies and run the frontend scaffold with the following commands:
+This monorepo uses `pnpm` (currently pinned to `10.23.x`) for package management. Install the workspace dependencies and run the frontend scaffold with the following commands:
 
 ```bash
-pnpm install         # install dependencies for every workspace package
+pnpm install --frozen-lockfile # install dependencies for every workspace package using pnpm-lock.yaml
 pnpm --filter frontend dev   # launch the Pixellab-themed Next.js dev server
 pnpm --filter frontend build # create a production build of the frontend
 pnpm --filter frontend start # serve the production build locally
 ```
 
-> ℹ️ `pnpm` is the only supported package manager. We intentionally removed `package-lock.json` from the frontend to prevent accidental `npm ci` runs, which conflict with the workspace's `pnpm` layout.
+> ℹ️ `pnpm` is the only supported package manager. A `preinstall` guard blocks `npm`/`yarn` executions so the shared `pnpm-lock.yaml` stays authoritative. We intentionally removed `package-lock.json` from the frontend to prevent accidental `npm ci` runs, which conflict with the workspace's `pnpm` layout.
 
 Additional scripts (linting, formatting, Husky hooks, etc.) are defined in the root `package.json` and automatically cover both the backend and frontend.
 
@@ -40,7 +40,7 @@ Customize the install by passing `--repo-dir <path>` or `--branch <name>` (or by
 `scripts/bootstrap.sh` is the canonical local workflow. It:
 
 1. Templates `.env` files from the canonical samples in `infrastructure/env/*.env.example`.
-2. Runs `pnpm install` to hydrate the workspace.
+2. Runs `pnpm install --frozen-lockfile` to hydrate the workspace using `pnpm-lock.yaml`.
 3. Applies Prisma migrations and seeds the database via `pnpm --filter backend prisma migrate deploy` and `pnpm --filter backend prisma db seed`.
 4. Starts the stack with `docker compose -f infrastructure/compose/docker-compose.yml up -d emulatorjs backend frontend`.
 5. Waits for the emulator (`http://localhost:8080/healthz`), backend (`http://localhost:4000/health`), and frontend (`http://localhost:5173/health`) health checks before returning.

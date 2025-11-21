@@ -59,7 +59,7 @@ wait_for_http_health() {
 }
 
 log "Preparing deployment prerequisites..."
-require_command pnpm "Install pnpm 10.4.1 (see docs/dependency-matrix.md)."
+require_command pnpm "Install pnpm 10.23.0 (see docs/dependency-matrix.md)."
 require_command docker "Install Docker Engine/Desktop 26.1.x."
 require_command curl "Install curl via your package manager."
 

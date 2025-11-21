@@ -34,7 +34,7 @@ This checklist guarantees a flawless first impression when unveiling Treazrislan
 ### 3. Security & Compliance
 
 - [ ] [Security review checklist](./security/review-checklist.md) completed for all merged changes (dependency review, input validation, logging hygiene).
-- [ ] Static analysis (e.g., `npm run lint`, `npm run typecheck`, `npm audit --production`) executed and green.
+- [ ] Static analysis (e.g., `pnpm lint`, `pnpm typecheck`, `pnpm audit --production`) executed and green.
 - [ ] Pen-test or threat modelling session completed; action items tracked.
 - [ ] Secrets inventory documented with rotation cadence.
 - [ ] Incident response playbook rehearsed with at least one simulated outage.
