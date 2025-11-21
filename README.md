@@ -24,6 +24,14 @@ pnpm --filter frontend start # serve the production build locally
 
 Additional scripts (linting, formatting, Husky hooks, etc.) are defined in the root `package.json` and automatically cover both the backend and frontend.
 
+## Testing
+
+Use the workspace scripts to validate changes quickly:
+
+- `pnpm lint` — static analysis across backend and frontend packages.
+- `pnpm test` — runs Vitest suites in the backend and frontend; coverage reports are emitted to `backend/coverage/` and `frontend/coverage/`.
+- `pnpm --filter @treazrisland/playwright test` — executes the Playwright smoke tests in `tests/playwright/` (install browsers first with `pnpm --filter @treazrisland/playwright exec playwright install --with-deps`).
+
 ## Quick local setup (curl \| bash)
 
 > ⚠️ **Security warning:** `curl | bash` bypasses your normal code-review flow. Inspect [`scripts/install/local-setup.sh`](scripts/install/local-setup.sh) before running it, or download the script and execute it manually if you are unsure about piping remote content into your shell.
@@ -66,7 +74,7 @@ The script refuses to run if a user already exists, ensuring that exactly one bo
 
 ## Continuous integration
 
-Every push and pull request runs the `CI` workflow, which fans out linting, type-checking (`pnpm typecheck`), unit tests, and the Playwright suite. Branch protection rules require this workflow to succeed before merges land on `main`, so expect to see a green check from GitHub Actions prior to completing a PR.
+Every push and pull request runs the `CI` workflow, which fans out `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm --filter @treazrisland/playwright test`. Branch protection rules require this workflow to succeed before merges land on `main`, so expect to see a green check from GitHub Actions prior to completing a PR.
 
 When the Playwright matrix job runs, GitHub Actions uploads the generated videos, traces, screenshots, and `.log` files from `tests/playwright/artifacts/test-results/` as discrete artifacts (`playwright-videos`, `playwright-traces`, `playwright-screenshots`, `playwright-logs`). Download them from the CI workflow run page's **Artifacts** panel to debug flaky or failing tests without reproducing the run locally.
 

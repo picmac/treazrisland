@@ -6,22 +6,23 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     passWithNoTests: true,
+    coverage: {
+      provider: 'v8',
+      enabled: true,
+      reportsDirectory: './coverage',
+      reporter: ['text', 'json-summary', 'html'],
+      include: ['src/**/*.{ts,tsx}'],
+      lines: 60,
+      functions: 60,
+      statements: 60,
+      branches: 50,
+    },
     deps: {
       optimizer: {
         ssr: {
           include: ['minio'],
         },
       },
-    },
-    coverage: {
-      provider: 'v8',
-      enabled: true,
-      reporter: ['text', 'json-summary'],
-      reportsDirectory: './coverage',
-      lines: 60,
-      functions: 60,
-      statements: 60,
-      branches: 50,
     },
   },
 });

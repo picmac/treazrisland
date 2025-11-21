@@ -14,7 +14,7 @@
     "cli:create-admin": "pnpm --filter backend create-admin",
     "cli:generate-invite": "pnpm --filter @treazrisland/backend cli:generate-invite",
     "typecheck": "pnpm --filter @treazrisland/backend run typecheck && pnpm --filter treazrisland-frontend run typecheck",
-    "test": "pnpm -r test",
+    "test": "pnpm -r --filter !@treazrisland/playwright test",
     "test:watch": "pnpm -r run test:watch",
     "test:e2e": "./scripts/test-e2e.sh",
     "deploy:runner": "./scripts/deploy/self-hosted-runner.sh",

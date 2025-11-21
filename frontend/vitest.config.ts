@@ -38,16 +38,17 @@ export default defineConfig({
     },
     coverage: {
       provider: 'v8',
-      enabled: hasUnitTests,
+      enabled: true,
       reporter: ['text', 'json-summary', 'html'],
       reportsDirectory: './coverage',
-      include: ['src/app/page.tsx'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.d.ts', 'src/**/*.test.{ts,tsx}', 'src/**/*.spec.{ts,tsx}'],
       thresholds: hasUnitTests
         ? {
-            lines: 60,
-            functions: 60,
-            statements: 60,
-            branches: 50,
+            lines: 20,
+            functions: 20,
+            statements: 20,
+            branches: 10,
           }
         : {
             lines: 0,
