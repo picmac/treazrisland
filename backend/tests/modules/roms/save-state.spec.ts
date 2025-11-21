@@ -15,6 +15,7 @@ import {
   stopTestDatabase,
   type TestDatabase,
 } from '../../helpers/postgres';
+import { ensureUserWithPassword } from '../../helpers/auth';
 
 describe('ROM save state endpoints', () => {
   const bucket = 'rom-save-state-tests';
@@ -34,11 +35,12 @@ describe('ROM save state endpoints', () => {
     return app;
   };
 
-  const createRom = async (accessToken?: string): Promise<string> => {
+  const createRom = async (options?: { adminToken?: string }): Promise<string> => {
     const romPayload = Buffer.from('test-rom');
     const checksum = createHash('sha256').update(romPayload).digest('hex');
 
-    const adminAccessToken = accessToken ?? (await getAccessToken());
+    const adminAccessToken =
+      options?.adminToken ?? (await getAccessToken('admin@example.com', { isAdmin: true }));
 
     if (!minioClient) {
       throw new Error('MinIO client not initialised');
@@ -100,7 +102,13 @@ describe('ROM save state endpoints', () => {
 
   type TestCookie = { name: string; value: string };
 
-  const login = async (email = 'player@example.com') => {
+  const login = async (email = 'player@example.com', options?: { isAdmin?: boolean }) => {
+    if (!database) {
+      throw new Error('Test database not initialised');
+    }
+
+    await ensureUserWithPassword(database.prisma, email, { isAdmin: options?.isAdmin });
+
     const response = await getApp().inject({
       method: 'POST',
       url: '/auth/login',
@@ -116,8 +124,11 @@ describe('ROM save state endpoints', () => {
     return { body, refreshCookie };
   };
 
-  const getAccessToken = async (email = 'player@example.com'): Promise<string> => {
-    const { body } = await login(email);
+  const getAccessToken = async (
+    email = 'player@example.com',
+    options?: { isAdmin?: boolean },
+  ): Promise<string> => {
+    const { body } = await login(email, options);
     return body.accessToken;
   };
 
@@ -213,7 +224,7 @@ describe('ROM save state endpoints', () => {
     }
 
     const token = await getAccessToken();
-    const romId = await createRom(token);
+    const romId = await createRom();
 
     const saveData = Buffer.from('state-blob');
     const saveResponse = await getApp().inject({
@@ -342,7 +353,7 @@ describe('ROM save state endpoints', () => {
 
     const ownerToken = await getAccessToken('owner@example.com');
     const intruderToken = await getAccessToken('intruder@example.com');
-    const romId = await createRom(ownerToken);
+    const romId = await createRom();
     const saveData = Buffer.from('private-state');
 
     const saveResponse = await getApp().inject({

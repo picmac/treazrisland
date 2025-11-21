@@ -10,6 +10,7 @@ import {
   stopTestDatabase,
   type TestDatabase,
 } from '../../helpers/postgres';
+import { ensureUserWithPassword } from '../../helpers/auth';
 
 describe('POST /auth/refresh', () => {
   let app: ReturnType<typeof createApp> | null = null;
@@ -57,6 +58,8 @@ describe('POST /auth/refresh', () => {
     }
 
     const activeApp = app;
+
+    await ensureUserWithPassword(database!.prisma, 'player@example.com');
 
     const loginResponse = await activeApp.inject({
       method: 'POST',
