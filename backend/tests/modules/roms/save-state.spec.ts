@@ -35,12 +35,12 @@ describe('ROM save state endpoints', () => {
     return app;
   };
 
-  const createRom = async (accessToken?: string): Promise<string> => {
+  const createRom = async (options?: { adminToken?: string }): Promise<string> => {
     const romPayload = Buffer.from('test-rom');
     const checksum = createHash('sha256').update(romPayload).digest('hex');
 
     const adminAccessToken =
-      accessToken ?? (await getAccessToken('admin@example.com', { isAdmin: true }));
+      options?.adminToken ?? (await getAccessToken('admin@example.com', { isAdmin: true }));
 
     if (!minioClient) {
       throw new Error('MinIO client not initialised');
@@ -224,7 +224,7 @@ describe('ROM save state endpoints', () => {
     }
 
     const token = await getAccessToken();
-    const romId = await createRom(token);
+    const romId = await createRom();
 
     const saveData = Buffer.from('state-blob');
     const saveResponse = await getApp().inject({
@@ -353,7 +353,7 @@ describe('ROM save state endpoints', () => {
 
     const ownerToken = await getAccessToken('owner@example.com');
     const intruderToken = await getAccessToken('intruder@example.com');
-    const romId = await createRom(ownerToken);
+    const romId = await createRom();
     const saveData = Buffer.from('private-state');
 
     const saveResponse = await getApp().inject({
