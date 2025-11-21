@@ -50,11 +50,39 @@ export async function registerTestRom(
     headers?: Record<string, string>;
   };
 
-  const uploadResponse = await request.fetch(grant.uploadUrl, {
-    method: 'PUT',
-    headers: grant.headers,
-    data: romBuffer,
-  });
+  const uploadHeaders = { ...(grant.headers ?? {}) };
+  const performUpload = async (targetUrl: string, hostHeader?: string) =>
+    request.fetch(targetUrl, {
+      method: 'PUT',
+      headers: hostHeader ? { ...uploadHeaders, host: hostHeader } : uploadHeaders,
+      data: romBuffer,
+    });
+
+  let uploadResponse;
+  let uploadError: Error | null = null;
+
+  try {
+    uploadResponse = await performUpload(grant.uploadUrl);
+  } catch (error) {
+    uploadError = error as Error;
+  }
+
+  if (uploadError) {
+    const originalUrl = new URL(grant.uploadUrl);
+    const overrideHost = process.env.PLAYWRIGHT_STORAGE_HOST_OVERRIDE ?? 'localhost:9000';
+
+    if (overrideHost && overrideHost !== originalUrl.host) {
+      const originalHost = originalUrl.host;
+      originalUrl.host = overrideHost;
+
+      uploadResponse = await performUpload(originalUrl.toString(), originalHost);
+      uploadError = null;
+    }
+  }
+
+  if (uploadError) {
+    throw uploadError;
+  }
 
   expect(uploadResponse.ok()).toBeTruthy();
 
