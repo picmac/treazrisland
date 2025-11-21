@@ -20,6 +20,7 @@ pnpm --filter frontend start # serve the production build locally
 ```
 
 > ℹ️ `pnpm` is the only supported package manager. A `preinstall` guard blocks `npm`/`yarn` executions so the shared `pnpm-lock.yaml` stays authoritative. We intentionally removed `package-lock.json` from the frontend to prevent accidental `npm ci` runs, which conflict with the workspace's `pnpm` layout.
+> 🚧 `npm install` may fail with errors like `microbundle: not found` because the workspace relies on pnpm's hoisting strategy. If that happens, rerun `corepack pnpm install --frozen-lockfile` instead of using `npm`.
 
 Additional scripts (linting, formatting, Husky hooks, etc.) are defined in the root `package.json` and automatically cover both the backend and frontend.
 
