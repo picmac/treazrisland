@@ -196,7 +196,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     if (!emulatorRef.current || !rom) {
       pushToast({
         title: 'Emulator not ready',
-        description: 'Start the session before saving your progress.',
+        description: 'Start the session and wait for the emulator to finish loading before saving.',
       });
       return;
     }
@@ -232,7 +232,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     if (!emulatorRef.current) {
       pushToast({
         title: 'Emulator not ready',
-        description: 'Start the session before loading your save.',
+        description: 'Start the session and wait for the emulator to finish loading before loading.',
       });
       return;
     }
@@ -299,6 +299,8 @@ export default function PlayPage({ params }: PlayPageProps) {
     [],
   );
 
+  const controlsDisabled = !isSessionReady || loadState !== 'ready';
+
   return (
     <section className="play-session" aria-live="polite">
       <header className="play-session__header">
@@ -352,7 +354,7 @@ export default function PlayPage({ params }: PlayPageProps) {
             isSaving={isSaving}
             isLoading={isLoadingCloudSave}
             isSyncing={isSyncingCloudSave}
-            disabled={!isSessionReady || !emulatorReady}
+            disabled={controlsDisabled}
           />
         )}
       </div>
