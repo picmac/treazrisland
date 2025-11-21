@@ -167,7 +167,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     container.appendChild(viewportNode);
 
     const script = document.createElement('script');
-    let readinessFallback: ReturnType<typeof setTimeout> | undefined;
+    let readinessFallback: number | undefined;
     script.src = EMULATOR_EMBED_URL;
     script.async = true;
     scriptRef.current = script;
@@ -189,7 +189,7 @@ export default function PlayPage({ params }: PlayPageProps) {
 
     return () => {
       if (readinessFallback) {
-        clearTimeout(readinessFallback);
+        window.clearTimeout(readinessFallback);
       }
       script.removeEventListener('load', handleScriptLoad);
       script.remove();
