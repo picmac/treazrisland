@@ -13,8 +13,11 @@ test.describe('save state management', () => {
     await page.goto(`/play/${rom.id}`);
     await page.getByRole('button', { name: 'Ready Up' }).click();
 
+    const emulatorStatus = page.getByText('Loading EmulatorJS runtime…');
+    await expect(emulatorStatus).toBeHidden({ timeout: 15000 });
+
     const saveButton = page.getByRole('button', { name: 'Save State' });
-    await expect(saveButton).toBeEnabled();
+    await expect(saveButton).toBeEnabled({ timeout: 20000 });
     await expect(page.getByText('No save yet')).toBeVisible();
 
     await saveButton.click();
