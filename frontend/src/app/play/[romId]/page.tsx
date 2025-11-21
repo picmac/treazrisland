@@ -140,13 +140,21 @@ export default function PlayPage({ params }: PlayPageProps) {
     emulatorWindow.EJS_defaultKeys = DEFAULT_KEYBOARD_MAPPING;
     emulatorWindow.EJS_gamepad = DEFAULT_GAMEPAD_MAPPING;
     emulatorWindow.EJS_fullscreenOnLoad = false;
-    emulatorWindow.EJS_onGameReady = () => {
+    const markEmulatorReady = () => {
+      if (!emulatorWindow.EJS_emulator) {
+        return false;
+      }
+
       emulatorRef.current = emulatorWindow.EJS_emulator as EmulatorHandle;
       setEmulatorReady(true);
+      return true;
+    };
+
+    emulatorWindow.EJS_onGameReady = () => {
+      markEmulatorReady();
     };
     emulatorWindow.EJS_onGameStart = () => {
-      emulatorRef.current = emulatorWindow.EJS_emulator as EmulatorHandle;
-      setEmulatorReady(true);
+      markEmulatorReady();
     };
 
     const container = emulatorContainerRef.current;
@@ -159,9 +167,34 @@ export default function PlayPage({ params }: PlayPageProps) {
     container.appendChild(viewportNode);
 
     const script = document.createElement('script');
+    let readinessFallback: number | undefined;
+    let readinessPoll: number | undefined;
     script.src = EMULATOR_EMBED_URL;
     script.async = true;
     scriptRef.current = script;
+    const beginReadinessWatch = () => {
+      readinessPoll = window.setInterval(() => {
+        if (markEmulatorReady()) {
+          window.clearInterval(readinessPoll);
+        }
+      }, 250);
+
+      readinessFallback = window.setTimeout(() => {
+        if (readinessPoll) {
+          window.clearInterval(readinessPoll);
+        }
+        markEmulatorReady();
+      }, 10000);
+    };
+
+    const handleScriptLoad = () => {
+      if (markEmulatorReady()) {
+        return;
+      }
+
+      beginReadinessWatch();
+    };
+    script.addEventListener('load', handleScriptLoad);
     script.addEventListener('error', () => {
       setError('Unable to load EmulatorJS bundle.');
       setLoadState('error');
@@ -169,6 +202,13 @@ export default function PlayPage({ params }: PlayPageProps) {
     container.appendChild(script);
 
     return () => {
+      if (readinessFallback) {
+        window.clearTimeout(readinessFallback);
+      }
+      if (readinessPoll) {
+        window.clearInterval(readinessPoll);
+      }
+      script.removeEventListener('load', handleScriptLoad);
       script.remove();
       scriptRef.current = null;
       container.innerHTML = '';
