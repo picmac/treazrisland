@@ -1,11 +1,16 @@
 # syntax=docker/dockerfile:1.7
 
-ARG NODE_IMAGE=node:20-bookworm-slim
+ARG NODE_IMAGE=node:22.21-bookworm-slim
 FROM ${NODE_IMAGE} AS build
 
 RUN apt-get update \
   && apt-get install -y git p7zip-full \
   && rm -rf /var/lib/apt/lists/*
+
+ENV PNPM_HOME=/usr/local/share/pnpm
+ENV PATH="${PNPM_HOME}:${PATH}"
+
+RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
 
 WORKDIR /src
 
@@ -37,14 +42,10 @@ if (!contents.includes(sentinel)) {
 }
 NODE
 
-# EmulatorJS does not provide a package-lock.json, so fall back to
-# `npm install` when `npm ci` cannot run.
-RUN if [ -f package-lock.json ]; then \
-      npm ci; \
-    else \
-      npm install; \
-    fi
-RUN npm run build
+# EmulatorJS does not provide a package-lock.json, so rely on pnpm's
+# workspace install while allowing lockfile generation during the build.
+RUN pnpm install --frozen-lockfile=false
+RUN pnpm run build
 
 FROM caddy:2.9.1-alpine AS runtime
 

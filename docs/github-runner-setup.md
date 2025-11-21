@@ -6,7 +6,7 @@ This guide walks through provisioning a self-hosted GitHub Actions runner for th
 
 1. **Supported host**: Ubuntu 22.04 LTS (x64) with at least 4 vCPUs, 8 GB RAM, and 30 GB of free disk. Smaller machines tend to swap during Playwright runs.
 2. **Network**: Outbound HTTPS (ports 443/80) to `github.com`, `objects.githubusercontent.com`, Docker Hub, and npm registry endpoints. Inbound access is optional unless you need SSH.
-3. **System packages**: `curl`, `tar`, `unzip`, `libicu` (needed by the runner) plus Docker Engine with Compose V2, Node.js 22.11, and pnpm 10.4.1 to match the dependency matrix.
+3. **System packages**: `curl`, `tar`, `unzip`, `libicu` (needed by the runner) plus Docker Engine with Compose V2, Node.js 22.21, and pnpm 10.23.0 to match the dependency matrix.
 4. **Access token**: A short-lived registration token from **GitHub → Settings → Actions → Runners** for this repository or organization. Keep it secret; anyone with the token can register a runner.
 5. **Dedicated user**: Create a system account (for example `actions`) so the runner does not execute CI jobs as `root`.
 
@@ -73,7 +73,7 @@ This guide walks through provisioning a self-hosted GitHub Actions runner for th
 
 ## Keeping toolchains in sync
 
-The CI workflow expects Node.js 22.11 and pnpm 10.4.1, matching the dependency matrix. Use the NodeSource or Volta installers (or `asdf`) to provision those versions under the `actions` user, and run `pnpm install --global pnpm@10.4.1` if the default install drifts. When you upgrade tooling, update both the host and the pinned versions in `docs/dependency-matrix.md` plus the workflow files.
+The CI workflow expects Node.js 22.21 and pnpm 10.23.0, matching the dependency matrix. Use the NodeSource or Volta installers (or `asdf`) to provision those versions under the `actions` user, and run `corepack prepare pnpm@10.23.0 --activate` if the default install drifts. When you upgrade tooling, update both the host and the pinned versions in `docs/dependency-matrix.md` plus the workflow files.
 
 ## Preparing for CI-triggered deployments
 

@@ -6,8 +6,8 @@ This guide standardises the local development toolchain so that future bootstrap
 
 | Tool                           | Version       | Notes                                                                                                        |
 | ------------------------------ | ------------- | ------------------------------------------------------------------------------------------------------------ |
-| Node.js                        | 22.11.0 (LTS) | Aligns with current pnpm compatibility and will be enforced via asdf and the `package.json` `engines` field. |
-| pnpm                           | 10.4.1        | Matches pnpm releases verified against Node.js 22.                                                           |
+| Node.js                        | 22.21.0 (LTS) | Aligns with current pnpm compatibility and will be enforced via asdf and the `package.json` `engines` field. |
+| pnpm                           | 10.23.0        | Matches pnpm releases verified against Node.js 22.                                                           |
 | Docker Desktop / Docker Engine | 26.1.x        | Required for the forthcoming bootstrap script that builds and starts containers.                             |
 | PostgreSQL                     | 16.3          | Matches the target production major version; use either local binaries or Docker image `postgres:16`.        |
 | Redis                          | 7.2.4         | Matches the cache layer the services are designed to run against.                                            |
@@ -19,7 +19,7 @@ This guide standardises the local development toolchain so that future bootstrap
 Run `./scripts/bootstrap.sh` from the repository root once the prerequisites listed above are available. The script performs the following actions:
 
 1. Verifies that Docker (with Compose v2), Node.js, and pnpm are installed and accessible on your PATH.
-2. Installs workspace dependencies via `pnpm install`.
+2. Installs workspace dependencies via `pnpm install --frozen-lockfile`.
 3. Copies `.env.example` to `.env` if the target file is missing so that Docker services share consistent defaults.
 4. Executes `docker compose up --build` to build and start the project containers.
 
@@ -106,7 +106,7 @@ The repository standardises code quality tooling across the monorepo root so tha
 Install dependencies with pnpm to pick up the ESLint and Prettier configuration:
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
 Available scripts:
@@ -119,6 +119,6 @@ Available scripts:
 
 ### Husky git hooks
 
-- Husky is installed as a development dependency and initialised via the automatic `prepare` script after `pnpm install`.
+- Husky is installed as a development dependency and initialised via the automatic `prepare` script after `pnpm install --frozen-lockfile`.
 - The `.husky/pre-commit` hook runs `pnpm lint` and `pnpm format:check`. Commits will fail until lint and formatting pass locally, preventing inconsistent code from entering the repository.
-- If Git hooks are not running (for example after cloning), run `pnpm install` or `pnpm exec husky install` to reinstall them.
+- If Git hooks are not running (for example after cloning), run `pnpm install --frozen-lockfile` or `pnpm exec husky install` to reinstall them.

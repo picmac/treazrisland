@@ -6,7 +6,7 @@ This guide takes a new operator from cloning the Treazr Island monorepo to launc
 
 - ✅ Deliver a reproducible local stack (frontend, backend API, PostgreSQL, Redis, MinIO-compatible object storage, EmulatorJS) via Docker Compose.
 - ✅ Produce an administrator account and import at least one ROM so the `/play/:romId` route can start EmulatorJS immediately.
-- ✅ Capture runtime metrics for critical steps (`pnpm install`, `pnpm --filter treazrisland-frontend build`, `docker compose up --build`) and log which host OS validated the flow.
+- ✅ Capture runtime metrics for critical steps (`pnpm install --frozen-lockfile`, `pnpm --filter treazrisland-frontend build`, `docker compose up --build`) and log which host OS validated the flow.
 
 ## Requirements at a Glance
 
@@ -22,8 +22,8 @@ This guide takes a new operator from cloning the Treazr Island monorepo to launc
 
 | Tool       | Version               | macOS install                                                              | Linux install                                                             |
 | ---------- | --------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Node.js    | 22.11.0 LTS           | `asdf install nodejs 22.11.0` or `brew install node@22`                    | `asdf install nodejs 22.11.0` after `asdf` bootstrap                      |
-| pnpm       | 10.4.1                | `asdf plugin add pnpm ... && asdf install`                                 | Same as macOS                                                             |
+| Node.js    | 22.21.0 LTS           | `asdf install nodejs 22.21.0` or `brew install node@22`                    | `asdf install nodejs 22.21.0` after `asdf` bootstrap                      |
+| pnpm       | 10.23.0                | `asdf plugin add pnpm ... && asdf install`                                 | Same as macOS                                                             |
 | Docker     | Desktop/Engine 26.1.x | Download from Docker Desktop installer and enable Rosetta on Apple Silicon | Follow Docker Engine Ubuntu guide and add your user to the `docker` group |
 | PostgreSQL | 16.3                  | `brew install postgresql@16` or `asdf install postgres 16.3`               | `asdf install postgres 16.3` or Docker image `postgres:16`                |
 | Redis      | 7.2.4                 | `asdf install redis 7.2.4`                                                 | `asdf install redis 7.2.4`                                                |
@@ -60,8 +60,8 @@ If you rely on SSH, swap in the SSH remote and ensure your agent is unlocked bef
 3. Install Docker Desktop 26.1.x and enable the "Use Rosetta for x86/amd64 emulation" checkbox on Apple Silicon when prompted.
 4. Verify everything is on PATH:
    ```bash
-   node --version   # expect v22.11.0
-   pnpm --version   # expect 10.4.1
+   node --version   # expect v22.21.0
+   pnpm --version   # expect 10.23.0
    docker version   # Docker Engine 26.1.x
    postgres --version
    redis-server --version
@@ -106,14 +106,14 @@ Run the helper script once all prerequisites exist:
 The script performs:
 
 1. Dependency checks for Docker, Docker Compose v2, Node.js, and pnpm.
-2. `pnpm install` for the entire workspace.
+2. `pnpm install --frozen-lockfile` for the entire workspace (the preinstall guard enforces pnpm).
 3. Copies `.env.example` files to `.env` (root and backend) when they are missing.
 4. `docker compose up --build` to build images and start services (frontend on port `5173`, backend API on `4000`, Postgres on `5432`, Redis on `6379`, MinIO on `9000/9001`, EmulatorJS on `8080`).
 
 **Manual alternative:**
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 cp .env.example .env   # only when .env is absent
 cp backend/.env.example backend/.env
 pnpm prisma:generate   # optional: ensures Prisma Client is fresh
