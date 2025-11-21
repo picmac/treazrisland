@@ -12,7 +12,7 @@ class LogCollector extends Writable {
 
   override _write(
     chunk: Buffer,
-    _encoding: BufferEncoding,
+    _encoding: Parameters<Writable['_write']>[1],
     callback: (error?: Error | null) => void,
   ): void {
     this.buffer += chunk.toString();

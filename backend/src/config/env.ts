@@ -1,7 +1,7 @@
 import { config as loadEnvFiles } from 'dotenv-flow';
 import { z } from 'zod';
 
-type ProcessEnv = NodeJS.ProcessEnv;
+type ProcessEnv = typeof process.env;
 
 loadEnvFiles({ silent: true });
 
