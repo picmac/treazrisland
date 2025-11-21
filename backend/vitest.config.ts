@@ -9,12 +9,8 @@ export default defineConfig({
     // Run in a single worker so Postgres test containers aren't started in parallel
     // which can exhaust CI resources and trigger forced shutdowns mid-test.
     pool: 'threads',
-    poolOptions: {
-      threads: {
-        minThreads: 1,
-        maxThreads: 1,
-      },
-    },
+    maxWorkers: 1,
+    fileParallelism: false,
     coverage: {
       provider: 'v8',
       enabled: true,
