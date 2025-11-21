@@ -43,7 +43,9 @@ test.describe('gameplay experience', () => {
   test('loads ROM dossier and exposes gameplay UI affordances', async ({ page }) => {
     await page.goto(`${frontendBaseUrl}/play/${romId}`);
 
-    await expect(page.getByText('Fetching ROM dossier…')).toBeVisible();
+    await expect(
+      page.locator('.play-session__status', { hasText: 'Fetching ROM dossier…' }),
+    ).toBeVisible();
     await expect(page.getByRole('heading', { name: romPayload.rom.title })).toBeVisible();
     await expect(page.getByRole('button', { name: /controller map/i })).toBeVisible();
     await expect(page.getByText(/confirm your controller/i)).toBeVisible();
