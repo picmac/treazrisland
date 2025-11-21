@@ -51,7 +51,9 @@ describe('S3RomStorage', () => {
       const putObject = vi.fn().mockResolvedValue(undefined);
 
       const storage = new S3RomStorage(
-        { bucketExists, makeBucket, putObject } as unknown as ConstructorParameters<typeof S3RomStorage>[0],
+        { bucketExists, makeBucket, putObject } as unknown as ConstructorParameters<
+          typeof S3RomStorage
+        >[0],
         {
           bucket: 'roms',
           region: 'us-east-1',

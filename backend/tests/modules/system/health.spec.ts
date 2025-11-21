@@ -55,7 +55,9 @@ describe('GET /health', () => {
   it('reports a degraded status when Redis is unavailable', async () => {
     await app.ready();
 
-    app.redis.ping = vi.fn().mockRejectedValue(new Error('Redis offline')) as unknown as typeof app.redis.ping;
+    app.redis.ping = vi
+      .fn()
+      .mockRejectedValue(new Error('Redis offline')) as unknown as typeof app.redis.ping;
 
     const response = await supertest(app.server).get('/health');
 

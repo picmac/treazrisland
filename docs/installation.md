@@ -23,7 +23,7 @@ This guide takes a new operator from cloning the Treazr Island monorepo to launc
 | Tool       | Version               | macOS install                                                              | Linux install                                                             |
 | ---------- | --------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | Node.js    | 22.21.0 LTS           | `asdf install nodejs 22.21.0` or `brew install node@22`                    | `asdf install nodejs 22.21.0` after `asdf` bootstrap                      |
-| pnpm       | 10.23.0                | `asdf plugin add pnpm ... && asdf install`                                 | Same as macOS                                                             |
+| pnpm       | 10.23.0               | `asdf plugin add pnpm ... && asdf install`                                 | Same as macOS                                                             |
 | Docker     | Desktop/Engine 26.1.x | Download from Docker Desktop installer and enable Rosetta on Apple Silicon | Follow Docker Engine Ubuntu guide and add your user to the `docker` group |
 | PostgreSQL | 16.3                  | `brew install postgresql@16` or `asdf install postgres 16.3`               | `asdf install postgres 16.3` or Docker image `postgres:16`                |
 | Redis      | 7.2.4                 | `asdf install redis 7.2.4`                                                 | `asdf install redis 7.2.4`                                                |

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { backendBaseUrl } from './utils/env';
+import { backendBaseUrl, frontendBaseUrl } from './utils/env';
 import { obtainAccessToken } from './utils/backendApi';
 import { seedMagicLinkToken } from './utils/magicLink';
 
@@ -42,10 +42,18 @@ test.describe('authentication onboarding', () => {
     expect(loginResponse.ok()).toBeTruthy();
     const loginPayload = (await loginResponse.json()) as LoginResponse;
 
-    const magicToken = await seedMagicLinkToken({
-      id: loginPayload.user.id,
-      email: loginPayload.user.email,
+    const magicLinkRequest = await request.post(`${backendBaseUrl}/auth/magic-link/request`, {
+      data: { email, redirectUrl: `${frontendBaseUrl}/magic-link` },
     });
+    expect(magicLinkRequest.status()).toBe(202);
+    const { token: debugMagicToken } = (await magicLinkRequest.json()) as { token?: string };
+
+    const magicToken =
+      debugMagicToken ??
+      (await seedMagicLinkToken({
+        id: loginPayload.user.id,
+        email: loginPayload.user.email,
+      }));
 
     await context.clearCookies();
     await page.goto('/');

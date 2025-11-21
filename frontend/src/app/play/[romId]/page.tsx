@@ -297,7 +297,8 @@ export default function PlayPage({ params }: PlayPageProps) {
     if (!emulatorRef.current) {
       pushToast({
         title: 'Emulator not ready',
-        description: 'Start the session and wait for the emulator to finish loading before loading.',
+        description:
+          'Start the session and wait for the emulator to finish loading before loading.',
       });
       return;
     }
@@ -387,9 +388,7 @@ export default function PlayPage({ params }: PlayPageProps) {
             {!isSessionReady && (
               <p className="play-session__status">Confirm your controller to start the emulator.</p>
             )}
-            {showRomLoadingStatus && (
-              <p className="play-session__status">Fetching ROM dossier…</p>
-            )}
+            {showRomLoadingStatus && <p className="play-session__status">Fetching ROM dossier…</p>}
             {loadState === 'error' && error && (
               <p className="play-session__status" role="alert">
                 {error}

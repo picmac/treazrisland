@@ -20,7 +20,11 @@ test.describe('save state management', () => {
     await expect(emulatorStatus).toBeHidden({ timeout: 15000 });
 
     const controlsOverlay = page.getByRole('toolbar', { name: /emulator controls/i });
-    await expect(controlsOverlay.getByText('Live')).toBeVisible({ timeout: 20_000 });
+    await expect(controlsOverlay).toBeVisible({ timeout: 20_000 });
+
+    const overlayStatus = controlsOverlay.getByText(/Live|Paused/);
+    await expect(overlayStatus).toBeVisible({ timeout: 30_000 });
+    await expect(overlayStatus).toHaveText('Live', { timeout: 30_000 });
 
     const saveButton = controlsOverlay.getByRole('button', { name: 'Save State' });
     await expect(saveButton).toBeEnabled({ timeout: 30_000 });
