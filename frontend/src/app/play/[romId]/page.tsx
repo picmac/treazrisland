@@ -168,6 +168,7 @@ export default function PlayPage({ params }: PlayPageProps) {
 
     const script = document.createElement('script');
     let readinessFallback: number | undefined;
+    let readinessPoll: number | undefined;
     script.src = EMULATOR_EMBED_URL;
     script.async = true;
     scriptRef.current = script;
@@ -176,9 +177,18 @@ export default function PlayPage({ params }: PlayPageProps) {
         return;
       }
 
+      readinessPoll = window.setInterval(() => {
+        if (markEmulatorReady()) {
+          window.clearInterval(readinessPoll);
+        }
+      }, 250);
+
       readinessFallback = window.setTimeout(() => {
+        if (readinessPoll) {
+          window.clearInterval(readinessPoll);
+        }
         markEmulatorReady();
-      }, 1500);
+      }, 3000);
     };
     script.addEventListener('load', handleScriptLoad);
     script.addEventListener('error', () => {
@@ -190,6 +200,9 @@ export default function PlayPage({ params }: PlayPageProps) {
     return () => {
       if (readinessFallback) {
         window.clearTimeout(readinessFallback);
+      }
+      if (readinessPoll) {
+        window.clearInterval(readinessPoll);
       }
       script.removeEventListener('load', handleScriptLoad);
       script.remove();
