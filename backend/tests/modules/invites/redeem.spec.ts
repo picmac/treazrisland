@@ -1,6 +1,7 @@
 import '../../setup-env';
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import bcrypt from 'bcryptjs';
 
 import { parseEnv, type Env } from '../../../src/config/env';
 import { createApp } from '../../../src/index';
@@ -90,6 +91,51 @@ describe('POST /auth/invitations/:code/redeem', () => {
     ).toBe(true);
     const storedInvite = await activeApp.inviteStore.getInvite(invite.code);
     expect(storedInvite?.redeemedAt).toBeInstanceOf(Date);
+  });
+
+  it('rejects redemption for an email that already exists', async ({ skip }) => {
+    if (databaseError || !app || !database) {
+      skip();
+      return;
+    }
+
+    const activeApp = app;
+    const activeDatabase = database;
+    const existingEmail = 'existing@example.com';
+    const passwordHash = await bcrypt.hash('ExistingPass123!', 10);
+
+    await activeDatabase.prisma.user.create({
+      data: {
+        email: existingEmail,
+        username: 'existing_user',
+        displayName: 'Existing User',
+        passwordHash,
+      },
+    });
+
+    const invite = {
+      code: 'EXISTING-EMAIL',
+      expiresAt: new Date(Date.now() + 1000 * 60),
+    } satisfies InviteSeed;
+    await seedInvites(activeApp, [invite]);
+
+    const response = await activeApp.inject({
+      method: 'POST',
+      url: `/auth/invitations/${invite.code}/redeem`,
+      payload: {
+        email: existingEmail,
+        password: 'AnotherPass123!',
+      },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({ error: 'Email is already registered' });
+    expect(
+      response.cookies.some((cookie: { name: string }) => cookie.name === 'refreshToken'),
+    ).toBe(false);
+    const storedInvite = await activeApp.inviteStore.getInvite(invite.code);
+    expect(storedInvite?.redeemedById).toBeNull();
+    expect(storedInvite?.redeemedAt).toBeNull();
   });
 
   it('rejects expired invites', async ({ skip }) => {

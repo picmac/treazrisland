@@ -15,9 +15,6 @@ const loginSchema = z.object({
   password: z.string().min(8),
 });
 
-const FALLBACK_OPERATOR_PASSWORD = 'password123';
-const FALLBACK_PASSWORD_HASH = bcrypt.hashSync(FALLBACK_OPERATOR_PASSWORD, 10);
-
 const magicLinkSchema = z.object({
   token: z.string().min(1),
 });
@@ -65,6 +62,13 @@ const buildUsernameSeed = (email: string): string => {
   return sanitized.length > 0 ? sanitized.slice(0, 24) : 'player';
 };
 
+class UserAlreadyExistsError extends Error {
+  constructor(email: string) {
+    super(`User already exists for email: ${email}`);
+    this.name = 'UserAlreadyExistsError';
+  }
+}
+
 const resolveAdminFlag = async (prisma: FastifyInstance['prisma']): Promise<boolean> => {
   const userCount = await prisma.user.count();
   return userCount === 0;
@@ -104,66 +108,6 @@ const createSessionTokens = async (
   return { accessToken, refreshToken };
 };
 
-const ensureUserRecord = async (
-  email: string,
-  prisma: FastifyInstance['prisma'],
-): Promise<AuthUser> => {
-  const normalizedEmail = normalizeEmail(email);
-  const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-
-  if (existing) {
-    return { id: existing.id, email: existing.email, isAdmin: existing.isAdmin };
-  }
-
-  const usernameSeed = buildUsernameSeed(normalizedEmail);
-  let attempt = 0;
-  const isAdmin = await resolveAdminFlag(prisma);
-
-  while (attempt < 5) {
-    const suffix = attempt === 0 ? '' : `_${attempt}`;
-    const usernameCandidate = `${usernameSeed}${suffix}`.slice(0, 32);
-
-    try {
-      const created = await prisma.user.create({
-        data: {
-          email: normalizedEmail,
-          username: usernameCandidate,
-          displayName: usernameCandidate,
-          passwordHash: FALLBACK_PASSWORD_HASH,
-          isAdmin,
-        },
-      });
-
-      return { id: created.id, email: created.email, isAdmin: created.isAdmin };
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002' &&
-        error.meta?.target &&
-        String(error.meta.target).includes('username')
-      ) {
-        attempt += 1;
-        continue;
-      }
-
-      throw error;
-    }
-  }
-
-  const fallbackUsername = `player_${randomUUID().slice(0, 8)}`;
-  const created = await prisma.user.create({
-    data: {
-      email: normalizedEmail,
-      username: fallbackUsername,
-      displayName: fallbackUsername,
-      passwordHash: FALLBACK_PASSWORD_HASH,
-      isAdmin,
-    },
-  });
-
-  return { id: created.id, email: created.email, isAdmin: created.isAdmin };
-};
-
 const createUserWithPassword = async (
   prisma: FastifyInstance['prisma'],
   email: string,
@@ -173,7 +117,7 @@ const createUserWithPassword = async (
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
   if (existing) {
-    return { id: existing.id, email: existing.email, isAdmin: existing.isAdmin };
+    throw new UserAlreadyExistsError(existing.email);
   }
 
   const usernameSeed = buildUsernameSeed(normalizedEmail);
@@ -287,22 +231,22 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       where: { email: normalizedEmail },
     });
 
-    let user: AuthUser | null = null;
-
-    if (existingUser) {
-      const passwordMatches = await bcrypt.compare(password, existingUser.passwordHash);
-      if (!passwordMatches) {
-        recordAuthAttempt({ method: 'password', outcome: 'failure' });
-        return reply.status(401).send({ error: 'Invalid credentials' });
-      }
-      user = { id: existingUser.id, email: existingUser.email, isAdmin: existingUser.isAdmin };
-    } else {
-      if (password !== FALLBACK_OPERATOR_PASSWORD) {
-        recordAuthAttempt({ method: 'password', outcome: 'failure' });
-        return reply.status(401).send({ error: 'Invalid credentials' });
-      }
-      user = await ensureUserRecord(email, fastify.prisma);
+    if (!existingUser) {
+      recordAuthAttempt({ method: 'password', outcome: 'failure' });
+      return reply.status(401).send({ error: 'Invalid credentials' });
     }
+
+    const passwordMatches = await bcrypt.compare(password, existingUser.passwordHash);
+    if (!passwordMatches) {
+      recordAuthAttempt({ method: 'password', outcome: 'failure' });
+      return reply.status(401).send({ error: 'Invalid credentials' });
+    }
+
+    const user: AuthUser = {
+      id: existingUser.id,
+      email: existingUser.email,
+      isAdmin: existingUser.isAdmin,
+    };
 
     const { accessToken } = await createSessionTokens(fastify, reply, user);
     recordAuthAttempt({ method: 'password', outcome: 'success' });
@@ -492,7 +436,17 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       const passwordHash = await bcrypt.hash(password, 10);
-      const user = await createUserWithPassword(fastify.prisma, email, passwordHash);
+      let user: AuthUser;
+
+      try {
+        user = await createUserWithPassword(fastify.prisma, email, passwordHash);
+      } catch (error) {
+        if (error instanceof UserAlreadyExistsError) {
+          return reply.status(409).send({ error: 'Email is already registered' });
+        }
+
+        throw error;
+      }
 
       await fastify.inviteStore.markRedeemed(invite.code, user.id);
 

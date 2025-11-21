@@ -52,19 +52,31 @@ describe('POST /auth/login', () => {
   });
 
   it('returns access and refresh tokens for valid credentials', async ({ skip }) => {
-    if (databaseError || !app) {
+    if (databaseError || !app || !database) {
       skip();
       return;
     }
 
     const activeApp = app;
+    const activeDatabase = database;
+    const password = 'ValidPassword123!';
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    await activeDatabase.prisma.user.create({
+      data: {
+        email: 'player@example.com',
+        username: 'player_one',
+        displayName: 'Player One',
+        passwordHash,
+      },
+    });
 
     const response = await activeApp.inject({
       method: 'POST',
       url: '/auth/login',
       payload: {
         email: 'player@example.com',
-        password: 'password123',
+        password,
       },
     });
 
@@ -108,6 +120,26 @@ describe('POST /auth/login', () => {
     expect(response.statusCode).toBe(200);
     const body = response.json() as { user: { email: string } };
     expect(body.user.email).toBe(email);
+  });
+
+  it('rejects logins for unknown users', async ({ skip }) => {
+    if (databaseError || !app || !database) {
+      skip();
+      return;
+    }
+
+    const activeApp = app;
+    const activeDatabase = database;
+
+    const response = await activeApp.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { email: 'missing@example.com', password: 'SomePassword123!' },
+    });
+
+    expect(response.statusCode).toBe(401);
+    const userCount = await activeDatabase.prisma.user.count();
+    expect(userCount).toBe(0);
   });
 
   it('rejects invalid credentials', async ({ skip }) => {
