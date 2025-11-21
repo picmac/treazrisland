@@ -13,10 +13,7 @@ test.describe('admin rom uploader UI', () => {
     await page.goto('/admin/roms/new');
 
     await page.setInputFiles('#rom-file', romFixturePath);
-    const checksumStatus = page
-      .getByRole('status')
-      .filter({ hasText: /Waiting for ROM drop|Computing checksum|Checksum locked/i })
-      .first();
+    const checksumStatus = page.getByTestId('rom-upload-status');
 
     await expect(checksumStatus).toHaveText(/Computing checksum/i, { timeout: 12_000 });
     await expect(checksumStatus).toHaveText(/Checksum locked\. Ready to upload\./i, {
