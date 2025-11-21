@@ -12,6 +12,7 @@ test.describe('play session', () => {
 
     await page.getByRole('link', { name: /Play Now/i }).click();
     await expect(page).toHaveURL(new RegExp(`/play/${rom.id}`));
+    await expect(page.getByText('Fetching ROM dossier…')).toBeVisible();
 
     await expect(
       page.getByText(`Confirm your controls before diving into ${rom.title}.`),
