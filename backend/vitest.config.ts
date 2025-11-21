@@ -6,6 +6,15 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     passWithNoTests: true,
+    // Run in a single worker so Postgres test containers aren't started in parallel
+    // which can exhaust CI resources and trigger forced shutdowns mid-test.
+    pool: 'threads',
+    poolOptions: {
+      threads: {
+        minThreads: 1,
+        maxThreads: 1,
+      },
+    },
     coverage: {
       provider: 'v8',
       enabled: true,
