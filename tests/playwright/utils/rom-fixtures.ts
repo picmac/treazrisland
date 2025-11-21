@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { expect, type APIRequestContext } from '@playwright/test';
+import { expect, type APIRequestContext, type APIResponse } from '@playwright/test';
 import { backendBaseUrl } from './env';
 import { obtainAccessToken } from './backendApi';
 
@@ -58,7 +58,7 @@ export async function registerTestRom(
       data: romBuffer,
     });
 
-  let uploadResponse;
+  let uploadResponse: APIResponse | null = null;
   let uploadError: Error | null = null;
 
   try {
@@ -82,6 +82,10 @@ export async function registerTestRom(
 
   if (uploadError) {
     throw uploadError;
+  }
+
+  if (!uploadResponse) {
+    throw new Error('Upload response missing after retries');
   }
 
   expect(uploadResponse.ok()).toBeTruthy();
