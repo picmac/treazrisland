@@ -1,5 +1,7 @@
 declare module '@vitejs/plugin-react' {
-  type ReactPlugin = (...args: unknown[]) => unknown;
-  const plugin: ReactPlugin;
-  export default plugin;
+  import type { PluginOption } from 'vite';
+
+  const react: (options?: Record<string, unknown>) => PluginOption;
+
+  export default react;
 }

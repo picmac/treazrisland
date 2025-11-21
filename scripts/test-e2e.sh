@@ -188,4 +188,4 @@ wait_for_url "http://localhost:${FRONTEND_PORT}" "frontend" "frontend"
 log "Running Playwright suite"
 PLAYWRIGHT_BASE_URL="$PLAYWRIGHT_BASE_URL" \
 PLAYWRIGHT_API_URL="$PLAYWRIGHT_API_URL" \
-pnpm --filter @treazrisland/playwright test:e2e
+pnpm --filter @treazrisland/playwright exec playwright test ${PLAYWRIGHT_CLI_ARGS:-}

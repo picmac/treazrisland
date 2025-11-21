@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "playwright test",
-    "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed",
-    "test:e2e:debug": "playwright test --debug"
+    "test": "../../scripts/test-e2e.sh",
+    "test:e2e": "../../scripts/test-e2e.sh",
+    "test:e2e:headed": "PLAYWRIGHT_CLI_ARGS=--headed ../../scripts/test-e2e.sh",
+    "test:e2e:debug": "PLAYWRIGHT_CLI_ARGS=--debug ../../scripts/test-e2e.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
