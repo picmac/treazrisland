@@ -1,5 +1,6 @@
 import { config as loadEnvFiles } from 'dotenv-flow';
 import { z } from 'zod';
+import type { ProcessEnv } from 'node:process';
 
 loadEnvFiles({ silent: true });
 
@@ -29,7 +30,7 @@ export const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
-export const parseEnv = (source: NodeJS.ProcessEnv = process.env): Env => {
+export const parseEnv = (source: ProcessEnv = process.env): Env => {
   const result = envSchema.safeParse({
     NODE_ENV: source.NODE_ENV,
     PORT: source.PORT,

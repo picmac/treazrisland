@@ -335,7 +335,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
 
     try {
       payload = await fastify.jwt.verify<RefreshTokenPayload>(refreshToken);
-    } catch (error) {
+    } catch {
       return reply.status(401).send({ error: 'Invalid refresh token' });
     }
 

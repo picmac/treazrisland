@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import type React from 'react';
 
 import { registerAdminRom, requestRomUploadGrant, type AdminRomUploadPayload } from '@/lib/admin';
 import styles from './page.module.css';

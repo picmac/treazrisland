@@ -13,7 +13,7 @@ export interface ProfileVerificationResult {
   verifiedAt: string;
 }
 
-export interface EmulatorConfigResult extends EmulatorConfig {}
+export type EmulatorConfigResult = EmulatorConfig;
 
 export interface RomUploadResult {
   romId: string;

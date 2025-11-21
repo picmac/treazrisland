@@ -22,7 +22,7 @@ const makeTypeScriptLanguageOptions = (tsconfigPath) => ({
 
 export default [
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/.next/**'],
+    ignores: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/coverage/**'],
   },
   {
     files: ['backend/**/*.{ts,tsx,js,jsx}'],
@@ -75,6 +75,8 @@ export default [
       ...importPlugin.configs.recommended.rules,
       'react/react-in-jsx-scope': 'off',
       '@next/next/no-html-link-for-pages': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/incompatible-library': 'off',
     },
   },
 ];
