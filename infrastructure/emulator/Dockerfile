@@ -1,10 +1,19 @@
 # syntax=docker/dockerfile:1.7
 
-ARG NODE_IMAGE=node:22.21-bookworm-slim
-FROM ${NODE_IMAGE} AS build
+ARG BUILD_IMAGE=ubuntu:24.04
+FROM ${BUILD_IMAGE} AS build
+
+ARG NODE_VERSION=22
 
 RUN apt-get update \
-  && apt-get install -y git p7zip-full \
+  && apt-get install -y ca-certificates curl git gnupg p7zip-full \
+  && install -d -m 0755 /etc/apt/keyrings \
+  && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+    | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+  && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_VERSION}.x nodistro main" \
+    > /etc/apt/sources.list.d/nodesource.list \
+  && apt-get update \
+  && apt-get install -y nodejs \
   && rm -rf /var/lib/apt/lists/*
 
 ENV PNPM_HOME=/usr/local/share/pnpm
@@ -47,7 +56,18 @@ NODE
 RUN pnpm install --frozen-lockfile=false
 RUN pnpm run build
 
-FROM caddy:2.9.1-alpine AS runtime
+FROM ubuntu:24.04 AS runtime
+
+RUN apt-get update \
+  && apt-get install -y ca-certificates curl gnupg \
+  && install -d -m 0755 /etc/apt/keyrings \
+  && curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/gpg.key \
+    | gpg --dearmor -o /etc/apt/keyrings/caddy-stable.gpg \
+  && echo "deb [signed-by=/etc/apt/keyrings/caddy-stable.gpg] https://dl.cloudsmith.io/public/caddy/stable/deb/ubuntu noble main" \
+    > /etc/apt/sources.list.d/caddy-stable.list \
+  && apt-get update \
+  && apt-get install -y caddy wget \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /srv/emulatorjs
 
