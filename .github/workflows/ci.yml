@@ -248,6 +248,8 @@ jobs:
       CI: true
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
+      ADMIN_BOOTSTRAP_EMAIL: operator@treazrisland.test
+      ADMIN_BOOTSTRAP_PASSWORD: password123
     strategy:
       fail-fast: false
       matrix:

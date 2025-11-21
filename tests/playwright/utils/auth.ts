@@ -1,19 +1,14 @@
 import { expect, type Page } from '@playwright/test';
 
-export type LoginCredentials = {
-  email: string;
-  password: string;
-};
-
-export const defaultCredentials: LoginCredentials = {
-  email: 'operator@treazrisland.test',
-  password: 'password123',
-};
+import { bootstrapAdminAccount } from './backendApi';
+import { defaultCredentials, type LoginCredentials } from './credentials';
 
 export async function loginWithPassword(
   page: Page,
   credentials: LoginCredentials = defaultCredentials,
 ) {
+  await bootstrapAdminAccount(page.request, credentials);
+
   await page.goto('/login');
   await page.getByLabel('Email').fill(credentials.email);
   await page.getByLabel('Password').fill(credentials.password);

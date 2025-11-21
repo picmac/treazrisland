@@ -1,6 +1,7 @@
 import { expect, type APIRequestContext } from '@playwright/test';
+
+import { defaultCredentials, type LoginCredentials } from './credentials';
 import { backendBaseUrl } from './env';
-import { defaultCredentials, type LoginCredentials } from './auth';
 
 interface AuthResponse {
   accessToken: string;
@@ -20,10 +21,20 @@ interface SaveStateResponse {
   data: string;
 }
 
+export async function bootstrapAdminAccount(
+  request: APIRequestContext,
+  credentials: LoginCredentials = defaultCredentials,
+): Promise<void> {
+  const response = await request.post(`${backendBaseUrl}/auth/bootstrap`, { data: credentials });
+  expect([201, 409]).toContain(response.status());
+}
+
 export async function obtainAccessToken(
   request: APIRequestContext,
   credentials: LoginCredentials = defaultCredentials,
 ): Promise<string> {
+  await bootstrapAdminAccount(request, credentials);
+
   const response = await request.post(`${backendBaseUrl}/auth/login`, { data: credentials });
   expect(response.ok()).toBeTruthy();
   const payload = (await response.json()) as AuthResponse;

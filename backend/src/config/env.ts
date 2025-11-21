@@ -27,6 +27,8 @@ export const envSchema = z.object({
   OBJECT_STORAGE_BUCKET: z.string().min(1),
   OBJECT_STORAGE_REGION: z.string().min(1).default('us-east-1'),
   OBJECT_STORAGE_PRESIGNED_TTL: z.coerce.number().int().positive().default(300),
+  ADMIN_BOOTSTRAP_EMAIL: z.string().email().default('operator@treazrisland.test'),
+  ADMIN_BOOTSTRAP_PASSWORD: z.string().min(8).default('password123'),
 });
 
 export type Env = z.infer<typeof envSchema>;
