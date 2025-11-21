@@ -17,7 +17,7 @@ test.describe('save state management', () => {
     await expect(emulatorStatus).toBeHidden({ timeout: 15000 });
 
     const saveButton = page.getByRole('button', { name: 'Save State' });
-    await expect(saveButton).toBeEnabled();
+    await expect(saveButton).toBeEnabled({ timeout: 20000 });
     await expect(page.getByText('No save yet')).toBeVisible();
 
     await saveButton.click();

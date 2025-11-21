@@ -172,11 +172,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     script.src = EMULATOR_EMBED_URL;
     script.async = true;
     scriptRef.current = script;
-    const handleScriptLoad = () => {
-      if (markEmulatorReady()) {
-        return;
-      }
-
+    const beginReadinessWatch = () => {
       readinessPoll = window.setInterval(() => {
         if (markEmulatorReady()) {
           window.clearInterval(readinessPoll);
@@ -188,7 +184,15 @@ export default function PlayPage({ params }: PlayPageProps) {
           window.clearInterval(readinessPoll);
         }
         markEmulatorReady();
-      }, 3000);
+      }, 10000);
+    };
+
+    const handleScriptLoad = () => {
+      if (markEmulatorReady()) {
+        return;
+      }
+
+      beginReadinessWatch();
     };
     script.addEventListener('load', handleScriptLoad);
     script.addEventListener('error', () => {
