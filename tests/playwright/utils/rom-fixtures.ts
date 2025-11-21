@@ -61,13 +61,19 @@ export async function registerTestRom(
   let uploadResponse: APIResponse | null = null;
   let uploadError: Error | null = null;
 
-  try {
-    uploadResponse = await performUpload(grant.uploadUrl);
-  } catch (error) {
-    uploadError = error as Error;
-  }
+  const attemptUpload = async (targetUrl: string, hostHeader?: string) => {
+    try {
+      uploadResponse = await performUpload(targetUrl, hostHeader);
+      uploadError = null;
+    } catch (error) {
+      uploadResponse = null;
+      uploadError = error as Error;
+    }
+  };
 
-  if (uploadError) {
+  await attemptUpload(grant.uploadUrl);
+
+  if (uploadError || !uploadResponse?.ok()) {
     const originalUrl = new URL(grant.uploadUrl);
     const overrideHost = process.env.PLAYWRIGHT_STORAGE_HOST_OVERRIDE ?? 'localhost:9000';
 
@@ -75,20 +81,24 @@ export async function registerTestRom(
       const originalHost = originalUrl.host;
       originalUrl.host = overrideHost;
 
-      uploadResponse = await performUpload(originalUrl.toString(), originalHost);
-      uploadError = null;
+      await attemptUpload(originalUrl.toString(), originalHost);
     }
   }
 
-  if (uploadError) {
-    throw uploadError;
+  if (uploadError || !uploadResponse?.ok()) {
+    const status = uploadResponse?.status();
+    const statusText = uploadResponse?.statusText();
+    const responseText = uploadResponse ? await uploadResponse.text() : null;
+    const errorMessage =
+      `ROM upload failed${status ? ` (${status}${statusText ? ` ${statusText}` : ''})` : ''}` +
+      `${responseText ? `: ${responseText}` : uploadError ? `: ${uploadError.message}` : ''}`;
+
+    throw new Error(errorMessage);
   }
 
   if (!uploadResponse) {
     throw new Error('Upload response missing after retries');
   }
-
-  expect(uploadResponse.ok()).toBeTruthy();
 
   const response = await request.post(`${backendBaseUrl}/admin/roms`, {
     headers: { Authorization: `Bearer ${accessToken}` },
