@@ -206,7 +206,12 @@ export default function AdminRomUploadPage() {
                 <p className="eyebrow">ROM payload</p>
                 <h2 id="rom-upload-form-title">Upload details</h2>
               </div>
-              <p className={styles.status} role="status" aria-live="polite">
+              <p
+                className={styles.status}
+                role="status"
+                aria-live="polite"
+                data-testid="rom-upload-status"
+              >
                 {statusMessage}
               </p>
             </div>

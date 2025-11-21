@@ -51,8 +51,8 @@ export async function registerTestRom(
   };
 
   const signedHeaders = new Set(
-    new URL(grant.uploadUrl)
-      .searchParams.get('X-Amz-SignedHeaders')
+    new URL(grant.uploadUrl).searchParams
+      .get('X-Amz-SignedHeaders')
       ?.split(';')
       .map((header) => header.toLowerCase())
       .filter(Boolean) ?? [],

@@ -36,14 +36,20 @@ test.describe('gameplay experience', () => {
     );
 
     await page.route('**/roms/demo-rom', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(romPayload) }),
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(romPayload),
+      }),
     );
   });
 
   test('loads ROM dossier and exposes gameplay UI affordances', async ({ page }) => {
     await page.goto(`${frontendBaseUrl}/play/${romId}`);
 
-    await expect(page.getByText('Fetching ROM dossier…')).toBeVisible();
+    await expect(
+      page.locator('.play-session__status').filter({ hasText: 'Fetching ROM dossier…' }).first(),
+    ).toBeVisible();
     await expect(page.getByRole('heading', { name: romPayload.rom.title })).toBeVisible();
     await expect(page.getByRole('button', { name: /controller map/i })).toBeVisible();
     await expect(page.getByText(/confirm your controller/i)).toBeVisible();

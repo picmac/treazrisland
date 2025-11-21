@@ -14,9 +14,10 @@ export interface MagicLinkUserSeed {
 export async function seedMagicLinkToken(
   user: MagicLinkUserSeed,
   ttlSeconds: number = DEFAULT_TTL_SECONDS,
+  providedToken?: string,
 ): Promise<string> {
   const redis = new Redis(redisUrl);
-  const token = randomUUID();
+  const token = providedToken ?? randomUUID();
 
   try {
     await redis.set(MAGIC_LINK_PREFIX + token, JSON.stringify({ user }), 'EX', ttlSeconds);

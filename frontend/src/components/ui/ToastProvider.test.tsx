@@ -9,7 +9,10 @@ describe('ToastProvider', () => {
     const { pushToast } = useToast();
 
     return (
-      <button type="button" onClick={() => pushToast({ title: 'Saved', description: 'State persisted', durationMs })}>
+      <button
+        type="button"
+        onClick={() => pushToast({ title: 'Saved', description: 'State persisted', durationMs })}
+      >
         Push toast
       </button>
     );

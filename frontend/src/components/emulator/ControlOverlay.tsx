@@ -71,7 +71,12 @@ export function ControlOverlay({
         </div>
         <div className={styles.overlayMeta}>
           <span>{timestampLabel}</span>
-          <span className={styles.statusBadge}>{disabled ? 'Paused' : 'Live'}</span>
+          <span
+            className={styles.statusBadge}
+            data-testid="control-overlay-status"
+          >
+            {disabled ? 'Paused' : 'Live'}
+          </span>
         </div>
       </div>
     </div>

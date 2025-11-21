@@ -13,11 +13,24 @@ test.describe('save state management', () => {
     await page.goto(`/play/${rom.id}`);
     await page.getByRole('button', { name: 'Ready Up' }).click();
 
+    const sessionStatus = page.getByText('Confirm your controller to start the emulator.');
+    await expect(sessionStatus).toBeHidden({ timeout: 10_000 });
+
+    const romLoadingStatus = page.getByText('Fetching ROM dossier…');
+    await expect(romLoadingStatus).toBeHidden({ timeout: 20_000 });
+
     const emulatorStatus = page.getByText('Loading EmulatorJS runtime…');
     await expect(emulatorStatus).toBeHidden({ timeout: 15000 });
 
-    const saveButton = page.getByRole('button', { name: 'Save State' });
-    await expect(saveButton).toBeEnabled({ timeout: 20000 });
+    const controlsOverlay = page.getByRole('toolbar', { name: /emulator controls/i });
+    await expect(controlsOverlay).toBeVisible({ timeout: 20_000 });
+
+    const saveButton = controlsOverlay.getByRole('button', { name: 'Save State' });
+    const overlayStatus = controlsOverlay.getByTestId('control-overlay-status');
+
+    await expect(overlayStatus).toBeVisible({ timeout: 30_000 });
+    await expect(saveButton).toBeEnabled({ timeout: 30_000 });
+    await expect(overlayStatus).toHaveText('Live', { timeout: 30_000 });
     await expect(page.getByText('No save yet')).toBeVisible();
 
     await saveButton.click();

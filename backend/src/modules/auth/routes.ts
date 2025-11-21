@@ -420,7 +420,12 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       token,
     });
 
-    return reply.status(202).send({ status: 'sent' });
+    const includeDebugToken = fastify.config.NODE_ENV !== 'production';
+
+    return reply.status(202).send({
+      status: 'sent',
+      token: includeDebugToken ? token : undefined,
+    });
   });
 
   fastify.post(

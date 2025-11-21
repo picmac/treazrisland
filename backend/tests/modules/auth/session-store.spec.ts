@@ -5,7 +5,10 @@ vi.mock('../../../src/config/observability', () => ({
   decrementActiveSessions: vi.fn(),
 }));
 
-import { decrementActiveSessions, incrementActiveSessions } from '../../../src/config/observability';
+import {
+  decrementActiveSessions,
+  incrementActiveSessions,
+} from '../../../src/config/observability';
 import { RedisSessionStore } from '../../../src/modules/auth/session-store';
 import type { AuthUser } from '../../../src/modules/auth/types';
 
@@ -38,7 +41,12 @@ describe('RedisSessionStore', () => {
     await store.createRefreshSession('session-123', user);
 
     expect(incrementActiveSessions).toHaveBeenCalledTimes(1);
-    expect(set).toHaveBeenCalledWith(expect.stringContaining('auth:refresh:'), expect.any(String), 'EX', 3600);
+    expect(set).toHaveBeenCalledWith(
+      expect.stringContaining('auth:refresh:'),
+      expect.any(String),
+      'EX',
+      3600,
+    );
 
     const loadedUser = await store.getRefreshSession('session-123');
     expect(loadedUser).toEqual({ id: user.id, email: user.email, isAdmin: true });

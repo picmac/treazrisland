@@ -6,14 +6,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PlayPage from './page';
 import { ToastProvider } from '@/components/ui/ToastProvider';
 import { fetchRomDetails } from '@/lib/roms';
-import { fetchLatestSaveState, persistSaveState, type LatestSaveStateResponse } from '@/lib/saveStates';
+import {
+  fetchLatestSaveState,
+  persistSaveState,
+  type LatestSaveStateResponse,
+} from '@/lib/saveStates';
 import type { RomDetails } from '@/types/rom';
 
 vi.mock('@/lib/roms');
 vi.mock('@/lib/saveStates');
 
 describe('PlayPage control overlay readiness', () => {
-
   const romDetails: RomDetails = {
     id: 'test-rom',
     title: 'Test Adventure',

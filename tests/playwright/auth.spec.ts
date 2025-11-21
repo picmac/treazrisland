@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-import { backendBaseUrl } from './utils/env';
+import { backendBaseUrl, frontendBaseUrl } from './utils/env';
+import { obtainAccessToken } from './utils/backendApi';
 import { seedMagicLinkToken } from './utils/magicLink';
 
 const invitePassword = 'InvitePass123!';
@@ -12,7 +13,10 @@ test.describe('authentication onboarding', () => {
   test('redeems an invite and a magic link token', async ({ page, request, context }) => {
     const email = `deckhand+${Date.now()}@treazr.test`;
 
+    const adminToken = await obtainAccessToken(request);
+
     const inviteResponse = await request.post(`${backendBaseUrl}/auth/invitations`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
       data: { email, expiresInDays: 1 },
     });
     expect(inviteResponse.ok()).toBeTruthy();
@@ -38,10 +42,20 @@ test.describe('authentication onboarding', () => {
     expect(loginResponse.ok()).toBeTruthy();
     const loginPayload = (await loginResponse.json()) as LoginResponse;
 
-    const magicToken = await seedMagicLinkToken({
-      id: loginPayload.user.id,
-      email: loginPayload.user.email,
+    const magicLinkRequest = await request.post(`${backendBaseUrl}/auth/magic-link/request`, {
+      data: { email, redirectUrl: `${frontendBaseUrl}/magic-link` },
     });
+    expect(magicLinkRequest.status()).toBe(202);
+    const { token: requestToken } = (await magicLinkRequest.json()) as { token?: string };
+
+    const magicToken = await seedMagicLinkToken(
+      {
+        id: loginPayload.user.id,
+        email: loginPayload.user.email,
+      },
+      undefined,
+      requestToken,
+    );
 
     await context.clearCookies();
     await page.goto('/');

@@ -82,7 +82,8 @@ describe('config/env', () => {
     process.env.PORT = '5050';
     process.env.JWT_SECRET = 'test-secret-value-123456789012345678';
     process.env.DATABASE_URL = 'postgresql://user:password@localhost:5432/treazrisland';
-    process.env.SHADOW_DATABASE_URL = 'postgresql://user:password@localhost:5432/treazrisland_shadow';
+    process.env.SHADOW_DATABASE_URL =
+      'postgresql://user:password@localhost:5432/treazrisland_shadow';
     process.env.OBJECT_STORAGE_ENDPOINT = '127.0.0.1';
     process.env.OBJECT_STORAGE_PORT = '9000';
     process.env.OBJECT_STORAGE_ACCESS_KEY = 'cache-access';
