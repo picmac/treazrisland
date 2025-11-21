@@ -9,6 +9,7 @@ import { GenericContainer, Wait, type StartedTestContainer } from 'testcontainer
 export type TestDatabase = {
   container: StartedTestContainer;
   prisma: PrismaClient;
+  pool: Pool;
   connectionString: string;
 };
 
@@ -40,7 +41,7 @@ export const startTestDatabase = async (): Promise<TestDatabase> => {
   const pool = new Pool({ connectionString });
   const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
-  return { container, prisma, connectionString };
+  return { container, prisma, pool, connectionString };
 };
 
 export const stopTestDatabase = async (database?: TestDatabase | null): Promise<void> => {
@@ -49,6 +50,7 @@ export const stopTestDatabase = async (database?: TestDatabase | null): Promise<
   }
 
   await database.prisma.$disconnect();
+  await database.pool.end();
   await database.container.stop();
 };
 
