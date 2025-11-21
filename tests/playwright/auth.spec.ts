@@ -46,14 +46,16 @@ test.describe('authentication onboarding', () => {
       data: { email, redirectUrl: `${frontendBaseUrl}/magic-link` },
     });
     expect(magicLinkRequest.status()).toBe(202);
-    const { token: debugMagicToken } = (await magicLinkRequest.json()) as { token?: string };
+    const { token: requestToken } = (await magicLinkRequest.json()) as { token?: string };
 
-    const magicToken =
-      debugMagicToken ??
-      (await seedMagicLinkToken({
+    const magicToken = await seedMagicLinkToken(
+      {
         id: loginPayload.user.id,
         email: loginPayload.user.email,
-      }));
+      },
+      undefined,
+      requestToken,
+    );
 
     await context.clearCookies();
     await page.goto('/');
