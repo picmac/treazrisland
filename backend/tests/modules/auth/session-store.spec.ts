@@ -97,4 +97,18 @@ describe('RedisSessionStore', () => {
     expect(backingStore.get(key)).toBe(originalPayload);
     expect(set).toHaveBeenCalledWith(key, originalPayload, 'EX', 3600);
   });
+
+  it('creates a refresh session when renewing a missing one and increments metrics', async () => {
+    const store = createStore();
+    const sessionId = 'missing-session';
+
+    await store.renewRefreshSession(sessionId, user);
+
+    expect(incrementActiveSessions).toHaveBeenCalledTimes(1);
+
+    const storedPayload = backingStore.get(`auth:refresh:${sessionId}`);
+    expect(storedPayload).toBeDefined();
+    expect(JSON.parse(storedPayload as string)).toEqual({ user });
+    expect(set).toHaveBeenCalledWith(`auth:refresh:${sessionId}`, expect.any(String), 'EX', 3600);
+  });
 });
