@@ -18,7 +18,13 @@ describe('RedisSessionStore', () => {
 
   const get = vi.fn(async (key: string) => backingStore.get(key) ?? null);
   const set = vi.fn(async (...args: unknown[]) => {
-    const [key, value] = args as [string, string];
+    const [key, value, ...options] = args as [string, string, ...(string | number)[]];
+    const setMode = options.find((option) => option === 'XX' || option === 'NX');
+
+    if (setMode === 'XX' && !backingStore.has(key)) {
+      return null;
+    }
+
     backingStore.set(key, value);
     return 'OK';
   });
@@ -78,5 +84,62 @@ describe('RedisSessionStore', () => {
 
     expect(decrementActiveSessions).toHaveBeenCalledTimes(1);
     expect(await store.getRefreshSession('session-999')).toBeNull();
+  });
+
+  it('renews existing refresh sessions without incrementing metrics', async () => {
+    const store = createStore();
+    const sessionId = 'session-renew';
+
+    await store.createRefreshSession(sessionId, user);
+
+    const key = `auth:refresh:${sessionId}`;
+    const originalPayload = backingStore.get(key);
+
+    vi.clearAllMocks();
+
+    await store.renewRefreshSession(sessionId, { ...user, email: 'new-email@example.com' });
+
+    expect(incrementActiveSessions).not.toHaveBeenCalled();
+    expect(backingStore.get(key)).toBe(originalPayload);
+    expect(set).toHaveBeenCalledWith(key, originalPayload, 'EX', 3600, 'XX');
+  });
+
+  it('creates a refresh session when renewing a missing one and increments metrics', async () => {
+    const store = createStore();
+    const sessionId = 'missing-session';
+
+    await store.renewRefreshSession(sessionId, user);
+
+    expect(incrementActiveSessions).toHaveBeenCalledTimes(1);
+
+    const storedPayload = backingStore.get(`auth:refresh:${sessionId}`);
+    expect(storedPayload).toBeDefined();
+    expect(JSON.parse(storedPayload as string)).toEqual({ user });
+    expect(set).toHaveBeenCalledWith(`auth:refresh:${sessionId}`, expect.any(String), 'EX', 3600);
+  });
+
+  it('recreates refresh sessions when the renewal set fails because the key disappeared', async () => {
+    const store = createStore();
+    const sessionId = 'session-race';
+
+    await store.createRefreshSession(sessionId, user);
+
+    const key = `auth:refresh:${sessionId}`;
+    const originalPayload = backingStore.get(key);
+
+    vi.clearAllMocks();
+    get.mockImplementationOnce(async (lookupKey: string) => {
+      const value = backingStore.get(lookupKey) ?? null;
+      backingStore.delete(lookupKey);
+      return value;
+    });
+
+    await store.renewRefreshSession(sessionId, user);
+
+    expect(get).toHaveBeenCalledWith(key);
+    expect(set).toHaveBeenNthCalledWith(1, key, originalPayload, 'EX', 3600, 'XX');
+    expect(set).toHaveBeenNthCalledWith(2, key, expect.any(String), 'EX', 3600);
+    expect(incrementActiveSessions).toHaveBeenCalledTimes(1);
+    expect(backingStore.get(key)).toBeDefined();
   });
 });
