@@ -7,6 +7,7 @@ import { TouchOverlay } from '@/components/emulator/TouchOverlay';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useSaveStates } from '@/hooks/useSaveStates';
 import { useViewportScale } from '@/hooks/useViewportScale';
+import { useEmulatorMetrics } from '@/hooks/useEmulatorMetrics';
 import {
   DEFAULT_GAMEPAD_MAPPING,
   DEFAULT_KEYBOARD_MAPPING,
@@ -85,6 +86,12 @@ export default function PlayPage({ params }: PlayPageProps) {
 
   useViewportScale(emulatorContainerRef, {
     enabled: ENABLE_VIEWPORT_SCALING && isSessionReady,
+  });
+
+  useEmulatorMetrics({
+    romId,
+    romTitle: rom?.title,
+    enabled: isSessionReady && emulatorReady && Boolean(romAsset),
   });
 
   useEffect(() => {
@@ -363,9 +370,7 @@ export default function PlayPage({ params }: PlayPageProps) {
   const handleUploadCloudSave = useCallback(async () => {
     const localSave =
       lastLocalSave ??
-      (typeof window !== 'undefined'
-        ? window.localStorage.getItem(`treazr:save:${romId}`)
-        : null);
+      (typeof window !== 'undefined' ? window.localStorage.getItem(`treazr:save:${romId}`) : null);
 
     if (!localSave) {
       pushToast({

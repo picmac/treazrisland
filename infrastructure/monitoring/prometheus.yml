@@ -1,0 +1,17 @@
+# Prometheus scrape configuration for Treazrisland
+scrape_configs:
+  - job_name: treazrisland-backend
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - treazrisland-backend:3000
+        labels:
+          service: treazrisland-backend
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: treazrisland-backend
+
+rule_files:
+  - rules.yml

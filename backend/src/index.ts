@@ -30,6 +30,9 @@ import { SaveStateService } from './modules/roms/save-state.service';
 import { createMinioClient, createRomStorage, type RomStorage } from './modules/roms/storage';
 import { createAvatarStorage, type AvatarStorage } from './modules/users/avatar.storage';
 import { userRoutes } from './modules/users/routes';
+import { MetricsRecorder } from './modules/metrics/metrics.recorder';
+import { MetricsStore } from './modules/metrics/metrics.store';
+import { metricsRoutes } from './modules/metrics/routes';
 import { buildLogger, loggerPlugin } from './plugins/logger';
 
 import type { Client as MinioClient } from 'minio';
@@ -220,6 +223,9 @@ const appPlugin = fp(
       }),
     );
 
+    const metricsStore = new MetricsStore(fastify.redis);
+    fastify.decorate('metricsRecorder', new MetricsRecorder(metricsStore));
+
     fastify.decorate('romStorage', romStorage);
     fastify.decorate('romService', new RomService(prisma, romStorage));
     fastify.decorate('saveStateService', new SaveStateService(prisma, romStorage));
@@ -247,6 +253,7 @@ const appPlugin = fp(
     await fastify.register(romRoutes);
     await fastify.register(userRoutes);
     await fastify.register(adminRoutes, { prefix: '/admin' });
+    await fastify.register(metricsRoutes);
 
     fastify.get('/health', async () =>
       buildHealthResponse(fastify.redis, prisma, env, objectStorageClient),

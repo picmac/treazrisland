@@ -75,11 +75,13 @@ Look for `[otel] tracing initialized` in the console to confirm the SDK is runni
 
 ### Available series
 
-| Metric name                  | Type    | Labels                                                                | Description                                                                |
-| ---------------------------- | ------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `treazr_auth_attempts_total` | Counter | `method` (`password`, `magic-link`), `outcome` (`success`, `failure`) | Increments for every login or magic-link attempt.                          |
-| `treazr_rom_uploads_total`   | Counter | `source` (`admin`, `unknown`), `outcome`                              | Emits for every admin ROM upload, including failures.                      |
-| `treazr_active_sessions`     | UpDown  | _None_                                                                | Represents the number of refresh-token sessions currently stored in Redis. |
+| Metric name                      | Type      | Labels                                                                | Description                                                                |
+| -------------------------------- | --------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `treazr_auth_attempts_total`     | Counter   | `method` (`password`, `magic-link`), `outcome` (`success`, `failure`) | Increments for every login or magic-link attempt.                          |
+| `treazr_rom_uploads_total`       | Counter   | `source` (`admin`, `unknown`), `outcome`                              | Emits for every admin ROM upload, including failures.                      |
+| `treazr_active_sessions`         | UpDown    | _None_                                                                | Represents the number of refresh-token sessions currently stored in Redis. |
+| `treazr_emulator_fps`            | Histogram | `rom_id`                                                              | Frame-rate samples emitted by the web emulator clients.                    |
+| `treazr_emulator_memory_used_mb` | Histogram | `rom_id`                                                              | Heap usage samples reported by emulator clients.                           |
 
 Example scrape using `curl`:
 
@@ -88,6 +90,25 @@ curl -H 'Accept: text/plain' http://localhost:3000/metrics
 ```
 
 Because the metrics rely on the OpenTelemetry SDK, they benefit from the same resource attributes and can be forwarded to OTLP collectors if you later point the exporter to a gateway instead of scraping locally.
+
+### Client-side emulator telemetry
+
+- The play page now samples browser FPS and heap usage via the Performance API and ships those metrics to `POST /metrics/events` using `navigator.sendBeacon` when available. Payloads are aggregated in Redis minute buckets to keep Grafana queries inexpensive.
+- The `/metrics/events` handler normalises the payload into Prometheus histograms (`treazr_emulator_fps` and `treazr_emulator_memory_used_mb`) so Prometheus/Grafana receive ready-to-graph series without custom exporters.
+- Recording rules under `infrastructure/monitoring/rules.yml` derive rate-averaged FPS (`job:treazr_emulator_fps:avg_rate5m`) and p95 heap usage for dashboards.
+
+### Dashboards and runbooks
+
+The table below summarizes the standard Grafana dashboards and the corresponding response actions:
+
+| Dashboard                 | Focus metrics / queries                                                                                                   | Runbook highlights                                                                                                                                                                                                                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Authentication health** | `sum(rate(treazr_auth_attempts_total{outcome="failure"}[5m]))` vs. successes, login p95 latency from logs.                | 1. Check `/metrics` for surge in failures.<br>2. Inspect `/auth` rate-limit hits via Fastify logs.<br>3. If failures only affect one method, check upstream providers (mailer, Redis).                                                                                                     |
+| **Upload reliability**    | `sum(rate(treazr_rom_uploads_total{outcome="failure"}[5m]))` grouped by `source`.                                         | 1. Confirm storage service health.<br>2. Tail the structured logs for `request.completed` entries on `/admin/roms`.<br>3. If failures spike after deployments, roll back the ROM service.                                                                                                  |
+| **Session saturation**    | `treazr_active_sessions` (gauge) and derivative over 15 m.                                                                | 1. If sessions grow continuously, inspect refresh token issuance.<br>2. Validate Redis eviction policies.<br>3. Use the `create-admin` CLI to generate a test account and reproduce refresh behavior.                                                                                      |
+| **Emulator experience**   | `job:treazr_emulator_fps:avg_rate5m`, `job:treazr_emulator_memory_used_mb:p95_5m`, Postgres `SELECT count(*) FROM "Rom";` | 1. If FPS drops across ROMs, inspect CDN/cache behaviour for emulator assets.<br>2. If only one ROM degrades, pull the corresponding bucket from Redis (`metrics:emulator:fps:*`).<br>3. High memory p95 suggests throttling sample intervals or reducing shaders in the EmulatorJS build. |
+
+Dashboard snippets live in `infrastructure/monitoring/grafana-dashboards.md` alongside scrape/rule configuration (`infrastructure/monitoring/prometheus.yml`).
 
 ### Dashboards and runbooks
 
