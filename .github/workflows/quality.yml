@@ -20,6 +20,9 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Enable corepack
+        run: corepack enable
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -45,6 +48,9 @@ jobs:
           node-version: 22.21.0
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+
+      - name: Enable corepack
+        run: corepack enable
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -77,6 +83,9 @@ jobs:
           node-version: 22.21.0
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+
+      - name: Enable corepack
+        run: corepack enable
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
