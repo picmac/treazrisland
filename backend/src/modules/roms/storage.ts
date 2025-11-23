@@ -239,13 +239,17 @@ export const createMinioClient = (env: Env): Client =>
     region: env.OBJECT_STORAGE_REGION,
   });
 
-const buildEndpoint = (host: string, env: Env) =>
-  `${env.OBJECT_STORAGE_USE_SSL ? 'https' : 'http'}://${host}:${env.OBJECT_STORAGE_PORT}`;
+const buildEndpoint = (host: string, port: number, useSsl: boolean) =>
+  `${useSsl ? 'https' : 'http'}://${host}:${port}`;
 
-export const createS3Client = (env: Env, hostOverride?: string): S3Client =>
+export const createS3Client = (env: Env, hostOverride?: string, portOverride?: number): S3Client =>
   new S3Client({
     region: env.OBJECT_STORAGE_REGION,
-    endpoint: buildEndpoint(hostOverride ?? env.OBJECT_STORAGE_ENDPOINT, env),
+    endpoint: buildEndpoint(
+      hostOverride ?? env.OBJECT_STORAGE_ENDPOINT,
+      portOverride ?? env.OBJECT_STORAGE_PORT,
+      env.OBJECT_STORAGE_USE_SSL,
+    ),
     forcePathStyle: true,
     credentials: {
       accessKeyId: env.OBJECT_STORAGE_ACCESS_KEY,
@@ -255,7 +259,8 @@ export const createS3Client = (env: Env, hostOverride?: string): S3Client =>
 
 export const createRomStorage = (env: Env): RomStorage => {
   const presignHost = env.OBJECT_STORAGE_PUBLIC_HOST || env.OBJECT_STORAGE_ENDPOINT;
-  const presignClient = createS3Client(env, presignHost);
+  const presignPort = env.OBJECT_STORAGE_PUBLIC_PORT || env.OBJECT_STORAGE_PORT;
+  const presignClient = createS3Client(env, presignHost, presignPort);
 
   return new S3RomStorage(createMinioClient(env), {
     bucket: env.OBJECT_STORAGE_BUCKET,
