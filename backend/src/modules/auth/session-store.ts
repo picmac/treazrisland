@@ -33,8 +33,17 @@ export class RedisSessionStore {
     const payload = await this.client.get(key);
 
     if (payload) {
-      await this.client.set(key, payload, 'EX', this.config.refreshTokenTtlSeconds);
-      return;
+      const refreshed = await this.client.set(
+        key,
+        payload,
+        'EX',
+        this.config.refreshTokenTtlSeconds,
+        'XX',
+      );
+
+      if (refreshed !== null) {
+        return;
+      }
     }
 
     await this.createRefreshSession(sessionId, user);
