@@ -70,6 +70,11 @@ const resolveAdminFlag = async (prisma: FastifyInstance['prisma']): Promise<bool
   return userCount === 0;
 };
 
+const hasAdminUser = async (prisma: FastifyInstance['prisma']): Promise<boolean> => {
+  const adminCount = await prisma.user.count({ where: { isAdmin: true } });
+  return adminCount > 0;
+};
+
 const setRefreshCookie = (fastify: FastifyInstance, reply: FastifyReply, token: string) => {
   reply.setCookie('refreshToken', token, {
     httpOnly: true,
@@ -168,6 +173,7 @@ const createUserWithPassword = async (
   prisma: FastifyInstance['prisma'],
   email: string,
   passwordHash: string,
+  isAdminOverride?: boolean,
 ): Promise<AuthUser> => {
   const normalizedEmail = normalizeEmail(email);
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
@@ -178,7 +184,8 @@ const createUserWithPassword = async (
 
   const usernameSeed = buildUsernameSeed(normalizedEmail);
   let attempt = 0;
-  const isAdmin = await resolveAdminFlag(prisma);
+  const isAdmin =
+    typeof isAdminOverride === 'boolean' ? isAdminOverride : await resolveAdminFlag(prisma);
 
   while (attempt < 5) {
     const suffix = attempt === 0 ? '' : `_${attempt}`;
@@ -273,6 +280,30 @@ const getRequestUser = (request: FastifyRequest): AuthUser | null => {
 };
 
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
+  fastify.post('/bootstrap', async (_request, reply) => {
+    const bootstrapEmail = normalizeEmail(fastify.config.ADMIN_BOOTSTRAP_EMAIL);
+
+    if (await hasAdminUser(fastify.prisma)) {
+      return reply.status(409).send({ status: 'skipped', reason: 'Admin already exists' });
+    }
+
+    const existingUser = await fastify.prisma.user.findUnique({ where: { email: bootstrapEmail } });
+
+    if (existingUser) {
+      return reply.status(409).send({ status: 'skipped', reason: 'User already exists' });
+    }
+
+    const passwordHash = await bcrypt.hash(fastify.config.ADMIN_BOOTSTRAP_PASSWORD, 10);
+    const user = await createUserWithPassword(
+      fastify.prisma,
+      fastify.config.ADMIN_BOOTSTRAP_EMAIL,
+      passwordHash,
+      true,
+    );
+
+    return reply.status(201).send({ status: 'created', user });
+  });
+
   fastify.post('/login', async (request, reply) => {
     const parsedBody = loginSchema.safeParse(request.body);
 
