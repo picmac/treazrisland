@@ -79,4 +79,22 @@ describe('RedisSessionStore', () => {
     expect(decrementActiveSessions).toHaveBeenCalledTimes(1);
     expect(await store.getRefreshSession('session-999')).toBeNull();
   });
+
+  it('renews existing refresh sessions without incrementing metrics', async () => {
+    const store = createStore();
+    const sessionId = 'session-renew';
+
+    await store.createRefreshSession(sessionId, user);
+
+    const key = `auth:refresh:${sessionId}`;
+    const originalPayload = backingStore.get(key);
+
+    vi.clearAllMocks();
+
+    await store.renewRefreshSession(sessionId, { ...user, email: 'new-email@example.com' });
+
+    expect(incrementActiveSessions).not.toHaveBeenCalled();
+    expect(backingStore.get(key)).toBe(originalPayload);
+    expect(set).toHaveBeenCalledWith(key, originalPayload, 'EX', 3600);
+  });
 });

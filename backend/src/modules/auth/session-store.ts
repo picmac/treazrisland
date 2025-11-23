@@ -29,6 +29,14 @@ export class RedisSessionStore {
   }
 
   async renewRefreshSession(sessionId: string, user: AuthUser): Promise<void> {
+    const key = this.refreshPrefix + sessionId;
+    const payload = await this.client.get(key);
+
+    if (payload) {
+      await this.client.set(key, payload, 'EX', this.config.refreshTokenTtlSeconds);
+      return;
+    }
+
     await this.createRefreshSession(sessionId, user);
   }
 
