@@ -1,7 +1,6 @@
 'use client';
 
 import NextLink from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import type React from 'react';
 
@@ -66,7 +65,6 @@ const splitGenres = (value: string) =>
     .filter(Boolean);
 
 export default function AdminRomUploadPage() {
-  const router = useRouter();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [platform, setPlatform] = useState('');
