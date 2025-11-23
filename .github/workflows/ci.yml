@@ -216,15 +216,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.23.0
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22.21.0
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.23.0
+          run_install: false
 
       - name: Install dependencies
         run: pnpm install --recursive --frozen-lockfile
@@ -278,15 +282,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.23.0
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22.21.0
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.23.0
+          run_install: false
 
       - name: Determine pnpm store
         id: pnpm-store
@@ -406,16 +414,20 @@ jobs:
         with:
           clean: false
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.23.0
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22.21.0
           cache: 'pnpm'
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.23.0
+          run_install: false
 
       - name: Deploy via pnpm script
         env:
