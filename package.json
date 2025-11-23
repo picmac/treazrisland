@@ -2,41 +2,50 @@
   "name": "treazrisland",
   "private": true,
   "engines": {
-    "node": ">=22.21.0 <23",
+    "node": "22.21.0",
     "pnpm": ">=10.23.0 <11"
   },
   "scripts": {
     "preinstall": "node ./scripts/enforce-pnpm.cjs",
-    "lint": "eslint \"{backend,frontend}/**/*.{js,jsx,ts,tsx}\" --max-warnings=0",
+    "lint": "pnpm exec eslint \"{backend,frontend}/**/*.{js,jsx,ts,tsx}\" --max-warnings=0",
+    "lint:staged": "lint-staged",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,css,scss,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,css,scss,json,md,yml,yaml}\"",
     "prepare": "husky install",
     "cli:create-admin": "pnpm --filter backend create-admin",
     "cli:generate-invite": "pnpm --filter @treazrisland/backend cli:generate-invite",
-    "typecheck": "pnpm --filter @treazrisland/backend run typecheck && pnpm --filter treazrisland-frontend run typecheck",
+    "typecheck": "pnpm run typecheck:backend && pnpm run typecheck:frontend",
+    "typecheck:backend": "pnpm --filter @treazrisland/backend run typecheck",
+    "typecheck:frontend": "pnpm --filter treazrisland-frontend run typecheck",
     "test": "pnpm -r --filter !@treazrisland/playwright test",
+    "test:backend": "pnpm --filter @treazrisland/backend test",
+    "test:frontend": "pnpm --filter treazrisland-frontend test",
     "test:watch": "pnpm -r run test:watch",
     "test:e2e": "./scripts/test-e2e.sh",
+    "build": "pnpm run build:backend && pnpm run build:frontend",
+    "build:backend": "pnpm --filter @treazrisland/backend run build",
+    "build:frontend": "pnpm --filter treazrisland-frontend run build",
     "deploy:runner": "./scripts/deploy/self-hosted-runner.sh",
     "test:security-ack": "node tests/security-checklist-ack.test.js"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.39.1",
+    "@next/eslint-plugin-next": "^16.0.3",
     "@playwright/test": "^1.56.1",
-    "@eslint/js": "^8.57.1",
     "@typescript-eslint/eslint-plugin": "^8.47.0",
     "@typescript-eslint/parser": "^8.47.0",
-    "@next/eslint-plugin-next": "14.2.33",
-    "globals": "^16.5.0",
-    "eslint": "^8.57.1",
+    "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
-    "@eslint/eslintrc": "^3.3.1",
     "eslint-import-resolver-node": "^0.3.9",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.5.0",
     "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "prettier": "^3.6.2",
     "ts-node": "10.9.2",
     "yaml": "^2.8.1"
@@ -44,8 +53,26 @@
   "pnpm": {
     "overrides": {
       "parse5": "7.1.2",
-      "hono": "4.10.6"
+      "hono": "4.10.6",
+      "@types/react": "18.3.12",
+      "@types/react-dom": "18.3.0",
+      "@types/react@19": "18.3.12",
+      "react@19": "18.2.0",
+      "react-dom@19": "18.2.0",
+      "@prisma/client>@types/react": "18.3.12",
+      "@prisma/client>react": "18.2.0",
+      "@prisma/client>react-dom": "18.2.0",
+      "@prisma/studio-core-licensed>@types/react": "18.3.12",
+      "@prisma/studio-core-licensed>react": "18.2.0",
+      "@prisma/studio-core-licensed>react-dom": "18.2.0"
     }
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": "pnpm exec eslint --max-warnings 0 --fix",
+    "*.{js,jsx,ts,tsx,css,scss,json,md,yml,yaml}": "pnpm exec prettier --check",
+    "backend/prisma/schema.prisma": "pnpm --filter @treazrisland/backend exec prisma format",
+    "backend/src/**/*.{ts,tsx}": "pnpm --filter @treazrisland/backend exec vitest related --watch=false --coverage=false --passWithNoTests --config vitest.config.ts",
+    "frontend/src/**/*.{ts,tsx}": "pnpm --filter treazrisland-frontend exec vitest related --watch=false --coverage=false --passWithNoTests --config vitest.config.ts"
   },
   "packageManager": "pnpm@10.23.0"
 }

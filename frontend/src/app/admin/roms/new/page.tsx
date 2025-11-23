@@ -1,9 +1,11 @@
 'use client';
 
-import Link from 'next/link';
+import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import type React from 'react';
+
+const Link = NextLink as unknown as React.FC<React.ComponentProps<typeof NextLink>>;
 
 import {
   directRomUpload,
@@ -445,7 +447,10 @@ export default function AdminRomUploadPage() {
                     : statusMessage}
                 </p>
                 {optimisticRomId && (
-                  <Link href={`/rom/${optimisticRomId}`} className={styles.secondary}>
+                  <Link
+                    href={{ pathname: '/rom/[romId]', query: { romId: optimisticRomId } }}
+                    className={styles.secondary}
+                  >
                     Open ROM detail
                   </Link>
                 )}
