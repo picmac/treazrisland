@@ -1,0 +1,10 @@
+groups:
+  - name: treazrisland-runtime
+    interval: 30s
+    rules:
+      - record: job:treazr_emulator_fps:avg_rate5m
+        expr: sum(rate(treazr_emulator_fps_sum[5m])) / sum(rate(treazr_emulator_fps_count[5m]))
+      - record: job:treazr_emulator_memory_used_mb:p95_5m
+        expr: histogram_quantile(0.95, sum(rate(treazr_emulator_memory_used_mb_bucket[5m])) by (le))
+      - record: job:treazr_active_sessions:current
+        expr: treazr_active_sessions
