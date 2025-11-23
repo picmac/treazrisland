@@ -204,7 +204,9 @@ export default function AdminRomUploadPage() {
       setOptimisticRomId(romResponse.rom.id);
       setStage('redirecting');
       setStatusMessage('Upload complete. Redirecting to ROM dossier…');
-      router.push(`/rom/${romResponse.rom.id}`);
+      const destination = `/rom/${romResponse.rom.id}`;
+      // Use a hard navigation so the dossier page fully loads for both users and automation.
+      window.location.assign(destination);
     } catch (uploadError) {
       const message =
         uploadError instanceof Error ? uploadError.message : 'Unable to upload ROM right now';
