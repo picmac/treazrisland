@@ -363,9 +363,7 @@ export default function PlayPage({ params }: PlayPageProps) {
   const handleUploadCloudSave = useCallback(async () => {
     const localSave =
       lastLocalSave ??
-      (typeof window !== 'undefined'
-        ? window.localStorage.getItem(`treazr:save:${romId}`)
-        : null);
+      (typeof window !== 'undefined' ? window.localStorage.getItem(`treazr:save:${romId}`) : null);
 
     if (!localSave) {
       pushToast({

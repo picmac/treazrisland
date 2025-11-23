@@ -159,9 +159,7 @@ export default function AdminRomUploadPage() {
 
         setStatusMessage('Upload failed; attempting direct fallback…');
         const buffer = await file.arrayBuffer();
-        const base64 = btoa(
-          String.fromCharCode(...Array.from(new Uint8Array(buffer))),
-        );
+        const base64 = btoa(String.fromCharCode(...Array.from(new Uint8Array(buffer))));
         const directResponse = await directRomUpload({
           filename: file.name,
           contentType,

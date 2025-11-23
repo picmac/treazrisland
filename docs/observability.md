@@ -91,11 +91,11 @@ Because the metrics rely on the OpenTelemetry SDK, they benefit from the same re
 
 ### Dashboards and runbooks
 
-The table below summarizes the standard Grafana dashboards and the corresponding response actions:
+Use these Grafana dashboards alongside their companion runbooks:
 
 | Dashboard                 | Focus metrics / queries                                                                                    | Runbook highlights                                                                                                                                                                                    |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Authentication health** | `sum(rate(treazr_auth_attempts_total{outcome="failure"}[5m]))` vs. successes, login p95 latency from logs. | 1. Check `/metrics` for surge in failures.<br>2. Inspect `/auth` rate-limit hits via Fastify logs.<br>3. If failures only affect one method, check upstream providers (mailer, Redis).                |
+| **Authentication health** | `sum(rate(treazr_auth_attempts_total{outcome="failure"}[5m]))` vs. successes; login p95 latency from logs. | 1. Check `/metrics` for a surge in failures.<br>2. Inspect `/auth` rate-limit hits via Fastify logs.<br>3. If failures only affect one method, check upstream providers (mailer, Redis).              |
 | **Upload reliability**    | `sum(rate(treazr_rom_uploads_total{outcome="failure"}[5m]))` grouped by `source`.                          | 1. Confirm storage service health.<br>2. Tail the structured logs for `request.completed` entries on `/admin/roms`.<br>3. If failures spike after deployments, roll back the ROM service.             |
 | **Session saturation**    | `treazr_active_sessions` (gauge) and derivative over 15 m.                                                 | 1. If sessions grow continuously, inspect refresh token issuance.<br>2. Validate Redis eviction policies.<br>3. Use the `create-admin` CLI to generate a test account and reproduce refresh behavior. |
 
