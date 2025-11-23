@@ -14,6 +14,7 @@ import {
   stopTestDatabase,
   type TestDatabase,
 } from '../../helpers/postgres';
+import { ensureUserWithPassword } from '../../helpers/auth';
 
 import type { Readable } from 'node:stream';
 
@@ -45,6 +46,8 @@ describe('POST /admin/roms', () => {
   };
 
   const getAccessToken = async (email = 'operator@example.com'): Promise<string> => {
+    await ensureUserWithPassword(database!.prisma, email, { isAdmin: true });
+
     const response = await getApp().inject({
       method: 'POST',
       url: '/auth/login',

@@ -11,6 +11,7 @@ import {
   type TestDatabase,
 } from '../../helpers/postgres';
 import { TestRomStorage } from '../../helpers/test-rom-storage';
+import { ensureUserWithPassword } from '../../helpers/auth';
 
 import type { RegisterRomInput } from '../../../src/modules/roms/rom.service';
 
@@ -53,6 +54,12 @@ describe('ROM catalogue routes', () => {
   type LoginResponseBody = { accessToken: string; user: { id: string; email: string } };
 
   const performLogin = async (email: string) => {
+    if (!database) {
+      throw new Error('Test database not initialised');
+    }
+
+    await ensureUserWithPassword(database.prisma, email);
+
     const response = await app.inject({
       method: 'POST',
       url: '/auth/login',

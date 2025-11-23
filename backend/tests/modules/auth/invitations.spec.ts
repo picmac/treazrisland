@@ -10,6 +10,7 @@ import {
   stopTestDatabase,
   type TestDatabase,
 } from '../../helpers/postgres';
+import { ensureUserWithPassword } from '../../helpers/auth';
 
 const issueInvite = async (
   app: NonNullable<ReturnType<typeof createApp>>,
@@ -37,6 +38,12 @@ describe('POST /auth/invitations', () => {
     activeApp: NonNullable<ReturnType<typeof createApp>>,
     email: string,
   ): Promise<string> => {
+    if (!database) {
+      throw new Error('Test database not initialised');
+    }
+
+    await ensureUserWithPassword(database.prisma, email, { isAdmin: email.startsWith('admin@') });
+
     const response = await activeApp.inject({
       method: 'POST',
       url: '/auth/login',
