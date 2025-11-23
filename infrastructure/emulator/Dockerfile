@@ -4,6 +4,8 @@ ARG NODE_VERSION=22.21.0
 ARG PNPM_VERSION=10.23.0
 ARG BUILD_IMAGE=ubuntu:24.04
 FROM ${BUILD_IMAGE} AS build
+ARG NODE_VERSION
+ARG PNPM_VERSION
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -18,6 +20,7 @@ RUN apt-get update \
   && ln -s /usr/local/lib/nodejs/node/bin/node /usr/local/bin/node \
   && ln -s /usr/local/lib/nodejs/node/bin/npm /usr/local/bin/npm \
   && ln -s /usr/local/lib/nodejs/node/bin/npx /usr/local/bin/npx \
+  && ln -s /usr/local/lib/nodejs/node/bin/corepack /usr/local/bin/corepack \
   && corepack enable \
   && corepack prepare pnpm@${PNPM_VERSION} --activate \
   && rm -f "node-v${NODE_VERSION}-linux-x64.tar.xz" \
