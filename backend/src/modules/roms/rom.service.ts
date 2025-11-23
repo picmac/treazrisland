@@ -66,6 +66,7 @@ export class RomService {
 
   async registerRom(input: RegisterRomInput): Promise<RomRecord> {
     const assetMetadata = await this.storage.describeAsset(input.asset.objectKey);
+    const normalizedChecksum = input.asset.checksum.toLowerCase();
 
     if (assetMetadata.size !== input.asset.size) {
       throw new RomStorageError('Uploaded asset size mismatch');
@@ -73,9 +74,19 @@ export class RomService {
 
     if (
       assetMetadata.checksum &&
-      assetMetadata.checksum.toLowerCase() !== input.asset.checksum.toLowerCase()
+      assetMetadata.checksum.toLowerCase() !== normalizedChecksum
     ) {
       throw new RomStorageError('Uploaded asset checksum mismatch');
+    }
+
+    // If this checksum already exists, reuse the existing ROM instead of failing with a 500.
+    const existingAsset = await this.prisma.romAsset.findUnique({
+      where: { checksum: normalizedChecksum },
+      include: { rom: { include: { assets: true } } },
+    });
+
+    if (existingAsset?.rom) {
+      return this.enrichRomAssets(existingAsset.rom);
     }
 
     const genres = this.normalizeGenres(input.genres);
@@ -93,7 +104,7 @@ export class RomService {
             type: input.asset.type,
             uri: `s3://${input.asset.objectKey}`,
             objectKey: input.asset.objectKey,
-            checksum: input.asset.checksum.toLowerCase(),
+            checksum: normalizedChecksum,
             contentType: input.asset.contentType,
             size: input.asset.size,
           },
