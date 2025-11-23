@@ -65,7 +65,7 @@ jobs:
         run: pnpm typecheck:backend
 
       - name: Test backend
-        run: pnpm test:backend -- --runInBand
+        run: pnpm test:backend -- --single-thread
 
       - name: Build backend
         run: pnpm build:backend
@@ -100,7 +100,7 @@ jobs:
         run: pnpm typecheck:frontend
 
       - name: Test frontend
-        run: pnpm test:frontend -- --runInBand
+        run: pnpm test:frontend -- --single-thread
 
       - name: Build frontend
         run: pnpm build:frontend
