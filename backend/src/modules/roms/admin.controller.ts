@@ -29,6 +29,18 @@ const createRomSchema = z.object({
   asset: assetSchema,
 });
 
+const directUploadSchema = z.object({
+  filename: z.string().min(1),
+  contentType: z.string().min(1),
+  data: z.string().min(1, 'Upload payload is required'),
+  checksum: z.string().regex(/^[a-f0-9]{64}$/i, 'Checksum must be a SHA-256 hex string'),
+  size: z
+    .number()
+    .int()
+    .min(1)
+    .max(50 * 1024 * 1024, 'File exceeds 50MB limit'),
+});
+
 export const adminRomController: FastifyPluginAsync = async (fastify) => {
   fastify.post('/roms/uploads', { preHandler: fastify.authorizeAdmin }, async (request, reply) => {
     const payload = z
@@ -62,6 +74,35 @@ export const adminRomController: FastifyPluginAsync = async (fastify) => {
       return reply.status(502).send({ error: 'Unable to prepare ROM upload' });
     }
   });
+
+  fastify.post(
+    '/roms/uploads/direct',
+    { preHandler: fastify.authorizeAdmin },
+    async (request, reply) => {
+      const parsed = directUploadSchema.safeParse(request.body);
+
+      if (!parsed.success) {
+        return reply.status(400).send({ error: 'Invalid upload payload' });
+      }
+
+      try {
+        const uploaded = await fastify.romStorage.uploadAsset({
+          filename: parsed.data.filename,
+          contentType: parsed.data.contentType,
+          data: parsed.data.data,
+          checksum: parsed.data.checksum,
+        });
+
+        return reply.status(201).send({ objectKey: uploaded.objectKey });
+      } catch (error) {
+        request.log.error({ err: error }, 'Direct ROM upload failed');
+        const status = error instanceof RomStorageError ? error.statusCode : 502;
+        return reply.status(status >= 400 && status < 600 ? status : 502).send({
+          error: 'Unable to upload ROM asset',
+        });
+      }
+    },
+  );
 
   fastify.post('/roms', { preHandler: fastify.authorizeAdmin }, async (request, reply) => {
     const parsed = createRomSchema.safeParse(request.body);

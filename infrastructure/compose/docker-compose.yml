@@ -28,7 +28,7 @@ services:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api}
       NEXT_INTERNAL_API_BASE_URL: ${NEXT_INTERNAL_API_BASE_URL:-http://backend:4000}
       NEXT_PUBLIC_EMULATOR_BASE_URL: ${NEXT_PUBLIC_EMULATOR_BASE_URL:-/emulatorjs}
-      NEXT_PUBLIC_EMULATOR_EMBED_URL: ${NEXT_PUBLIC_EMULATOR_EMBED_URL:-http://emulatorjs:80/dist/embed.js}
+      NEXT_PUBLIC_EMULATOR_EMBED_URL: ${NEXT_PUBLIC_EMULATOR_EMBED_URL:-/emulatorjs/dist/embed.js}
       EMULATORJS_BASE_URL: ${EMULATORJS_BASE_URL:-http://emulatorjs:80}
       FRONTEND_PORT: ${FRONTEND_PORT:-5173}
       FRONTEND_HOST: ${FRONTEND_HOST:-0.0.0.0}
@@ -58,6 +58,7 @@ services:
     command: ${BACKEND_COMMAND:-/app/docker/dev-entrypoint.sh}
     environment:
       <<: *backend-environment
+      OBJECT_STORAGE_PUBLIC_HOST: ${OBJECT_STORAGE_PUBLIC_HOST:-localhost}
     ports:
       - '${BACKEND_PORT:-4000}:4000'
     volumes:

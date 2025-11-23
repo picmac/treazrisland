@@ -152,6 +152,15 @@ const createUserWithPassword = async (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002' &&
         error.meta?.target &&
+        String(error.meta.target).includes('email')
+      ) {
+        throw new UserAlreadyExistsError(normalizedEmail);
+      }
+
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        error.meta?.target &&
         String(error.meta.target).includes('username')
       ) {
         attempt += 1;
@@ -238,14 +247,28 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const passwordHash = await bcrypt.hash(fastify.config.ADMIN_BOOTSTRAP_PASSWORD, 10);
-    const user = await createUserWithPassword(
-      fastify.prisma,
-      fastify.config.ADMIN_BOOTSTRAP_EMAIL,
-      passwordHash,
-      true,
-    );
+    try {
+      const user = await createUserWithPassword(
+        fastify.prisma,
+        fastify.config.ADMIN_BOOTSTRAP_EMAIL,
+        passwordHash,
+        true,
+      );
 
-    return reply.status(201).send({ status: 'created', user });
+      return reply.status(201).send({ status: 'created', user });
+    } catch (error) {
+      if (
+        error instanceof UserAlreadyExistsError ||
+        (error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002' &&
+          error.meta?.target &&
+          String(error.meta.target).includes('email'))
+      ) {
+        return reply.status(409).send({ status: 'skipped', reason: 'User already exists' });
+      }
+
+      throw error;
+    }
   });
 
   fastify.post('/login', async (request, reply) => {

@@ -102,3 +102,19 @@ export function requestRomUploadGrant(payload: RomUploadGrantPayload) {
     requiresAuth: true,
   });
 }
+
+export interface DirectRomUploadResponse {
+  objectKey: string;
+}
+
+export function directRomUpload(payload: {
+  filename: string;
+  contentType: string;
+  checksum: string;
+  size: number;
+  data: string;
+}) {
+  return apiClient.post<DirectRomUploadResponse>('/admin/roms/uploads/direct', payload, {
+    requiresAuth: true,
+  });
+}

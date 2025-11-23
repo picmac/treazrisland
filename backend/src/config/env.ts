@@ -27,6 +27,7 @@ export const envSchema = z.object({
   OBJECT_STORAGE_BUCKET: z.string().min(1),
   OBJECT_STORAGE_REGION: z.string().min(1).default('us-east-1'),
   OBJECT_STORAGE_PRESIGNED_TTL: z.coerce.number().int().positive().default(300),
+  OBJECT_STORAGE_PUBLIC_HOST: z.string().optional(),
   ADMIN_BOOTSTRAP_EMAIL: z.string().email().default('operator@treazrisland.test'),
   ADMIN_BOOTSTRAP_PASSWORD: z.string().min(8).default('password123'),
 });
@@ -53,6 +54,7 @@ export const parseEnv = (source: ProcessEnv = process.env): Env => {
     OBJECT_STORAGE_BUCKET: source.OBJECT_STORAGE_BUCKET,
     OBJECT_STORAGE_REGION: source.OBJECT_STORAGE_REGION,
     OBJECT_STORAGE_PRESIGNED_TTL: source.OBJECT_STORAGE_PRESIGNED_TTL,
+    OBJECT_STORAGE_PUBLIC_HOST: source.OBJECT_STORAGE_PUBLIC_HOST,
   });
 
   if (!result.success) {

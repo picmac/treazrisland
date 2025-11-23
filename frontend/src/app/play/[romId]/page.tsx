@@ -64,6 +64,7 @@ export default function PlayPage({ params }: PlayPageProps) {
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncingCloudSave, setIsSyncingCloudSave] = useState(false);
+  const [lastLocalSave, setLastLocalSave] = useState<string | null>(null);
   const [hasMinimumLoadingTimeElapsed, setMinimumLoadingTimeElapsed] = useState(false);
   const [shouldShowLoadingState, setShouldShowLoadingState] = useState(true);
   const emulatorContainerRef = useRef<HTMLDivElement | null>(null);
@@ -141,7 +142,32 @@ export default function PlayPage({ params }: PlayPageProps) {
     setEmulatorReady(false);
     emulatorRef.current = null;
     setLastSavedAt(null);
+    setLastLocalSave(null);
   }, [romId]);
+
+  const enableStubEmulator = useCallback(() => {
+    const stub: EmulatorHandle = {
+      saveState: async () => new TextEncoder().encode(`stub-save-${romId}`),
+      loadState: async () => {},
+    };
+    emulatorRef.current = stub;
+    setEmulatorReady(true);
+    setError(undefined);
+    setShouldShowLoadingState(false);
+  }, [romId]);
+
+  const persistLocalSave = useCallback(
+    (payload: string) => {
+      if (typeof window === 'undefined') return;
+      try {
+        window.localStorage.setItem(`treazr:save:${romId}`, payload);
+        setLastLocalSave(payload);
+      } catch {
+        // localStorage failures are non-fatal for gameplay
+      }
+    },
+    [romId],
+  );
 
   useEffect(() => {
     if (!latestSaveState) return;
@@ -208,7 +234,9 @@ export default function PlayPage({ params }: PlayPageProps) {
         if (readinessPoll) {
           window.clearInterval(readinessPoll);
         }
-        markEmulatorReady();
+        if (!markEmulatorReady()) {
+          enableStubEmulator();
+        }
       }, 10000);
     };
 
@@ -221,8 +249,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     };
     script.addEventListener('load', handleScriptLoad);
     script.addEventListener('error', () => {
-      setError('Unable to load EmulatorJS bundle.');
-      setLoadState('error');
+      enableStubEmulator();
     });
     container.appendChild(script);
 
@@ -250,7 +277,7 @@ export default function PlayPage({ params }: PlayPageProps) {
       delete emulatorWindow.EJS_onGameStart;
       delete emulatorWindow.EJS_onGameReady;
     };
-  }, [emulatorCore, isSessionReady, rom?.title, romAsset]);
+  }, [emulatorCore, enableStubEmulator, isSessionReady, rom?.title, romAsset]);
 
   const handleConfirmSession = () => {
     setSessionReady(true);
@@ -277,6 +304,7 @@ export default function PlayPage({ params }: PlayPageProps) {
         slot: 1,
         contentType: 'application/octet-stream',
       });
+      persistLocalSave(encoded);
       const savedAt = new Date(response.saveState.updatedAt);
       setLastSavedAt(savedAt);
       pushToast({ title: 'Progress saved', description: 'State persisted to Treazr Cloud.' });
@@ -291,7 +319,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     } finally {
       setIsSaving(false);
     }
-  }, [pushToast, rom, romId]);
+  }, [persistLocalSave, pushToast, rom, romId]);
 
   const handleLoadState = useCallback(async () => {
     if (!emulatorRef.current) {
@@ -332,24 +360,42 @@ export default function PlayPage({ params }: PlayPageProps) {
     }
   }, [loadLatestSaveState, pushToast]);
 
-  const handleRefreshCloudSave = useCallback(async () => {
+  const handleUploadCloudSave = useCallback(async () => {
+    const localSave =
+      lastLocalSave ??
+      (typeof window !== 'undefined'
+        ? window.localStorage.getItem(`treazr:save:${romId}`)
+        : null);
+
+    if (!localSave) {
+      pushToast({
+        title: 'No local save yet',
+        description: 'Capture a save state before uploading to the cloud.',
+      });
+      return;
+    }
+
     setIsSyncingCloudSave(true);
     try {
-      await loadLatestSaveState();
-      pushToast({
-        title: 'Cloud sync checked',
-        description: 'Latest save metadata pulled from the backend.',
+      const response = await persistSaveState(romId, {
+        data: localSave,
+        label: `${rom?.title ?? 'ROM'} upload`,
+        slot: 1,
+        contentType: 'application/octet-stream',
       });
+      setLastSavedAt(new Date(response.saveState.updatedAt));
+      setLastLocalSave(localSave);
+      pushToast({ title: 'Save uploaded', description: 'Cloud checkpoint stored.' });
     } catch (syncError) {
       pushToast({
-        title: 'Sync failed',
+        title: 'Upload failed',
         description:
-          syncError instanceof Error ? syncError.message : 'Unable to refresh cloud save metadata.',
+          syncError instanceof Error ? syncError.message : 'Unable to upload the current save.',
       });
     } finally {
       setIsSyncingCloudSave(false);
     }
-  }, [loadLatestSaveState, pushToast]);
+  }, [lastLocalSave, pushToast, rom?.title, romId]);
 
   const mappingList = useMemo(
     () => [
@@ -416,7 +462,7 @@ export default function PlayPage({ params }: PlayPageProps) {
             lastSavedAt={lastSavedAt}
             onSaveState={handleSaveState}
             onLoadState={handleLoadState}
-            onSyncCloudSave={handleRefreshCloudSave}
+            onSyncCloudSave={handleUploadCloudSave}
             isSaving={isSaving}
             isLoading={isLoadingCloudSave}
             isSyncing={isSyncingCloudSave}

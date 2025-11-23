@@ -20,6 +20,10 @@ const deriveEmulatorBase = () => {
       const normalizedPath = stripEmbedSuffix(parsed.pathname);
       const basePath = normalizedPath ? ensureLeadingSlash(normalizedPath) : '/emulatorjs';
       if (absolute) {
+        const host = parsed.hostname.toLowerCase();
+        if (host === 'emulatorjs') {
+          return trimTrailingSlash(basePath) || '/emulatorjs';
+        }
         return trimTrailingSlash(`${parsed.origin}${basePath}`);
       }
       return trimTrailingSlash(basePath) || '/emulatorjs';

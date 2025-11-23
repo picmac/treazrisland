@@ -5,7 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import type React from 'react';
 
-import { registerAdminRom, requestRomUploadGrant, type AdminRomUploadPayload } from '@/lib/admin';
+import {
+  directRomUpload,
+  registerAdminRom,
+  requestRomUploadGrant,
+  type AdminRomUploadPayload,
+} from '@/lib/admin';
 import styles from './page.module.css';
 
 type RomUploadStage =
@@ -21,6 +26,9 @@ const toHex = (hashBuffer: ArrayBuffer) =>
   Array.from(new Uint8Array(hashBuffer))
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
+
+const MINIMUM_CHECKSUM_STAGE_MS = 200;
+const MAX_DIRECT_UPLOAD_BYTES = 50 * 1024 * 1024;
 
 async function computeSha256(file: File, onProgress: (percent: number) => void): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -91,6 +99,8 @@ export default function AdminRomUploadPage() {
 
     try {
       const hash = await computeSha256(selected, setChecksumProgress);
+      setChecksumProgress(100);
+      await new Promise((resolve) => setTimeout(resolve, MINIMUM_CHECKSUM_STAGE_MS));
       setChecksum(hash);
       setStage('ready');
       setStatusMessage('Checksum locked. Ready to upload.');
@@ -142,14 +152,41 @@ export default function AdminRomUploadPage() {
       setUploadProgress(15);
       setStatusMessage('Uploading ROM to storage…');
 
-      const uploadResponse = await fetch(grant.uploadUrl, {
-        method: 'PUT',
-        headers: grant.headers,
-        body: file,
-      });
+      const attemptDirectFallback = async (): Promise<string> => {
+        if (file.size > MAX_DIRECT_UPLOAD_BYTES) {
+          throw new Error('Upload failed and fallback is unavailable for files over 50MB.');
+        }
 
-      if (!uploadResponse.ok) {
-        throw new Error(`Upload failed with status ${uploadResponse.status}`);
+        setStatusMessage('Upload failed; attempting direct fallback…');
+        const buffer = await file.arrayBuffer();
+        const base64 = btoa(
+          String.fromCharCode(...Array.from(new Uint8Array(buffer))),
+        );
+        const directResponse = await directRomUpload({
+          filename: file.name,
+          contentType,
+          checksum,
+          size: file.size,
+          data: base64,
+        });
+
+        return directResponse.objectKey;
+      };
+
+      let objectKey = grant.objectKey;
+
+      try {
+        const uploadResponse = await fetch(grant.uploadUrl, {
+          method: 'PUT',
+          headers: grant.headers,
+          body: file,
+        });
+
+        if (!uploadResponse.ok) {
+          objectKey = await attemptDirectFallback();
+        }
+      } catch {
+        objectKey = await attemptDirectFallback();
       }
 
       setUploadProgress(100);
@@ -160,7 +197,7 @@ export default function AdminRomUploadPage() {
         ...payload,
         asset: {
           ...payload.asset,
-          objectKey: grant.objectKey,
+          objectKey,
         },
       });
 
