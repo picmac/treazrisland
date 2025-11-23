@@ -4,6 +4,7 @@ import js from '@eslint/js';
 import nextPlugin from '@next/eslint-plugin-next';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
+import eslintConfigPrettier from 'eslint-config-prettier';
 import importPlugin from 'eslint-plugin-import';
 import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
 import reactPlugin from 'eslint-plugin-react';
@@ -15,14 +16,18 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const makeTypeScriptLanguageOptions = (tsconfigPath) => ({
   parser: tsParser,
   parserOptions: {
-    project: tsconfigPath,
+    project: false,
     tsconfigRootDir: projectRoot,
+    sourceType: 'module',
   },
 });
 
 export default [
   {
     ignores: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/coverage/**'],
+    linterOptions: {
+      reportUnusedDisableDirectives: 'error',
+    },
   },
   {
     files: ['backend/**/*.{ts,tsx,js,jsx}'],
@@ -34,10 +39,20 @@ export default [
     },
     plugins: {
       '@typescript-eslint': tsPlugin,
+      import: importPlugin,
+    },
+    settings: {
+      'import/resolver': {
+        typescript: {
+          project: path.resolve(projectRoot, './backend/tsconfig.json'),
+        },
+      },
     },
     rules: {
       ...js.configs.recommended.rules,
       ...tsPlugin.configs.recommended.rules,
+      ...importPlugin.configs.recommended.rules,
+      ...eslintConfigPrettier.rules,
     },
   },
   {
@@ -47,6 +62,7 @@ export default [
       globals: {
         ...globals.browser,
         ...globals.node,
+        RequestInit: 'readonly',
       },
     },
     plugins: {
@@ -73,6 +89,7 @@ export default [
       ...reactHooksPlugin.configs.recommended.rules,
       ...jsxA11yPlugin.configs.recommended.rules,
       ...importPlugin.configs.recommended.rules,
+      ...eslintConfigPrettier.rules,
       'react/react-in-jsx-scope': 'off',
       '@next/next/no-html-link-for-pages': 'off',
       'react-hooks/set-state-in-effect': 'off',
