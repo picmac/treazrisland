@@ -68,7 +68,28 @@ if ! docker compose version >/dev/null 2>&1; then
 fi
 
 require_file "$REPO_ROOT/.env" "Missing $REPO_ROOT/.env. Copy infrastructure/env/root.env.example and populate production secrets before deploying."
-require_file "$REPO_ROOT/backend/.env" "Missing $REPO_ROOT/backend/.env. Copy infrastructure/env/backend.env.example and adjust values."
+
+ensure_backend_env() {
+  local env_path="$REPO_ROOT/backend/.env"
+  local default_db_url="postgresql://treazr:treazr@postgres:5432/treazr"
+
+  if [[ ! -f "$env_path" ]]; then
+    log "backend/.env missing — creating with compose-friendly defaults."
+    cat >"$env_path" <<EOF
+NODE_ENV=development
+PORT=4000
+DATABASE_URL=${DATABASE_URL:-$default_db_url}
+EOF
+    return
+  fi
+
+  if ! grep -q '^DATABASE_URL=' "$env_path"; then
+    log "Appending DATABASE_URL to backend/.env (was missing)."
+    echo "DATABASE_URL=${DATABASE_URL:-$default_db_url}" >>"$env_path"
+  fi
+}
+
+ensure_backend_env
 
 set -a
 source "$REPO_ROOT/.env"

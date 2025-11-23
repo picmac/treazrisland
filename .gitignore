@@ -6,6 +6,7 @@ out/
 .env
 .env.local
 frontend/tsconfig.tsbuildinfo
+.pnpm-store/
 
 # Logs
 npm-debug.log*
