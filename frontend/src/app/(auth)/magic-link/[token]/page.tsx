@@ -28,6 +28,7 @@ export default function MagicLinkPage({ params }: MagicLinkPageProps) {
   const router = useRouter();
   const { token } = params;
   const [status, setStatus] = useState<RedemptionStatus>(loadingStatus);
+  const redemptionAttemptedRef = useRef(false);
   const redirectTimerRef = useRef<number | null>(null);
   const successRedirectTarget = useMemo(() => '/library' as Route, []);
 
@@ -49,6 +50,11 @@ export default function MagicLinkPage({ params }: MagicLinkPageProps) {
   }, [token]);
 
   useEffect(() => {
+    if (redemptionAttemptedRef.current) {
+      return;
+    }
+
+    redemptionAttemptedRef.current = true;
     void redeemMagicLink();
   }, [redeemMagicLink]);
 

@@ -22,6 +22,7 @@ frontend/test-results/
 
 # Playwright artifacts
 test-results/
+tests/playwright/artifacts/
 
 # Backend runtime data
 backend/var/
