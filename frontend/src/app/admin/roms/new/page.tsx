@@ -448,7 +448,7 @@ export default function AdminRomUploadPage() {
                 </p>
                 {optimisticRomId && (
                   <Link
-                    href={`/rom/${optimisticRomId}`}
+                    href={{ pathname: '/rom/[id]', query: { id: optimisticRomId } }}
                     className={styles.secondary}
                   >
                     Open ROM detail

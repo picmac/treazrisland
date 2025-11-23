@@ -6,9 +6,6 @@ const emulatorProxyTarget = process.env.EMULATORJS_BASE_URL ?? 'http://emulatorj
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  experimental: {
-    typedRoutes: true
-  },
   images: {
     remotePatterns: [
       {
