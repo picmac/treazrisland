@@ -30,6 +30,23 @@ export default [
     },
   },
   {
+    files: ['scripts/**/*.{ts,js}'],
+    languageOptions: {
+      ...makeTypeScriptLanguageOptions('./tsconfig.json'),
+      globals: {
+        ...globals.node,
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...eslintConfigPrettier.rules,
+    },
+  },
+  {
     files: ['backend/**/*.{ts,tsx,js,jsx}'],
     languageOptions: {
       ...makeTypeScriptLanguageOptions('./backend/tsconfig.json'),
