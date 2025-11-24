@@ -1,26 +1,13 @@
 import { FastifyPluginAsync, FastifyRequest } from 'fastify';
-import { z } from 'zod';
 
 import type { AuthUser } from '../auth/types';
-
-const profilePatchSchema = z
-  .object({
-    displayName: z.string().trim().min(2).max(100).optional(),
-    avatarObjectKey: z.string().trim().min(1).max(255).nullable().optional(),
-  })
-  .refine((data) => Boolean(data.displayName) || data.avatarObjectKey !== undefined, {
-    message: 'No profile changes supplied',
-  });
-
-const avatarUploadSchema = z.object({
-  filename: z.string().min(1),
-  contentType: z.string().min(3),
-  size: z
-    .number()
-    .int()
-    .positive()
-    .max(10 * 1024 * 1024),
-});
+import {
+  isProfileComplete,
+  serializeUserProfile,
+  userProfileSelect,
+  updateUserProfile,
+} from './profile';
+import { avatarUploadSchema, profilePatchSchema } from './validators';
 
 const getRequestUser = (request: FastifyRequest): AuthUser | null => {
   const user = request.user as Partial<AuthUser> | undefined;
@@ -33,29 +20,6 @@ const getRequestUser = (request: FastifyRequest): AuthUser | null => {
 };
 
 export const userRoutes: FastifyPluginAsync = async (fastify) => {
-  const serializeUser = async (user: {
-    id: string;
-    email: string;
-    displayName: string | null;
-    avatarObjectKey: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }) => {
-    const avatarUrl = user.avatarObjectKey
-      ? await fastify.avatarStorage.getSignedAvatarUrl(user.avatarObjectKey)
-      : null;
-
-    return {
-      id: user.id,
-      email: user.email,
-      displayName: user.displayName,
-      avatarObjectKey: user.avatarObjectKey,
-      avatarUrl,
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString(),
-    };
-  };
-
   fastify.get('/users/me', { preHandler: fastify.authenticate }, async (request, reply) => {
     const authUser = getRequestUser(request);
 
@@ -65,14 +29,7 @@ export const userRoutes: FastifyPluginAsync = async (fastify) => {
 
     const user = await fastify.prisma.user.findUnique({
       where: { id: authUser.id },
-      select: {
-        id: true,
-        email: true,
-        displayName: true,
-        avatarObjectKey: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select: userProfileSelect,
     });
 
     if (!user) {
@@ -80,8 +37,8 @@ export const userRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const payload = {
-      user: await serializeUser(user),
-      isProfileComplete: Boolean(user.displayName && user.displayName.trim().length > 1),
+      user: await serializeUserProfile(user, fastify.avatarStorage),
+      isProfileComplete: isProfileComplete(user),
     };
 
     return reply.send(payload);
@@ -101,27 +58,20 @@ export const userRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const updatePayload = parsed.data;
-    const user = await fastify.prisma.user.update({
-      where: { id: authUser.id },
-      data: {
-        ...(updatePayload.displayName ? { displayName: updatePayload.displayName.trim() } : {}),
-        ...(updatePayload.avatarObjectKey !== undefined
-          ? { avatarObjectKey: updatePayload.avatarObjectKey ?? null }
-          : {}),
-      },
-      select: {
-        id: true,
-        email: true,
-        displayName: true,
-        avatarObjectKey: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    const result = await updateUserProfile(
+      fastify.prisma,
+      fastify.avatarStorage,
+      authUser.id,
+      updatePayload,
+    );
+
+    if (!result) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
 
     const payload = {
-      user: await serializeUser(user),
-      isProfileComplete: Boolean(user.displayName && user.displayName.trim().length > 1),
+      user: result.user,
+      isProfileComplete: result.isProfileComplete,
     };
 
     return reply.send(payload);

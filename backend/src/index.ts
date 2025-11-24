@@ -30,6 +30,7 @@ import { romRoutes } from './modules/roms/routes';
 import { SaveStateService } from './modules/roms/save-state.service';
 import { createMinioClient, createRomStorage, type RomStorage } from './modules/roms/storage';
 import { createAvatarStorage, type AvatarStorage } from './modules/users/avatar.storage';
+import { userGraphqlRoutes } from './modules/users/graphql';
 import { userRoutes } from './modules/users/routes';
 import { MetricsRecorder } from './modules/metrics/metrics.recorder';
 import { MetricsStore } from './modules/metrics/metrics.store';
@@ -257,6 +258,7 @@ const appPlugin = fp(
 
     await fastify.register(authRoutes, { prefix: '/auth' });
     await fastify.register(romRoutes);
+    await fastify.register(userGraphqlRoutes);
     await fastify.register(userRoutes);
     await fastify.register(adminRoutes, { prefix: '/admin' });
     await fastify.register(metricsRoutes);

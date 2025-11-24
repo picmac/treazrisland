@@ -25,7 +25,12 @@ describe('useAvatarUpload', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200 }) as unknown as typeof fetch;
 
     const { result } = renderHook(() => useAvatarUpload());
-    let uploadResult: { objectKey: string; previewUrl: string } | null = null;
+    let uploadResult: {
+      objectKey: string;
+      previewUrl: string;
+      contentType: string;
+      size: number;
+    } | null = null;
 
     await act(async () => {
       uploadResult = await result.current.uploadAvatar(file);
@@ -34,6 +39,8 @@ describe('useAvatarUpload', () => {
     expect(uploadResult).toEqual({
       objectKey: 'avatars/user/avatar.png',
       previewUrl: 'blob:preview-url',
+      contentType: 'image/png',
+      size: file.size,
     });
 
     expect(requestAvatarUploadGrant).toHaveBeenCalledWith({
