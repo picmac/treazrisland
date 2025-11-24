@@ -10,21 +10,7 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - 'docs/**'
-      - 'README.md'
-      - 'TREAZRISLAND_PRD.md'
-      - 'AGENTS.md'
-      - '.github/ISSUE_TEMPLATE/**'
-      - '.github/pull_request_template.md'
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - 'README.md'
-      - 'TREAZRISLAND_PRD.md'
-      - 'AGENTS.md'
-      - '.github/ISSUE_TEMPLATE/**'
-      - '.github/pull_request_template.md'
   pull_request_target:
     types:
       - opened
@@ -269,6 +255,11 @@ jobs:
       fail-fast: false
       matrix:
         job:
+          - name: LTS Drift
+            command: pnpm run verify:lts
+            needsDocker: false
+            installPlaywright: false
+            saveCache: false
           - name: Lint
             command: pnpm lint
             needsDocker: false
