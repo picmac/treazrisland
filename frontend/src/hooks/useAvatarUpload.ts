@@ -8,6 +8,8 @@ import { requestAvatarUploadGrant } from '@/lib/users';
 export interface AvatarUploadResult {
   objectKey: string;
   previewUrl: string;
+  contentType: string;
+  size: number;
 }
 
 const buildPreviewUrl = (file: File): string => URL.createObjectURL(file);
@@ -43,6 +45,8 @@ export function useAvatarUpload() {
       return {
         objectKey: grant.objectKey,
         previewUrl: buildPreviewUrl(file),
+        contentType: file.type || 'application/octet-stream',
+        size: file.size,
       };
     } catch (uploadError) {
       const message =

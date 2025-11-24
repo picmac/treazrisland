@@ -104,6 +104,8 @@ async function main() {
     where: { email: 'player@example.com' },
     update: {
       lastLoginAt: new Date(),
+      profileUpdatedAt: new Date(),
+      profileCompletedAt: new Date(),
     },
     create: {
       email: 'player@example.com',
@@ -111,6 +113,12 @@ async function main() {
       displayName: 'Player One',
       passwordHash: fallbackPasswordHash,
       lastLoginAt: new Date(),
+      profileUpdatedAt: new Date(),
+      profileCompletedAt: new Date(),
+      avatarObjectKey: 'seed/avatars/player-one.png',
+      avatarContentType: 'image/png',
+      avatarSize: 54231,
+      avatarUploadedAt: new Date(),
     },
   });
 

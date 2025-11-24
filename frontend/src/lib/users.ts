@@ -6,8 +6,13 @@ export interface UserProfile {
   displayName?: string | null;
   avatarUrl?: string | null;
   avatarObjectKey?: string | null;
+  avatarContentType?: string | null;
+  avatarSize?: number | null;
+  avatarUploadedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  profileUpdatedAt?: string | null;
+  profileCompletedAt?: string | null;
 }
 
 export interface UserProfileResponse {
@@ -28,6 +33,8 @@ export function getCurrentUserProfile() {
 export function updateUserProfile(payload: {
   displayName?: string;
   avatarObjectKey?: string | null;
+  avatarContentType?: string | null;
+  avatarSize?: number | null;
 }) {
   return apiClient.patch<UserProfileResponse>('/users/me', payload, { requiresAuth: true });
 }
