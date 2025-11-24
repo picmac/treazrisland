@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
 import { recordAuthAttempt } from '../../config/observability';
-import { assertAdminBootstrapComplete, needsAdminBootstrap } from '../../auth/first-admin.guard';
+import { needsAdminBootstrap } from '../../auth/first-admin.guard';
 import { clearRefreshTokenCookie, setRefreshTokenCookie } from '../../auth/refresh-cookies';
 
 import type { AuthUser, RefreshTokenPayload } from './types';
@@ -71,13 +71,6 @@ class UserAlreadyExistsError extends Error {
   }
 }
 
-class FirstAdminRequiredError extends Error {
-  constructor() {
-    super('First admin must be created via /auth/bootstrap');
-    this.name = 'FirstAdminRequiredError';
-  }
-}
-
 const createSessionTokens = async (
   fastify: FastifyInstance,
   reply: FastifyReply,
@@ -118,10 +111,6 @@ const createUserWithPassword = async (
 
   if (existing) {
     throw new UserAlreadyExistsError(existing.email);
-  }
-
-  if (!isAdminOverride && (await needsAdminBootstrap(prisma))) {
-    throw new FirstAdminRequiredError();
   }
 
   const usernameSeed = buildUsernameSeed(normalizedEmail);
@@ -229,20 +218,6 @@ const getRequestUser = (request: FastifyRequest): AuthUser | null => {
   return null;
 };
 
-const enforceBootstrapGuard = async (
-  fastify: FastifyInstance,
-  reply: FastifyReply,
-): Promise<boolean> => {
-  const guard = await assertAdminBootstrapComplete(fastify.prisma);
-
-  if (!guard.allowed) {
-    reply.status(409).send({ error: guard.reason });
-    return false;
-  }
-
-  return true;
-};
-
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/bootstrap', async (_request, reply) => {
     const bootstrapEmail = normalizeEmail(fastify.config.ADMIN_BOOTSTRAP_EMAIL);
@@ -291,10 +266,6 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     if (!parsedBody.success) {
       recordAuthAttempt({ method: 'password', outcome: 'failure' });
       return reply.status(400).send({ error: 'Invalid login payload' });
-    }
-
-    if (!(await enforceBootstrapGuard(fastify, reply))) {
-      return;
     }
 
     const { email, password } = parsedBody.data;
@@ -510,10 +481,6 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Invalid invite payload' });
       }
 
-      if (!(await enforceBootstrapGuard(fastify, reply))) {
-        return;
-      }
-
       const { code } = parsedParams.data;
       const { email, password } = parsedBody.data;
 
@@ -543,10 +510,6 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       } catch (error) {
         if (error instanceof UserAlreadyExistsError) {
           return reply.status(409).send({ error: 'Email is already registered' });
-        }
-
-        if (error instanceof FirstAdminRequiredError) {
-          return reply.status(409).send({ error: error.message });
         }
 
         throw error;
