@@ -100,6 +100,9 @@ model Invite {
 
   createdBy  User? @relation("InviteCreatedBy", fields: [createdById], references: [id])
   redeemedBy User? @relation("InviteRedeemedBy", fields: [redeemedById], references: [id])
+
+  @@index([createdById])
+  @@index([redeemedById])
 }
 
 model Session {
@@ -112,20 +115,23 @@ model Session {
   revokedAt    DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
 }
 
 model SaveState {
-  id        String   @id @default(cuid())
-  userId    String
-  romId     String
-  slot      Int      @default(0)
-  label     String?
-  objectKey String
-  checksum  String
+  id          String   @id @default(cuid())
+  userId      String
+  romId       String
+  slot        Int      @default(0)
+  label       String?
+  objectKey   String
+  checksum    String
   contentType String
-  size      Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  size        Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   rom  Rom  @relation(fields: [romId], references: [id], onDelete: Cascade)

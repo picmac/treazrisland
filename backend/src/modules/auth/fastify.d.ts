@@ -2,6 +2,7 @@
 import { PrismaClient } from '@prisma/client';
 
 import { RedisSessionStore } from './session-store';
+import { PrismaSessionService } from '../../auth/session.service';
 
 import type { AuthMailer } from './mailer';
 import type { AuthUser } from './types';
@@ -20,6 +21,7 @@ declare module 'fastify' {
     prisma: PrismaClient;
     redis: Redis;
     sessionStore: RedisSessionStore;
+    sessionService: PrismaSessionService;
     romStorage: RomStorage;
     romService: RomService;
     saveStateService: SaveStateService;

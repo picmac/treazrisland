@@ -23,6 +23,7 @@ import { adminRoutes } from './modules/admin/routes';
 import { createAuthMailer } from './modules/auth/mailer';
 import { authRoutes } from './modules/auth/routes';
 import { RedisSessionStore } from './modules/auth/session-store';
+import { PrismaSessionService } from './auth/session.service';
 import { PrismaInviteStore } from './modules/invites/invite.store';
 import { RomService } from './modules/roms/rom.service';
 import { romRoutes } from './modules/roms/routes';
@@ -221,6 +222,11 @@ const appPlugin = fp(
         refreshTokenTtlSeconds: env.JWT_REFRESH_TOKEN_TTL,
         magicLinkTokenTtlSeconds: env.MAGIC_LINK_TOKEN_TTL,
       }),
+    );
+
+    fastify.decorate(
+      'sessionService',
+      new PrismaSessionService(prisma, { refreshTokenTtlSeconds: env.JWT_REFRESH_TOKEN_TTL }),
     );
 
     const metricsStore = new MetricsStore(fastify.redis);

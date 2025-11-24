@@ -91,6 +91,13 @@ async function main() {
     }),
   ]);
 
+  const adminExists = (await prisma.user.count({ where: { isAdmin: true } })) > 0;
+
+  if (!adminExists) {
+    console.warn('Skipping user-facing seed data until the first admin has been bootstrapped.');
+    return;
+  }
+
   const fallbackPasswordHash = await bcrypt.hash('password123', 10);
 
   const user = await prisma.user.upsert({
