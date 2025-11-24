@@ -30,6 +30,40 @@ fail() {
   exit 1
 }
 
+detect_platform() {
+  local uname_s
+  uname_s=$(uname -s 2>/dev/null || echo "unknown")
+  case "$uname_s" in
+    Darwin)
+      echo "macOS"
+      ;;
+    Linux)
+      if grep -qi microsoft /proc/version 2>/dev/null; then
+        echo "WSL"
+      else
+        echo "Linux"
+      fi
+      ;;
+    *)
+      echo "$uname_s"
+      ;;
+  esac
+}
+
+require_min_major() {
+  local cmd="$1"
+  local expected="$2"
+  local label="$3"
+  local hint="$4"
+  local version
+
+  version=$($cmd -v 2>/dev/null | tr -d 'v') || fail "Unable to read ${label} version."
+  local major=${version%%.*}
+  if (( major < expected )); then
+    fail "${label} ${version} detected, but ${label} ${expected}.x or newer is required. ${hint}"
+  fi
+}
+
 usage() {
   cat <<USAGE
 Usage: local-setup.sh [options]
@@ -111,10 +145,59 @@ parse_args() {
   done
 }
 
+preflight_checks() {
+  local platform
+  platform=$(detect_platform)
+
+  log "Running preflight checks for ${platform}..."
+
+  require_command git "Install Git from https://git-scm.com/downloads."
+  require_command docker "Install Docker Desktop or Engine from https://docs.docker.com/get-docker/."
+
+  if ! docker info >/dev/null 2>&1; then
+    case "$platform" in
+      macOS)
+        fail "Docker Desktop is not running. Launch it and wait for the green status indicator."
+        ;;
+      WSL)
+        fail "Docker Desktop must be running on Windows with WSL integration enabled. Restart Docker Desktop if needed."
+        ;;
+      Linux)
+        fail "Docker daemon is not active. Start it with 'sudo systemctl start docker' or refer to your distro documentation."
+        ;;
+      *)
+        fail "Docker daemon is not active. Ensure Docker is running for your platform."
+        ;;
+    esac
+  fi
+
+  if ! docker compose version >/dev/null 2>&1; then
+    fail "Docker Compose V2 is unavailable. Upgrade Docker or install the compose-plugin."
+  fi
+
+  require_command node "Install Node.js 20.x LTS from https://nodejs.org/en/download or via a version manager."
+  require_min_major node 20 "Node.js" "Upgrade to the latest LTS with nvm, fnm, or asdf."
+
+  if ! command -v pnpm >/dev/null 2>&1; then
+    warn "pnpm is not installed. Attempting to activate via corepack..."
+    if command -v corepack >/dev/null 2>&1; then
+      if corepack enable >/dev/null 2>&1 && corepack prepare pnpm@latest --activate >/dev/null 2>&1; then
+        log "pnpm activated via corepack."
+      else
+        fail "pnpm activation failed. Run 'corepack enable && corepack prepare pnpm@latest --activate' manually."
+      fi
+    else
+      fail "Install pnpm from https://pnpm.io/installation or install Node.js with corepack support enabled."
+    fi
+  fi
+
+  require_min_major pnpm 8 "pnpm" "Upgrade with 'corepack prepare pnpm@latest --activate'."
+}
+
 main() {
   parse_args "$@"
 
-  require_command git "Install Git from https://git-scm.com/downloads."
+  preflight_checks
 
   if [[ -d "$REPO_DIR" ]] && [[ ! -d "$REPO_DIR/.git" ]]; then
     warn "${REPO_DIR} exists but is not a Git clone."
