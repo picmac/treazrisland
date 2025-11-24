@@ -230,6 +230,12 @@ jobs:
           version: 10.23.0
           run_install: false
 
+      - name: Install/force pnpm globally and export bin
+        run: |
+          npm install -g pnpm@10.23.0 --force
+          echo "$(npm bin -g)" >> "$GITHUB_PATH"
+          pnpm --version
+
       - name: Ensure pnpm on PATH
         run: |
           echo "${PNPM_HOME:-$HOME/.local/share/pnpm}" >> "$GITHUB_PATH"
