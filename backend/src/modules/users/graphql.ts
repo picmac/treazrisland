@@ -16,6 +16,11 @@ type GraphqlRequestBody = {
   operationName?: string;
 };
 
+type GraphqlContext = {
+  request: FastifyRequest;
+  authUser: AuthUser;
+};
+
 const schema = buildSchema(`
   type AvatarHeader {
     key: String!
@@ -71,27 +76,11 @@ const schema = buildSchema(`
   }
 `);
 
-const getAuthUser = (request: FastifyRequest): AuthUser | null => {
-  const user = request.user as Partial<AuthUser> | undefined;
-
-  if (user && typeof user.id === 'string' && typeof user.email === 'string') {
-    return { id: user.id, email: user.email, isAdmin: Boolean(user.isAdmin) };
-  }
-
-  return null;
-};
-
 export const userGraphqlRoutes: FastifyPluginAsync = async (fastify) => {
   const resolvers = {
-    meProfile: async (_: unknown, _args: unknown, request: FastifyRequest) => {
-      const authUser = getAuthUser(request);
-
-      if (!authUser) {
-        throw new Error('Unauthorized');
-      }
-
+    meProfile: async (_: unknown, _args: unknown, context: GraphqlContext) => {
       const user = await fastify.prisma.user.findUnique({
-        where: { id: authUser.id },
+        where: { id: context.authUser.id },
         select: userProfileSelect,
       });
 
@@ -104,13 +93,7 @@ export const userGraphqlRoutes: FastifyPluginAsync = async (fastify) => {
         isProfileComplete: isProfileComplete(user),
       };
     },
-    updateProfile: async (_source: unknown, args: { input: unknown }, request: FastifyRequest) => {
-      const authUser = getAuthUser(request);
-
-      if (!authUser) {
-        throw new Error('Unauthorized');
-      }
-
+    updateProfile: async (_source: unknown, args: { input: unknown }, context: GraphqlContext) => {
       const parsed = profilePatchSchema.safeParse(args.input);
 
       if (!parsed.success) {
@@ -120,7 +103,7 @@ export const userGraphqlRoutes: FastifyPluginAsync = async (fastify) => {
       const result = await updateUserProfile(
         fastify.prisma,
         fastify.avatarStorage,
-        authUser.id,
+        context.authUser.id,
         parsed.data,
       );
 
@@ -133,14 +116,8 @@ export const userGraphqlRoutes: FastifyPluginAsync = async (fastify) => {
     createAvatarUploadGrant: async (
       _source: unknown,
       args: { input: unknown },
-      request: FastifyRequest,
+      context: GraphqlContext,
     ) => {
-      const authUser = getAuthUser(request);
-
-      if (!authUser) {
-        throw new Error('Unauthorized');
-      }
-
       const parsed = avatarUploadSchema.safeParse(args.input);
 
       if (!parsed.success) {
@@ -149,7 +126,7 @@ export const userGraphqlRoutes: FastifyPluginAsync = async (fastify) => {
 
       const grant = await fastify.avatarStorage.createUploadGrant({
         ...parsed.data,
-        userId: authUser.id,
+        userId: context.authUser.id,
       });
 
       return {
@@ -163,6 +140,12 @@ export const userGraphqlRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/users/graphql', { preHandler: fastify.authenticate }, async (request, reply) => {
     const body = request.body as GraphqlRequestBody;
 
+    const authUser = request.user as AuthUser | undefined;
+
+    if (!authUser) {
+      return reply.status(401).send({ errors: [{ message: 'Unauthorized' }] });
+    }
+
     if (!body?.query) {
       return reply.status(400).send({ errors: [{ message: 'Missing query' }] });
     }
@@ -173,7 +156,7 @@ export const userGraphqlRoutes: FastifyPluginAsync = async (fastify) => {
       variableValues: body.variables,
       operationName: body.operationName,
       rootValue: resolvers,
-      contextValue: request,
+      contextValue: { request, authUser },
     });
 
     return reply.send(response);

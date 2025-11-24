@@ -18,19 +18,20 @@ export const profilePatchSchema = z
   })
   .refine(
     (data) => {
-      if (data.avatarObjectKey === undefined) {
-        return !data.avatarContentType && data.avatarSize === undefined;
-      }
-
       if (data.avatarObjectKey === null) {
         return data.avatarContentType === undefined && data.avatarSize === undefined;
       }
 
+      const hasAvatarMetadata =
+        data.avatarContentType !== undefined || data.avatarSize !== undefined;
+
+      if (!hasAvatarMetadata) {
+        return true;
+      }
+
       return data.avatarContentType !== undefined && data.avatarSize !== undefined;
     },
-    {
-      message: 'Avatar metadata must accompany avatarObjectKey changes',
-    },
+    { message: 'Avatar contentType and size must both be provided together when included' },
   );
 
 export const avatarUploadSchema = z.object({
