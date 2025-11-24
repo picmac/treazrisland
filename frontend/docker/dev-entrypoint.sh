@@ -13,9 +13,9 @@ fi
 rm -rf .next
 
 # Turbopack is opt-in to avoid dev instability in CI.
-NEXT_DEV_FLAGS=("--hostname" "${HOST}" "--port" "${PORT}" "--webpack")
+NEXT_DEV_FLAGS=("--hostname" "${HOST}" "--port" "${PORT}")
 if [[ "${NEXT_USE_TURBOPACK:-}" == "1" ]]; then
-  NEXT_DEV_FLAGS=("--hostname" "${HOST}" "--port" "${PORT}" "--turbo")
+  NEXT_DEV_FLAGS+=("--turbo")
 fi
 
 exec pnpm exec next dev "${NEXT_DEV_FLAGS[@]}"
