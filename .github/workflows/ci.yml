@@ -230,6 +230,11 @@ jobs:
           version: 10.23.0
           run_install: false
 
+      - name: Ensure pnpm on PATH
+        run: |
+          echo "${PNPM_HOME:-$HOME/.local/share/pnpm}" >> "$GITHUB_PATH"
+          echo "PNPM_HOME=${PNPM_HOME:-$HOME/.local/share/pnpm}" >> "$GITHUB_ENV"
+
       - name: Install dependencies
         run: pnpm install --recursive --frozen-lockfile
 
@@ -295,6 +300,11 @@ jobs:
         with:
           version: 10.23.0
           run_install: false
+
+      - name: Ensure pnpm on PATH
+        run: |
+          echo "${PNPM_HOME:-$HOME/.local/share/pnpm}" >> "$GITHUB_PATH"
+          echo "PNPM_HOME=${PNPM_HOME:-$HOME/.local/share/pnpm}" >> "$GITHUB_ENV"
 
       - name: Determine pnpm store
         id: pnpm-store
