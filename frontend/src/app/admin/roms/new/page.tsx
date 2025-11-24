@@ -215,14 +215,25 @@ export default function AdminRomUploadPage() {
       setStatusMessage('Upload complete. Redirecting to ROM dossier…');
       const destination = `/rom/${romResponse.rom.id}`;
 
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('treazr.lastCreatedRomId', romResponse.rom.id);
+      if (typeof window === 'undefined') {
+        router.push(destination);
+        return;
       }
-      // Prefer client navigation, but fall back to a hard reload to keep automation stable.
+
+      window.localStorage.setItem('treazr.lastCreatedRomId', romResponse.rom.id);
+
+      const ensureNavigation = () => {
+        if (window.location.pathname.startsWith(`/rom/${romResponse.rom.id}`)) return;
+        window.location.assign(destination);
+      };
+
+      const fallbackTimer = window.setTimeout(ensureNavigation, 1_500);
+
       try {
         router.push(destination);
       } catch {
-        window.location.assign(destination);
+        window.clearTimeout(fallbackTimer);
+        ensureNavigation();
       }
     } catch (uploadError) {
       const message =
