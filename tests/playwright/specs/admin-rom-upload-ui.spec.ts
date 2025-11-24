@@ -10,12 +10,12 @@ test.describe('admin rom uploader UI', () => {
     const romTitle = `UI Upload ${Date.now()}`;
     await loginWithPassword(page);
 
-    await page.goto('/admin/roms/new');
+    await page.goto('/admin/roms/upload');
 
     await page.setInputFiles('#rom-file', romFixturePath);
     const checksumStatus = page.getByTestId('rom-upload-status');
 
-    await expect(checksumStatus).toHaveText(/Computing checksum/i, { timeout: 12_000 });
+    await expect(checksumStatus).toHaveText(/Computing SHA-256 checksum/i, { timeout: 12_000 });
     await expect(checksumStatus).toHaveText(/Checksum locked\. Ready to upload\./i, {
       timeout: 24_000,
     });

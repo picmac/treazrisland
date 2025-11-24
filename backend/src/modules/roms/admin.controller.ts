@@ -41,32 +41,58 @@ const directUploadSchema = z.object({
     .max(50 * 1024 * 1024, 'File exceeds 50MB limit'),
 });
 
+const uploadInitSchema = z.object({
+  filename: z.string().min(1),
+  contentType: z.string().min(1),
+  size: z
+    .number()
+    .int()
+    .min(1)
+    .max(50 * 1024 * 1024),
+  checksum: z.string().regex(/^[a-f0-9]{64}$/i, 'Checksum must be a SHA-256 hex string'),
+});
+
+const uploadVerifySchema = z.object({
+  objectKey: z.string().min(1),
+  checksum: z.string().regex(/^[a-f0-9]{64}$/i, 'Checksum must be a SHA-256 hex string'),
+});
+
+const uploadFailureSchema = z.object({
+  objectKey: z.string().min(1),
+  reason: z.string().min(1).max(200).optional(),
+});
+
 export const adminRomController: FastifyPluginAsync = async (fastify) => {
+  fastify.post(
+    '/roms/uploads/initiate',
+    { preHandler: fastify.authorizeAdmin },
+    async (request, reply) => {
+      const payload = uploadInitSchema.safeParse(request.body);
+
+      if (!payload.success) {
+        return reply.status(400).send({ error: 'Invalid upload request' });
+      }
+
+      try {
+        const grant = await fastify.romStorage.createUploadGrant(payload.data);
+
+        return reply.status(201).send(grant);
+      } catch (error) {
+        request.log.error({ err: error }, 'Failed to generate ROM upload grant');
+        return reply.status(502).send({ error: 'Unable to prepare ROM upload' });
+      }
+    },
+  );
+
   fastify.post('/roms/uploads', { preHandler: fastify.authorizeAdmin }, async (request, reply) => {
-    const payload = z
-      .object({
-        filename: z.string().min(1),
-        contentType: z.string().min(1),
-        size: z
-          .number()
-          .int()
-          .min(1)
-          .max(50 * 1024 * 1024),
-        checksum: z.string().regex(/^[a-f0-9]{64}$/i, 'Checksum must be a SHA-256 hex string'),
-      })
-      .safeParse(request.body);
+    const payload = uploadInitSchema.safeParse(request.body);
 
     if (!payload.success) {
       return reply.status(400).send({ error: 'Invalid upload request' });
     }
 
     try {
-      const grant = await fastify.romStorage.createUploadGrant({
-        filename: payload.data.filename,
-        contentType: payload.data.contentType,
-        size: payload.data.size,
-        checksum: payload.data.checksum,
-      });
+      const grant = await fastify.romStorage.createUploadGrant(payload.data);
 
       return reply.status(201).send(grant);
     } catch (error) {
@@ -74,6 +100,61 @@ export const adminRomController: FastifyPluginAsync = async (fastify) => {
       return reply.status(502).send({ error: 'Unable to prepare ROM upload' });
     }
   });
+
+  fastify.post(
+    '/roms/uploads/verify',
+    { preHandler: fastify.authorizeAdmin },
+    async (request, reply) => {
+      const payload = uploadVerifySchema.safeParse(request.body);
+
+      if (!payload.success) {
+        return reply.status(400).send({ error: 'Invalid verification payload' });
+      }
+
+      try {
+        const valid = await fastify.romStorage.verifyChecksum(
+          payload.data.objectKey,
+          payload.data.checksum,
+        );
+
+        if (!valid) {
+          return reply.status(409).send({ error: 'Checksum mismatch', valid: false });
+        }
+
+        return reply.send({ valid: true });
+      } catch (error) {
+        request.log.error({ err: error }, 'Failed to verify ROM upload');
+        const status = error instanceof RomStorageError ? error.statusCode : 502;
+        return reply.status(status >= 400 && status < 600 ? status : 502).send({
+          error: 'Unable to verify ROM upload',
+        });
+      }
+    },
+  );
+
+  fastify.post(
+    '/roms/uploads/failure',
+    { preHandler: fastify.authorizeAdmin },
+    async (request, reply) => {
+      const payload = uploadFailureSchema.safeParse(request.body);
+
+      if (!payload.success) {
+        return reply.status(400).send({ error: 'Invalid failure payload' });
+      }
+
+      try {
+        await fastify.romStorage.deleteAsset(payload.data.objectKey);
+        request.log.warn(
+          { reason: payload.data.reason, objectKey: payload.data.objectKey },
+          'ROM upload marked as failed; asset removed',
+        );
+      } catch (error) {
+        request.log.error({ err: error }, 'Failed to clean up failed ROM upload');
+      }
+
+      return reply.status(204).send();
+    },
+  );
 
   fastify.post(
     '/roms/uploads/direct',
@@ -114,6 +195,16 @@ export const adminRomController: FastifyPluginAsync = async (fastify) => {
     const { title, description, platformId, releaseYear, genres, asset } = parsed.data;
 
     try {
+      const isValidChecksum = await fastify.romStorage.verifyChecksum(
+        asset.objectKey,
+        asset.checksum,
+      );
+
+      if (!isValidChecksum) {
+        recordRomUpload({ source: 'admin', outcome: 'failure' });
+        return reply.status(409).send({ error: 'Uploaded payload failed checksum validation' });
+      }
+
       const rom = await fastify.romService.registerRom({
         title,
         description,

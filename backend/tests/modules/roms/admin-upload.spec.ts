@@ -65,7 +65,7 @@ describe('POST /admin/roms', () => {
   ) => {
     const grantResponse = await getApp().inject({
       method: 'POST',
-      url: '/admin/roms/uploads',
+      url: '/admin/roms/uploads/initiate',
       headers: { authorization: `Bearer ${accessToken}` },
       payload: file,
     });
@@ -181,6 +181,16 @@ describe('POST /admin/roms', () => {
 
     await uploadUsingGrant(grant, romData);
 
+    const verificationResponse = await getApp().inject({
+      method: 'POST',
+      url: '/admin/roms/uploads/verify',
+      headers: { authorization: `Bearer ${accessToken}` },
+      payload: { objectKey: grant.objectKey, checksum },
+    });
+
+    expect(verificationResponse.statusCode).toBe(200);
+    expect(verificationResponse.json()).toEqual({ valid: true });
+
     const response = await getApp().inject({
       method: 'POST',
       url: '/admin/roms',
@@ -247,26 +257,45 @@ describe('POST /admin/roms', () => {
 
     await uploadUsingGrant(grant, romData);
 
-    const response = await getApp().inject({
+    const verificationResponse = await getApp().inject({
       method: 'POST',
-      url: '/admin/roms',
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-      },
-      payload: {
-        title: 'Checksum mismatch',
-        platformId: 'snes',
-        asset: {
-          filename: 'invalid.zip',
-          contentType: 'application/zip',
-          objectKey: grant.objectKey,
-          size: romData.byteLength,
-          checksum: mismatchedChecksum,
-        },
-      },
+      url: '/admin/roms/uploads/verify',
+      headers: { authorization: `Bearer ${accessToken}` },
+      payload: { objectKey: grant.objectKey, checksum: mismatchedChecksum },
     });
 
-    expect(response.statusCode).toBe(400);
-    expect(response.json()).toEqual({ error: 'Uploaded asset checksum mismatch' });
+    expect(verificationResponse.statusCode).toBe(409);
+    expect(verificationResponse.json()).toEqual({ error: 'Checksum mismatch', valid: false });
+  });
+
+  it('cleans up failed uploads when requested', async ({ skip }) => {
+    if (runtimeError || databaseError) {
+      skip();
+    }
+
+    const romData = Buffer.from('retro-bytes');
+    const checksum = createHash('sha256').update(romData).digest('hex');
+    const accessToken = await getAccessToken();
+    const grant = await requestUploadGrant(accessToken, {
+      filename: 'cleanup.zip',
+      contentType: 'application/zip',
+      size: romData.byteLength,
+      checksum,
+    });
+
+    await uploadUsingGrant(grant, romData);
+
+    const failureResponse = await getApp().inject({
+      method: 'POST',
+      url: '/admin/roms/uploads/failure',
+      headers: { authorization: `Bearer ${accessToken}` },
+      payload: { objectKey: grant.objectKey, reason: 'integration-test' },
+    });
+
+    expect(failureResponse.statusCode).toBe(204);
+
+    await expect(
+      minioClient!.statObject(env.OBJECT_STORAGE_BUCKET, grant.objectKey),
+    ).rejects.toThrow();
   });
 });

@@ -48,7 +48,7 @@ describe('ROM save state endpoints', () => {
 
     const grantResponse = await getApp().inject({
       method: 'POST',
-      url: '/admin/roms/uploads',
+      url: '/admin/roms/uploads/initiate',
       headers: {
         authorization: `Bearer ${adminAccessToken}`,
       },
@@ -74,6 +74,17 @@ describe('ROM save state endpoints', () => {
       romPayload.length,
       grant.headers ?? {},
     );
+
+    const verificationResponse = await getApp().inject({
+      method: 'POST',
+      url: '/admin/roms/uploads/verify',
+      headers: {
+        authorization: `Bearer ${adminAccessToken}`,
+      },
+      payload: { objectKey: grant.objectKey, checksum },
+    });
+
+    expect(verificationResponse.statusCode).toBe(200);
 
     const response = await getApp().inject({
       method: 'POST',

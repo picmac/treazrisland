@@ -49,6 +49,8 @@ export interface RomStorage {
   describeAsset(objectKey: string): Promise<RomStorageAssetMetadata>;
   getSignedAssetUrl(objectKey: string): Promise<string>;
   downloadAsset(objectKey: string): Promise<Buffer>;
+  verifyChecksum(objectKey: string, expectedChecksum: string): Promise<boolean>;
+  deleteAsset(objectKey: string): Promise<void>;
 }
 
 export class RomStorageError extends Error {
@@ -206,6 +208,24 @@ export class S3RomStorage implements RomStorage {
       return await streamToBuffer(stream);
     } catch (error) {
       throw new RomStorageError('Unable to download ROM asset', 502, { cause: error });
+    }
+  }
+
+  async verifyChecksum(objectKey: string, expectedChecksum: string): Promise<boolean> {
+    const normalized = expectedChecksum.toLowerCase();
+    const buffer = await this.downloadAsset(objectKey);
+    const checksum = createHash('sha256').update(buffer).digest('hex');
+
+    return checksum === normalized;
+  }
+
+  async deleteAsset(objectKey: string): Promise<void> {
+    await this.ensureBucket();
+
+    try {
+      await this.client.removeObject(this.options.bucket, objectKey);
+    } catch (error) {
+      throw new RomStorageError('Unable to delete ROM asset', 502, { cause: error });
     }
   }
 
