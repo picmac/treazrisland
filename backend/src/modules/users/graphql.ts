@@ -78,7 +78,7 @@ const schema = buildSchema(`
 
 export const userGraphqlRoutes: FastifyPluginAsync = async (fastify) => {
   const resolvers = {
-    meProfile: async (_: unknown, _args: unknown, context: GraphqlContext) => {
+    meProfile: async (_args: unknown, context: GraphqlContext) => {
       const user = await fastify.prisma.user.findUnique({
         where: { id: context.authUser.id },
         select: userProfileSelect,
@@ -93,7 +93,7 @@ export const userGraphqlRoutes: FastifyPluginAsync = async (fastify) => {
         isProfileComplete: isProfileComplete(user),
       };
     },
-    updateProfile: async (_source: unknown, args: { input: unknown }, context: GraphqlContext) => {
+    updateProfile: async (args: { input: unknown }, context: GraphqlContext) => {
       const parsed = profilePatchSchema.safeParse(args.input);
 
       if (!parsed.success) {
@@ -113,11 +113,7 @@ export const userGraphqlRoutes: FastifyPluginAsync = async (fastify) => {
 
       return result;
     },
-    createAvatarUploadGrant: async (
-      _source: unknown,
-      args: { input: unknown },
-      context: GraphqlContext,
-    ) => {
+    createAvatarUploadGrant: async (args: { input: unknown }, context: GraphqlContext) => {
       const parsed = avatarUploadSchema.safeParse(args.input);
 
       if (!parsed.success) {
