@@ -8,6 +8,9 @@ log() {
   echo "[deploy] $*"
 }
 
+# Ensure non-interactive installs behave like CI (pnpm uses this to skip prompts).
+export CI="${CI:-true}"
+
 fail() {
   echo "[deploy][error] $*" >&2
   exit 1
