@@ -5,6 +5,8 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
 import { recordAuthAttempt } from '../../config/observability';
+import { assertAdminBootstrapComplete, needsAdminBootstrap } from '../../auth/first-admin.guard';
+import { clearRefreshTokenCookie, setRefreshTokenCookie } from '../../auth/refresh-cookies';
 
 import type { AuthUser, RefreshTokenPayload } from './types';
 import type { InviteRecord, InviteSeed } from '../invites/invite.store';
@@ -69,25 +71,12 @@ class UserAlreadyExistsError extends Error {
   }
 }
 
-const resolveAdminFlag = async (prisma: FastifyInstance['prisma']): Promise<boolean> => {
-  const userCount = await prisma.user.count();
-  return userCount === 0;
-};
-
-const hasAdminUser = async (prisma: FastifyInstance['prisma']): Promise<boolean> => {
-  const adminCount = await prisma.user.count({ where: { isAdmin: true } });
-  return adminCount > 0;
-};
-
-const setRefreshCookie = (fastify: FastifyInstance, reply: FastifyReply, token: string) => {
-  reply.setCookie('refreshToken', token, {
-    httpOnly: true,
-    path: '/auth/refresh',
-    sameSite: 'lax',
-    secure: fastify.config.NODE_ENV === 'production',
-    maxAge: fastify.config.JWT_REFRESH_TOKEN_TTL,
-  });
-};
+class FirstAdminRequiredError extends Error {
+  constructor() {
+    super('First admin must be created via /auth/bootstrap');
+    this.name = 'FirstAdminRequiredError';
+  }
+}
 
 const createSessionTokens = async (
   fastify: FastifyInstance,
@@ -95,8 +84,6 @@ const createSessionTokens = async (
   user: AuthUser,
 ): Promise<{ accessToken: string; refreshToken: string }> => {
   const sessionId = randomUUID();
-
-  await fastify.sessionStore.createRefreshSession(sessionId, user);
 
   const accessToken = await reply.jwtSign(
     { sub: user.id, email: user.email, isAdmin: user.isAdmin },
@@ -108,7 +95,14 @@ const createSessionTokens = async (
     { expiresIn: fastify.config.JWT_REFRESH_TOKEN_TTL },
   );
 
-  setRefreshCookie(fastify, reply, refreshToken);
+  try {
+    await fastify.sessionService.recordSession(sessionId, user.id, refreshToken);
+  } catch (error) {
+    fastify.log.warn({ err: error }, 'Falling back to Redis session store for refresh token');
+    await fastify.sessionStore.createRefreshSession(sessionId, user);
+  }
+
+  setRefreshTokenCookie(reply, fastify.config, refreshToken);
 
   return { accessToken, refreshToken };
 };
@@ -126,10 +120,13 @@ const createUserWithPassword = async (
     throw new UserAlreadyExistsError(existing.email);
   }
 
+  if (!isAdminOverride && (await needsAdminBootstrap(prisma))) {
+    throw new FirstAdminRequiredError();
+  }
+
   const usernameSeed = buildUsernameSeed(normalizedEmail);
   let attempt = 0;
-  const isAdmin =
-    typeof isAdminOverride === 'boolean' ? isAdminOverride : await resolveAdminFlag(prisma);
+  const isAdmin = Boolean(isAdminOverride);
 
   while (attempt < 5) {
     const suffix = attempt === 0 ? '' : `_${attempt}`;
@@ -232,11 +229,25 @@ const getRequestUser = (request: FastifyRequest): AuthUser | null => {
   return null;
 };
 
+const enforceBootstrapGuard = async (
+  fastify: FastifyInstance,
+  reply: FastifyReply,
+): Promise<boolean> => {
+  const guard = await assertAdminBootstrapComplete(fastify.prisma);
+
+  if (!guard.allowed) {
+    reply.status(409).send({ error: guard.reason });
+    return false;
+  }
+
+  return true;
+};
+
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/bootstrap', async (_request, reply) => {
     const bootstrapEmail = normalizeEmail(fastify.config.ADMIN_BOOTSTRAP_EMAIL);
 
-    if (await hasAdminUser(fastify.prisma)) {
+    if (!(await needsAdminBootstrap(fastify.prisma))) {
       return reply.status(409).send({ status: 'skipped', reason: 'Admin already exists' });
     }
 
@@ -268,12 +279,22 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
+  fastify.get('/bootstrap/status', async (_request, reply) => {
+    const needsBootstrapFlag = await needsAdminBootstrap(fastify.prisma);
+
+    return reply.send({ needsBootstrap: needsBootstrapFlag });
+  });
+
   fastify.post('/login', async (request, reply) => {
     const parsedBody = loginSchema.safeParse(request.body);
 
     if (!parsedBody.success) {
       recordAuthAttempt({ method: 'password', outcome: 'failure' });
       return reply.status(400).send({ error: 'Invalid login payload' });
+    }
+
+    if (!(await enforceBootstrapGuard(fastify, reply))) {
+      return;
     }
 
     const { email, password } = parsedBody.data;
@@ -331,19 +352,29 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       payload = await fastify.jwt.verify<RefreshTokenPayload>(refreshToken);
     } catch {
+      clearRefreshTokenCookie(reply, fastify.config);
       return reply.status(401).send({ error: 'Invalid refresh token' });
     }
 
-    const user = await fastify.sessionStore.getRefreshSession(payload.sid);
+    let user: AuthUser | null = null;
+
+    try {
+      user = await fastify.sessionService.consumeSession(payload.sid, refreshToken);
+    } catch (error) {
+      fastify.log.warn({ err: error }, 'Unable to read refresh session via Prisma, checking Redis');
+    }
 
     if (!user) {
+      user = await fastify.sessionStore.getRefreshSession(payload.sid);
+      await fastify.sessionStore.deleteRefreshSession(payload.sid);
+    }
+
+    if (!user) {
+      clearRefreshTokenCookie(reply, fastify.config);
       return reply.status(401).send({ error: 'Refresh session expired' });
     }
 
-    await fastify.sessionStore.deleteRefreshSession(payload.sid);
-
     const sessionId = randomUUID();
-    await fastify.sessionStore.createRefreshSession(sessionId, user);
 
     const accessToken = await reply.jwtSign(
       { sub: user.id, email: user.email, isAdmin: user.isAdmin },
@@ -355,7 +386,17 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       { expiresIn: fastify.config.JWT_REFRESH_TOKEN_TTL },
     );
 
-    setRefreshCookie(fastify, reply, nextRefreshToken);
+    try {
+      await fastify.sessionService.recordSession(sessionId, user.id, nextRefreshToken);
+    } catch (error) {
+      fastify.log.warn(
+        { err: error },
+        'Falling back to Redis session store for rotated refresh token',
+      );
+      await fastify.sessionStore.createRefreshSession(sessionId, user);
+    }
+
+    setRefreshTokenCookie(reply, fastify.config, nextRefreshToken);
 
     return reply.send({
       accessToken,
@@ -398,6 +439,10 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     const user = await fastify.prisma.user.findUnique({ where: { email: normalizedEmail } });
 
     if (!user) {
+      if (!fastify.config.MAGIC_LINK_VERIFY_USERS) {
+        return reply.status(202).send({ status: 'accepted' });
+      }
+
       return reply.status(404).send({ error: 'User not found' });
     }
 
@@ -465,6 +510,10 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Invalid invite payload' });
       }
 
+      if (!(await enforceBootstrapGuard(fastify, reply))) {
+        return;
+      }
+
       const { code } = parsedParams.data;
       const { email, password } = parsedBody.data;
 
@@ -494,6 +543,10 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       } catch (error) {
         if (error instanceof UserAlreadyExistsError) {
           return reply.status(409).send({ error: 'Email is already registered' });
+        }
+
+        if (error instanceof FirstAdminRequiredError) {
+          return reply.status(409).send({ error: error.message });
         }
 
         throw error;

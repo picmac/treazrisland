@@ -13,6 +13,10 @@ export const envSchema = z.object({
   JWT_ACCESS_TOKEN_TTL: z.coerce.number().int().positive().default(900),
   JWT_REFRESH_TOKEN_TTL: z.coerce.number().int().positive().default(604800),
   MAGIC_LINK_TOKEN_TTL: z.coerce.number().int().positive().default(300),
+  MAGIC_LINK_VERIFY_USERS: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
   DATABASE_URL: z.string().url(),
   SHADOW_DATABASE_URL: z.string().url().optional(),
   REDIS_URL: z.string().url().optional(),
@@ -44,6 +48,7 @@ export const parseEnv = (source: ProcessEnv = process.env): Env => {
     JWT_ACCESS_TOKEN_TTL: source.JWT_ACCESS_TOKEN_TTL,
     JWT_REFRESH_TOKEN_TTL: source.JWT_REFRESH_TOKEN_TTL,
     MAGIC_LINK_TOKEN_TTL: source.MAGIC_LINK_TOKEN_TTL,
+    MAGIC_LINK_VERIFY_USERS: source.MAGIC_LINK_VERIFY_USERS,
     DATABASE_URL: source.DATABASE_URL,
     SHADOW_DATABASE_URL: source.SHADOW_DATABASE_URL,
     REDIS_URL: source.REDIS_URL,
