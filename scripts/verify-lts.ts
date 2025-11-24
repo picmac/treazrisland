@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import type { ProcessEnv } from 'node:process';
 import { parse } from 'yaml';
 
 type DependencyKey = 'node' | 'pnpm' | 'postgresql' | 'redis' | 'playwright' | 'prisma';
@@ -36,10 +37,16 @@ const normalizeVersion = (value: string): string => {
   return versionMatch[0];
 };
 
-const runCommand = (command: string, args: string[], friendlyName: string): string => {
+const runCommand = (
+  command: string,
+  args: string[],
+  friendlyName: string,
+  env?: ProcessEnv,
+): string => {
   const output = execSync([command, ...args].join(' '), {
     stdio: ['ignore', 'pipe', 'inherit'],
     encoding: 'utf8',
+    env: env ? { ...process.env, ...env } : process.env,
   });
 
   const normalizedOutput = normalizeVersion(output);
@@ -102,9 +109,16 @@ const collectActualVersions = (): Matrix => ({
   postgresql: parseComposeServiceImage('postgres'),
   redis: parseComposeServiceImage('redis'),
   playwright: normalizeVersion(
-    runCommand('pnpm', ['dlx', 'playwright', '--version'], 'Playwright CLI'),
+    runCommand('pnpm', ['exec', 'playwright', '--version'], 'Playwright CLI'),
   ),
-  prisma: normalizeVersion(runCommand('pnpm', ['dlx', 'prisma', '--version'], 'Prisma CLI')),
+  prisma: normalizeVersion(
+    runCommand(
+      'pnpm',
+      ['--filter', '@treazrisland/backend', 'exec', 'prisma', '--version'],
+      'Prisma CLI',
+      { DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/treazrisland' },
+    ),
+  ),
 });
 
 const compare = (expected: Matrix, actual: Matrix): Check[] =>
