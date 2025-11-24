@@ -1,8 +1,9 @@
 'use client';
 
 import NextLink from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type React from 'react';
+import { useRouter } from 'next/navigation';
 
 const Link = NextLink as unknown as React.FC<React.ComponentProps<typeof NextLink>>;
 
@@ -65,6 +66,7 @@ const splitGenres = (value: string) =>
     .filter(Boolean);
 
 export default function AdminRomUploadPage() {
+  const router = useRouter();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [platform, setPlatform] = useState('');
@@ -78,6 +80,15 @@ export default function AdminRomUploadPage() {
   const [statusMessage, setStatusMessage] = useState('Waiting for ROM drop…');
   const [error, setError] = useState<string | null>(null);
   const [optimisticRomId, setOptimisticRomId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const pendingRomId = window.localStorage.getItem('treazr.lastCreatedRomId');
+    if (pendingRomId) {
+      window.localStorage.removeItem('treazr.lastCreatedRomId');
+      window.location.replace(`/rom/${pendingRomId}`);
+    }
+  }, []);
 
   const contentType = useMemo(() => file?.type || 'application/octet-stream', [file?.type]);
 
@@ -203,8 +214,16 @@ export default function AdminRomUploadPage() {
       setStage('redirecting');
       setStatusMessage('Upload complete. Redirecting to ROM dossier…');
       const destination = `/rom/${romResponse.rom.id}`;
-      // Use a hard navigation so the dossier page fully loads for both users and automation.
-      window.location.assign(destination);
+
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('treazr.lastCreatedRomId', romResponse.rom.id);
+      }
+      // Prefer client navigation, but fall back to a hard reload to keep automation stable.
+      try {
+        router.push(destination);
+      } catch {
+        window.location.assign(destination);
+      }
     } catch (uploadError) {
       const message =
         uploadError instanceof Error ? uploadError.message : 'Unable to upload ROM right now';

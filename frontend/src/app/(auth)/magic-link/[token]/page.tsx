@@ -1,15 +1,15 @@
 'use client';
 
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Route } from 'next';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { exchangeMagicLinkToken } from '@/lib/apiClient';
 import { storeAccessToken } from '@/lib/authTokens';
 
-interface MagicLinkPageProps {
-  params: { token: string };
-}
+type MagicLinkPageProps = {
+  params: { token: string } | Promise<{ token: string }>;
+};
 
 type RedemptionStatus = {
   state: 'loading' | 'success' | 'error';
@@ -26,7 +26,20 @@ const successRedirectDelayMs = 1200;
 
 export default function MagicLinkPage({ params }: MagicLinkPageProps) {
   const router = useRouter();
-  const { token } = params;
+  const resolvedParams =
+    params && typeof (params as Promise<{ token: string }>).then === 'function'
+      ? use(params as Promise<{ token: string }>)
+      : (params as { token: string });
+  const token = useMemo(() => {
+    if (typeof resolvedParams?.token === 'string' && resolvedParams.token.trim().length > 0) {
+      return resolvedParams.token.trim();
+    }
+    const lastSegment =
+      typeof window !== 'undefined'
+        ? window.location.pathname.split('/').filter(Boolean).pop()
+        : '';
+    return lastSegment ?? '';
+  }, [resolvedParams.token]);
   const [status, setStatus] = useState<RedemptionStatus>(loadingStatus);
   const redemptionAttemptedRef = useRef(false);
   const redirectTimerRef = useRef<number | null>(null);

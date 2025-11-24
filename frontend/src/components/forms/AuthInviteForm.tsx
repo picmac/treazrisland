@@ -33,15 +33,31 @@ type SubmissionFeedback =
   | { state: 'error'; message: string };
 
 export interface AuthInviteFormProps {
-  token: string;
+  token?: string;
   onSuccess?: (response: InviteRedemptionResponse) => void;
 }
 
 const initialFeedback: SubmissionFeedback = { state: 'idle' };
 
+const resolveInviteToken = (rawToken?: string) => {
+  if (typeof rawToken === 'string' && rawToken.trim().length > 0) {
+    return rawToken.trim();
+  }
+
+  if (typeof window !== 'undefined') {
+    const lastSegment = window.location.pathname.split('/').filter(Boolean).pop();
+    if (lastSegment) {
+      return lastSegment;
+    }
+  }
+
+  return '';
+};
+
 export default function AuthInviteForm({ token, onSuccess }: AuthInviteFormProps) {
   const fieldId = useId();
   const [feedback, setFeedback] = useState<SubmissionFeedback>(initialFeedback);
+  const inviteToken = resolveInviteToken(token);
 
   const {
     register,
@@ -58,6 +74,11 @@ export default function AuthInviteForm({ token, onSuccess }: AuthInviteFormProps
   });
 
   const onSubmit = handleSubmit(async (values) => {
+    if (!inviteToken) {
+      setFeedback({ state: 'error', message: 'Invitation token is missing from the URL.' });
+      return;
+    }
+
     setFeedback({ state: 'loading', message: 'Redeeming invitation…' });
 
     try {
@@ -67,7 +88,7 @@ export default function AuthInviteForm({ token, onSuccess }: AuthInviteFormProps
         password: values.password,
         displayName: normalizedDisplayName ? normalizedDisplayName : undefined,
       };
-      const response = await redeemInviteToken(token, payload);
+      const response = await redeemInviteToken(inviteToken, payload);
 
       setFeedback({
         state: 'success',

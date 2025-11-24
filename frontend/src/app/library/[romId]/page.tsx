@@ -2,22 +2,26 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { use, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RomDetailSkeleton } from '@/components/loading/RomDetailSkeleton';
 import { ApiError, toggleRomFavorite } from '@/lib/apiClient';
 import { getStoredAccessToken } from '@/lib/authTokens';
-import { fetchRomDetails } from '@/lib/roms';
+import { fetchRomDetails, resolveRomId } from '@/lib/roms';
 import type { RomAsset, RomDetails } from '@/types/rom';
 import styles from './page.module.css';
 
 interface LibraryRomPageProps {
-  params: { romId: string };
+  params: { romId: string } | Promise<{ romId: string }>;
 }
 
 export default function LibraryRomPage({ params }: LibraryRomPageProps) {
-  const { romId } = params;
+  const resolvedParams =
+    params && typeof (params as Promise<{ romId: string }>).then === 'function'
+      ? use(params as Promise<{ romId: string }>)
+      : (params as { romId: string });
+  const romId = resolveRomId(resolvedParams?.romId);
   const router = useRouter();
   const queryClient = useQueryClient();
   const [favoriteMessage, setFavoriteMessage] = useState<string>();
@@ -26,6 +30,7 @@ export default function LibraryRomPage({ params }: LibraryRomPageProps) {
     queryKey: ['rom-detail', romId],
     queryFn: () => fetchRomDetails(romId),
     refetchOnMount: true,
+    enabled: Boolean(romId),
   });
 
   const favoriteMutation = useMutation({
@@ -66,6 +71,17 @@ export default function LibraryRomPage({ params }: LibraryRomPageProps) {
     const search = new URLSearchParams({ saveSlot: '1', inputProfile: 'standard' }).toString();
     router.push(`/play/${romId}?${search}`);
   };
+
+  if (!romId) {
+    return (
+      <main className={styles.page} id="main-content">
+        <Link href="/library" className={styles.backLink}>
+          ← Back to library
+        </Link>
+        <p role="alert">ROM identifier missing from the request.</p>
+      </main>
+    );
+  }
 
   if (isLoading) {
     return (

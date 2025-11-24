@@ -129,7 +129,6 @@ export function RomHero({ rom }: RomHeroProps) {
             height={360}
             sizes="(min-width: 1024px) 480px, 100vw"
             className="rom-hero__media-image"
-            priority={false}
           />
         ) : (
           <div className="rom-hero__placeholder">

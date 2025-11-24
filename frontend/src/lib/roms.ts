@@ -65,16 +65,37 @@ interface RomDetailsResponse {
   rom: RomDetails;
 }
 
+export function resolveRomId(rawRomId?: string) {
+  if (typeof rawRomId === 'string' && rawRomId.trim().length > 0) {
+    return rawRomId.trim();
+  }
+
+  if (typeof window !== 'undefined') {
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    const lastSegment = segments[segments.length - 1];
+    if (lastSegment) {
+      return lastSegment;
+    }
+  }
+
+  return '';
+}
+
 export async function fetchRomDetails(
-  romId: string,
+  romId: string | undefined,
   requestInit?: RequestInit,
 ): Promise<RomDetails | null> {
+  const resolvedRomId = resolveRomId(romId);
+  if (!resolvedRomId) {
+    throw new Error('ROM identifier is missing.');
+  }
+
   if (requestInit) {
-    return fetchRomDetailsWithRequestInit(romId, requestInit);
+    return fetchRomDetailsWithRequestInit(resolvedRomId, requestInit);
   }
 
   try {
-    const payload = await apiClient.get<RomDetailsResponse>(`/roms/${romId}`);
+    const payload = await apiClient.get<RomDetailsResponse>(`/roms/${resolvedRomId}`);
     return normalizeRomDetails(payload);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
@@ -88,6 +109,11 @@ async function fetchRomDetailsWithRequestInit(
   romId: string,
   requestInit: RequestInit,
 ): Promise<RomDetails | null> {
+  const resolvedRomId = resolveRomId(romId);
+  if (!resolvedRomId) {
+    throw new Error('ROM identifier is missing.');
+  }
+
   const headers = new Headers(requestInit.headers);
   const accessToken = getStoredAccessToken();
 
@@ -100,7 +126,7 @@ async function fetchRomDetailsWithRequestInit(
   }
 
   const baseUrl = resolveRequestScopedServerBaseUrl(headers);
-  const response = await fetch(`${baseUrl}/roms/${romId}`, {
+  const response = await fetch(`${baseUrl}/roms/${resolvedRomId}`, {
     ...requestInit,
     headers,
     cache: requestInit.cache ?? 'no-store',

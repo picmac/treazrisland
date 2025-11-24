@@ -259,10 +259,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     } catch (error) {
       if (
         error instanceof UserAlreadyExistsError ||
-        (error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === 'P2002' &&
-          error.meta?.target &&
-          String(error.meta.target).includes('email'))
+        (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
       ) {
         return reply.status(409).send({ status: 'skipped', reason: 'User already exists' });
       }

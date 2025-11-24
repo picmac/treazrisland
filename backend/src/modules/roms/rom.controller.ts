@@ -12,7 +12,8 @@ const listQuerySchema = z.object({
   favorites: z.enum(['true', 'false']).optional(),
 });
 
-const romIdSchema = z.union([z.string().uuid(), z.string().cuid()]);
+// Accept any non-empty identifier so we can serve legacy UUIDs, cuid/cuid2, and fixture slugs.
+const romIdSchema = z.string().min(1);
 
 const romIdParamsSchema = z.object({
   id: romIdSchema,

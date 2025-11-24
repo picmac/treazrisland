@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ControlOverlay } from '@/components/emulator/ControlOverlay';
 import { SessionPrepDialog } from '@/components/emulator/SessionPrepDialog';
 import { TouchOverlay } from '@/components/emulator/TouchOverlay';
@@ -15,12 +15,14 @@ import {
   EMULATOR_EMBED_URL,
   EMULATOR_VIEWPORT_ID,
 } from '@/lib/config';
-import { fetchRomDetails } from '@/lib/roms';
+import { fetchRomDetails, resolveRomId } from '@/lib/roms';
 import { persistSaveState } from '@/lib/saveStates';
 import type { RomAsset, RomDetails } from '@/types/rom';
 
+type PlayPageParams = { romId: string };
+
 type PlayPageProps = {
-  params: { romId: string };
+  params: PlayPageParams | Promise<PlayPageParams>;
 };
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
@@ -54,7 +56,12 @@ const ENABLE_TOUCH_OVERLAY = process.env.NEXT_PUBLIC_ENABLE_TOUCH_OVERLAY !== 'f
 const MIN_LOADING_DURATION_MS = 500;
 
 export default function PlayPage({ params }: PlayPageProps) {
-  const romId = params.romId;
+  const resolvedParams =
+    params && typeof (params as Promise<PlayPageParams>).then === 'function'
+      ? use(params as Promise<PlayPageParams>)
+      : (params as PlayPageParams);
+  const romId = resolveRomId(resolvedParams?.romId ?? 'unknown-rom');
+  const effectiveRomId = romId || 'local-rom';
   const { pushToast } = useToast();
   const [rom, setRom] = useState<RomDetails | null>(null);
   const [loadState, setLoadState] = useState<LoadState>('loading');
@@ -76,7 +83,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     latestSaveState,
     isLoading: isLoadingCloudSave,
     loadLatestSaveState,
-  } = useSaveStates(romId);
+  } = useSaveStates(effectiveRomId);
 
   const romAsset = useMemo(() => selectRomBinary(rom?.assets ?? []), [rom?.assets]);
   const emulatorCore = useMemo(() => {
@@ -108,7 +115,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     }, MIN_LOADING_DURATION_MS);
     loadingTimerRef.current = timer;
 
-    fetchRomDetails(romId)
+    fetchRomDetails(effectiveRomId)
       .then((response) => {
         if (!isMounted) return;
         if (!response) {
@@ -134,7 +141,7 @@ export default function PlayPage({ params }: PlayPageProps) {
         loadingTimerRef.current = null;
       }
     };
-  }, [romId]);
+  }, [effectiveRomId]);
 
   useEffect(() => {
     if (loadState !== 'ready') return;

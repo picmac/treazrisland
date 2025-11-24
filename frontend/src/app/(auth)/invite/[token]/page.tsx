@@ -1,5 +1,6 @@
 'use client';
 
+import { use } from 'react';
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 
@@ -7,13 +8,17 @@ import AuthInviteForm from '@/components/forms/AuthInviteForm';
 import { storeAccessToken } from '@/lib/authTokens';
 import type { InviteRedemptionResponse } from '@/lib/apiClient';
 
-interface InvitePageProps {
-  params: { token: string };
-}
+type InvitePageProps = {
+  params: { token: string } | Promise<{ token: string }>;
+};
 
 export default function InvitePage({ params }: InvitePageProps) {
   const router = useRouter();
-  const { token } = params;
+  const resolvedParams =
+    params && typeof (params as Promise<{ token: string }>).then === 'function'
+      ? use(params as Promise<{ token: string }>)
+      : (params as { token: string });
+  const token = resolvedParams?.token ?? '';
 
   const handleSuccess = (response: InviteRedemptionResponse) => {
     if (response.accessToken) {

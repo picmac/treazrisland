@@ -59,7 +59,7 @@ services:
     command: ${BACKEND_COMMAND:-/app/docker/dev-entrypoint.sh}
     environment:
       <<: *backend-environment
-      OBJECT_STORAGE_PUBLIC_HOST: ${OBJECT_STORAGE_PUBLIC_HOST:-localhost}
+      OBJECT_STORAGE_PUBLIC_HOST: ${OBJECT_STORAGE_PUBLIC_HOST:-minio}
     ports:
       - '${BACKEND_PORT:-4000}:${BACKEND_PORT:-4000}'
     volumes:
