@@ -31,6 +31,7 @@
 - Applies Prisma migrations and seeds the database.
 - Starts backend/frontend containers and retries health checks at `http://localhost:4000/health` and `http://localhost:5173/health` (plus the root page) until they respond or the attempts are exhausted.
 - Health retries default to 40 attempts with 5-second intervals; override with `BOOTSTRAP_HEALTH_ATTEMPTS` and `BOOTSTRAP_HEALTH_SLEEP` if you need longer startup windows.
+- Health checks report the most recent curl failure (status or error output) when retries continue, helping you decide whether to raise the timeout or inspect container logs.
 
 ## Troubleshooting
 

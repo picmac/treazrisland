@@ -159,6 +159,7 @@ wait_for_http_health() {
   local max_attempts=${BOOTSTRAP_HEALTH_ATTEMPTS:-40}
   local sleep_seconds=${BOOTSTRAP_HEALTH_SLEEP:-5}
   local attempt=1
+  local last_error=""
 
   if [[ ${#urls[@]} -eq 0 ]]; then
     die "wait_for_http_health requires at least one URL for $name"
@@ -167,18 +168,20 @@ wait_for_http_health() {
   inform "Waiting for $name health (${urls[*]})..."
   while (( attempt <= max_attempts )); do
     for url in "${urls[@]}"; do
-      if curl -fsS "$url" >/dev/null 2>&1; then
+      if output=$(curl -fsS -w ' (status: %{http_code})' -o /dev/null "$url" 2>&1); then
         success "$name is healthy (attempt $attempt)."
         return 0
+      else
+        last_error="curl check for ${url} failed: ${output:-"curl exited $?"}"
       fi
     done
 
-    warn "$name health check attempt $attempt failed. Retrying in ${sleep_seconds}s..."
+    warn "$name health check attempt $attempt failed${last_error:+: $last_error}. Retrying in ${sleep_seconds}s..."
     ((attempt++))
     sleep "$sleep_seconds"
   done
 
-  die "$name did not become healthy after $max_attempts attempts."
+  die "$name did not become healthy after $max_attempts attempts.${last_error:+ Last error: $last_error}"
 }
 
 cd "$REPO_ROOT"
