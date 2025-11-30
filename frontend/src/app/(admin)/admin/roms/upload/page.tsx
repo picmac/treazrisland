@@ -439,6 +439,7 @@ export default function AdminRomUploadPage() {
           <div className={styles.ctaRow}>
             <button
               type="submit"
+              className={styles.button}
               disabled={
                 !file ||
                 !checksum ||
@@ -456,7 +457,11 @@ export default function AdminRomUploadPage() {
                     ? 'Verifying…'
                     : 'Create ROM'}
             </button>
-            <button type="button" className={styles.secondary} onClick={resetForm}>
+            <button
+              type="button"
+              className={`${styles.button} ${styles.secondary}`}
+              onClick={resetForm}
+            >
               Reset form
             </button>
           </div>

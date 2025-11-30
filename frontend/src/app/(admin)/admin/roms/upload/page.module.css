@@ -191,7 +191,7 @@
   flex-wrap: wrap;
 }
 
-button {
+.button {
   border: 0;
   padding: 0.7rem 1.1rem;
   border-radius: 10px;
@@ -205,12 +205,12 @@ button {
     box-shadow 120ms ease;
 }
 
-button:disabled {
+.button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
 
-button:not(:disabled):hover {
+.button:not(:disabled):hover {
   transform: translateY(-2px);
   box-shadow: 0 9px 0 #0f041a;
 }
