@@ -53,8 +53,9 @@ export async function listRoms(
   }
 
   const query = params.size > 0 ? `?${params.toString()}` : '';
+  const hasStoredAccessToken = Boolean(getStoredAccessToken());
   const payload = await apiClient.get<RomListResponse>(`/roms${query}`, {
-    requiresAuth: Boolean(filters.favorites),
+    requiresAuth: hasStoredAccessToken || Boolean(filters.favorites),
   });
 
   return {
