@@ -122,7 +122,7 @@ export function LibraryFilters({
         data-active={favoritesOnly ? 'true' : 'false'}
         onClick={() => onFavoritesToggle(!favoritesOnly)}
       >
-        {favoritesOnly ? 'Showing favorites' : 'Favorites only'}
+        {favoritesOnly ? 'Favorites only (showing)' : 'Favorites only'}
       </button>
     </section>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import NextLink from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type React from 'react';
 
@@ -83,6 +83,25 @@ export default function AdminRomUploadPage() {
   const [statusMessage, setStatusMessage] = useState('Drop your ROM to begin…');
   const [error, setError] = useState<string | null>(null);
   const [optimisticRomId, setOptimisticRomId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (stage !== 'redirecting' || !optimisticRomId) {
+      return;
+    }
+
+    const destination = `/rom/${optimisticRomId}`;
+    router.push(destination);
+
+    const fallback = window.setTimeout(() => {
+      if (window.location.pathname !== destination) {
+        window.location.assign(destination);
+      }
+    }, 750);
+
+    return () => {
+      window.clearTimeout(fallback);
+    };
+  }, [optimisticRomId, router, stage]);
 
   const contentType = useMemo(() => file?.type || 'application/octet-stream', [file?.type]);
 
