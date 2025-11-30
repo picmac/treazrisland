@@ -7,9 +7,10 @@ import HomePage from './page';
 
 vi.mock('next/image', () => ({
   __esModule: true,
-  default: ({ ...props }: React.ComponentProps<'img'> & { priority?: boolean }) => (
-    <img {...props} alt={props.alt ?? ''} />
-  ),
+  default: ({ priority, ...props }: React.ComponentProps<'img'> & { priority?: boolean }) => {
+    void priority;
+    return <img {...props} alt={props.alt ?? ''} />;
+  },
 }));
 
 vi.mock('next/link', () => ({
