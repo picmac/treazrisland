@@ -26,6 +26,7 @@ const serializeRomSummary = (rom: RomRecord) => ({
   title: rom.title,
   description: rom.description,
   platformId: rom.platformId,
+  platform: serializePlatform(rom.platform),
   releaseYear: rom.releaseYear,
   genres: rom.genres,
   createdAt: rom.createdAt.toISOString(),
@@ -186,7 +187,6 @@ export const romController: FastifyPluginAsync = async (fastify) => {
     return reply.send({
       rom: {
         ...serializeRomSummary(rom),
-        platform: serializePlatform(rom.platform),
         assets: rom.assets.map((asset) => serializeRomAsset(asset)),
         isFavorite: rom.isFavorite ?? false,
         saveStateSummary: serializeSaveStateSummary(saveStateSummary),

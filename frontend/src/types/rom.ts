@@ -35,6 +35,7 @@ export interface RomSummary {
   title: string;
   description?: string;
   platformId: string;
+  platform?: PlatformSummary;
   releaseYear?: number;
   genres: string[];
   createdAt: string;

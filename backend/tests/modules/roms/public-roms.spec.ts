@@ -147,6 +147,31 @@ describe('ROM catalogue routes', () => {
     expect(body.meta).toEqual({ total: 3, page: 1, pageSize: 2, totalPages: 2 });
   });
 
+  it('includes platform metadata in ROM listings', async ({ skip }) => {
+    if (databaseError) {
+      skip();
+      return;
+    }
+
+    await createRom({ title: 'Platform Forwarded', platformId: 'Mega Drive' });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/roms?page=1&pageSize=1',
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as {
+      items: Array<{ id: string; platform?: { id: string; name: string; slug: string } }>;
+    };
+
+    expect(body.items[0].platform).toEqual({
+      id: 'mega-drive',
+      name: 'Mega Drive',
+      slug: 'mega-drive',
+    });
+  });
+
   it('filters ROMs by platform and genre', async ({ skip }) => {
     if (databaseError) {
       skip();

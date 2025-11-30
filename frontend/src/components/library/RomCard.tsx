@@ -28,7 +28,7 @@ const describeLastPlayed = (lastPlayedAt?: string) => {
 };
 
 export function RomCard({ rom, onToggleFavorite, favoritePending }: RomCardProps) {
-  const platformLabel = rom.platformId.toUpperCase();
+  const platformLabel = rom.platform?.name ?? rom.platformId.toUpperCase();
   const releaseLabel = rom.releaseYear ? rom.releaseYear.toString() : 'TBD';
   const previewDescription = rom.description
     ? rom.description.length > 140
