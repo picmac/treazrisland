@@ -147,6 +147,31 @@ describe('ROM catalogue routes', () => {
     expect(body.meta).toEqual({ total: 3, page: 1, pageSize: 2, totalPages: 2 });
   });
 
+  it('includes platform metadata in ROM listings', async ({ skip }) => {
+    if (databaseError) {
+      skip();
+      return;
+    }
+
+    await createRom({ title: 'Platform Forwarded', platformId: 'Mega Drive' });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/roms?page=1&pageSize=1',
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as {
+      items: Array<{ id: string; platform?: { id: string; name: string; slug: string } }>;
+    };
+
+    expect(body.items[0].platform).toEqual({
+      id: 'mega-drive',
+      name: 'Mega Drive',
+      slug: 'mega-drive',
+    });
+  });
+
   it('filters ROMs by platform and genre', async ({ skip }) => {
     if (databaseError) {
       skip();
@@ -248,6 +273,51 @@ describe('ROM catalogue routes', () => {
 
     expect(body.rom.assets).toHaveLength(1);
     expect(body.rom.assets[0].url).toMatch(/^https:\/\/mock-rom-storage\/roms/);
+  });
+
+  it('surfaces platform metadata and save-state summaries when authenticated', async ({ skip }) => {
+    if (databaseError) {
+      skip();
+      return;
+    }
+
+    const rom = await createRom({ title: 'Save State Explorer', platformId: 'snes' });
+    const login = await performLogin('save-slot@example.com');
+    const accessToken = login.body.accessToken;
+
+    await app.saveStateService.create({
+      userId: login.body.user.id,
+      romId: rom.id,
+      slot: 3,
+      label: 'Crystal Keep',
+      binary: {
+        filename: 'slot-3.sav',
+        contentType: 'application/octet-stream',
+        data: Buffer.from('save-state-3'),
+      },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/roms/${rom.id}`,
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as {
+      rom: {
+        platform?: { id: string; name: string; slug: string };
+        saveStateSummary?: { total: number; latest?: { slot: number; label?: string | null } };
+      };
+    };
+
+    expect(body.rom.platform?.id).toBe('snes');
+    expect(body.rom.platform?.name).toBe('snes');
+    expect(body.rom.saveStateSummary?.total).toBe(1);
+    expect(body.rom.saveStateSummary?.latest?.slot).toBe(3);
+    expect(body.rom.saveStateSummary?.latest?.label).toBe('Crystal Keep');
   });
 
   it('includes favorite state when the requester is authenticated', async ({ skip }) => {

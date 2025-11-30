@@ -5,7 +5,7 @@ import { PixellabGrid, PixellabNavigation, PixellabTexture } from '@/components/
 import { PIXELLAB_TOKENS } from '@/theme/tokens';
 
 const docsUrl = 'https://github.com/treazrisland/treazrisland/blob/main/docs/ui/theme.md';
-const featuredRomRoute = '/rom/favorite-rom' as Route;
+const featuredRomRoute = '/roms/favorite-rom' as Route;
 
 const navLinks = [
   { href: featuredRomRoute, label: 'ROM dossier' },

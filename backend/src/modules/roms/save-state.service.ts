@@ -33,6 +33,20 @@ export interface GetSaveStateOptions {
 
 export type SaveStateWithData = { saveState: SaveStateRecord; data?: Buffer };
 
+export interface SaveStateSummary {
+  total: number;
+  latest?: {
+    id: string;
+    slot: number;
+    label?: string | null;
+    size: number;
+    contentType: string;
+    checksum: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
 export class SaveStateService {
   constructor(
     private readonly prisma: PrismaClient,
@@ -112,6 +126,32 @@ export class SaveStateService {
     const data = await this.storage.downloadAsset(saveState.objectKey);
 
     return { saveState, data };
+  }
+
+  async getSummary(userId: string, romId: string): Promise<SaveStateSummary> {
+    const [total, latest] = await Promise.all([
+      this.prisma.saveState.count({ where: { userId, romId } }),
+      this.prisma.saveState.findFirst({
+        where: { userId, romId },
+        orderBy: { updatedAt: 'desc' },
+      }),
+    ]);
+
+    return {
+      total,
+      latest: latest
+        ? {
+            id: latest.id,
+            slot: latest.slot,
+            label: latest.label,
+            size: latest.size,
+            contentType: latest.contentType,
+            checksum: latest.checksum,
+            createdAt: latest.createdAt.toISOString(),
+            updatedAt: latest.updatedAt.toISOString(),
+          }
+        : undefined,
+    };
   }
 
   private async uploadBinary(input: CreateSaveStateInput): Promise<SaveStateMetadataInput> {

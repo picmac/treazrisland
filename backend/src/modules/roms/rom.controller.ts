@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { RomAssetRecord, RomRecord } from './rom.service';
 import type { AuthUser } from '../auth/types';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import type { SaveStateSummary } from './save-state.service';
 
 const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -10,6 +11,7 @@ const listQuerySchema = z.object({
   platform: z.string().min(1).optional(),
   genre: z.string().min(1).optional(),
   favorites: z.enum(['true', 'false']).optional(),
+  order: z.enum(['newest', 'recent']).default('newest'),
 });
 
 // Accept any non-empty identifier so we can serve legacy UUIDs, cuid/cuid2, and fixture slugs.
@@ -24,10 +26,13 @@ const serializeRomSummary = (rom: RomRecord) => ({
   title: rom.title,
   description: rom.description,
   platformId: rom.platformId,
+  platform: serializePlatform(rom.platform),
   releaseYear: rom.releaseYear,
   genres: rom.genres,
   createdAt: rom.createdAt.toISOString(),
   updatedAt: rom.updatedAt.toISOString(),
+  isFavorite: rom.isFavorite ?? false,
+  lastPlayedAt: rom.lastPlayedAt?.toISOString(),
 });
 
 const serializeRomAsset = (asset: RomAssetRecord) => ({
@@ -39,6 +44,40 @@ const serializeRomAsset = (asset: RomAssetRecord) => ({
   createdAt: asset.createdAt.toISOString(),
   url: asset.url,
 });
+
+const serializePlatform = (platform?: RomRecord['platform']) => {
+  if (!platform) {
+    return undefined;
+  }
+
+  return {
+    id: platform.id,
+    name: platform.name,
+    slug: platform.slug,
+  };
+};
+
+const serializeSaveStateSummary = (summary?: SaveStateSummary) => {
+  if (!summary) {
+    return null;
+  }
+
+  return {
+    total: summary.total,
+    latest: summary.latest
+      ? {
+          id: summary.latest.id,
+          slot: summary.latest.slot,
+          label: summary.latest.label,
+          size: summary.latest.size,
+          contentType: summary.latest.contentType,
+          checksum: summary.latest.checksum,
+          createdAt: summary.latest.createdAt,
+          updatedAt: summary.latest.updatedAt,
+        }
+      : undefined,
+  };
+};
 
 export const getRequestUserId = (user: FastifyRequest['user']): string | undefined => {
   if (!user) {
@@ -92,7 +131,8 @@ export const romController: FastifyPluginAsync = async (fastify) => {
     }
 
     const favoritesOnly = parsed.data.favorites === 'true';
-    let userId: string | undefined;
+    await tryAuthenticateRequest(request);
+    let userId = getRequestUserId(request.user);
 
     if (favoritesOnly) {
       await fastify.authenticate(request, reply);
@@ -114,6 +154,8 @@ export const romController: FastifyPluginAsync = async (fastify) => {
         page: parsed.data.page,
         pageSize: parsed.data.pageSize,
       },
+      orderBy: parsed.data.order,
+      activityForUserId: userId,
     });
 
     return reply.send({
@@ -131,20 +173,23 @@ export const romController: FastifyPluginAsync = async (fastify) => {
 
     await tryAuthenticateRequest(request);
 
-    const rom = await fastify.romService.findById(parsed.data.id);
+    const userId = getRequestUserId(request.user);
+    const rom = await fastify.romService.findById(parsed.data.id, { userId });
 
     if (!rom) {
       return reply.status(404).send({ error: 'ROM not found' });
     }
 
-    const userId = getRequestUserId(request.user);
-    const isFavorite = userId ? await fastify.romService.isFavorite(userId, rom.id) : false;
+    const saveStateSummary = userId
+      ? await fastify.saveStateService.getSummary(userId, rom.id)
+      : undefined;
 
     return reply.send({
       rom: {
         ...serializeRomSummary(rom),
         assets: rom.assets.map((asset) => serializeRomAsset(asset)),
-        isFavorite,
+        isFavorite: rom.isFavorite ?? false,
+        saveStateSummary: serializeSaveStateSummary(saveStateSummary),
       },
     });
   });
