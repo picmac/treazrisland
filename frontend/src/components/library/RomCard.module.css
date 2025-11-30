@@ -8,11 +8,24 @@
   gap: 0.65rem;
   min-height: 200px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+  outline: none;
+}
+
+.card:focus-visible {
+  border-color: var(--pixellab-accent);
+  box-shadow: 0 0 0 3px rgba(255, 124, 229, 0.4);
 }
 
 .card h3 {
   margin: 0;
   font-size: 1rem;
+}
+
+.headingRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: space-between;
 }
 
 .meta {
@@ -29,6 +42,17 @@
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   border: 1px solid rgba(254, 250, 224, 0.35);
+}
+
+.recentBadge {
+  background: linear-gradient(120deg, #63ffd8, #91a5ff);
+  color: #060014;
+  border: none;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  letter-spacing: 0.08rem;
+  text-transform: uppercase;
 }
 
 .description {
@@ -54,6 +78,7 @@
 .actions {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .actions a {
@@ -75,4 +100,27 @@
 
 .details {
   border: 1px dashed rgba(254, 250, 224, 0.35);
+}
+
+.favorite {
+  flex: 0 0 auto;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(254, 250, 224, 0.3);
+  background: rgba(14, 6, 38, 0.8);
+  color: inherit;
+  padding: 0.55rem 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08rem;
+  cursor: pointer;
+}
+
+.favorite[aria-pressed='true'] {
+  background: linear-gradient(120deg, #ffd166, #ff8fb1);
+  color: #060014;
+  border-color: transparent;
+}
+
+.favorite:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }

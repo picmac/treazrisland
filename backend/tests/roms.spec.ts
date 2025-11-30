@@ -108,7 +108,7 @@ describe('RomService integration', () => {
     expect(asset.checksum).toMatch(/^[a-f0-9]{64}$/);
   });
 
-  it('lists ROMs with filtering and pagination', async ({ skip }) => {
+  it('lists ROMs with filtering, pagination, and favorites', async ({ skip }) => {
     if (databaseError || !service) {
       skip();
       return;
@@ -135,11 +135,72 @@ describe('RomService integration', () => {
     const filtered = await activeService.list({
       filters: { platformId: 'nes', genre: 'action', favoriteForUserId: user.id },
       pagination: { page: 1, pageSize: 10 },
+      activityForUserId: user.id,
     });
 
     expect(filtered.items).toHaveLength(1);
     expect(filtered.items[0].id).toBe(action.id);
+    expect(filtered.items[0].isFavorite).toBe(true);
     expect(filtered.meta.total).toBe(1);
+  });
+
+  it('orders ROMs by most recent activity when requested', async ({ skip }) => {
+    if (databaseError || !database || !service) {
+      skip();
+      return;
+    }
+
+    const user = await createTestUser('recent@example.com');
+    const older = await service.registerRom({
+      title: 'Older Play',
+      platformId: 'nes',
+      genres: ['Action'],
+      asset: { type: 'ROM', ...buildAssetInput(storage, 'older') },
+    });
+
+    const newer = await service.registerRom({
+      title: 'Newer Play',
+      platformId: 'snes',
+      genres: ['Adventure'],
+      asset: { type: 'ROM', ...buildAssetInput(storage, 'newer') },
+    });
+
+    await database.prisma.saveState.create({
+      data: {
+        userId: user.id,
+        romId: older.id,
+        slot: 0,
+        label: 'older',
+        objectKey: 'older',
+        checksum: 'abc',
+        contentType: 'application/json',
+        size: 1,
+        updatedAt: new Date(Date.now() - 1000 * 60 * 60),
+      },
+    });
+
+    await database.prisma.saveState.create({
+      data: {
+        userId: user.id,
+        romId: newer.id,
+        slot: 0,
+        label: 'newer',
+        objectKey: 'newer',
+        checksum: 'abc',
+        contentType: 'application/json',
+        size: 1,
+      },
+    });
+
+    const recent = await service.list({
+      orderBy: 'recent',
+      activityForUserId: user.id,
+      pagination: { page: 1, pageSize: 5 },
+    });
+
+    expect(recent.items[0].id).toBe(newer.id);
+    expect(recent.items[0].lastPlayedAt).toBeInstanceOf(Date);
+    expect(recent.items[1].id).toBe(older.id);
   });
 
   it('finds ROMs by identifier with hydrated assets', async ({ skip }) => {
