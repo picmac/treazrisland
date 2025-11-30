@@ -64,7 +64,7 @@ export function RomCard({ rom, onToggleFavorite, favoritePending }: RomCardProps
         <Link href={`/play/${rom.id}`} className={styles.play}>
           Play now
         </Link>
-        <Link href={`/rom/${rom.id}`} className={styles.details}>
+        <Link href={`/roms/${rom.id}`} className={styles.details}>
           Details
         </Link>
         <button
