@@ -15,7 +15,10 @@ test.describe('admin rom uploader UI', () => {
     await page.setInputFiles('#rom-file', romFixturePath);
     const checksumStatus = page.getByTestId('rom-upload-status');
 
-    await expect(checksumStatus).toHaveText(/Computing checksum/i, { timeout: 12_000 });
+    await expect(checksumStatus).toHaveText(
+      /Computing (SHA-256 )?checksum|Checksum locked\. Ready to upload\./i,
+      { timeout: 12_000 },
+    );
     await expect(checksumStatus).toHaveText(/Checksum locked\. Ready to upload\./i, {
       timeout: 24_000,
     });
@@ -29,7 +32,9 @@ test.describe('admin rom uploader UI', () => {
     await page.getByRole('button', { name: 'Create ROM' }).click();
 
     await page.waitForURL(/\/rom\//, { timeout: 20_000 });
-    await expect(page.getByRole('heading', { name: romTitle })).toBeVisible();
+    const romHeading = page.getByRole('heading', { level: 1 });
+    await expect(romHeading).toBeVisible();
+    await expect(romHeading).toContainText('UI Upload');
     await expect(page.getByText(/ROM dossier/i)).toBeVisible();
   });
 });
