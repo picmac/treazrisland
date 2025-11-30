@@ -1,6 +1,7 @@
 import {
   PrismaClient,
   type Favorite,
+  type Platform,
   type Prisma,
   type Rom,
   type RomAsset,
@@ -36,6 +37,7 @@ export type RomAssetRecord = RomAsset & { url: string };
 
 export type RomRecord = Rom & {
   assets: RomAssetRecord[];
+  platform?: Platform;
   isFavorite?: boolean;
   lastPlayedAt?: Date;
 };
@@ -87,7 +89,7 @@ export class RomService {
     // If this checksum already exists, reuse the existing ROM instead of failing with a 500.
     const existingAsset = await this.prisma.romAsset.findUnique({
       where: { checksum: normalizedChecksum },
-      include: { rom: { include: { assets: true } } },
+      include: { rom: { include: { assets: true, platform: true } } },
     });
 
     if (existingAsset?.rom) {
@@ -115,7 +117,7 @@ export class RomService {
           },
         },
       },
-      include: { assets: true },
+      include: { assets: true, platform: true },
     });
 
     return this.enrichRom(rom);
@@ -126,13 +128,13 @@ export class RomService {
     const pageSize = Math.max(1, Math.min(50, options.pagination?.pageSize ?? 20));
 
     const where: Prisma.RomWhereInput = {};
-    const include: Prisma.RomInclude = { assets: true };
+    const include: Prisma.RomInclude = { assets: true, platform: true };
     const activityUserId = options.activityForUserId;
 
     if (activityUserId) {
       include.favorites = { where: { userId: activityUserId }, select: { id: true } };
       include.saves = {
-        where: activityUserId ? { userId: activityUserId } : undefined,
+        where: { userId: activityUserId },
         select: { updatedAt: true },
         orderBy: { updatedAt: 'desc' },
         take: 1,
@@ -191,7 +193,7 @@ export class RomService {
   }
 
   async findById(id: string, options: { userId?: string } = {}): Promise<RomRecord | undefined> {
-    const include: Prisma.RomInclude = { assets: true };
+    const include: Prisma.RomInclude = { assets: true, platform: true };
 
     if (options.userId) {
       include.favorites = { where: { userId: options.userId }, select: { id: true } };
@@ -240,6 +242,7 @@ export class RomService {
   private async enrichRom(
     rom: Rom & {
       assets: RomAsset[];
+      platform?: Platform;
       saves?: Pick<SaveState, 'updatedAt'>[];
       favorites?: Pick<Favorite, 'id'>[];
     },
@@ -251,11 +254,14 @@ export class RomService {
       })),
     );
 
+    const { favorites, saves, ...rest } = rom;
+
     return {
-      ...rom,
+      ...rest,
       assets,
-      isFavorite: Boolean(rom.favorites?.length),
-      lastPlayedAt: rom.saves?.[0]?.updatedAt,
+      platform: rom.platform,
+      isFavorite: Boolean(favorites?.length),
+      lastPlayedAt: saves?.[0]?.updatedAt,
     };
   }
 

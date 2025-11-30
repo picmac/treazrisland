@@ -12,10 +12,11 @@ import type { RomDetails } from '@/types/rom';
 
 vi.mock('next/image', () => ({
   __esModule: true,
-  default: ({ ...props }: React.ComponentProps<'img'> & { priority?: boolean }) => (
+  default: ({ priority, ...props }: React.ComponentProps<'img'> & { priority?: boolean }) => {
     // Next.js strips the `priority` attribute from the DOM, so mirror that behavior in the mock.
-    <img {...props} alt={props.alt ?? ''} />
-  ),
+    void priority;
+    return <img {...props} alt={props.alt ?? ''} />;
+  },
 }));
 
 vi.mock('@/lib/roms');

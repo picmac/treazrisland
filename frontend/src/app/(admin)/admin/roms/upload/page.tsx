@@ -89,7 +89,7 @@ export default function AdminRomUploadPage() {
       return;
     }
 
-    const destination = `/rom/${optimisticRomId}`;
+    const destination = `/roms/${optimisticRomId}`;
     router.push(destination);
 
     const fallback = window.setTimeout(() => {
@@ -270,7 +270,7 @@ export default function AdminRomUploadPage() {
 
     try {
       const romId = await uploadRom(payload, file);
-      const destination = `/rom/${romId}`;
+      const destination = `/roms/${romId}`;
       router.push(destination);
     } catch (uploadError) {
       const message =
@@ -526,7 +526,7 @@ export default function AdminRomUploadPage() {
             </p>
             {optimisticRomId && (
               <Link
-                href={{ pathname: '/rom/[id]', query: { id: optimisticRomId } }}
+                href={{ pathname: '/roms/[id]', query: { id: optimisticRomId } }}
                 className={styles.secondary}
               >
                 Open ROM detail

@@ -28,7 +28,7 @@ const describeLastPlayed = (lastPlayedAt?: string) => {
 };
 
 export function RomCard({ rom, onToggleFavorite, favoritePending }: RomCardProps) {
-  const platformLabel = rom.platformId.toUpperCase();
+  const platformLabel = rom.platform?.name ?? rom.platformId.toUpperCase();
   const releaseLabel = rom.releaseYear ? rom.releaseYear.toString() : 'TBD';
   const previewDescription = rom.description
     ? rom.description.length > 140
@@ -64,7 +64,7 @@ export function RomCard({ rom, onToggleFavorite, favoritePending }: RomCardProps
         <Link href={`/play/${rom.id}`} className={styles.play}>
           Play now
         </Link>
-        <Link href={`/rom/${rom.id}`} className={styles.details}>
+        <Link href={`/roms/${rom.id}`} className={styles.details}>
           Details
         </Link>
         <button
