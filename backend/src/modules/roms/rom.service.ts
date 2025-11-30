@@ -165,7 +165,7 @@ export class RomService {
 
     const orderBy: Prisma.RomOrderByWithRelationInput[] = [];
     if (options.orderBy === 'recent') {
-      orderBy.push({ saves: { _max: { updatedAt: 'desc' } } });
+      orderBy.push({ saves: { _count: 'desc' } });
     }
 
     orderBy.push({ createdAt: 'desc' });
