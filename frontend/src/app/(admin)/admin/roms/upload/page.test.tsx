@@ -24,8 +24,8 @@ vi.stubGlobal('crypto', {
 
 class FakeFileReader {
   public result: ArrayBuffer | null = null;
-  public onload: ((this: FileReader, ev: ProgressEvent<FileReader>) => unknown) | null = null;
-  public onprogress: ((this: FileReader, ev: ProgressEvent<FileReader>) => unknown) | null = null;
+  public onload: ((ev: ProgressEvent<FileReader>) => unknown) | null = null;
+  public onprogress: ((ev: ProgressEvent<FileReader>) => unknown) | null = null;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   readAsArrayBuffer(_file: Blob): void {
