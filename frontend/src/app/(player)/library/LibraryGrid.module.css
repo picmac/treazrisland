@@ -1,0 +1,49 @@
+.gridViewport {
+  flex: 1;
+  min-height: 400px;
+  max-height: calc(100vh - 280px);
+  border: 1px solid rgba(249, 96, 204, 0.3);
+  border-radius: 1rem;
+  background: rgba(4, 0, 16, 0.6);
+  overflow: auto;
+  position: relative;
+}
+
+.gridInner {
+  position: relative;
+  width: 100%;
+}
+
+.virtualRow {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.cardWrapper {
+  outline: none;
+}
+
+.cardWrapper:focus-visible .card {
+  border-color: var(--pixellab-accent);
+  box-shadow: 0 0 0 3px rgba(255, 124, 229, 0.4);
+}
+
+.loadingRow {
+  padding: 1rem;
+  text-align: center;
+  color: rgba(254, 250, 224, 0.75);
+}
+
+.emptyState {
+  text-align: center;
+  padding: 2rem;
+  border-radius: 1rem;
+  border: 1px dashed rgba(254, 250, 224, 0.4);
+  background: rgba(6, 0, 20, 0.5);
+  margin: 1rem;
+}

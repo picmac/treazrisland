@@ -1,9 +1,11 @@
 import {
   PrismaClient,
+  type Favorite,
   type Prisma,
   type Rom,
   type RomAsset,
   type RomAssetType,
+  type SaveState,
 } from '@prisma/client';
 
 import { RomStorageError, type RomStorage } from './storage';
@@ -32,7 +34,11 @@ export interface RegisterRomInput {
 
 export type RomAssetRecord = RomAsset & { url: string };
 
-export type RomRecord = Rom & { assets: RomAssetRecord[] };
+export type RomRecord = Rom & {
+  assets: RomAssetRecord[];
+  isFavorite?: boolean;
+  lastPlayedAt?: Date;
+};
 
 export interface ListRomFilters {
   platformId?: string;
@@ -46,6 +52,8 @@ export interface ListRomsOptions {
     page?: number;
     pageSize?: number;
   };
+  orderBy?: 'newest' | 'recent';
+  activityForUserId?: string;
 }
 
 export interface ListRomsResult {
@@ -72,10 +80,7 @@ export class RomService {
       throw new RomStorageError('Uploaded asset size mismatch');
     }
 
-    if (
-      assetMetadata.checksum &&
-      assetMetadata.checksum.toLowerCase() !== normalizedChecksum
-    ) {
+    if (assetMetadata.checksum && assetMetadata.checksum.toLowerCase() !== normalizedChecksum) {
       throw new RomStorageError('Uploaded asset checksum mismatch');
     }
 
@@ -86,7 +91,7 @@ export class RomService {
     });
 
     if (existingAsset?.rom) {
-      return this.enrichRomAssets(existingAsset.rom);
+      return this.enrichRom(existingAsset.rom);
     }
 
     const genres = this.normalizeGenres(input.genres);
@@ -113,7 +118,7 @@ export class RomService {
       include: { assets: true },
     });
 
-    return this.enrichRomAssets(rom);
+    return this.enrichRom(rom);
   }
 
   async list(options: ListRomsOptions = {}): Promise<ListRomsResult> {
@@ -121,6 +126,20 @@ export class RomService {
     const pageSize = Math.max(1, Math.min(50, options.pagination?.pageSize ?? 20));
 
     const where: Prisma.RomWhereInput = {};
+    const include: Prisma.RomInclude = { assets: true };
+    const activityUserId = options.activityForUserId;
+
+    if (activityUserId) {
+      include.favorites = { where: { userId: activityUserId }, select: { id: true } };
+      include.saves = {
+        where: activityUserId ? { userId: activityUserId } : undefined,
+        select: { updatedAt: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 1,
+      };
+    } else if (options.orderBy === 'recent') {
+      include.saves = { select: { updatedAt: true }, orderBy: { updatedAt: 'desc' }, take: 1 };
+    }
 
     if (options.filters?.platformId) {
       const platformId = await this.findPlatformId(options.filters.platformId);
@@ -144,18 +163,25 @@ export class RomService {
       where.favorites = { some: { userId: options.filters.favoriteForUserId } };
     }
 
+    const orderBy: Prisma.RomOrderByWithRelationInput[] = [];
+    if (options.orderBy === 'recent') {
+      orderBy.push({ saves: { _count: 'desc' } });
+    }
+
+    orderBy.push({ createdAt: 'desc' });
+
     const [records, total] = await Promise.all([
       this.prisma.rom.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { assets: true },
+        include,
       }),
       this.prisma.rom.count({ where }),
     ]);
 
-    const items = await Promise.all(records.map((rom) => this.enrichRomAssets(rom)));
+    const items = await Promise.all(records.map((rom) => this.enrichRom(rom)));
     const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
 
     return {
@@ -164,17 +190,29 @@ export class RomService {
     };
   }
 
-  async findById(id: string): Promise<RomRecord | undefined> {
+  async findById(id: string, options: { userId?: string } = {}): Promise<RomRecord | undefined> {
+    const include: Prisma.RomInclude = { assets: true };
+
+    if (options.userId) {
+      include.favorites = { where: { userId: options.userId }, select: { id: true } };
+      include.saves = {
+        where: { userId: options.userId },
+        select: { updatedAt: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 1,
+      };
+    }
+
     const rom = await this.prisma.rom.findUnique({
       where: { id },
-      include: { assets: true },
+      include,
     });
 
     if (!rom) {
       return undefined;
     }
 
-    return this.enrichRomAssets(rom);
+    return this.enrichRom(rom);
   }
 
   async toggleFavorite(userId: string, romId: string): Promise<boolean> {
@@ -199,7 +237,13 @@ export class RomService {
     return Boolean(favorite);
   }
 
-  private async enrichRomAssets(rom: Rom & { assets: RomAsset[] }): Promise<RomRecord> {
+  private async enrichRom(
+    rom: Rom & {
+      assets: RomAsset[];
+      saves?: Pick<SaveState, 'updatedAt'>[];
+      favorites?: Pick<Favorite, 'id'>[];
+    },
+  ): Promise<RomRecord> {
     const assets = await Promise.all(
       rom.assets.map(async (asset) => ({
         ...asset,
@@ -207,7 +251,12 @@ export class RomService {
       })),
     );
 
-    return { ...rom, assets };
+    return {
+      ...rom,
+      assets,
+      isFavorite: Boolean(rom.favorites?.length),
+      lastPlayedAt: rom.saves?.[0]?.updatedAt,
+    };
   }
 
   private normalizeGenres(genres?: string[]): string[] {

@@ -5,7 +5,7 @@ import type { RomDetails, RomSummary } from '@/types/rom';
 interface RomListMeta {
   page: number;
   pageSize: number;
-  totalItems: number;
+  total: number;
   totalPages: number;
 }
 
@@ -20,6 +20,7 @@ export interface RomListFilters {
   platform?: string;
   genre?: string;
   favorites?: boolean;
+  order?: 'newest' | 'recent';
 }
 
 export async function listRoms(
@@ -47,9 +48,15 @@ export async function listRoms(
     params.set('favorites', 'true');
   }
 
+  if (filters.order) {
+    params.set('order', filters.order);
+  }
+
   const query = params.size > 0 ? `?${params.toString()}` : '';
+  const hasStoredAccessToken = Boolean(getStoredAccessToken());
+  const requiresAuth = hasStoredAccessToken || Boolean(filters.favorites);
   const payload = await apiClient.get<RomListResponse>(`/roms${query}`, {
-    requiresAuth: Boolean(filters.favorites),
+    requiresAuth,
   });
 
   return {
