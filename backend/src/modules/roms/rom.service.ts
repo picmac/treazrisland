@@ -1,5 +1,6 @@
 import {
   PrismaClient,
+  type Platform,
   type Prisma,
   type Rom,
   type RomAsset,
@@ -32,7 +33,7 @@ export interface RegisterRomInput {
 
 export type RomAssetRecord = RomAsset & { url: string };
 
-export type RomRecord = Rom & { assets: RomAssetRecord[] };
+export type RomRecord = Rom & { assets: RomAssetRecord[]; platform?: Platform };
 
 export interface ListRomFilters {
   platformId?: string;
@@ -72,10 +73,7 @@ export class RomService {
       throw new RomStorageError('Uploaded asset size mismatch');
     }
 
-    if (
-      assetMetadata.checksum &&
-      assetMetadata.checksum.toLowerCase() !== normalizedChecksum
-    ) {
+    if (assetMetadata.checksum && assetMetadata.checksum.toLowerCase() !== normalizedChecksum) {
       throw new RomStorageError('Uploaded asset checksum mismatch');
     }
 
@@ -110,7 +108,7 @@ export class RomService {
           },
         },
       },
-      include: { assets: true },
+      include: { assets: true, platform: true },
     });
 
     return this.enrichRomAssets(rom);
@@ -150,7 +148,7 @@ export class RomService {
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { assets: true },
+        include: { assets: true, platform: true },
       }),
       this.prisma.rom.count({ where }),
     ]);
@@ -167,7 +165,7 @@ export class RomService {
   async findById(id: string): Promise<RomRecord | undefined> {
     const rom = await this.prisma.rom.findUnique({
       where: { id },
-      include: { assets: true },
+      include: { assets: true, platform: true },
     });
 
     if (!rom) {
@@ -199,7 +197,9 @@ export class RomService {
     return Boolean(favorite);
   }
 
-  private async enrichRomAssets(rom: Rom & { assets: RomAsset[] }): Promise<RomRecord> {
+  private async enrichRomAssets(
+    rom: Rom & { assets: RomAsset[]; platform?: Platform },
+  ): Promise<RomRecord> {
     const assets = await Promise.all(
       rom.assets.map(async (asset) => ({
         ...asset,

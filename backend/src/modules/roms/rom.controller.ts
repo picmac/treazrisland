@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { RomAssetRecord, RomRecord } from './rom.service';
 import type { AuthUser } from '../auth/types';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import type { SaveStateSummary } from './save-state.service';
 
 const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -39,6 +40,40 @@ const serializeRomAsset = (asset: RomAssetRecord) => ({
   createdAt: asset.createdAt.toISOString(),
   url: asset.url,
 });
+
+const serializePlatform = (platform?: RomRecord['platform']) => {
+  if (!platform) {
+    return undefined;
+  }
+
+  return {
+    id: platform.id,
+    name: platform.name,
+    slug: platform.slug,
+  };
+};
+
+const serializeSaveStateSummary = (summary?: SaveStateSummary) => {
+  if (!summary) {
+    return null;
+  }
+
+  return {
+    total: summary.total,
+    latest: summary.latest
+      ? {
+          id: summary.latest.id,
+          slot: summary.latest.slot,
+          label: summary.latest.label,
+          size: summary.latest.size,
+          contentType: summary.latest.contentType,
+          checksum: summary.latest.checksum,
+          createdAt: summary.latest.createdAt,
+          updatedAt: summary.latest.updatedAt,
+        }
+      : undefined,
+  };
+};
 
 export const getRequestUserId = (user: FastifyRequest['user']): string | undefined => {
   if (!user) {
@@ -138,13 +173,18 @@ export const romController: FastifyPluginAsync = async (fastify) => {
     }
 
     const userId = getRequestUserId(request.user);
-    const isFavorite = userId ? await fastify.romService.isFavorite(userId, rom.id) : false;
+    const [isFavorite, saveStateSummary] = await Promise.all([
+      userId ? fastify.romService.isFavorite(userId, rom.id) : Promise.resolve(false),
+      userId ? fastify.saveStateService.getSummary(userId, rom.id) : Promise.resolve(undefined),
+    ]);
 
     return reply.send({
       rom: {
         ...serializeRomSummary(rom),
+        platform: serializePlatform(rom.platform),
         assets: rom.assets.map((asset) => serializeRomAsset(asset)),
         isFavorite,
+        saveStateSummary: serializeSaveStateSummary(saveStateSummary),
       },
     });
   });

@@ -146,8 +146,21 @@ async function fetchRomDetailsWithRequestInit(
 }
 
 function normalizeRomDetails(payload: RomDetailsResponse): RomDetails {
+  const saveStateSummary =
+    payload.rom.saveStateSummary === null
+      ? null
+      : payload.rom.saveStateSummary
+        ? {
+            ...payload.rom.saveStateSummary,
+            latest: payload.rom.saveStateSummary.latest
+              ? { ...payload.rom.saveStateSummary.latest }
+              : undefined,
+          }
+        : undefined;
+
   return {
     ...payload.rom,
     isFavorite: payload.rom.isFavorite ?? false,
+    saveStateSummary,
   };
 }

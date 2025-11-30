@@ -10,6 +10,26 @@ export interface RomAsset {
   url: string;
 }
 
+export interface PlatformSummary {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface SaveStateSummary {
+  total: number;
+  latest?: {
+    id: string;
+    slot: number;
+    label?: string | null;
+    size: number;
+    contentType: string;
+    checksum: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
 export interface RomSummary {
   id: string;
   title: string;
@@ -25,4 +45,6 @@ export interface RomSummary {
 
 export interface RomDetails extends RomSummary {
   assets: RomAsset[];
+  platform?: PlatformSummary;
+  saveStateSummary?: SaveStateSummary | null;
 }
