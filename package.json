@@ -64,7 +64,8 @@
       "@prisma/client>react-dom": "19.2.0",
       "@prisma/studio-core-licensed>@types/react": "19.2.6",
       "@prisma/studio-core-licensed>react": "19.2.0",
-      "@prisma/studio-core-licensed>react-dom": "19.2.0"
+      "@prisma/studio-core-licensed>react-dom": "19.2.0",
+      "valibot": "^1.2.0"
     }
   },
   "lint-staged": {

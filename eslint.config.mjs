@@ -73,6 +73,23 @@ export default [
     },
   },
   {
+    files: ['tests/playwright/**/*.{ts,tsx,js,jsx}'],
+    languageOptions: {
+      ...makeTypeScriptLanguageOptions('./tests/playwright/tsconfig.json'),
+      globals: {
+        ...globals.node,
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...eslintConfigPrettier.rules,
+    },
+  },
+  {
     files: ['frontend/**/*.{ts,tsx,js,jsx}'],
     languageOptions: {
       ...makeTypeScriptLanguageOptions('./frontend/tsconfig.json'),

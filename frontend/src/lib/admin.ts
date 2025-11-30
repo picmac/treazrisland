@@ -98,9 +98,28 @@ export interface RomUploadGrantResponse {
 }
 
 export function requestRomUploadGrant(payload: RomUploadGrantPayload) {
-  return apiClient.post<RomUploadGrantResponse>('/admin/roms/uploads', payload, {
+  return apiClient.post<RomUploadGrantResponse>('/admin/roms/uploads/initiate', payload, {
     requiresAuth: true,
   });
+}
+
+export interface VerifyUploadPayload extends JsonRecord {
+  objectKey: string;
+  checksum: string;
+}
+
+export interface VerifyUploadResponse {
+  valid: boolean;
+}
+
+export function verifyRomUpload(payload: VerifyUploadPayload) {
+  return apiClient.post<VerifyUploadResponse>('/admin/roms/uploads/verify', payload, {
+    requiresAuth: true,
+  });
+}
+
+export function reportRomUploadFailure(payload: { objectKey: string; reason?: string }) {
+  return apiClient.post<void>('/admin/roms/uploads/failure', payload, { requiresAuth: true });
 }
 
 export interface DirectRomUploadResponse {

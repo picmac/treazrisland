@@ -118,4 +118,18 @@ export class TestRomStorage implements RomStorage {
 
     return Buffer.from(object.data);
   }
+
+  async verifyChecksum(objectKey: string, expectedChecksum: string): Promise<boolean> {
+    const object = this.objects.get(objectKey);
+
+    if (!object) {
+      throw new RomStorageError('Asset not found');
+    }
+
+    return object.checksum === expectedChecksum.toLowerCase();
+  }
+
+  async deleteAsset(objectKey: string): Promise<void> {
+    this.objects.delete(objectKey);
+  }
 }

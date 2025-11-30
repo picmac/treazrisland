@@ -33,7 +33,7 @@ export async function registerTestRom(
   const checksum = createHash('sha256').update(romBuffer).digest('hex');
   const accessToken = await obtainAccessToken(request);
 
-  const grantResponse = await request.post(`${backendBaseUrl}/admin/roms/uploads`, {
+  const grantResponse = await request.post(`${backendBaseUrl}/admin/roms/uploads/initiate`, {
     headers: { Authorization: `Bearer ${accessToken}` },
     data: {
       filename: 'playwright-rom.smc',
@@ -120,6 +120,13 @@ export async function registerTestRom(
   if (!uploadResponse) {
     throw new Error('Upload response missing after retries');
   }
+
+  const verificationResponse = await request.post(`${backendBaseUrl}/admin/roms/uploads/verify`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    data: { objectKey: grant.objectKey, checksum },
+  });
+
+  expect(verificationResponse.ok()).toBeTruthy();
 
   const response = await request.post(`${backendBaseUrl}/admin/roms`, {
     headers: { Authorization: `Bearer ${accessToken}` },
