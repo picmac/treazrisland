@@ -5,7 +5,7 @@ import type { RomDetails, RomSummary } from '@/types/rom';
 interface RomListMeta {
   page: number;
   pageSize: number;
-  totalItems: number;
+  total: number;
   totalPages: number;
 }
 
@@ -20,6 +20,7 @@ export interface RomListFilters {
   platform?: string;
   genre?: string;
   favorites?: boolean;
+  order?: 'newest' | 'recent';
 }
 
 export async function listRoms(
@@ -45,6 +46,10 @@ export async function listRoms(
 
   if (filters.favorites) {
     params.set('favorites', 'true');
+  }
+
+  if (filters.order) {
+    params.set('order', filters.order);
   }
 
   const query = params.size > 0 ? `?${params.toString()}` : '';

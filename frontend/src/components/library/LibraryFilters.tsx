@@ -9,9 +9,11 @@ interface LibraryFiltersProps {
   selectedPlatform?: string;
   selectedGenre?: string;
   favoritesOnly: boolean;
+  sortOrder: 'newest' | 'recent';
   onPlatformChange: (platform?: string) => void;
   onGenreChange: (genre?: string) => void;
   onFavoritesToggle: (nextValue: boolean) => void;
+  onSortChange: (order: 'newest' | 'recent') => void;
 }
 
 export function LibraryFilters({
@@ -20,12 +22,15 @@ export function LibraryFilters({
   selectedPlatform,
   selectedGenre,
   favoritesOnly,
+  sortOrder,
   onPlatformChange,
   onGenreChange,
   onFavoritesToggle,
+  onSortChange,
 }: LibraryFiltersProps) {
   const platformId = useId();
   const genreId = useId();
+  const orderId = useId();
 
   return (
     <section
@@ -81,6 +86,34 @@ export function LibraryFilters({
           ))}
         </div>
       </div>
+
+      <fieldset className={styles.filterGroup} aria-labelledby={orderId}>
+        <legend id={orderId} className={styles.label}>
+          Order
+        </legend>
+        <div className={styles.orderGroup}>
+          <label className={styles.radioLabel}>
+            <input
+              type="radio"
+              name="library-order"
+              value="recent"
+              checked={sortOrder === 'recent'}
+              onChange={() => onSortChange('recent')}
+            />
+            Recent activity
+          </label>
+          <label className={styles.radioLabel}>
+            <input
+              type="radio"
+              name="library-order"
+              value="newest"
+              checked={sortOrder === 'newest'}
+              onChange={() => onSortChange('newest')}
+            />
+            Newest uploads
+          </label>
+        </div>
+      </fieldset>
 
       <button
         type="button"
