@@ -53,8 +53,7 @@ class ResizeObserverMock {
 
 describe('LibraryGrid', () => {
   beforeAll(() => {
-    // @ts-expect-error jsdom lacks ResizeObserver
-    global.ResizeObserver = ResizeObserverMock;
+    global.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
   });
 
   it('renders rom cards and triggers favorite toggle', () => {

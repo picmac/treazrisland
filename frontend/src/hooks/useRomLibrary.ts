@@ -31,6 +31,8 @@ const buildQueryKey = (filters: LibraryFilters) => [
   filters.order ?? 'recent',
 ];
 
+type LibraryQueryKey = ReturnType<typeof buildQueryKey>;
+
 export const useRomLibrary = (filters: LibraryFilters = {}) => {
   const queryClient = useQueryClient();
   const mergedFilters: RomListFilters = {
@@ -41,7 +43,13 @@ export const useRomLibrary = (filters: LibraryFilters = {}) => {
     order: filters.order ?? 'recent',
   };
 
-  const query = useInfiniteQuery<LibraryPageResult, ApiError>({
+  const query = useInfiniteQuery<
+    LibraryPageResult,
+    ApiError,
+    InfiniteData<LibraryPageResult, number>,
+    LibraryQueryKey,
+    number
+  >({
     queryKey: buildQueryKey(filters),
     queryFn: ({ pageParam = 1 }) => listRoms({ ...mergedFilters, page: pageParam }),
     initialPageParam: 1,
