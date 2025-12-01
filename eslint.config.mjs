@@ -24,7 +24,14 @@ const makeTypeScriptLanguageOptions = (tsconfigPath) => ({
 
 export default [
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/coverage/**'],
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.next/**',
+      '**/coverage/**',
+      '**/next-env.d.ts',
+      'frontend/next-env.d.ts',
+    ],
     linterOptions: {
       reportUnusedDisableDirectives: 'error',
     },
@@ -128,6 +135,15 @@ export default [
       '@next/next/no-html-link-for-pages': 'off',
       'react-hooks/set-state-in-effect': 'off',
       'react-hooks/incompatible-library': 'off',
+    },
+  },
+  {
+    files: ['frontend/next-env.d.ts'],
+    languageOptions: {
+      ...makeTypeScriptLanguageOptions('./frontend/tsconfig.json'),
+    },
+    rules: {
+      'import/no-unresolved': 'off',
     },
   },
 ];
