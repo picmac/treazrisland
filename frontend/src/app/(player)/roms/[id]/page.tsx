@@ -3,9 +3,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 
 import { SkeletonBlock } from '@/components/loading/SkeletonBlock';
 import { fetchRomDetails, resolveRomId } from '@/lib/roms';
+import { ApiError, toggleRomFavorite } from '@/lib/apiClient';
+import { getStoredAccessToken } from '@/lib/authTokens';
 import type { RomAsset, RomDetails } from '@/types/rom';
 import styles from './page.module.css';
 
@@ -18,6 +21,26 @@ export default function PlayerRomPage({ params }: PlayerRomPageProps) {
   const [rom, setRom] = useState<RomDetails | null>(null);
   const [status, setStatus] = useState<PageStatus>('loading');
   const [error, setError] = useState<string>();
+  const [favoriteMessage, setFavoriteMessage] = useState<string>();
+
+  const favoriteMutation = useMutation({
+    mutationFn: () => toggleRomFavorite(romId),
+    onSuccess: (response) => {
+      setFavoriteMessage(response.isFavorite ? 'Added to favorites.' : 'Removed from favorites.');
+      setRom((previous) =>
+        previous ? { ...previous, isFavorite: response.isFavorite } : previous,
+      );
+    },
+    onError: (mutationError) => {
+      if (mutationError instanceof ApiError && mutationError.status === 401) {
+        setFavoriteMessage('Sign in to manage your favorites.');
+      } else if (mutationError instanceof Error) {
+        setFavoriteMessage(mutationError.message);
+      } else {
+        setFavoriteMessage('Unable to update favorites right now.');
+      }
+    },
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -74,6 +97,14 @@ export default function PlayerRomPage({ params }: PlayerRomPageProps) {
   const platformLabel = rom?.platform?.name ?? rom?.platformId ?? 'Unknown platform';
   const releaseLabel = rom?.releaseYear ?? 'Unreleased';
   const saveStateCopy = useMemo(() => formatSaveStateCopy(rom?.saveStateSummary), [rom]);
+  const handleToggleFavorite = () => {
+    if (!getStoredAccessToken()) {
+      setFavoriteMessage('Sign in to manage your favorites.');
+      return;
+    }
+
+    favoriteMutation.mutate();
+  };
 
   if (status === 'loading') {
     return <LoadingView />;
@@ -136,8 +167,25 @@ export default function PlayerRomPage({ params }: PlayerRomPageProps) {
               <Link className={styles.primaryCta} href={`/play/${rom.id}`}>
                 Play Now
               </Link>
-              <p className={styles.secondaryCopy}>Boots instantly · keeps your pixels crisp</p>
+              <button
+                type="button"
+                className={styles.secondaryCta}
+                onClick={handleToggleFavorite}
+                aria-pressed={rom.isFavorite ? 'true' : 'false'}
+                disabled={favoriteMutation.isPending}
+              >
+                {favoriteMutation.isPending
+                  ? 'Saving…'
+                  : rom.isFavorite
+                    ? '★ Favorited'
+                    : '☆ Add to favorites'}
+              </button>
             </div>
+            {favoriteMessage && (
+              <p className={styles.favoriteMessage} role="status" aria-live="polite">
+                {favoriteMessage}
+              </p>
+            )}
           </div>
         </section>
 
