@@ -131,6 +131,22 @@ export default function AdminRomUploadPage() {
     fileInputRef.current?.click();
   }, []);
 
+  const disabledReason = useMemo(() => {
+    if (!file) {
+      return 'Select a ROM file to enable Create ROM.';
+    }
+
+    if (!checksum) {
+      return 'Checksum must finish before creating the ROM.';
+    }
+
+    if (['uploading', 'registering', 'redirecting', 'verifying'].includes(stage)) {
+      return 'Upload in progress; please wait…';
+    }
+
+    return '';
+  }, [checksum, file, stage]);
+
   const handleFileSelection = useCallback(async (selected: File | null) => {
     setFile(selected);
     setChecksum(null);
@@ -505,6 +521,16 @@ export default function AdminRomUploadPage() {
             >
               Reset form
             </button>
+            {disabledReason && (
+              <p className={styles.ctaHelper} role="status" aria-live="polite">
+                {disabledReason}{' '}
+                {!file && (
+                  <button type="button" className={styles.helperLink} onClick={openFilePicker}>
+                    Browse files
+                  </button>
+                )}
+              </p>
+            )}
           </div>
         </form>
       </section>
