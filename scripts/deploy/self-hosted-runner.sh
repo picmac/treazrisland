@@ -101,6 +101,8 @@ set +a
 BACKEND_PORT="${BACKEND_PORT:-4000}"
 FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 EMULATORJS_PORT="${EMULATORJS_PORT:-8080}"
+# Ensure EmulatorJS profile is included by default; override COMPOSE_PROFILES to change.
+export COMPOSE_PROFILES="${COMPOSE_PROFILES:-emulatorjs}"
 
 cd "$REPO_ROOT"
 
