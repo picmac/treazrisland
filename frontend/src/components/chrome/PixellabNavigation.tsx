@@ -1,4 +1,4 @@
-import type { Route } from 'next';
+import type { Route } from '@/types/route';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { HTMLAttributes } from 'react';
