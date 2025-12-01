@@ -3,6 +3,8 @@
 import NextLink from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { sha256 } from '@noble/hashes/sha256';
+import { bytesToHex } from '@noble/hashes/utils';
 import type React from 'react';
 
 import {
@@ -49,8 +51,11 @@ async function computeSha256(file: File, onProgress: (percent: number) => void):
     reader.onload = async () => {
       try {
         const buffer = reader.result as ArrayBuffer;
-        const hash = await crypto.subtle.digest('SHA-256', buffer);
-        resolve(toHex(hash));
+        const digest = crypto.subtle?.digest
+          ? await crypto.subtle.digest('SHA-256', buffer)
+          : sha256(new Uint8Array(buffer));
+        const hash = digest instanceof ArrayBuffer ? toHex(digest) : bytesToHex(digest);
+        resolve(hash);
       } catch (error) {
         reject(error instanceof Error ? error : new Error('Failed to compute checksum'));
       }
