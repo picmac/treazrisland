@@ -1,6 +1,6 @@
+import Link from 'next/link';
 import ProgressSteps, { type ProgressStep } from '@/components/ProgressSteps';
 import styles from './page.module.css';
-import { useRouter } from 'next/navigation';
 
 const onboardingSteps: ProgressStep[] = [
   {
@@ -39,20 +39,6 @@ const emulatorChecklist = [
 ];
 
 export default function AdminOnboardingPage() {
-  const router = useRouter();
-
-  const handleProfileNavigation = () => {
-    router.push('/settings/profile');
-  };
-
-  const handleRomUploadNavigation = () => {
-    router.push('/admin/roms/upload');
-  };
-
-  const handleEmulatorConfigNavigation = () => {
-    router.push('/admin/emulator-config');
-  };
-
   return (
     <div className="pixellab-grid">
       <div className="pixellab-content">
@@ -90,9 +76,7 @@ export default function AdminOnboardingPage() {
                 guide.
               </div>
               <div className={styles.ctaRow}>
-                <button type="button" onClick={handleProfileNavigation}>
-                  Open profile editor
-                </button>
+                <Link href="/settings/profile">Open profile editor</Link>
                 <button type="button" className={styles.secondaryAction}>
                   Download brand kit template
                 </button>
@@ -114,12 +98,10 @@ export default function AdminOnboardingPage() {
                 for known header issues before publishing.
               </div>
               <div className={styles.ctaRow}>
-                <button type="button" onClick={handleRomUploadNavigation}>
-                  Launch ROM uploader
-                </button>
-                <a href="#rom-guide" className={styles.secondaryAction}>
+                <Link href="/admin/roms/upload">Launch ROM uploader</Link>
+                <Link href="#rom-guide" className={styles.secondaryAction}>
                   Read ROM prep guide
-                </a>
+                </Link>
               </div>
             </article>
 
@@ -138,12 +120,10 @@ export default function AdminOnboardingPage() {
                 stay aligned.
               </div>
               <div className={styles.ctaRow}>
-                <button type="button" onClick={handleEmulatorConfigNavigation}>
-                  Open EmulatorJS settings
-                </button>
-                <a href="/onboarding#emulator-config" className={styles.secondaryAction}>
+                <Link href="/admin/emulator-config">Open EmulatorJS settings</Link>
+                <Link href="/onboarding#emulator-config" className={styles.secondaryAction}>
                   View setup checklist
-                </a>
+                </Link>
               </div>
             </article>
           </section>
