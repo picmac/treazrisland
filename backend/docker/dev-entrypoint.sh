@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ ! -f node_modules/.modules.yaml ]]; then
-  echo "[backend] Installing dependencies via pnpm"
-  pnpm install --frozen-lockfile=false
-fi
+echo "[backend] Installing dependencies via pnpm (ensures new deps are present)"
+pnpm install --frozen-lockfile=false --prefer-offline
 
 apply_database_migrations() {
   if [[ "${SKIP_DB_MIGRATIONS:-0}" == "1" ]]; then
