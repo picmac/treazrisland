@@ -4,10 +4,8 @@ set -euo pipefail
 PORT="${FRONTEND_PORT:-5173}"
 HOST="${FRONTEND_HOST:-0.0.0.0}"
 
-if [[ ! -f node_modules/.modules.yaml ]]; then
-  echo "[frontend] Installing dependencies via pnpm"
-  pnpm install --frozen-lockfile=false
-fi
+echo "[frontend] Installing dependencies via pnpm (ensures new deps are present)"
+pnpm install --frozen-lockfile=false --prefer-offline
 
 # Always start from a clean build to avoid stale chunk references across restarts.
 rm -rf .next
