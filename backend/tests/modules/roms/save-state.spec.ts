@@ -8,7 +8,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 
 import { parseEnv, type Env } from '../../../src/config/env';
 import { createApp } from '../../../src/index';
-import { MAX_SAVE_STATE_BYTES } from '../../../src/modules/roms/routes';
+import { MAX_SAVE_STATE_BYTES } from '../../../src/savestates/routes';
 import {
   resetDatabase,
   startTestDatabase,

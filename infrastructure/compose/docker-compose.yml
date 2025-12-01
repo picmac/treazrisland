@@ -72,8 +72,6 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      emulatorjs:
-        condition: service_started
     healthcheck:
       test: ['CMD-SHELL', 'curl -f http://localhost:${BACKEND_PORT:-4000}/health || exit 1']
       interval: 30s
@@ -134,6 +132,8 @@ services:
       dockerfile: Dockerfile
       args:
         EMULATORJS_REF: ${EMULATORJS_REF:-v4.2.3}
+    profiles:
+      - emulatorjs
     ports:
       - '${EMULATORJS_PORT:-8080}:80'
     volumes:
