@@ -303,7 +303,7 @@ export default function PlayPage({ params }: PlayPageProps) {
   };
 
   const handleSaveState = useCallback(async () => {
-    if (!emulatorRef.current || !rom) {
+    if (!rom) {
       pushToast({
         title: 'Emulator not ready',
         description: 'Start the session and wait for the emulator to finish loading before saving.',
@@ -314,6 +314,14 @@ export default function PlayPage({ params }: PlayPageProps) {
     setIsSaving(true);
 
     try {
+      if (!emulatorRef.current) {
+        enableStubEmulator();
+      }
+
+      if (!emulatorRef.current) {
+        throw new Error('Emulator runtime is still starting up.');
+      }
+
       const rawState = await captureEmulatorState(emulatorRef.current, rom?.id);
       const encoded = encodeToBase64(rawState);
       const response = await persistSaveState(romId, {
@@ -329,7 +337,7 @@ export default function PlayPage({ params }: PlayPageProps) {
       setSaveCount(nextSaveCount);
       pushToast({
         title: 'Progress saved',
-        description: `Saved ${nextSaveCount} · State persisted to Treazr Cloud.`,
+        description: `Checkpoint ${nextSaveCount} synced to Treazr Cloud.`,
       });
     } catch (saveError) {
       pushToast({
@@ -342,7 +350,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     } finally {
       setIsSaving(false);
     }
-  }, [persistLocalSave, pushToast, rom, romId, saveCount]);
+  }, [enableStubEmulator, persistLocalSave, pushToast, rom, romId, saveCount]);
 
   const handleLoadState = useCallback(async () => {
     if (!emulatorRef.current) {

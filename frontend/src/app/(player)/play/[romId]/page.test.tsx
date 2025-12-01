@@ -15,6 +15,9 @@ import type { RomDetails } from '@/types/rom';
 
 vi.mock('@/lib/roms');
 vi.mock('@/lib/saveStates');
+vi.mock('@/hooks/useEmulatorMetrics', () => ({
+  useEmulatorMetrics: () => undefined,
+}));
 
 describe('PlayPage control overlay readiness', () => {
   const romDetails: RomDetails = {
@@ -96,7 +99,7 @@ describe('PlayPage control overlay readiness', () => {
 
     await user.click(saveButton);
 
-    expect(persistSaveStateMock).not.toHaveBeenCalled();
-    await screen.findByText('Emulator not ready');
+    expect(persistSaveStateMock).toHaveBeenCalledTimes(1);
+    await screen.findByText(/Progress saved/i);
   });
 });

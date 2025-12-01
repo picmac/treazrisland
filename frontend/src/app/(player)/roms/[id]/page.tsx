@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { use, useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 
 import { SkeletonBlock } from '@/components/loading/SkeletonBlock';
@@ -12,12 +12,16 @@ import { getStoredAccessToken } from '@/lib/authTokens';
 import type { RomAsset, RomDetails } from '@/types/rom';
 import styles from './page.module.css';
 
-type PlayerRomPageProps = { params: { id: string } };
+type PlayerRomPageProps = { params: { id: string } | Promise<{ id: string }> };
 
 type PageStatus = 'idle' | 'loading' | 'error';
 
 export default function PlayerRomPage({ params }: PlayerRomPageProps) {
-  const romId = resolveRomId(params?.id);
+  const resolvedParams =
+    params && typeof (params as Promise<{ id: string }>).then === 'function'
+      ? use(params as Promise<{ id: string }>)
+      : (params as { id: string });
+  const romId = resolveRomId(resolvedParams?.id);
   const [rom, setRom] = useState<RomDetails | null>(null);
   const [status, setStatus] = useState<PageStatus>('loading');
   const [error, setError] = useState<string>();
