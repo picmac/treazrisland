@@ -1,5 +1,6 @@
 import ProgressSteps, { type ProgressStep } from '@/components/ProgressSteps';
 import styles from './page.module.css';
+import { useRouter } from 'next/navigation';
 
 const onboardingSteps: ProgressStep[] = [
   {
@@ -32,6 +33,16 @@ const romChecklist = [
 ];
 
 export default function AdminOnboardingPage() {
+  const router = useRouter();
+
+  const handleProfileNavigation = () => {
+    router.push('/settings/profile');
+  };
+
+  const handleRomUploadNavigation = () => {
+    router.push('/admin/roms/upload');
+  };
+
   return (
     <div className="pixellab-grid">
       <div className="pixellab-content">
@@ -69,7 +80,9 @@ export default function AdminOnboardingPage() {
                 guide.
               </div>
               <div className={styles.ctaRow}>
-                <button type="button">Open profile editor</button>
+                <button type="button" onClick={handleProfileNavigation}>
+                  Open profile editor
+                </button>
                 <button type="button" className={styles.secondaryAction}>
                   Download brand kit template
                 </button>
@@ -91,7 +104,9 @@ export default function AdminOnboardingPage() {
                 for known header issues before publishing.
               </div>
               <div className={styles.ctaRow}>
-                <button type="button">Launch ROM uploader</button>
+                <button type="button" onClick={handleRomUploadNavigation}>
+                  Launch ROM uploader
+                </button>
                 <a href="#rom-guide" className={styles.secondaryAction}>
                   Read ROM prep guide
                 </a>
