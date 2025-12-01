@@ -6,9 +6,13 @@ import { PIXELLAB_TOKENS } from '@/theme/tokens';
 
 const docsUrl = 'https://github.com/treazrisland/treazrisland/blob/main/docs/ui/theme.md';
 const featuredRomRoute = '/roms/favorite-rom' as Route;
+const adminOnboardingRoute = '/admin/onboarding' as Route;
+const adminUploadRoute = '/admin/roms/upload' as Route;
 
 const navLinks = [
   { href: featuredRomRoute, label: 'ROM dossier' },
+  { href: adminOnboardingRoute, label: 'Admin onboarding' },
+  { href: adminUploadRoute, label: 'ROM upload' },
   { href: '/login', label: 'Crew login' },
   { href: docsUrl, label: 'Docs' },
 ];
@@ -136,6 +140,22 @@ export default function HomePage() {
                 }}
               >
                 Review ROM list
+              </Link>
+              <Link
+                href={adminOnboardingRoute}
+                style={{
+                  background: colors.background.panel,
+                  border: `1px dashed ${colors.border.subtle}`,
+                  color: colors.text.primary,
+                  padding: '0.85rem 1.25rem',
+                  borderRadius: '0.85rem',
+                  textDecoration: 'none',
+                  letterSpacing: '0.15rem',
+                  textTransform: 'uppercase',
+                  fontSize: '0.7rem',
+                }}
+              >
+                Admin onboarding
               </Link>
               <Link
                 href={docsUrl}
