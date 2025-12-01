@@ -32,6 +32,12 @@ const romChecklist = [
   'Use the checksum preview to ensure the build matches your archival hash before hitting upload.',
 ];
 
+const emulatorChecklist = [
+  'Point to the live EmulatorJS embed.js URL so the player shell boots the right runtime.',
+  'Confirm the backend can reach your embed URL before it saves to the environment store.',
+  'Re-verify settings whenever infrastructure shifts between staging and production.',
+];
+
 export default function AdminOnboardingPage() {
   const router = useRouter();
 
@@ -41,6 +47,10 @@ export default function AdminOnboardingPage() {
 
   const handleRomUploadNavigation = () => {
     router.push('/admin/roms/upload');
+  };
+
+  const handleEmulatorConfigNavigation = () => {
+    router.push('/admin/emulator-config');
   };
 
   return (
@@ -109,6 +119,30 @@ export default function AdminOnboardingPage() {
                 </button>
                 <a href="#rom-guide" className={styles.secondaryAction}>
                   Read ROM prep guide
+                </a>
+              </div>
+            </article>
+
+            <article className={styles.actionCard} aria-labelledby="emulator-config-heading">
+              <div className={styles.actionHeader}>
+                <h2 id="emulator-config-heading">Configure EmulatorJS</h2>
+                <span>Wire the dashboard to the correct embed endpoint for your environment.</span>
+              </div>
+              <ul className={styles.checklist}>
+                {emulatorChecklist.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+              <div className={styles.callout}>
+                Keep this URL in sync with your deploys so admin diagnostics and player sessions
+                stay aligned.
+              </div>
+              <div className={styles.ctaRow}>
+                <button type="button" onClick={handleEmulatorConfigNavigation}>
+                  Open EmulatorJS settings
+                </button>
+                <a href="/onboarding#emulator-config" className={styles.secondaryAction}>
+                  View setup checklist
                 </a>
               </div>
             </article>
