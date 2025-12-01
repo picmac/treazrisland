@@ -11,15 +11,34 @@ const DEFAULT_EMULATOR_EMBED_URL =
   process.env.NEXT_PUBLIC_EMULATOR_EMBED_URL ?? 'http://localhost:8080/dist/embed.js';
 const EMULATOR_REQUEST_TIMEOUT_MS = 5000;
 
-const verifyEmulatorEndpoint = async (embedUrl: string): Promise<void> => {
+const resolveBackendAccessibleEmulatorUrl = (embedUrl: string): string | null => {
+  try {
+    const parsed = new URL(embedUrl);
+    const normalizedHost = parsed.hostname.toLowerCase();
+    if (!['localhost', '127.0.0.1', '0.0.0.0'].includes(normalizedHost)) {
+      return null;
+    }
+
+    const host = process.env.EMULATORJS_HOST ?? 'emulatorjs';
+    const port = process.env.EMULATORJS_INTERNAL_PORT ?? '80';
+    parsed.hostname = host;
+    parsed.port = port;
+
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+};
+
+const attemptEmulatorRequest = async (url: string): Promise<void> => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), EMULATOR_REQUEST_TIMEOUT_MS);
 
   try {
-    let response = await fetch(embedUrl, { method: 'HEAD', signal: controller.signal });
+    let response = await fetch(url, { method: 'HEAD', signal: controller.signal });
 
     if (response.status === 405) {
-      response = await fetch(embedUrl, { method: 'GET', signal: controller.signal });
+      response = await fetch(url, { method: 'GET', signal: controller.signal });
     }
 
     if (!response.ok) {
@@ -33,6 +52,20 @@ const verifyEmulatorEndpoint = async (embedUrl: string): Promise<void> => {
     throw new Error(message);
   } finally {
     clearTimeout(timeout);
+  }
+};
+
+const verifyEmulatorEndpoint = async (embedUrl: string): Promise<void> => {
+  const fallbackUrl = resolveBackendAccessibleEmulatorUrl(embedUrl);
+
+  try {
+    await attemptEmulatorRequest(embedUrl);
+  } catch (error) {
+    if (!fallbackUrl || fallbackUrl === embedUrl) {
+      throw error;
+    }
+
+    await attemptEmulatorRequest(fallbackUrl);
   }
 };
 

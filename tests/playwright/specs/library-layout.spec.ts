@@ -52,7 +52,7 @@ test.describe('library layout', () => {
     await page.setViewportSize({ width: 375, height: 740 });
     await page.goto('/library');
 
-    await expect(page.getByRole('button', { name: /favorites/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /favorites only/i })).toBeVisible();
     const firstRow = page.locator('[data-index="0"]').first();
     await expect(firstRow).toBeVisible();
     await expect(firstRow).toHaveAttribute('style', /repeat\(1, minmax/);

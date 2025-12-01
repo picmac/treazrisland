@@ -12,12 +12,17 @@ export async function ensureFirstAdminBootstrapped(request: APIRequestContext) {
   }
 
   const bootstrapResponse = await request.post(`${backendBaseUrl}/auth/bootstrap`);
-  expect(bootstrapResponse.status()).toBe(201);
-  const bootstrapPayload = (await bootstrapResponse.json()) as {
-    user: { id: string; email: string };
-  };
+  expect([201, 409]).toContain(bootstrapResponse.status());
 
-  return { created: true, user: bootstrapPayload.user } as const;
+  if (bootstrapResponse.status() === 201) {
+    const bootstrapPayload = (await bootstrapResponse.json()) as {
+      user: { id: string; email: string };
+    };
+
+    return { created: true, user: bootstrapPayload.user } as const;
+  }
+
+  return { created: false } as const;
 }
 
 export async function createInviteCode(

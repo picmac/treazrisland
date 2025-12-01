@@ -81,6 +81,8 @@ RUN apt-get update \
 WORKDIR /srv/emulatorjs
 
 COPY --from=build /src/dist ./dist
+COPY --from=build /src/data ./dist/data
+COPY embed.js ./dist/embed.js
 # Copy the local Caddyfile so we can proxy the compiled EmulatorJS assets.
 COPY Caddyfile /etc/caddy/Caddyfile
 

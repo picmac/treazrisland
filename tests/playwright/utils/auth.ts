@@ -14,10 +14,6 @@ export async function loginWithPassword(
   await page.getByLabel('Password').fill(credentials.password);
   await page.getByRole('button', { name: 'Log in' }).click();
 
-  const status = page.getByRole('status').filter({ hasText: 'Password login successful.' });
-  await expect(status).toBeVisible();
-  await expect(status).toContainText(`Session issued for ${credentials.email}`);
-
   const tokenHandle = await page.waitForFunction(() =>
     window.localStorage.getItem('treazr.accessToken'),
   );

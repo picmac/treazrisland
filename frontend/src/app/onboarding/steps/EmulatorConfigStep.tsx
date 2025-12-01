@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { fetchEmulatorConfig, saveEmulatorConfig } from '@/lib/admin';
 
@@ -24,6 +24,7 @@ export function EmulatorConfigStep({ state, onComplete }: EmulatorConfigStepProp
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const completionTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (state.data) {
@@ -56,6 +57,14 @@ export function EmulatorConfigStep({ state, onComplete }: EmulatorConfigStepProp
     }
   };
 
+  useEffect(() => {
+    return () => {
+      if (completionTimeoutRef.current) {
+        window.clearTimeout(completionTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleSave = async () => {
     if (!embedUrl.trim()) {
       setError('Embed URL is required.');
@@ -69,8 +78,14 @@ export function EmulatorConfigStep({ state, onComplete }: EmulatorConfigStepProp
     try {
       const response = await saveEmulatorConfig({ embedUrl });
       setLastVerifiedAt(response.config.verifiedAt);
-      onComplete(response.config);
       setSuccess('Emulator endpoint verified and saved.');
+      if (completionTimeoutRef.current) {
+        window.clearTimeout(completionTimeoutRef.current);
+      }
+      completionTimeoutRef.current = window.setTimeout(() => {
+        onComplete(response.config);
+        completionTimeoutRef.current = null;
+      }, 1000);
     } catch (saveError) {
       const message =
         saveError instanceof Error ? saveError.message : 'Unable to verify EmulatorJS endpoint';

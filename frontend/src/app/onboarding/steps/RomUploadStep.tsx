@@ -2,7 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 
-import { useRomUpload } from '@/hooks/useRomUpload';
+import { useRomUpload, type RomUploadInput } from '@/hooks/useRomUpload';
 
 import type { RomUploadResult, StepStatus } from '../types';
 import styles from '../page.module.css';
@@ -65,22 +65,28 @@ export function RomUploadStep({ state, onComplete }: RomUploadStepProps) {
           ? parsedReleaseYear
           : undefined;
 
-      const response = await uploadRom({
+      const trimmedDescription = description.trim();
+      const romPayload: RomUploadInput = {
         title,
-        description,
         platformId,
         releaseYear: safeReleaseYear,
         file: selectedFile,
-      });
+      };
 
-      const payload: RomUploadResult = {
+      if (trimmedDescription.length > 0) {
+        romPayload.description = trimmedDescription;
+      }
+
+      const response = await uploadRom(romPayload);
+
+      const resultPayload: RomUploadResult = {
         romId: response.id,
         title: response.title,
         filename: selectedFile.name,
         uploadedAt: new Date().toISOString(),
       };
 
-      onComplete(payload);
+      onComplete(resultPayload);
       setSuccessMessage(`Uploaded ${response.title} (${selectedFile.name})`);
       setFormError(null);
       setSelectedFile(null);

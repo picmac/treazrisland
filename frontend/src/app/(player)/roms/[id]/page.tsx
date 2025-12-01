@@ -148,7 +148,8 @@ export default function PlayerRomPage({ params }: PlayerRomPageProps) {
           </div>
 
           <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>Pixel command briefing</p>
+            <p className={styles.eyebrow}>ROM dossier</p>
+            <p className={styles.heroLabel}>Pixel command briefing</p>
             <h1 className={styles.title}>{rom.title}</h1>
             <p className={styles.subtitle}>
               {platformLabel} · {releaseLabel}

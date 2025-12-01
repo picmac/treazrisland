@@ -189,6 +189,19 @@ input:focus-visible {
   opacity: 0.8;
 }
 
+.play-session__save-indicator {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  margin: 0;
+  font-size: 0.75rem;
+  color: rgba(254, 250, 224, 0.75);
+  text-transform: uppercase;
+  letter-spacing: 0.08rem;
+  z-index: 2;
+  pointer-events: none;
+}
+
 .token-preview {
   display: inline-block;
   margin-top: 0.5rem;

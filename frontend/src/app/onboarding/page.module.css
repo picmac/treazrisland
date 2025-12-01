@@ -61,10 +61,46 @@
   cursor: not-allowed;
 }
 
+.healthSummary {
+  border-top: 1px solid rgba(15, 16, 31, 0.08);
+  padding-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.healthSummary p {
+  margin: 0;
+}
+
+.healthSummary strong {
+  color: #0f101f;
+  font-weight: 700;
+}
+
+.healthTimestamp {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.profileSummary {
+  border-top: 1px solid rgba(15, 16, 31, 0.08);
+  padding-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.profileSummary p {
+  margin: 0;
+}
+
 .stepWrapper {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  position: relative;
+  z-index: 1;
 }
 
 .stepCard {

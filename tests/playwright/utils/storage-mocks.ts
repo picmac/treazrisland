@@ -6,9 +6,13 @@ export async function resetClientStorage(page: Page, context?: BrowserContext) {
   await context?.clearCookies();
   await page.goto('about:blank');
   await page.evaluate(() => {
-    const { localStorage, sessionStorage } = globalThis;
-    localStorage?.clear();
-    sessionStorage?.clear();
+    try {
+      const { localStorage, sessionStorage } = globalThis;
+      localStorage?.clear();
+      sessionStorage?.clear();
+    } catch {
+      // Some environments (e.g., about:blank) restrict access to storage.
+    }
   });
 }
 

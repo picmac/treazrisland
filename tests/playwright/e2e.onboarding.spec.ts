@@ -12,6 +12,8 @@ const inviteePassword = 'PlaywrightInvite123!';
 const createRomBuffer = () =>
   Buffer.from(`playwright-rom-${Date.now()}-${Math.random().toString(16).slice(2)}`, 'utf-8');
 
+const ACCESS_TOKEN_KEY = 'treazr.accessToken';
+
 test.describe.serial('end-to-end onboarding journey', () => {
   test('bootstraps admin, invites crew, uploads ROM, and saves progress', async ({
     page,
@@ -23,6 +25,7 @@ test.describe.serial('end-to-end onboarding journey', () => {
     await ensureFirstAdminBootstrapped(request);
     const bootstrapStatus = await request.get(`${backendBaseUrl}/auth/bootstrap/status`);
     expect(bootstrapStatus.ok()).toBeTruthy();
+    const adminToken = await obtainAccessToken(request);
 
     await page.goto(`${frontendBaseUrl}/onboarding`);
     await expect(
@@ -33,6 +36,12 @@ test.describe.serial('end-to-end onboarding journey', () => {
     await healthStepButton.click();
     await page.getByRole('button', { name: /Run health check/i }).click();
     await expect(page.getByText(/Stack status/i)).toBeVisible({ timeout: 15_000 });
+    await page.evaluate(
+      ([key, token]) => {
+        window.localStorage.setItem(key, token);
+      },
+      [ACCESS_TOKEN_KEY, adminToken],
+    );
 
     const profileStepButton = page.getByRole('button', { name: /\. Verify admin profile/i });
     await profileStepButton.click();
@@ -56,8 +65,15 @@ test.describe.serial('end-to-end onboarding journey', () => {
     await page.getByLabel('ROM title').fill(romTitle);
 
     const romUploadResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/admin/roms') && response.request().method() === 'POST',
+      (response) => {
+        const url = response.url();
+        return (
+          response.request().method() === 'POST' &&
+          url.includes('/admin/roms') &&
+          !url.includes('/admin/roms/uploads')
+        );
+      },
+      { timeout: 60_000 },
     );
 
     await page.setInputFiles('input[type="file"]', {
@@ -85,7 +101,6 @@ test.describe.serial('end-to-end onboarding journey', () => {
       })
       .toBe(true);
 
-    const adminToken = await obtainAccessToken(request);
     const inviteeEmail = `deckhand+${Date.now()}@treazr.test`;
     const inviteCode = await createInviteCode(request, adminToken, inviteeEmail);
 
