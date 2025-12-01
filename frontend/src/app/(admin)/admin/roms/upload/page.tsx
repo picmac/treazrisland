@@ -89,7 +89,7 @@ export default function AdminRomUploadPage() {
       return;
     }
 
-    const destination = `/roms/${optimisticRomId}`;
+    const destination = `/rom/${optimisticRomId}`;
     router.push(destination);
 
     const fallback = window.setTimeout(() => {
@@ -190,15 +190,25 @@ export default function AdminRomUploadPage() {
           return directResponse.objectKey;
         };
 
-        const response = await fetch(grant.uploadUrl, {
-          method: 'PUT',
-          headers: grant.headers,
-          body: binary,
-        });
+        console.log('upload grant url', grant.uploadUrl);
+        console.log('upload grant headers', grant.headers);
+
+        let response: Response | undefined;
+
+        try {
+          response = await fetch(grant.uploadUrl, {
+            method: 'PUT',
+            headers: grant.headers,
+            body: binary,
+          });
+        } catch (uploadFetchError) {
+          console.error('upload fetch error', uploadFetchError);
+          objectKey = await attemptDirectFallback();
+        }
 
         setUploadProgress(80);
 
-        if (!response.ok) {
+        if (response && !response.ok) {
           objectKey = await attemptDirectFallback();
         }
 
@@ -270,7 +280,7 @@ export default function AdminRomUploadPage() {
 
     try {
       const romId = await uploadRom(payload, file);
-      const destination = `/roms/${romId}`;
+      const destination = `/rom/${romId}`;
       router.push(destination);
     } catch (uploadError) {
       const message =
@@ -526,7 +536,7 @@ export default function AdminRomUploadPage() {
             </p>
             {optimisticRomId && (
               <Link
-                href={{ pathname: '/roms/[id]', query: { id: optimisticRomId } }}
+                href={{ pathname: '/rom/[id]', query: { id: optimisticRomId } }}
                 className={styles.secondary}
               >
                 Open ROM detail

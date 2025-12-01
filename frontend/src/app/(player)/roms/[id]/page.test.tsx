@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import PlayerRomPage from './page';
 import { fetchRomDetails } from '@/lib/roms';
+import { AppQueryProvider } from '@/components/providers/AppQueryProvider';
 import type { RomDetails } from '@/types/rom';
 
 vi.mock('@/lib/roms', () => ({
@@ -81,6 +82,12 @@ describe('Player ROM detail page', () => {
   };
 
   const fetchRomDetailsMock = vi.mocked(fetchRomDetails);
+  const renderPlayerRomPage = () =>
+    render(
+      <AppQueryProvider>
+        <PlayerRomPage params={{ id: romDetails.id }} />
+      </AppQueryProvider>,
+    );
 
   beforeEach(() => {
     fetchRomDetailsMock.mockResolvedValue(romDetails);
@@ -91,7 +98,7 @@ describe('Player ROM detail page', () => {
   });
 
   it('renders ROM metadata with retro copy', async () => {
-    render(<PlayerRomPage params={{ id: romDetails.id }} />);
+    renderPlayerRomPage();
 
     await screen.findByRole('heading', { name: romDetails.title });
 
@@ -105,7 +112,7 @@ describe('Player ROM detail page', () => {
 
   it('keeps the CTA wired to the play route', async () => {
     const user = userEvent.setup();
-    render(<PlayerRomPage params={{ id: romDetails.id }} />);
+    renderPlayerRomPage();
 
     const cta = await screen.findByRole('link', { name: 'Play Now' });
     await user.click(cta);
@@ -122,7 +129,7 @@ describe('Player ROM detail page', () => {
         }),
     );
 
-    render(<PlayerRomPage params={{ id: romDetails.id }} />);
+    renderPlayerRomPage();
 
     expect(screen.getByTestId('rom-loading-skeleton')).toBeInTheDocument();
 
@@ -133,7 +140,7 @@ describe('Player ROM detail page', () => {
   it('surfaces an error panel when the ROM is missing', async () => {
     fetchRomDetailsMock.mockResolvedValueOnce(null);
 
-    render(<PlayerRomPage params={{ id: romDetails.id }} />);
+    renderPlayerRomPage();
 
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('cartridge');
