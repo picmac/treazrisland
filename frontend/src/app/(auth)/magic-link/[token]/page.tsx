@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Route } from 'next';
+import type { Route } from '@/types/route';
 import { useRouter } from 'next/navigation';
 
 import { exchangeMagicLinkToken } from '@/lib/apiClient';

@@ -1,10 +1,12 @@
 'use client';
 
 import styles from './ControlOverlay.module.css';
+import { formatSaveIndicatorLabel } from './saveIndicator';
 
 interface ControlOverlayProps {
   romTitle: string;
   lastSavedAt?: Date | null;
+  saveCount?: number;
   onSaveState: () => void;
   onLoadState: () => void;
   onSyncCloudSave: () => void;
@@ -17,6 +19,7 @@ interface ControlOverlayProps {
 export function ControlOverlay({
   romTitle,
   lastSavedAt,
+  saveCount = 0,
   onSaveState,
   onLoadState,
   onSyncCloudSave,
@@ -28,9 +31,7 @@ export function ControlOverlay({
   const saveLabel = isSaving ? 'Saving…' : 'Save State';
   const loadLabel = isLoading ? 'Loading…' : 'Load State';
   const syncLabel = isSyncing ? 'Uploading…' : 'Upload Save';
-  const timestampLabel = lastSavedAt
-    ? `Saved ${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-    : 'No save yet';
+  const timestampLabel = formatSaveIndicatorLabel(saveCount, lastSavedAt);
 
   return (
     <div className={styles.overlayRoot} aria-live="polite">

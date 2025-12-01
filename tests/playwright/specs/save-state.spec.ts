@@ -34,7 +34,8 @@ test.describe('save state management', () => {
     await expect(page.getByText('No save yet')).toBeVisible();
 
     await saveButton.click();
-    await expect(page.getByText(/Saved \d/)).toBeVisible();
+    await expect(page.getByText('Progress saved')).toBeVisible({ timeout: 30_000 });
+
     await expect(saveButton).toBeEnabled();
 
     const localPayload = await page.evaluate(

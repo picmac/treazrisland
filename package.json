@@ -7,7 +7,7 @@
   },
   "scripts": {
     "preinstall": "node ./scripts/enforce-pnpm.cjs",
-    "lint": "pnpm run verify:lts && pnpm exec eslint \"{backend,frontend}/**/*.{js,jsx,ts,tsx}\" --max-warnings=0",
+    "lint": "pnpm run verify:lts && pnpm exec eslint backend tests/playwright frontend/src frontend/next-env.d.ts --max-warnings=0",
     "lint:staged": "lint-staged",
     "verify:lts": "pnpm exec ts-node --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"Node\"}' --transpile-only scripts/verify-lts.ts",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,css,scss,json,md,yml,yaml}\"",

@@ -386,6 +386,14 @@ jobs:
             tests/playwright/**/*.log
           if-no-files-found: ignore
 
+      - name: Upload Playwright artifacts bundle
+        if: ${{ always() && matrix.job.name == 'Playwright' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: tests/playwright/artifacts/**
+          if-no-files-found: ignore
+
       - name: Save Docker layers cache
         if: ${{ matrix.job.needsDocker && steps.docker-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4

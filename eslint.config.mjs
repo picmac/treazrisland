@@ -81,10 +81,12 @@ export default [
   },
   {
     files: ['tests/playwright/**/*.{ts,tsx,js,jsx}'],
+    ignores: ['tests/playwright/artifacts/**'],
     languageOptions: {
       ...makeTypeScriptLanguageOptions('./tests/playwright/tsconfig.json'),
       globals: {
         ...globals.node,
+        ...globals.browser,
       },
     },
     plugins: {
@@ -98,6 +100,7 @@ export default [
   },
   {
     files: ['frontend/**/*.{ts,tsx,js,jsx}'],
+    ignores: ['**/.next/**'],
     languageOptions: {
       ...makeTypeScriptLanguageOptions('./frontend/tsconfig.json'),
       globals: {

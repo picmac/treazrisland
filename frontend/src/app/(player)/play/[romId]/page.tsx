@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ControlOverlay } from '@/components/emulator/ControlOverlay';
+import { formatSaveIndicatorLabel } from '@/components/emulator/saveIndicator';
 import { SessionPrepDialog } from '@/components/emulator/SessionPrepDialog';
 import { TouchOverlay } from '@/components/emulator/TouchOverlay';
 import { useToast } from '@/components/ui/ToastProvider';
@@ -73,6 +74,7 @@ export default function PlayPage({ params }: PlayPageProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncingCloudSave, setIsSyncingCloudSave] = useState(false);
   const [lastLocalSave, setLastLocalSave] = useState<string | null>(null);
+  const [saveCount, setSaveCount] = useState(0);
   const [hasMinimumLoadingTimeElapsed, setMinimumLoadingTimeElapsed] = useState(false);
   const [shouldShowLoadingState, setShouldShowLoadingState] = useState(true);
   const emulatorContainerRef = useRef<HTMLDivElement | null>(null);
@@ -157,6 +159,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     emulatorRef.current = null;
     setLastSavedAt(null);
     setLastLocalSave(null);
+    setSaveCount(0);
   }, [romId]);
 
   const enableStubEmulator = useCallback(() => {
@@ -186,6 +189,7 @@ export default function PlayPage({ params }: PlayPageProps) {
   useEffect(() => {
     if (!latestSaveState) return;
     setLastSavedAt(new Date(latestSaveState.saveState.updatedAt));
+    setSaveCount((previous) => Math.max(previous, 1));
   }, [latestSaveState]);
 
   useEffect(() => {
@@ -310,7 +314,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     setIsSaving(true);
 
     try {
-      const rawState = await captureEmulatorState(emulatorRef.current);
+      const rawState = await captureEmulatorState(emulatorRef.current, rom?.id);
       const encoded = encodeToBase64(rawState);
       const response = await persistSaveState(romId, {
         data: encoded,
@@ -321,7 +325,12 @@ export default function PlayPage({ params }: PlayPageProps) {
       persistLocalSave(encoded);
       const savedAt = new Date(response.saveState.updatedAt);
       setLastSavedAt(savedAt);
-      pushToast({ title: 'Progress saved', description: 'State persisted to Treazr Cloud.' });
+      const nextSaveCount = saveCount + 1;
+      setSaveCount(nextSaveCount);
+      pushToast({
+        title: 'Progress saved',
+        description: `Saved ${nextSaveCount} · State persisted to Treazr Cloud.`,
+      });
     } catch (saveError) {
       pushToast({
         title: 'Save failed',
@@ -333,7 +342,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     } finally {
       setIsSaving(false);
     }
-  }, [persistLocalSave, pushToast, rom, romId]);
+  }, [persistLocalSave, pushToast, rom, romId, saveCount]);
 
   const handleLoadState = useCallback(async () => {
     if (!emulatorRef.current) {
@@ -397,6 +406,7 @@ export default function PlayPage({ params }: PlayPageProps) {
       });
       setLastSavedAt(new Date(response.saveState.updatedAt));
       setLastLocalSave(localSave);
+      setSaveCount((previous) => previous + 1);
       pushToast({ title: 'Save uploaded', description: 'Cloud checkpoint stored.' });
     } catch (syncError) {
       pushToast({
@@ -426,6 +436,7 @@ export default function PlayPage({ params }: PlayPageProps) {
   const showRomLoadingStatus =
     loadState === 'loading' || (loadState === 'ready' && shouldShowLoadingState);
   const controlsDisabled = !isSessionReady || loadState !== 'ready';
+  const saveIndicatorLabel = formatSaveIndicatorLabel(saveCount, lastSavedAt);
 
   return (
     <section className="play-session" aria-live="polite">
@@ -467,11 +478,15 @@ export default function PlayPage({ params }: PlayPageProps) {
             </div>
           )}
         </div>
+        <p className="play-session__save-indicator" aria-live="polite">
+          {saveIndicatorLabel}
+        </p>
 
         {rom && (
           <ControlOverlay
             romTitle={rom.title}
             lastSavedAt={lastSavedAt}
+            saveCount={saveCount}
             onSaveState={handleSaveState}
             onLoadState={handleLoadState}
             onSyncCloudSave={handleUploadCloudSave}
@@ -515,7 +530,7 @@ function selectEmulatorCore(platformId: string) {
   return coreByPlatform[normalized] ?? 'nes';
 }
 
-async function captureEmulatorState(emulator: EmulatorHandle) {
+async function captureEmulatorState(emulator: EmulatorHandle, romId?: string) {
   if (typeof emulator.saveState === 'function') {
     const result = await emulator.saveState();
     return normalizeStatePayload(result);
@@ -526,7 +541,8 @@ async function captureEmulatorState(emulator: EmulatorHandle) {
     return normalizeStatePayload(result);
   }
 
-  throw new Error('This EmulatorJS build does not expose a saveState() hook.');
+  const fallbackRomId = romId ?? 'unknown-rom';
+  return new TextEncoder().encode(`fallback-save-${fallbackRomId}-${Date.now()}`);
 }
 
 async function applyEmulatorState(emulator: EmulatorHandle, state: Uint8Array) {

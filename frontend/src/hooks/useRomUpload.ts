@@ -22,6 +22,17 @@ const arrayBufferToHex = (buffer: ArrayBuffer): string => {
 
 const normalizeContentType = (contentType: string) => contentType || 'application/octet-stream';
 
+const extractSignedHeaders = (uploadUrl: string) => {
+  const signedHeadersValue =
+    new URL(uploadUrl).searchParams
+      .get('X-Amz-SignedHeaders')
+      ?.split(';')
+      .map((header) => header.trim().toLowerCase())
+      .filter(Boolean) ?? [];
+
+  return new Set(signedHeadersValue);
+};
+
 const uploadRomAsset = async (file: File) => {
   const buffer = await file.arrayBuffer();
   const digest = await crypto.subtle.digest('SHA-256', buffer);
@@ -36,12 +47,16 @@ const uploadRomAsset = async (file: File) => {
     checksum,
   });
 
-  const uploadHeaders = {
-    'Content-Type': contentType,
-    'x-amz-meta-checksum': checksum,
-    'x-amz-meta-size': size.toString(),
-    ...(grant.headers ?? {}),
-  } as Record<string, string>;
+  const signedHeaders = extractSignedHeaders(grant.uploadUrl);
+  const uploadHeaders = Object.fromEntries(
+    Object.entries(grant.headers ?? {}).filter(([header]) => {
+      if (!signedHeaders.size) {
+        return true;
+      }
+
+      return signedHeaders.has(header.toLowerCase());
+    }),
+  );
 
   const response = await fetch(grant.uploadUrl, {
     method: 'PUT',

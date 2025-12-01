@@ -66,6 +66,12 @@
   font-weight: 700;
 }
 
+.heroLabel {
+  color: var(--text-secondary);
+  margin: 0;
+  font-size: 0.95rem;
+}
+
 .title {
   font-size: clamp(1.8rem, 3vw, 2.4rem);
   margin: 0;

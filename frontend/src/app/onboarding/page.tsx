@@ -73,17 +73,17 @@ const wizardSteps = [
   },
   {
     key: 'profile',
-    title: 'Verify profile',
+    title: 'Verify admin profile',
     description: 'Update the admin display name and support contact.',
   },
   {
     key: 'emulator',
-    title: 'Configure EmulatorJS',
+    title: 'Configure EmulatorJS endpoint',
     description: 'Save the embed.js endpoint that EmulatorJS hosts.',
   },
   {
     key: 'rom',
-    title: 'Upload first ROM',
+    title: 'Upload your first ROM',
     description: 'Call /admin/roms with a cleared build.',
   },
 ] as const satisfies ReadonlyArray<StepConfig>;
@@ -195,6 +195,24 @@ export default function OnboardingPage() {
                 </li>
               ))}
             </ul>
+            {progress.health.data && (
+              <div className={styles.healthSummary} aria-live="polite">
+                <p>
+                  Stack status: <strong>{progress.health.data.status.toUpperCase()}</strong>
+                </p>
+                <p className={styles.healthTimestamp}>
+                  Last checked {new Date(progress.health.data.checkedAt).toLocaleString()}
+                </p>
+              </div>
+            )}
+            {progress.profile.data && (
+              <div className={styles.profileSummary} aria-live="polite">
+                <p>Profile saved.</p>
+                <p className={styles.healthTimestamp}>
+                  Last updated {new Date(progress.profile.data.verifiedAt).toLocaleString()}
+                </p>
+              </div>
+            )}
           </section>
 
           <section className={styles.stepWrapper}>
