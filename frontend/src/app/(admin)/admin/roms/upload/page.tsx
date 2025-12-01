@@ -1,7 +1,7 @@
 'use client';
 
 import NextLink from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type React from 'react';
 
@@ -70,6 +70,7 @@ const MAX_DIRECT_UPLOAD_BYTES = 50 * 1024 * 1024;
 
 export default function AdminRomUploadPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [platform, setPlatform] = useState('');
@@ -119,6 +120,10 @@ export default function AdminRomUploadPage() {
     setError(null);
     setStatusMessage('Drop your ROM to begin…');
     setOptimisticRomId(null);
+  }, []);
+
+  const openFilePicker = useCallback(() => {
+    fileInputRef.current?.click();
   }, []);
 
   const handleFileSelection = useCallback(async (selected: File | null) => {
@@ -344,10 +349,11 @@ export default function AdminRomUploadPage() {
             data-testid="rom-dropzone"
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
-                const input = document.getElementById('rom-file');
-                input?.click();
+                event.preventDefault();
+                openFilePicker();
               }
             }}
+            onClick={openFilePicker}
           >
             <div className={styles.dropInner}>
               <p className={styles.dropLabel}>Drop ROM file or click to browse</p>
@@ -359,6 +365,7 @@ export default function AdminRomUploadPage() {
                 accept=".zip,.nes,.sfc,.bin,.smc"
                 className={styles.hiddenInput}
                 aria-label="ROM file"
+                ref={fileInputRef}
                 onChange={(event) => {
                   const [selected] = Array.from(event.target.files ?? []);
                   void handleFileSelection(selected ?? null);
