@@ -226,7 +226,7 @@ importers:
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.66.0(react@19.2.0))
       '@noble/hashes':
-        specifier: ^1.6.1
+        specifier: ^1.8.0
         version: 1.8.0
       '@tanstack/react-query':
         specifier: ^5.64.0

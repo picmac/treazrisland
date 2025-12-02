@@ -41,8 +41,10 @@ const deriveEmulatorBase = () => {
 export const EMULATOR_BASE_URL = deriveEmulatorBase();
 export const EMULATOR_DIST_URL = `${EMULATOR_BASE_URL}/dist`;
 export const EMULATOR_EMBED_URL = `${EMULATOR_DIST_URL}/embed.js`;
-// Use the dist root so loader.js can resolve emulator.min.js correctly.
-export const EMULATOR_DATA_URL = EMULATOR_DIST_URL;
+// The EmulatorJS loader expects `EJS_pathtodata` to point at the `/data` directory so it can
+// fetch `emulator.min.js` and supporting assets. Keep the trailing segment explicit to avoid
+// broken lookups when the base path is customized via environment variables.
+export const EMULATOR_DATA_URL = `${EMULATOR_DIST_URL}/data`;
 export const EMULATOR_VIEWPORT_ID = 'emulator-layer';
 
 export const DEFAULT_KEYBOARD_MAPPING = {
