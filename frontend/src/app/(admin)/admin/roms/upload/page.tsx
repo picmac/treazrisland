@@ -3,8 +3,8 @@
 import NextLink from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { sha256 } from '@noble/hashes/sha256';
-import { bytesToHex } from '@noble/hashes/utils';
+import { sha256 } from '@noble/hashes/sha256.js';
+import { bytesToHex } from '@noble/hashes/utils.js';
 import type React from 'react';
 
 import {
