@@ -6,7 +6,10 @@ import { LibraryFilters } from '@/components/library/LibraryFilters';
 import { ApiError } from '@/lib/apiClient';
 import { useRomLibrary } from '@/hooks/useRomLibrary';
 import type { RomSummary } from '@/types/rom';
+import { PixellabNavigation } from '@/components/chrome';
+import { SignOutButton } from '@/components/ui/SignOutButton';
 import { LibraryGrid } from './LibraryGrid';
+import { StatusPill } from '@/components/ui/StatusPill';
 import styles from './page.module.css';
 
 interface FilterState {
@@ -69,6 +72,10 @@ export default function LibraryPage() {
     setFilters((previous) => ({ ...previous, order }));
   };
 
+  const handleResetFilters = () => {
+    setFilters({ favoritesOnly: false, order: 'recent', platform: undefined, genre: undefined });
+  };
+
   const handleToggleFavorite = async (romId: string) => {
     setFavoriteMessage(undefined);
     try {
@@ -86,56 +93,83 @@ export default function LibraryPage() {
   };
 
   return (
-    <main className={styles.page} id="main-content">
-      <div className={styles.header}>
-        <p className="eyebrow">Library feed</p>
-        <h1>Browse the Treazr Island ROM catalog</h1>
-        <p>
-          Filter by platform, hop between genres, and pin your favorites without leaving the
-          Pixellab visual system.
-        </p>
-      </div>
-
-      <LibraryFilters
-        platformOptions={platformOptions}
-        genreOptions={genreOptions}
-        selectedPlatform={filters.platform}
-        selectedGenre={filters.genre}
-        favoritesOnly={filters.favoritesOnly}
-        sortOrder={filters.order}
-        onPlatformChange={handlePlatformChange}
-        onGenreChange={handleGenreChange}
-        onFavoritesToggle={handleFavoritesToggle}
-        onSortChange={handleSortChange}
+    <div className="page-shell">
+      <PixellabNavigation
+        links={[
+          { href: '/library', label: 'Library' },
+          { href: '/onboarding', label: 'Onboarding' },
+          { href: '/admin/roms/upload', label: 'Upload' },
+        ]}
+        eyebrow="Treazr Library"
+        description="Browse, filter, and favorite ROMs with EmulatorJS-ready metadata."
+        actions={<SignOutButton />}
       />
-
-      {statusMessage && (
-        <div className={styles.status} role="status">
-          {statusMessage}
+      <main className="page-content" id="main-content">
+        <div className={styles.header}>
+          <p className="eyebrow">Library feed</p>
+          <h1>Browse the Treazr Island ROM catalog</h1>
+          <p>
+            Filter by platform, hop between genres, and pin your favorites without leaving the
+            Pixellab visual system. Status banners call out load states and recovery tips.
+          </p>
+          <div className={styles.pillRow}>
+            <StatusPill tone="info">Virtualized grid</StatusPill>
+            <StatusPill tone="success">Favorites toggle</StatusPill>
+            <StatusPill tone="warning">Filters persist per session</StatusPill>
+          </div>
         </div>
-      )}
 
-      {errorMessage && (
-        <div className={styles.status} role="alert">
-          {errorMessage}
-        </div>
-      )}
+        <LibraryFilters
+          platformOptions={platformOptions}
+          genreOptions={genreOptions}
+          selectedPlatform={filters.platform}
+          selectedGenre={filters.genre}
+          favoritesOnly={filters.favoritesOnly}
+          sortOrder={filters.order}
+          onPlatformChange={handlePlatformChange}
+          onGenreChange={handleGenreChange}
+          onFavoritesToggle={handleFavoritesToggle}
+          onSortChange={handleSortChange}
+          onReset={handleResetFilters}
+        />
 
-      {favoriteMessage && (
-        <div className={styles.status} role="status" aria-live="polite">
-          {favoriteMessage}
-        </div>
-      )}
+        {libraryQuery.meta ? (
+          <div className={styles.resultsRow} role="status">
+            <strong>{libraryQuery.meta.total} ROMs</strong>
+            <span>
+              Page {libraryQuery.meta.page} of {libraryQuery.meta.totalPages || 1}
+            </span>
+          </div>
+        ) : null}
 
-      <LibraryGrid
-        roms={roms}
-        isLoading={libraryQuery.isLoading}
-        isFetching={libraryQuery.isFetching}
-        hasNextPage={libraryQuery.hasNextPage}
-        fetchNextPage={libraryQuery.fetchNextPage}
-        onToggleFavorite={handleToggleFavorite}
-        favoritePending={libraryQuery.isFavoritePending}
-      />
-    </main>
+        {statusMessage && (
+          <div className={styles.status} role="status">
+            {statusMessage}
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className={styles.status} role="alert">
+            {errorMessage}
+          </div>
+        )}
+
+        {favoriteMessage && (
+          <div className={styles.status} role="status" aria-live="polite">
+            {favoriteMessage}
+          </div>
+        )}
+
+        <LibraryGrid
+          roms={roms}
+          isLoading={libraryQuery.isLoading}
+          isFetching={libraryQuery.isFetching}
+          hasNextPage={libraryQuery.hasNextPage}
+          fetchNextPage={libraryQuery.fetchNextPage}
+          onToggleFavorite={handleToggleFavorite}
+          favoritePending={libraryQuery.isFavoritePending}
+        />
+      </main>
+    </div>
   );
 }

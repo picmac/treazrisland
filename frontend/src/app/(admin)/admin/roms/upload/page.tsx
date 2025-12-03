@@ -15,6 +15,9 @@ import {
   verifyRomUpload,
   type AdminRomUploadPayload,
 } from '@/lib/admin';
+import { PixellabNavigation } from '@/components/chrome';
+import { SignOutButton } from '@/components/ui/SignOutButton';
+import { Button } from '@/components/ui/Button';
 
 import styles from './page.module.css';
 
@@ -318,268 +321,284 @@ export default function AdminRomUploadPage() {
   };
 
   return (
-    <div className={styles.shell}>
-      <div className={styles.marquee}>
-        <div>
-          <p className="eyebrow">Admin console</p>
-          <h1>16-bit ROM uplink</h1>
-          <p className={styles.lead}>
-            Drag a payload into the uplink bay, verify its checksum, and persist metadata without
-            blocking the admin API.
-          </p>
-        </div>
-        <div className={styles.actions}>
-          <Link href="/admin/onboarding" className={styles.secondary}>
-            Back to onboarding
-          </Link>
-          <Link href="/library" className={styles.secondary}>
-            View public library
-          </Link>
-        </div>
-      </div>
-
-      <section className={styles.panel}>
-        <header className={styles.panelHeader}>
-          <div>
-            <p className="eyebrow">ROM payload</p>
-            <h2>Upload details</h2>
+    <div className="page-shell">
+      <PixellabNavigation
+        links={[
+          { href: '/admin/roms/upload', label: 'Upload' },
+          { href: '/library', label: 'Library' },
+          { href: '/onboarding', label: 'Onboarding' },
+        ]}
+        eyebrow="Admin console"
+        description="Checksum validation, presigned uploads, and metadata entry in one flow."
+        actions={<SignOutButton />}
+      />
+      <main className="page-content">
+        <div className={styles.shell}>
+          <div className={styles.marquee}>
+            <div>
+              <p className="eyebrow">Admin console</p>
+              <h1>16-bit ROM uplink</h1>
+              <p className={styles.lead}>
+                Drag a payload into the uplink bay, verify its checksum, and persist metadata
+                without blocking the admin API.
+              </p>
+            </div>
+            <div className={styles.actions}>
+              <Link href="/admin/onboarding" className={styles.secondary}>
+                Back to onboarding
+              </Link>
+              <Link href="/library" className={styles.secondary}>
+                View public library
+              </Link>
+            </div>
           </div>
-          <p
-            className={styles.status}
-            role="status"
-            aria-live="polite"
-            data-testid="rom-upload-status"
-          >
-            {statusMessage}
-          </p>
-        </header>
 
-        <form className={styles.form} onSubmit={onSubmit}>
-          <div
-            className={styles.dropzone}
-            onDragOver={(event) => {
-              event.preventDefault();
-            }}
-            onDrop={(event) => {
-              event.preventDefault();
-              const [dropped] = Array.from(event.dataTransfer.files ?? []);
-              void handleFileSelection(dropped ?? null);
-            }}
-            role="button"
-            tabIndex={0}
-            data-testid="rom-dropzone"
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                openFilePicker();
-              }
-            }}
-            onClick={openFilePicker}
-          >
-            <div className={styles.dropInner}>
-              <p className={styles.dropLabel}>Drop ROM file or click to browse</p>
-              <p className={styles.helper}>Accepts .zip, .nes, .sfc, .smc, and .bin up to 50MB.</p>
-              <input
-                id="rom-file"
-                name="rom-file"
-                type="file"
-                accept=".zip,.nes,.sfc,.bin,.smc"
-                className={styles.hiddenInput}
-                aria-label="ROM file"
-                ref={fileInputRef}
-                onChange={(event) => {
-                  const [selected] = Array.from(event.target.files ?? []);
-                  void handleFileSelection(selected ?? null);
+          <section className={styles.panel}>
+            <header className={styles.panelHeader}>
+              <div>
+                <p className="eyebrow">ROM payload</p>
+                <h2>Upload details</h2>
+              </div>
+              <p
+                className={styles.status}
+                role="status"
+                aria-live="polite"
+                data-testid="rom-upload-status"
+              >
+                {statusMessage}
+              </p>
+            </header>
+
+            <form className={styles.form} onSubmit={onSubmit}>
+              <div
+                className={styles.dropzone}
+                onDragOver={(event) => {
+                  event.preventDefault();
                 }}
-              />
-              {file && (
-                <div className={styles.fileBadge}>
-                  <span>{file.name}</span>
-                  <span>{Math.round(file.size / 1024)} KB</span>
+                onDrop={(event) => {
+                  event.preventDefault();
+                  const [dropped] = Array.from(event.dataTransfer.files ?? []);
+                  void handleFileSelection(dropped ?? null);
+                }}
+                role="button"
+                tabIndex={0}
+                data-testid="rom-dropzone"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openFilePicker();
+                  }
+                }}
+                onClick={openFilePicker}
+              >
+                <div className={styles.dropInner}>
+                  <p className={styles.dropLabel}>Drop ROM file or click to browse</p>
+                  <p className={styles.helper}>
+                    Accepts .zip, .nes, .sfc, .smc, and .bin up to 50MB.
+                  </p>
+                  <input
+                    id="rom-file"
+                    name="rom-file"
+                    type="file"
+                    accept=".zip,.nes,.sfc,.bin,.smc"
+                    className={styles.hiddenInput}
+                    aria-label="ROM file"
+                    ref={fileInputRef}
+                    onChange={(event) => {
+                      const [selected] = Array.from(event.target.files ?? []);
+                      void handleFileSelection(selected ?? null);
+                    }}
+                  />
+                  {file && (
+                    <div className={styles.fileBadge}>
+                      <span>{file.name}</span>
+                      <span>{Math.round(file.size / 1024)} KB</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className={styles.progressGrid}>
+                <div>
+                  <p className={styles.progressLabel}>Checksum</p>
+                  <progress
+                    className={styles.progress}
+                    max={100}
+                    value={checksum ? 100 : checksumProgress}
+                    aria-valuetext={checksum ? 'Checksum ready' : `${checksumProgress}% complete`}
+                  />
+                  {checksum && <p className={styles.code}>{checksum}</p>}
+                </div>
+                <div>
+                  <p className={styles.progressLabel}>Upload</p>
+                  <progress
+                    className={styles.progress}
+                    max={100}
+                    value={uploadProgress}
+                    aria-valuetext={`${uploadProgress}% uploaded`}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.fieldGrid}>
+                <label className={styles.field}>
+                  <span>Title</span>
+                  <input
+                    id="rom-title"
+                    name="rom-title"
+                    type="text"
+                    placeholder="Super Treasure Hunt"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    required
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>Platform</span>
+                  <input
+                    id="rom-platform"
+                    name="rom-platform"
+                    type="text"
+                    placeholder="snes"
+                    value={platform}
+                    onChange={(event) => setPlatform(event.target.value)}
+                    required
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>Release year</span>
+                  <input
+                    id="rom-year"
+                    name="rom-year"
+                    type="number"
+                    min="1950"
+                    max={new Date().getFullYear()}
+                    placeholder="1993"
+                    value={releaseYear}
+                    onChange={(event) => setReleaseYear(event.target.value)}
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>Genres</span>
+                  <input
+                    id="rom-genres"
+                    name="rom-genres"
+                    type="text"
+                    placeholder="action, prototype"
+                    value={genres}
+                    onChange={(event) => setGenres(event.target.value)}
+                  />
+                  <p className={styles.helper}>
+                    Comma-separated list. We normalize casing for you.
+                  </p>
+                </label>
+              </div>
+
+              <label className={styles.field}>
+                <span>Description</span>
+                <textarea
+                  id="rom-description"
+                  name="rom-description"
+                  rows={3}
+                  placeholder="Add QA notes, controller quirks, or ESRB guidance."
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                />
+              </label>
+
+              {error && (
+                <div className={styles.error} role="alert">
+                  {error}
                 </div>
               )}
-            </div>
-          </div>
 
-          <div className={styles.progressGrid}>
-            <div>
-              <p className={styles.progressLabel}>Checksum</p>
-              <progress
-                className={styles.progress}
-                max={100}
-                value={checksum ? 100 : checksumProgress}
-                aria-valuetext={checksum ? 'Checksum ready' : `${checksumProgress}% complete`}
-              />
-              {checksum && <p className={styles.code}>{checksum}</p>}
-            </div>
-            <div>
-              <p className={styles.progressLabel}>Upload</p>
-              <progress
-                className={styles.progress}
-                max={100}
-                value={uploadProgress}
-                aria-valuetext={`${uploadProgress}% uploaded`}
-              />
-            </div>
-          </div>
-
-          <div className={styles.fieldGrid}>
-            <label className={styles.field}>
-              <span>Title</span>
-              <input
-                id="rom-title"
-                name="rom-title"
-                type="text"
-                placeholder="Super Treasure Hunt"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                required
-              />
-            </label>
-            <label className={styles.field}>
-              <span>Platform</span>
-              <input
-                id="rom-platform"
-                name="rom-platform"
-                type="text"
-                placeholder="snes"
-                value={platform}
-                onChange={(event) => setPlatform(event.target.value)}
-                required
-              />
-            </label>
-            <label className={styles.field}>
-              <span>Release year</span>
-              <input
-                id="rom-year"
-                name="rom-year"
-                type="number"
-                min="1950"
-                max={new Date().getFullYear()}
-                placeholder="1993"
-                value={releaseYear}
-                onChange={(event) => setReleaseYear(event.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>Genres</span>
-              <input
-                id="rom-genres"
-                name="rom-genres"
-                type="text"
-                placeholder="action, prototype"
-                value={genres}
-                onChange={(event) => setGenres(event.target.value)}
-              />
-              <p className={styles.helper}>Comma-separated list. We normalize casing for you.</p>
-            </label>
-          </div>
-
-          <label className={styles.field}>
-            <span>Description</span>
-            <textarea
-              id="rom-description"
-              name="rom-description"
-              rows={3}
-              placeholder="Add QA notes, controller quirks, or ESRB guidance."
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-            />
-          </label>
-
-          {error && (
-            <div className={styles.error} role="alert">
-              {error}
-            </div>
-          )}
-
-          <div className={styles.ctaRow}>
-            <button
-              type="submit"
-              className={styles.button}
-              disabled={
-                !file ||
-                !checksum ||
-                stage === 'uploading' ||
-                stage === 'registering' ||
-                stage === 'redirecting' ||
-                stage === 'verifying'
-              }
-            >
-              {stage === 'uploading'
-                ? 'Uploading…'
-                : stage === 'registering'
-                  ? 'Finalizing…'
-                  : stage === 'verifying'
-                    ? 'Verifying…'
-                    : 'Create ROM'}
-            </button>
-            <button
-              type="button"
-              className={`${styles.button} ${styles.secondary}`}
-              onClick={resetForm}
-            >
-              Reset form
-            </button>
-            {disabledReason && (
-              <p className={styles.ctaHelper} role="status" aria-live="polite">
-                {disabledReason}{' '}
-                {!file && (
-                  <button type="button" className={styles.helperLink} onClick={openFilePicker}>
-                    Browse files
-                  </button>
+              <div className={styles.ctaRow}>
+                <Button
+                  type="submit"
+                  loading={
+                    stage === 'uploading' || stage === 'registering' || stage === 'verifying'
+                  }
+                  disabled={
+                    !file ||
+                    !checksum ||
+                    stage === 'uploading' ||
+                    stage === 'registering' ||
+                    stage === 'redirecting' ||
+                    stage === 'verifying'
+                  }
+                >
+                  {stage === 'uploading'
+                    ? 'Uploading…'
+                    : stage === 'registering'
+                      ? 'Finalizing…'
+                      : stage === 'verifying'
+                        ? 'Verifying…'
+                        : 'Create ROM'}
+                </Button>
+                <Button type="button" variant="ghost" onClick={resetForm}>
+                  Reset form
+                </Button>
+                {disabledReason && (
+                  <p className={styles.ctaHelper} role="status" aria-live="polite">
+                    {disabledReason}{' '}
+                    {!file && (
+                      <button type="button" className={styles.helperLink} onClick={openFilePicker}>
+                        Browse files
+                      </button>
+                    )}
+                  </p>
                 )}
-              </p>
-            )}
-          </div>
-        </form>
-      </section>
+              </div>
+            </form>
+          </section>
 
-      <section className={styles.panel} aria-live="polite">
-        <header className={styles.panelHeader}>
-          <div>
-            <p className="eyebrow">Optimistic dossier</p>
-            <h2>Preview</h2>
-          </div>
-        </header>
-        <div className={styles.previewGrid}>
-          <div>
-            <p className={styles.previewLabel}>Title</p>
-            <p className={styles.previewValue}>{title || file?.name || 'Untitled ROM'}</p>
-          </div>
-          <div>
-            <p className={styles.previewLabel}>Platform</p>
-            <p className={styles.previewValue}>{platform || 'pending-platform'}</p>
-          </div>
-          <div>
-            <p className={styles.previewLabel}>Release year</p>
-            <p className={styles.previewValue}>{releaseYear || 'TBD'}</p>
-          </div>
-          <div>
-            <p className={styles.previewLabel}>Genres</p>
-            <p className={styles.previewValue}>
-              {genres ? splitGenres(genres).join(', ') : 'No genres captured yet'}
-            </p>
-          </div>
-          <div className={styles.previewSpan}>
-            <p className={styles.previewLabel}>Checksum</p>
-            <p className={styles.previewValue}>{checksum ?? 'Computing…'}</p>
-          </div>
-          <div className={styles.previewSpan}>
-            <p className={styles.previewLabel}>Upload state</p>
-            <p className={styles.previewValue}>
-              {stage === 'redirecting' && optimisticRomId
-                ? 'Redirecting to dossier…'
-                : statusMessage}
-            </p>
-            {optimisticRomId && (
-              <Link href={`/rom/${optimisticRomId}`} className={styles.secondary}>
-                Open ROM detail
-              </Link>
-            )}
-          </div>
+          <section className={styles.panel} aria-live="polite">
+            <header className={styles.panelHeader}>
+              <div>
+                <p className="eyebrow">Optimistic dossier</p>
+                <h2>Preview</h2>
+              </div>
+            </header>
+            <div className={styles.previewGrid}>
+              <div>
+                <p className={styles.previewLabel}>Title</p>
+                <p className={styles.previewValue}>{title || file?.name || 'Untitled ROM'}</p>
+              </div>
+              <div>
+                <p className={styles.previewLabel}>Platform</p>
+                <p className={styles.previewValue}>{platform || 'pending-platform'}</p>
+              </div>
+              <div>
+                <p className={styles.previewLabel}>Release year</p>
+                <p className={styles.previewValue}>{releaseYear || 'TBD'}</p>
+              </div>
+              <div>
+                <p className={styles.previewLabel}>Genres</p>
+                <p className={styles.previewValue}>
+                  {genres ? splitGenres(genres).join(', ') : 'No genres captured yet'}
+                </p>
+              </div>
+              <div className={styles.previewSpan}>
+                <p className={styles.previewLabel}>Checksum</p>
+                <p className={styles.previewValue}>{checksum ?? 'Computing…'}</p>
+              </div>
+              <div className={styles.previewSpan}>
+                <p className={styles.previewLabel}>Upload state</p>
+                <p className={styles.previewValue}>
+                  {stage === 'redirecting' && optimisticRomId
+                    ? 'Redirecting to dossier…'
+                    : statusMessage}
+                </p>
+                {optimisticRomId && (
+                  <Link href={`/rom/${optimisticRomId}`} className={styles.secondary}>
+                    Open ROM detail
+                  </Link>
+                )}
+              </div>
+            </div>
+          </section>
         </div>
-      </section>
+      </main>
     </div>
   );
 }

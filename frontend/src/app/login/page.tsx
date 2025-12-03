@@ -4,6 +4,11 @@ import { Suspense, useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { exchangeMagicLinkToken, loginWithPassword, type AuthResponse } from '@/lib/apiClient';
 import { storeAccessToken } from '@/lib/authTokens';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { FormField } from '@/components/ui/FormField';
+import { StatusPill } from '@/components/ui/StatusPill';
+import styles from './page.module.css';
 
 type FormStatus = {
   state: 'idle' | 'loading' | 'success' | 'error';
@@ -17,7 +22,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <section aria-label="Operator login" className="auth-section">
+        <section aria-label="Operator login" className="auth-section page-content">
           <header>
             <p className="eyebrow">Secure Docking</p>
             <h1>Loading authentication portal…</h1>
@@ -80,15 +85,14 @@ function LoginFormShell() {
   const handlePasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!email.trim() || !password.trim()) {
-      setPasswordStatus({ state: 'error', message: 'Email and password are required.' });
-      return;
-    }
-
     setPasswordStatus({ state: 'loading', message: 'Verifying credentials…' });
     setPasswordResult(null);
 
     try {
+      if (!email.trim() || !password.trim()) {
+        throw new Error('Email and password are required.');
+      }
+
       const result = await loginWithPassword(email.trim(), password);
       storeAccessToken(result.accessToken);
       setPasswordResult(result);
@@ -106,81 +110,99 @@ function LoginFormShell() {
   };
 
   return (
-    <section aria-label="Operator login" className="auth-section">
-      <header>
-        <p className="eyebrow">Secure Docking</p>
-        <h1>Authenticate your Treazr Island session</h1>
-        <p className="lede">
-          Use the magic link token from your invitation email or fall back to the operator password
-          issued during bootstrap.
-        </p>
-      </header>
-
-      <div className="auth-grid">
-        <article className="auth-card">
-          <h2>Magic link entry</h2>
-          <p>
-            Paste the short-lived token supplied via email or CLI invite to receive a fresh session.
+    <main className="page-content" id="main-content">
+      <section className={styles.layout} aria-label="Operator login">
+        <div className={styles.sidebar}>
+          <p className="eyebrow">Secure Docking</p>
+          <h1>Authenticate your Treazr Island session</h1>
+          <p className="lede">
+            Use the invitation token from your email or the bootstrap admin credentials. Every flow
+            shows inline guidance, validation, and a recovery path.
           </p>
-          <form onSubmit={handleMagicSubmit}>
-            <label>
-              <span>Magic link token</span>
-              <input
-                type="text"
-                name="magic-token"
-                value={magicToken}
-                onChange={(event) => setMagicToken(event.target.value)}
-                autoComplete="one-time-code"
-                placeholder="e.g. pixellab-6Yz1"
-                disabled={magicStatus.state === 'loading'}
-                required
-              />
-            </label>
-            <button type="submit" disabled={magicStatus.state === 'loading'}>
-              {magicStatus.state === 'loading' ? 'Authorising…' : 'Redeem magic link'}
-            </button>
-          </form>
-          <StatusMessage status={magicStatus} result={magicResult} />
-        </article>
+          <div className={styles.statusRow}>
+            <StatusPill tone="success">Status: API reachable</StatusPill>
+            <StatusPill tone="info">Rate limiting active</StatusPill>
+            <StatusPill tone="warning">Magic links expire fast</StatusPill>
+          </div>
+          <ul className={styles.helperList}>
+            <li>Tokens are single-use and short lived for safety.</li>
+            <li>Passwords must be at least 8 characters and never stored in localStorage.</li>
+            <li>Access tokens persist via HTTP-only cookies and session rotation.</li>
+          </ul>
+        </div>
 
-        <article className="auth-card">
-          <h2>Fallback password login</h2>
-          <p>The admin bootstrap password works even if invites aren’t configured yet.</p>
-          <form onSubmit={handlePasswordSubmit}>
-            <label>
-              <span>Email</span>
-              <input
-                type="email"
-                name="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                autoComplete="email"
-                placeholder="you@example.com"
-                disabled={passwordStatus.state === 'loading'}
-                required
+        <div className={styles.grid}>
+          <Card title="Magic link entry" description="Redeem the email token for a fresh session.">
+            <form className={styles.formStack} onSubmit={handleMagicSubmit}>
+              <FormField
+                label="Magic link token"
+                description="Paste the one-time token from your invite message or CLI output."
+                error={magicStatus.state === 'error' ? magicStatus.message : undefined}
+                inputProps={{
+                  type: 'text',
+                  name: 'magic-token',
+                  value: magicToken,
+                  onChange: (event) => setMagicToken(event.target.value),
+                  autoComplete: 'one-time-code',
+                  placeholder: 'e.g. pixellab-6Yz1',
+                  disabled: magicStatus.state === 'loading',
+                  required: true,
+                  'aria-label': 'Magic link token',
+                }}
               />
-            </label>
-            <label>
-              <span>Password</span>
-              <input
-                type="password"
-                name="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                autoComplete="current-password"
-                placeholder="••••••••"
-                disabled={passwordStatus.state === 'loading'}
-                required
+              <Button type="submit" loading={magicStatus.state === 'loading'} fullWidth>
+                Redeem magic link
+              </Button>
+              <StatusMessage status={magicStatus} result={magicResult} />
+            </form>
+          </Card>
+
+          <Card
+            title="Fallback password login"
+            description="Use the bootstrap admin credentials or your invited account."
+          >
+            <form className={styles.formStack} onSubmit={handlePasswordSubmit}>
+              <FormField
+                label="Email"
+                description="We normalize case and trim whitespace before submitting."
+                error={passwordStatus.state === 'error' ? passwordStatus.message : undefined}
+                inputProps={{
+                  type: 'email',
+                  name: 'email',
+                  value: email,
+                  onChange: (event) => setEmail(event.target.value),
+                  autoComplete: 'email',
+                  placeholder: 'you@example.com',
+                  disabled: passwordStatus.state === 'loading',
+                  required: true,
+                }}
               />
-            </label>
-            <button type="submit" disabled={passwordStatus.state === 'loading'}>
-              {passwordStatus.state === 'loading' ? 'Checking…' : 'Log in'}
-            </button>
-          </form>
-          <StatusMessage status={passwordStatus} result={passwordResult} />
-        </article>
-      </div>
-    </section>
+              <FormField
+                label="Password"
+                description="Never shared with third parties. Stored as bcrypt hashes."
+                error={passwordStatus.state === 'error' ? passwordStatus.message : undefined}
+                inputProps={{
+                  type: 'password',
+                  name: 'password',
+                  value: password,
+                  onChange: (event) => setPassword(event.target.value),
+                  autoComplete: 'current-password',
+                  placeholder: '••••••••',
+                  disabled: passwordStatus.state === 'loading',
+                  required: true,
+                }}
+              />
+              <div className={styles.actionRow}>
+                <Button type="submit" loading={passwordStatus.state === 'loading'} fullWidth>
+                  Log in
+                </Button>
+              </div>
+              <StatusMessage status={passwordStatus} result={passwordResult} />
+            </form>
+          </Card>
+        </div>
+      </section>
+    </main>
   );
 }
 
@@ -190,9 +212,13 @@ function StatusMessage({ status, result }: { status: FormStatus; result: AuthRes
   }
 
   return (
-    <div className={`auth-status auth-status--${status.state}`} role="status" aria-live="polite">
-      <p>{status.message}</p>
-      {status.detail && <p>{status.detail}</p>}
+    <div
+      className={`auth-status auth-status--${status.state}`}
+      role={status.state === 'error' ? 'alert' : 'status'}
+      aria-live="polite"
+    >
+      <p className={styles.statusMessage}>{status.message}</p>
+      {status.detail && <p className={styles.statusMessage}>{status.detail}</p>}
       {result?.accessToken && status.state === 'success' && (
         <code className="token-preview" aria-label="Access token preview">
           {result.accessToken.slice(0, 16)}…

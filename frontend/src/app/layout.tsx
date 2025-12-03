@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { AppQueryProvider } from '@/components/providers/AppQueryProvider';
 import { ToastProvider } from '@/components/ui/ToastProvider';
 import { ThemeProvider } from '@/theme/ThemeProvider';
-import { getPixellabCssVariables, pixellabFont } from '@/theme/tokens';
+import { bodyFont, getPixellabCssVariables, pixellabFont } from '@/theme/tokens';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -14,10 +14,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const cssVariables = getPixellabCssVariables();
+  const fontClassName = `${pixellabFont.variable} ${bodyFont.variable}`;
 
   return (
     <html lang="en">
-      <body className={pixellabFont.variable} style={cssVariables}>
+      <body className={fontClassName} style={cssVariables}>
         <a className="skip-link" href="#main-content">
           Skip to main content
         </a>

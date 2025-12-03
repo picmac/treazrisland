@@ -25,7 +25,11 @@ export default function InvitePage({ params }: InvitePageProps) {
       storeAccessToken(response.accessToken);
     }
 
+    // Push the player into the library immediately after redemption.
     router.replace('/library' as Route);
+    if (typeof window !== 'undefined') {
+      window.location.assign('/library');
+    }
   };
 
   return (

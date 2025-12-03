@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { fetchEmulatorConfig, saveEmulatorConfig } from '@/lib/admin';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { FormField } from '@/components/ui/FormField';
+import { StatusPill } from '@/components/ui/StatusPill';
 
 import type { EmulatorConfigResult, StepStatus } from '../types';
 import styles from '../page.module.css';
@@ -96,52 +100,45 @@ export function EmulatorConfigStep({ state, onComplete }: EmulatorConfigStepProp
   };
 
   return (
-    <div className={styles.stepCard}>
-      <div className={styles.stepHeader}>
-        <h2>3. Configure EmulatorJS endpoint</h2>
-        <p>Point the dashboard at the EmulatorJS embed bundle served by your infrastructure.</p>
-      </div>
-
-      <label className={styles.fullWidthField}>
-        Embed URL
-        <input
-          type="url"
-          value={embedUrl}
-          onChange={(event) => setEmbedUrl(event.target.value)}
-          placeholder="http://localhost:8080/dist/embed.js"
-        />
-      </label>
+    <Card
+      as="article"
+      className={styles.stepCard}
+      title="3. Configure EmulatorJS endpoint"
+      description="Point the dashboard at the EmulatorJS embed bundle served by your infrastructure."
+    >
+      <FormField
+        label="Embed URL"
+        description="Use the embed.js endpoint hosted by your EmulatorJS service."
+        inputProps={{
+          type: 'url',
+          value: embedUrl,
+          onChange: (event) => setEmbedUrl(event.target.value),
+          placeholder: 'http://localhost:8080/dist/embed.js',
+        }}
+      />
 
       <div className={styles.inlineActions}>
-        <button
-          type="button"
-          className={styles.secondaryButton}
-          onClick={loadConfig}
-          disabled={isLoading}
-        >
+        <Button type="button" variant="secondary" onClick={loadConfig} loading={isLoading}>
           {isLoading ? 'Loading…' : 'Reload from backend'}
-        </button>
-        <button
-          type="button"
-          className={styles.primaryButton}
-          onClick={handleSave}
-          disabled={isSaving}
-        >
+        </Button>
+        <Button type="button" onClick={handleSave} loading={isSaving}>
           {isSaving ? 'Validating…' : 'Validate & save'}
-        </button>
+        </Button>
       </div>
 
-      {lastVerifiedAt && (
-        <p className={styles.timestamp}>Verified {new Date(lastVerifiedAt).toLocaleString()}</p>
-      )}
-
-      {error && (
-        <p role="alert" className={styles.errorMessage}>
-          {error}
-        </p>
-      )}
-
-      {success && <p className={styles.successMessage}>{success}</p>}
-    </div>
+      <div className={styles.inlineActions}>
+        {lastVerifiedAt && (
+          <StatusPill tone="success">
+            Verified {new Date(lastVerifiedAt).toLocaleString()}
+          </StatusPill>
+        )}
+        {success && <StatusPill tone="info">{success}</StatusPill>}
+        {error && (
+          <StatusPill tone="danger" role="alert">
+            {error}
+          </StatusPill>
+        )}
+      </div>
+    </Card>
   );
 }

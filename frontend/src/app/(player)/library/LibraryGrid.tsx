@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent }
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 import { RomCard } from '@/components/library/RomCard';
+import { Button } from '@/components/ui/Button';
 import type { RomSummary } from '@/types/rom';
 import styles from './LibraryGrid.module.css';
 
@@ -124,6 +125,9 @@ export function LibraryGrid({
         <div className={styles.emptyState} role="status">
           <p>No ROMs match the selected filters yet.</p>
           <p>Try broadening your search or upload a new drop.</p>
+          <Button href="/admin/roms/upload" variant="secondary">
+            Upload a ROM
+          </Button>
         </div>
       );
     }

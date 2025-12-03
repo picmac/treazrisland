@@ -3,6 +3,10 @@
 import { FormEvent, useEffect, useState } from 'react';
 
 import { fetchAdminProfile, updateAdminProfile } from '@/lib/admin';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { FormField } from '@/components/ui/FormField';
+import { StatusPill } from '@/components/ui/StatusPill';
 
 import type { ProfileVerificationResult, StepStatus } from '../types';
 import styles from '../page.module.css';
@@ -83,67 +87,67 @@ export function ProfileVerificationStep({ state, onComplete }: ProfileVerificati
   };
 
   return (
-    <div className={styles.stepCard}>
-      <div className={styles.stepHeader}>
-        <h2>2. Verify admin profile</h2>
-        <p>Confirm the display name, timezone, and support contact players will see.</p>
-      </div>
-
+    <Card
+      as="article"
+      className={styles.stepCard}
+      title="2. Verify admin profile"
+      description="Confirm the display name, timezone, and support contact players will see."
+    >
       <div className={styles.inlineActions}>
-        <button
-          type="button"
-          className={styles.secondaryButton}
-          onClick={handleLoadProfile}
-          disabled={isLoading}
-        >
+        <Button type="button" variant="secondary" onClick={handleLoadProfile} loading={isLoading}>
           {isLoading ? 'Loading…' : 'Load profile from API'}
-        </button>
+        </Button>
+        {success && <StatusPill tone="success">{success}</StatusPill>}
+        {error && (
+          <StatusPill tone="danger" role="alert">
+            {error}
+          </StatusPill>
+        )}
       </div>
 
       <form className={styles.formGrid} onSubmit={handleSubmit}>
-        <label>
-          Display name
-          <input
-            type="text"
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            placeholder="Pixellab Studio"
-          />
-        </label>
+        <FormField
+          label="Display name"
+          inputProps={{
+            type: 'text',
+            value: displayName,
+            onChange: (event) => setDisplayName(event.target.value),
+            placeholder: 'Pixellab Studio',
+          }}
+        />
 
-        <label>
-          Timezone
-          <select value={timezone} onChange={(event) => setTimezone(event.target.value)}>
-            {TIMEZONE_OPTIONS.map((zone) => (
-              <option key={zone} value={zone}>
-                {zone}
-              </option>
-            ))}
-          </select>
-        </label>
+        <FormField
+          label="Timezone"
+          inputSlot={
+            <select
+              value={timezone}
+              onChange={(event) => setTimezone(event.target.value)}
+              className={styles.select}
+            >
+              {TIMEZONE_OPTIONS.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </select>
+          }
+        />
 
-        <label>
-          Support contact
-          <input
-            type="text"
-            value={supportContact}
-            onChange={(event) => setSupportContact(event.target.value)}
-            placeholder="support@treazr.example"
-          />
-        </label>
+        <FormField
+          label="Support contact"
+          description="Shown to players in support touchpoints."
+          inputProps={{
+            type: 'text',
+            value: supportContact,
+            onChange: (event) => setSupportContact(event.target.value),
+            placeholder: 'support@treazr.example',
+          }}
+        />
 
-        <button type="submit" className={styles.primaryButton} disabled={isSaving}>
+        <Button type="submit" loading={isSaving}>
           {isSaving ? 'Saving…' : 'Save profile'}
-        </button>
+        </Button>
       </form>
-
-      {error && (
-        <p role="alert" className={styles.errorMessage}>
-          {error}
-        </p>
-      )}
-
-      {success && <p className={styles.successMessage}>{success}</p>}
-    </div>
+    </Card>
   );
 }

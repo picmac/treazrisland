@@ -1,19 +1,18 @@
-import type { Route } from '@/types/route';
 import Image from 'next/image';
-import Link from 'next/link';
-import { PixellabGrid, PixellabNavigation, PixellabTexture } from '@/components/chrome';
+import { PixellabNavigation } from '@/components/chrome';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { SignOutButton } from '@/components/ui/SignOutButton';
+import { StatusPill } from '@/components/ui/StatusPill';
 import { PIXELLAB_TOKENS } from '@/theme/tokens';
+import styles from './page.module.css';
 
 const docsUrl = 'https://github.com/treazrisland/treazrisland/blob/main/docs/ui/theme.md';
-const featuredRomRoute = '/roms/favorite-rom' as Route;
-const adminOnboardingRoute = '/admin/onboarding' as Route;
-const adminUploadRoute = '/admin/roms/upload' as Route;
-
 const navLinks = [
-  { href: featuredRomRoute, label: 'ROM dossier' },
-  { href: adminOnboardingRoute, label: 'Admin onboarding' },
-  { href: adminUploadRoute, label: 'ROM upload' },
+  { href: '/library', label: 'Library' },
+  { href: '/onboarding', label: 'Onboarding' },
   { href: '/login', label: 'Crew login' },
+  { href: '/admin/roms/upload', label: 'ROM upload' },
   { href: docsUrl, label: 'Docs' },
 ];
 
@@ -21,20 +20,41 @@ const readinessSignals = [
   {
     id: 'manifest',
     title: 'Theme manifest',
-    status: 'Ready',
-    copy: 'Palette + typography delivered by Pixellab.ai. Assets mapped to /pixellab for quick swaps when drops arrive.',
+    status: 'Ready to ship',
+    copy: 'Pixellab palette, typography, and assets live in /public/pixellab with hot-swap guidance.',
   },
   {
     id: 'grid',
     title: 'Navigation grid',
     status: 'Live',
-    copy: 'Sticky chrome, skip links, and focus rings ship with WCAG AA-compliant contrast.',
+    copy: 'Sticky chrome, skip links, and visible focus affordances stay WCAG AA-compliant.',
   },
   {
     id: 'emulator',
-    title: 'Emulator view',
-    status: 'Next',
-    copy: 'Landing page exposes layout primitives so EmulatorJS scenes can inherit the same scaffolding.',
+    title: 'Emulator shell',
+    status: 'Playable',
+    copy: 'Session prep overlays, save indicators, and touch controls reuse the shared design tokens.',
+  },
+];
+
+const systemSignals = [
+  {
+    label: 'Health checks',
+    detail: 'API · Redis · MinIO · EmulatorJS',
+    tone: 'success' as const,
+    aria: 'All services responding',
+  },
+  {
+    label: 'First-play goal',
+    detail: 'Upload → play within 60 minutes',
+    tone: 'warning' as const,
+    aria: 'Keep onboarding crisp',
+  },
+  {
+    label: 'MVP guardrails',
+    detail: 'Rate limits, input validation, structured errors',
+    tone: 'info' as const,
+    aria: 'Safety systems enabled',
   },
 ];
 
@@ -42,269 +62,145 @@ const touchpoints = [
   {
     id: 'docs',
     title: 'Theme documentation',
-    copy: 'MDX notes outline how to request new Pixellab renders and wire them into the public assets directory.',
+    copy: 'Request new Pixellab renders and wire them into the assets pipeline without visual drift.',
     href: docsUrl,
   },
   {
     id: 'onboarding',
     title: 'Crew onboarding',
-    copy: 'Step-by-step checklist for confirming health checks, creating admins, and wiring EmulatorJS.',
+    copy: 'Follow the guided checklist to verify health checks, admin profile, and emulator endpoint.',
     href: '/onboarding',
   },
   {
     id: 'playtest',
     title: 'Playtest cadence',
-    copy: 'Greyscale placeholders highlight the beats that still need EmulatorJS wiring + ROM metadata.',
+    copy: 'Trace the end-to-end dry run from invite to save-state, including EmulatorJS cues.',
     href: 'https://github.com/treazrisland/treazrisland/blob/main/docs/playtest-script.md',
   },
 ];
 
 export default function HomePage() {
-  const { colors, spacing, layout, effects, assets } = PIXELLAB_TOKENS;
-  const panelStyle = {
-    backgroundColor: colors.background.panel,
-    border: `1px solid ${colors.border.subtle}`,
-    borderRadius: '1.25rem',
-    boxShadow: effects.panelShadow,
-    backdropFilter: `blur(${effects.panelBlur})`,
-  } as const;
-
   return (
-    <PixellabTexture>
-      <PixellabNavigation links={navLinks} />
-      <main
-        id="main-content"
-        tabIndex={-1}
+    <div className="page-shell">
+      <PixellabNavigation
+        links={navLinks}
+        eyebrow="Treazr Ops Console"
+        description="Retro mission control with accessible defaults and EmulatorJS-ready scaffolding."
+        actions={<SignOutButton />}
         style={{
-          flex: 1,
-          width: '100%',
-          padding: spacing.xl,
-          paddingInline: layout.pagePadding,
-          margin: '0 auto',
-          maxWidth: layout.contentMaxWidth,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: spacing.xl,
+          background: 'rgba(6, 8, 22, 0.85)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         }}
-      >
-        <section
-          aria-labelledby="hero-title"
-          style={{
-            ...panelStyle,
-            display: 'grid',
-            gap: spacing.lg,
-            padding: spacing.xl,
-            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-            alignItems: 'center',
-          }}
-        >
-          <div>
-            <p
-              style={{
-                textTransform: 'uppercase',
-                letterSpacing: '0.35rem',
-                color: colors.accent.secondary,
-                fontSize: '0.65rem',
-                margin: '0 0 0.75rem',
-              }}
-            >
-              Pixellab visual pass
+      />
+
+      <main className="page-content" id="main-content" tabIndex={-1}>
+        <section className={styles.hero} aria-labelledby="hero-title">
+          <div className={styles.heroHighlight}>
+            <p className="eyebrow">Pixellab visual system</p>
+            <h1 id="hero-title">Treazr Island mission control</h1>
+            <p className="lede">
+              Guided onboarding, a curated ROM library, and EmulatorJS overlays live in one place.
+              Every flow below is wired to show status, recovery steps, and a clear next action.
             </p>
-            <h1 id="hero-title" style={{ margin: 0, fontSize: '1.5rem', lineHeight: 1.4 }}>
-              Treazr Island boot screen
-            </h1>
-            <p style={{ marginTop: spacing.md, color: colors.text.muted, lineHeight: 1.8 }}>
-              The hero grid, neon palette, and monospace type stack were recorded from the latest
-              Pixellab.ai prompt pack. Every card below reuses those tokens to keep EmulatorJS
-              overlays consistent with the marketing story.
-            </p>
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: spacing.md,
-                marginTop: spacing.lg,
-              }}
-            >
-              <Link
-                href={featuredRomRoute}
-                style={{
-                  background: `linear-gradient(120deg, ${colors.accent.primary}, ${colors.accent.secondary})`,
-                  color: '#060014',
-                  padding: '0.85rem 1.25rem',
-                  borderRadius: '0.85rem',
-                  textDecoration: 'none',
-                  letterSpacing: '0.15rem',
-                  textTransform: 'uppercase',
-                  fontSize: '0.7rem',
-                }}
-              >
-                Review ROM list
-              </Link>
-              <Link
-                href={adminOnboardingRoute}
-                style={{
-                  background: colors.background.panel,
-                  border: `1px dashed ${colors.border.subtle}`,
-                  color: colors.text.primary,
-                  padding: '0.85rem 1.25rem',
-                  borderRadius: '0.85rem',
-                  textDecoration: 'none',
-                  letterSpacing: '0.15rem',
-                  textTransform: 'uppercase',
-                  fontSize: '0.7rem',
-                }}
-              >
-                Admin onboarding
-              </Link>
-              <Link
-                href={docsUrl}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  border: `1px dashed ${colors.border.bold}`,
-                  color: colors.text.primary,
-                  padding: '0.85rem 1.25rem',
-                  borderRadius: '0.85rem',
-                  textDecoration: 'none',
-                  letterSpacing: '0.15rem',
-                  textTransform: 'uppercase',
-                  fontSize: '0.7rem',
-                }}
-              >
-                Theme MDX notes
-              </Link>
+            <div className={styles.badgeRow} aria-label="System signals">
+              {systemSignals.map((signal) => (
+                <StatusPill key={signal.label} tone={signal.tone} aria-label={signal.aria}>
+                  {signal.label}: {signal.detail}
+                </StatusPill>
+              ))}
+            </div>
+            <div className={styles.actionRow}>
+              <Button href="/library" size="lg">
+                Browse library
+              </Button>
+              <Button href="/onboarding" variant="secondary" size="lg">
+                Complete onboarding
+              </Button>
+              <Button href="/login" variant="ghost">
+                Resume session
+              </Button>
+            </div>
+            <div className={styles.heroMeta}>
+              <div className={styles.heroStat}>
+                <strong>Visibility</strong>
+                <span>Realtime health cards and inline status banners</span>
+              </div>
+              <div className={styles.heroStat}>
+                <strong>Error recovery</strong>
+                <span>Actionable alerts for uploads, invites, and favorites</span>
+              </div>
             </div>
           </div>
-          <figure
-            style={{
-              margin: 0,
-              textAlign: 'center',
-              padding: spacing.md,
-              borderRadius: '1rem',
-              background: 'rgba(6, 0, 20, 0.45)',
-              border: `1px dashed ${colors.border.subtle}`,
-            }}
-          >
-            <Image
-              src={assets.grid}
-              alt="Pixellab grid preview"
-              width={480}
-              height={320}
-              style={{ width: '100%', height: 'auto', borderRadius: '0.75rem' }}
-              priority
-            />
-            <figcaption
-              style={{ marginTop: spacing.sm, color: colors.text.muted, fontSize: '0.7rem' }}
-            >
-              Stored under {assets.grid}. Replace with the next Pixellab export when it drops.
-            </figcaption>
-          </figure>
-        </section>
-
-        <section
-          aria-labelledby="readiness-title"
-          style={{ display: 'flex', flexDirection: 'column', gap: spacing.md }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xs }}>
-            <h2
-              id="readiness-title"
-              style={{ margin: 0, fontSize: '1rem', color: colors.accent.primary }}
-            >
-              Readiness signals
-            </h2>
-            <p style={{ margin: 0, color: colors.text.muted }}>
-              Each tile stays within the same responsive grid component so the EmulatorJS canvas can
-              drop in without brand drift.
-            </p>
+          <div className={styles.heroMedia} aria-hidden="true">
+            <Image src={PIXELLAB_TOKENS.assets.grid} alt="" width={960} height={540} priority />
           </div>
-          <PixellabGrid aria-describedby="readiness-title">
-            {readinessSignals.map((signal) => (
-              <article
-                key={signal.id}
-                style={{
-                  ...panelStyle,
-                  padding: spacing.lg,
-                  borderTop: `3px solid ${colors.accent.secondary}`,
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'baseline',
-                  }}
-                >
-                  <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{signal.title}</h3>
-                  <span
-                    style={{
-                      color: colors.accent.primary,
-                      fontSize: '0.65rem',
-                      letterSpacing: '0.15rem',
-                    }}
-                  >
-                    {signal.status}
-                  </span>
-                </div>
-                <p style={{ marginTop: spacing.sm, lineHeight: 1.6, color: colors.text.muted }}>
-                  {signal.copy}
-                </p>
-              </article>
-            ))}
-          </PixellabGrid>
         </section>
 
-        <section
-          aria-labelledby="touchpoints-title"
-          style={{ display: 'flex', flexDirection: 'column', gap: spacing.md }}
-        >
-          <h2
-            id="touchpoints-title"
-            style={{ margin: 0, fontSize: '1rem', color: colors.accent.primary }}
-          >
-            Pixellab touchpoints
-          </h2>
-          <PixellabGrid as="div" minColumnWidth="320px">
-            {touchpoints.map((touchpoint) => (
-              <article key={touchpoint.id} style={{ ...panelStyle, padding: spacing.lg }}>
-                <h3 style={{ marginTop: 0, marginBottom: spacing.sm }}>{touchpoint.title}</h3>
-                <p style={{ margin: 0, color: colors.text.muted, lineHeight: 1.6 }}>
-                  {touchpoint.copy}
-                </p>
-                <a
-                  href={touchpoint.href}
-                  target={touchpoint.href.startsWith('http') ? '_blank' : undefined}
-                  rel={touchpoint.href.startsWith('http') ? 'noreferrer' : undefined}
-                  style={{
-                    marginTop: spacing.md,
-                    display: 'inline-block',
-                    color: colors.accent.primary,
-                    textDecoration: 'none',
-                    letterSpacing: '0.15rem',
-                    fontSize: '0.65rem',
-                  }}
-                >
-                  Open
-                </a>
-              </article>
+        <section aria-labelledby="readiness-title">
+          <div className="status-banner">
+            <strong id="readiness-title">Readiness signals</strong>
+            <span>
+              Progress cards track the NN usability heuristics: status visibility, consistency,
+              error prevention, and recovery steps.
+            </span>
+          </div>
+          <div className={styles.grid} role="list">
+            {readinessSignals.map((signal) => (
+              <Card key={signal.id} title={signal.title} description={signal.copy} glow>
+                <div className={styles.statContent}>
+                  <StatusPill tone="info">{signal.status}</StatusPill>
+                  <p className={styles.statLabel}>
+                    {signal.id === 'manifest'
+                      ? 'Swap assets without touching code.'
+                      : signal.id === 'grid'
+                        ? 'Keyboard-first navigation with focus rings.'
+                        : 'Session prep mirrors the library chrome.'}
+                  </p>
+                </div>
+              </Card>
             ))}
-          </PixellabGrid>
+          </div>
+        </section>
+
+        <section aria-labelledby="touchpoints-title">
+          <div className="status-banner">
+            <strong id="touchpoints-title">Touchpoints</strong>
+            <span>
+              Jump to docs, onboarding, or playtest scripts without leaving mission control.
+            </span>
+          </div>
+          <div className={styles.touchpoints}>
+            {touchpoints.map((touchpoint) => {
+              const isExternal = touchpoint.href.startsWith('http');
+              return (
+                <Card
+                  as="article"
+                  key={touchpoint.id}
+                  title={touchpoint.title}
+                  description={touchpoint.copy}
+                >
+                  <div className={styles.touchpointBody}>
+                    <ul className={styles.list}>
+                      <li>
+                        Status: <StatusPill tone="info">Ready</StatusPill>
+                      </li>
+                      <li>Outcome: contextual hints + screenshots.</li>
+                    </ul>
+                    <Button
+                      href={touchpoint.href}
+                      variant="secondary"
+                      target={isExternal ? '_blank' : undefined}
+                      rel={isExternal ? 'noreferrer' : undefined}
+                    >
+                      Open
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
         </section>
       </main>
-      <footer
-        role="contentinfo"
-        style={{
-          borderTop: `1px solid ${colors.border.subtle}`,
-          padding: `${spacing.md} ${layout.pagePadding} ${spacing.lg}`,
-          color: colors.text.muted,
-          fontSize: '0.7rem',
-          textAlign: 'center',
-        }}
-      >
-        Pixellab assets live in{' '}
-        <code style={{ color: colors.accent.primary }}>/frontend/public/pixellab</code>. Swap files
-        there and the layout updates instantly.
-      </footer>
-    </PixellabTexture>
+    </div>
   );
 }

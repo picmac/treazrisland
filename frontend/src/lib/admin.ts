@@ -4,6 +4,7 @@ export type DependencyStatus = 'up' | 'down';
 
 export interface HealthDependencies {
   redis: { status: DependencyStatus };
+  prisma: { status: DependencyStatus };
   objectStorage: { status: 'configured'; bucket: string; region: string };
 }
 

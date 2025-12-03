@@ -1,17 +1,19 @@
 .layout {
   display: grid;
-  gap: 2rem;
+  gap: 1.5rem;
   grid-template-columns: minmax(0, 1fr);
-  padding-block: 2rem 4rem;
+  padding-block: 1rem 2.5rem;
 }
 
 .heroCard,
 .progressCard,
 .stepCard {
-  background: var(--surface-elevated, #fff);
-  border-radius: 1rem;
+  background: var(--pixellab-surface);
+  border-radius: var(--radius-lg);
   padding: 1.75rem;
-  box-shadow: 0 20px 45px rgba(15, 16, 31, 0.12);
+  box-shadow: var(--shadow-soft);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
 }
 
 .heroCard p {
@@ -20,7 +22,7 @@
 
 .timestamp {
   font-size: 0.9rem;
-  color: #6b7280;
+  color: var(--pixellab-muted);
   margin-top: 0.25rem;
 }
 
@@ -32,10 +34,10 @@
 
 .progressHeading {
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #4b5563;
+  color: var(--pixellab-foreground);
 }
 
 .stepNav {
@@ -49,11 +51,15 @@
 
 .stepNav button {
   border-radius: 999px;
-  border: 1px solid rgba(75, 85, 99, 0.3);
-  background: transparent;
-  padding: 0.4rem 0.9rem;
-  font-size: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+  color: var(--pixellab-foreground);
   cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    transform 0.1s ease;
 }
 
 .stepNav button:disabled {
@@ -61,8 +67,12 @@
   cursor: not-allowed;
 }
 
+.stepNav button:not(:disabled):active {
+  transform: translateY(1px);
+}
+
 .healthSummary {
-  border-top: 1px solid rgba(15, 16, 31, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 0.75rem;
   display: flex;
   flex-direction: column;
@@ -74,17 +84,17 @@
 }
 
 .healthSummary strong {
-  color: #0f101f;
+  color: var(--pixellab-foreground);
   font-weight: 700;
 }
 
 .healthTimestamp {
-  font-size: 0.85rem;
-  color: #6b7280;
+  font-size: 0.9rem;
+  color: var(--pixellab-muted);
 }
 
 .profileSummary {
-  border-top: 1px solid rgba(15, 16, 31, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 0.75rem;
   display: flex;
   flex-direction: column;
@@ -98,7 +108,7 @@
 .stepWrapper {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
   position: relative;
   z-index: 1;
 }
@@ -106,17 +116,17 @@
 .stepCard {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .stepHeader h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.15rem;
 }
 
 .stepHeader p {
   margin: 0.5rem 0 0;
-  color: #4b5563;
+  color: var(--pixellab-muted);
 }
 
 .primaryButton,
@@ -126,17 +136,24 @@
 .formGrid select,
 .formGrid textarea {
   font-family: inherit;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 0.75rem 0.9rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--pixellab-foreground);
+  font-size: 1rem;
 }
 
 .primaryButton {
   align-self: flex-start;
-  background: linear-gradient(120deg, #f6d365, #fda085);
+  background: linear-gradient(120deg, var(--pixellab-accent), var(--pixellab-accent-muted));
   border: none;
-  color: #0f101f;
-  font-weight: 600;
-  padding: 0.65rem 1.25rem;
+  color: #050816;
+  font-weight: 700;
+  padding: 0.75rem 1.35rem;
   border-radius: 999px;
   cursor: pointer;
+  box-shadow: var(--shadow-soft);
 }
 
 .primaryButton:disabled {
@@ -146,29 +163,30 @@
 
 .secondaryButton {
   border-radius: 999px;
-  border: 1px solid rgba(75, 85, 99, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   padding: 0.6rem 1rem;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--pixellab-foreground);
   cursor: pointer;
 }
 
 .errorMessage {
-  color: #b91c1c;
+  color: #ffc1d9;
   margin: 0;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .successMessage {
-  color: #047857;
+  color: #bff7df;
   margin: 0;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .statusPanel {
-  border: 1px solid rgba(15, 16, 31, 0.08);
-  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
   padding: 1rem;
-  background: rgba(15, 16, 31, 0.02);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .dependencyList {
@@ -184,13 +202,13 @@
 }
 
 .dependencyList dt {
-  font-size: 0.85rem;
-  color: #6b7280;
+  font-size: 0.9rem;
+  color: var(--pixellab-muted);
 }
 
 .dependencyList dd {
   margin: 0;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .inlineActions {
@@ -198,6 +216,27 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   align-items: center;
+}
+
+.select {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 0.75rem 0.9rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--pixellab-foreground);
+  font-size: 1rem;
+}
+
+.textarea {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 0.75rem 0.9rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--pixellab-foreground);
+  font-size: 1rem;
+  min-height: 120px;
 }
 
 .formGrid {

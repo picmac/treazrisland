@@ -14,6 +14,7 @@ interface LibraryFiltersProps {
   onGenreChange: (genre?: string) => void;
   onFavoritesToggle: (nextValue: boolean) => void;
   onSortChange: (order: 'newest' | 'recent') => void;
+  onReset?: () => void;
 }
 
 export function LibraryFilters({
@@ -27,6 +28,7 @@ export function LibraryFilters({
   onGenreChange,
   onFavoritesToggle,
   onSortChange,
+  onReset,
 }: LibraryFiltersProps) {
   const platformId = useId();
   const genreId = useId();
@@ -124,6 +126,11 @@ export function LibraryFilters({
       >
         {favoritesOnly ? 'Favorites only (showing)' : 'Favorites only'}
       </button>
+      {onReset ? (
+        <button type="button" className={styles.resetButton} onClick={onReset}>
+          Reset filters
+        </button>
+      ) : null}
     </section>
   );
 }

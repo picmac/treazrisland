@@ -1,0 +1,68 @@
+.button {
+  appearance: none;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.03rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    opacity 120ms ease;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.button:active {
+  transform: translateY(1px);
+}
+
+.primary {
+  background: linear-gradient(120deg, var(--pixellab-accent), var(--pixellab-accent-muted));
+  color: #050816;
+  box-shadow: var(--shadow-soft);
+}
+
+.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: var(--pixellab-foreground);
+}
+
+.ghost {
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  color: var(--pixellab-foreground);
+}
+
+.danger {
+  background: linear-gradient(120deg, #ff7086, #f7b733);
+  color: #050816;
+  box-shadow: var(--shadow-soft);
+}
+
+.lg {
+  padding: 1.05rem 1.35rem;
+  font-size: 1rem;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.loading {
+  opacity: 0.72;
+  cursor: progress;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}

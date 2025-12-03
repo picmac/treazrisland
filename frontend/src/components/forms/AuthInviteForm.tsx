@@ -124,6 +124,7 @@ export default function AuthInviteForm({ token, onSuccess }: AuthInviteFormProps
             autoComplete="email"
             placeholder="player@treazr.io"
             {...register('email')}
+            aria-label="Email"
             aria-invalid={errors.email ? 'true' : 'false'}
             aria-describedby={errors.email ? emailErrorId : undefined}
             disabled={isSubmitting}

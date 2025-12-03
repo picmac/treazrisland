@@ -7,4 +7,9 @@ vi.mock('next/font/google', () => ({
     variable: '--font-pixellab',
     style: {},
   }),
+  Space_Grotesk: () => ({
+    className: 'space-grotesk-font',
+    variable: '--font-body',
+    style: {},
+  }),
 }));

@@ -375,6 +375,32 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
+  fastify.post('/logout', async (request, reply) => {
+    const cookieToken = request.cookies.refreshToken;
+    const parsedBody = refreshBodySchema.safeParse(request.body ?? {});
+    const tokenFromBody = parsedBody.success ? parsedBody.data.refreshToken : undefined;
+    const refreshToken = cookieToken ?? tokenFromBody;
+
+    if (refreshToken) {
+      try {
+        const payload = await fastify.jwt.verify<RefreshTokenPayload>(refreshToken);
+        await fastify.sessionService.revokeSession(payload.sid);
+        await fastify.sessionStore.deleteRefreshSession(payload.sid);
+      } catch (error) {
+        request.log.debug({ err: error }, 'Unable to revoke refresh session during logout');
+      }
+    }
+
+    clearRefreshTokenCookie(reply, fastify.config);
+    reply.clearCookie('treazr.accessToken', {
+      path: '/',
+      sameSite: 'lax',
+      secure: fastify.config.NODE_ENV === 'production',
+    });
+
+    return reply.status(204).send();
+  });
+
   fastify.post('/magic-link', async (request, reply) => {
     const parsed = magicLinkSchema.safeParse(request.body);
 

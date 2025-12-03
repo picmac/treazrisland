@@ -1,0 +1,42 @@
+.layout {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.sidebar {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.statusRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.helperList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.35rem;
+  color: var(--pixellab-muted);
+}
+
+.formStack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.statusMessage {
+  margin: 0;
+  color: var(--pixellab-muted);
+  font-size: 0.95rem;
+}

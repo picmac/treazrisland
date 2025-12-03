@@ -1,7 +1,7 @@
 import type { Route } from '@/types/route';
 import Image from 'next/image';
 import Link from 'next/link';
-import type { HTMLAttributes } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 import { PIXELLAB_TOKENS } from '@/theme/tokens';
 
 type NavLink = {
@@ -13,12 +13,14 @@ type PixellabNavigationProps = {
   links: NavLink[];
   eyebrow?: string;
   description?: string;
+  actions?: ReactNode;
 } & HTMLAttributes<HTMLElement>;
 
 export function PixellabNavigation({
   links,
   eyebrow = 'Pixellab drop 07',
   description = 'Retro operating frame rendered with Pixellab.ai tokens.',
+  actions,
   style,
   ...rest
 }: PixellabNavigationProps) {
@@ -47,7 +49,7 @@ export function PixellabNavigation({
           padding: `${spacing.sm} ${layout.pagePadding}`,
           display: 'flex',
           alignItems: 'center',
-          gap: spacing.lg,
+          gap: spacing.md,
           minHeight: layout.navHeight,
         }}
       >
@@ -102,46 +104,49 @@ export function PixellabNavigation({
             </p>
           </div>
         </div>
-        <ul
-          style={{
-            listStyle: 'none',
-            margin: 0,
-            padding: 0,
-            display: 'flex',
-            gap: spacing.md,
-            flexWrap: 'wrap',
-            justifyContent: 'flex-end',
-          }}
-        >
-          {links.map((link) => {
-            const isExternal = typeof link.href === 'string' && link.href.startsWith('http');
-            const commonProps = {
-              style: {
-                color: colors.text.primary,
-                textDecoration: 'none',
-                fontSize: '0.65rem',
-                letterSpacing: '0.15rem',
-                textTransform: 'uppercase',
-              },
-              target: isExternal ? '_blank' : undefined,
-              rel: isExternal ? 'noreferrer' : undefined,
-            } as const;
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
+          <ul
+            style={{
+              listStyle: 'none',
+              margin: 0,
+              padding: 0,
+              display: 'flex',
+              gap: spacing.md,
+              flexWrap: 'wrap',
+              justifyContent: 'flex-end',
+            }}
+          >
+            {links.map((link) => {
+              const isExternal = typeof link.href === 'string' && link.href.startsWith('http');
+              const commonProps = {
+                style: {
+                  color: colors.text.primary,
+                  textDecoration: 'none',
+                  fontSize: '0.65rem',
+                  letterSpacing: '0.15rem',
+                  textTransform: 'uppercase',
+                },
+                target: isExternal ? '_blank' : undefined,
+                rel: isExternal ? 'noreferrer' : undefined,
+              } as const;
 
-            return (
-              <li key={link.href}>
-                {isExternal ? (
-                  <a href={link.href} {...commonProps}>
-                    {link.label}
-                  </a>
-                ) : (
-                  <Link href={link.href as Route} {...commonProps}>
-                    {link.label}
-                  </Link>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+              return (
+                <li key={link.href}>
+                  {isExternal ? (
+                    <a href={link.href} {...commonProps}>
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link href={link.href as Route} {...commonProps}>
+                      {link.label}
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {actions ? <div>{actions}</div> : null}
+        </div>
       </nav>
     </header>
   );

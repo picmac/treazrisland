@@ -9,6 +9,9 @@ import { HealthCheckStep } from './steps/HealthCheckStep';
 import { ProfileVerificationStep } from './steps/ProfileVerificationStep';
 import { RomUploadStep } from './steps/RomUploadStep';
 import type { OnboardingProgress, StepDataMap, StepKey } from './types';
+import { StatusPill } from '@/components/ui/StatusPill';
+import { PixellabNavigation } from '@/components/chrome';
+import { SignOutButton } from '@/components/ui/SignOutButton';
 import styles from './page.module.css';
 
 const STORAGE_KEY = 'treazr.adminOnboarding.v1';
@@ -162,16 +165,38 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="pixellab-grid">
-      <div className="pixellab-content">
+    <div className="page-shell">
+      <PixellabNavigation
+        links={[
+          { href: '/onboarding', label: 'Onboarding' },
+          { href: '/library', label: 'Library' },
+          { href: '/admin/roms/upload', label: 'Upload' },
+        ]}
+        eyebrow="Treazr Ops Console"
+        description="Guided setup across health, profile, emulator, and ROM ingestion."
+        actions={<SignOutButton />}
+      />
+      <div className="page-content">
         <div className={styles.layout}>
           <section className={styles.heroCard} aria-labelledby="onboarding-title">
             <p className="eyebrow">Admin onboarding</p>
             <h1 id="onboarding-title">Complete the Treazr Island setup flow</h1>
             <p>
               Check infrastructure health, confirm your admin profile, configure EmulatorJS, and
-              upload the first ROM without leaving this page.
+              upload the first ROM without leaving this page. Each step exposes status, recovery
+              hints, and the next safe action.
             </p>
+            <div className={styles.inlineActions} aria-live="polite">
+              <StatusPill tone={progress.health.completed ? 'success' : 'warning'}>
+                Health: {progress.health.completed ? 'Verified' : 'Pending'}
+              </StatusPill>
+              <StatusPill tone={progress.profile.completed ? 'success' : 'info'}>
+                Profile: {progress.profile.completed ? 'Complete' : 'Needs update'}
+              </StatusPill>
+              <StatusPill tone="info">
+                Last touch {new Date(progress.lastUpdated).toLocaleString()}
+              </StatusPill>
+            </div>
             <p className={styles.timestamp}>
               Last updated {new Date(progress.lastUpdated).toLocaleString()}
             </p>

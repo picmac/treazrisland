@@ -5,6 +5,11 @@ import { ControlOverlay } from '@/components/emulator/ControlOverlay';
 import { formatSaveIndicatorLabel } from '@/components/emulator/saveIndicator';
 import { SessionPrepDialog } from '@/components/emulator/SessionPrepDialog';
 import { TouchOverlay } from '@/components/emulator/TouchOverlay';
+import { PixellabNavigation } from '@/components/chrome';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { SignOutButton } from '@/components/ui/SignOutButton';
+import { StatusPill } from '@/components/ui/StatusPill';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useSaveStates } from '@/hooks/useSaveStates';
 import { useViewportScale } from '@/hooks/useViewportScale';
@@ -19,6 +24,7 @@ import {
 import { fetchRomDetails, resolveRomId } from '@/lib/roms';
 import { persistSaveState } from '@/lib/saveStates';
 import type { RomAsset, RomDetails } from '@/types/rom';
+import styles from './page.module.css';
 
 type PlayPageParams = { romId: string };
 
@@ -445,75 +451,178 @@ export default function PlayPage({ params }: PlayPageProps) {
     loadState === 'loading' || (loadState === 'ready' && shouldShowLoadingState);
   const controlsDisabled = !isSessionReady || loadState !== 'ready';
   const saveIndicatorLabel = formatSaveIndicatorLabel(saveCount, lastSavedAt);
+  const statusPills = useMemo(
+    () => [
+      {
+        label: loadState === 'error' ? 'ROM error' : rom ? 'ROM ready' : 'Loading ROM',
+        tone:
+          loadState === 'error'
+            ? ('danger' as const)
+            : rom
+              ? ('success' as const)
+              : ('info' as const),
+      },
+      {
+        label: emulatorReady
+          ? 'Emulator ready'
+          : isSessionReady
+            ? 'Starting runtime'
+            : 'Awaiting prep',
+        tone: emulatorReady
+          ? ('success' as const)
+          : isSessionReady
+            ? ('warning' as const)
+            : ('info' as const),
+      },
+      {
+        label: saveCount > 0 ? `${saveCount} saves` : 'No saves yet',
+        tone: saveCount > 0 ? ('success' as const) : ('info' as const),
+      },
+    ],
+    [emulatorReady, isSessionReady, loadState, rom, saveCount],
+  );
 
   return (
-    <section className="play-session" aria-live="polite">
-      <header className="play-session__header">
-        <div>
-          <p className="eyebrow">Live emulator session</p>
-          <h1>{rom?.title ?? 'Preparing ROM…'}</h1>
-        </div>
-        <button type="button" className="play-session__cta" onClick={() => setShowPrepDialog(true)}>
-          Controller Map
-        </button>
-      </header>
-
-      <div className="play-session__stage">
-        <div className="play-session__canvas">
-          <div ref={emulatorContainerRef} className="play-session__viewport-shell" />
-          <div className="play-session__status-layer" aria-live="polite">
-            {!isSessionReady && (
-              <p className="play-session__status">Confirm your controller to start the emulator.</p>
-            )}
-            {showRomLoadingStatus && <p className="play-session__status">Fetching ROM dossier…</p>}
-            {loadState === 'error' && error && (
-              <p className="play-session__status" role="alert">
-                {error}
-              </p>
-            )}
-            {loadState === 'ready' && !romAsset && (
-              <p className="play-session__status" role="alert">
-                No playable asset was found for this ROM.
-              </p>
-            )}
-            {isSessionReady && !emulatorReady && loadState === 'ready' && (
-              <p className="play-session__status">Loading EmulatorJS runtime…</p>
-            )}
-          </div>
-          {ENABLE_TOUCH_OVERLAY && (
-            <div className="play-session__touch-dock">
-              <TouchOverlay enabled={isSessionReady && loadState === 'ready'} />
-            </div>
-          )}
-        </div>
-        <p className="play-session__save-indicator" aria-live="polite">
-          {saveIndicatorLabel}
-        </p>
-
-        {rom && (
-          <ControlOverlay
-            romTitle={rom.title}
-            lastSavedAt={lastSavedAt}
-            saveCount={saveCount}
-            onSaveState={handleSaveState}
-            onLoadState={handleLoadState}
-            onSyncCloudSave={handleUploadCloudSave}
-            isSaving={isSaving}
-            isLoading={isLoadingCloudSave}
-            isSyncing={isSyncingCloudSave}
-            disabled={controlsDisabled}
-          />
-        )}
-      </div>
-
-      <SessionPrepDialog
-        open={showPrepDialog}
-        romTitle={rom?.title}
-        mappings={mappingList}
-        onConfirm={handleConfirmSession}
-        onCancel={() => setShowPrepDialog(false)}
+    <div className="page-shell">
+      <PixellabNavigation
+        links={[
+          { href: '/library', label: 'Library' },
+          { href: `/rom/${romId}`, label: 'ROM details' },
+          { href: '/onboarding', label: 'Onboarding' },
+        ]}
+        eyebrow="Play session"
+        description="EmulatorJS runtime with save-state sync and control overlays."
+        actions={<SignOutButton />}
       />
-    </section>
+      <main className="page-content" id="main-content">
+        <section className={styles.page} aria-live="polite">
+          <div className={styles.header}>
+            <div className={styles.headerTop}>
+              <div>
+                <p className="eyebrow">Live emulator session</p>
+                <h1>{rom?.title ?? 'Preparing ROM…'}</h1>
+              </div>
+              <Button variant="secondary" onClick={() => setShowPrepDialog(true)}>
+                Controller map
+              </Button>
+            </div>
+            <div className={styles.pillRow}>
+              {statusPills.map((pill) => (
+                <StatusPill key={pill.label} tone={pill.tone}>
+                  {pill.label}
+                </StatusPill>
+              ))}
+            </div>
+            <div className={styles.pillRow}>
+              <Button href="/library" variant="ghost">
+                ← Back to library
+              </Button>
+              <Button href={`/rom/${romId}`} variant="ghost">
+                View ROM dossier
+              </Button>
+            </div>
+          </div>
+
+          <div className={styles.stage}>
+            <div className={styles.canvasCard}>
+              <div className="play-session__stage">
+                <div className="play-session__canvas">
+                  <div ref={emulatorContainerRef} className="play-session__viewport-shell" />
+                  <div className="play-session__status-layer" aria-live="polite">
+                    {!isSessionReady && (
+                      <p className="play-session__status">
+                        Confirm your controller to start the emulator.
+                      </p>
+                    )}
+                    {showRomLoadingStatus && (
+                      <p className="play-session__status">Fetching ROM dossier…</p>
+                    )}
+                    {loadState === 'error' && error && (
+                      <p className="play-session__status" role="alert">
+                        {error}
+                      </p>
+                    )}
+                    {loadState === 'ready' && !romAsset && (
+                      <p className="play-session__status" role="alert">
+                        No playable asset was found for this ROM.
+                        <br />
+                        <Button href="/admin/roms/upload" variant="secondary">
+                          Upload a new build
+                        </Button>
+                      </p>
+                    )}
+                    {isSessionReady && !emulatorReady && loadState === 'ready' && (
+                      <p className="play-session__status">Loading EmulatorJS runtime…</p>
+                    )}
+                  </div>
+                  {ENABLE_TOUCH_OVERLAY && (
+                    <div className="play-session__touch-dock">
+                      <TouchOverlay enabled={isSessionReady && loadState === 'ready'} />
+                    </div>
+                  )}
+                </div>
+                <p className="play-session__save-indicator" aria-live="polite">
+                  {saveIndicatorLabel}
+                </p>
+
+                {rom && (
+                  <ControlOverlay
+                    romTitle={rom.title}
+                    lastSavedAt={lastSavedAt}
+                    saveCount={saveCount}
+                    onSaveState={handleSaveState}
+                    onLoadState={handleLoadState}
+                    onSyncCloudSave={handleUploadCloudSave}
+                    isSaving={isSaving}
+                    isLoading={isLoadingCloudSave}
+                    isSyncing={isSyncingCloudSave}
+                    disabled={controlsDisabled}
+                  />
+                )}
+              </div>
+            </div>
+
+            <div className={styles.sidePanel}>
+              <Card title="Session status" description="Recover quickly when things go sideways.">
+                <ul className={styles.metaList}>
+                  <li>
+                    <strong>ROM</strong>: {rom?.title ?? 'Loading…'}
+                  </li>
+                  <li>
+                    <strong>Platform</strong>: {rom?.platform?.name ?? rom?.platformId ?? 'TBD'}
+                  </li>
+                  <li>
+                    <strong>Saves</strong>: {saveCount} cloud checkpoints
+                  </li>
+                  <li>
+                    <strong>Last saved</strong>:{' '}
+                    {lastSavedAt ? lastSavedAt.toLocaleString() : 'Not yet'}
+                  </li>
+                </ul>
+              </Card>
+
+              <Card title="Controls" description="Keyboard + gamepad bindings">
+                <ul className={styles.mappingList}>
+                  {mappingList.map((mapping) => (
+                    <li key={mapping.action}>
+                      <strong>{mapping.action}:</strong> {mapping.binding}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </div>
+          </div>
+
+          <SessionPrepDialog
+            open={showPrepDialog}
+            romTitle={rom?.title}
+            mappings={mappingList}
+            onConfirm={handleConfirmSession}
+            onCancel={() => setShowPrepDialog(false)}
+          />
+        </section>
+      </main>
+    </div>
   );
 }
 

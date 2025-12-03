@@ -7,6 +7,9 @@ Treazr Island is an early-stage retro-gaming platform experiment. This repositor
 - [Dependency matrix](docs/dependency-matrix.md) — tracked versions for core tooling and services.
 - [GitHub runner setup](docs/github-runner-setup.md) — provision a self-hosted runner for this repository.
 - Additional planning notes live in the [`docs/`](docs) directory while the product takes shape.
+- [Architecture overview](docs/ARCHITECTURE-OVERVIEW.md) — current vs. target system design.
+- [Refactor & MVP plan](docs/REFORM-PLAN.md) — sprint-sized work packages and status.
+- [MVP scope](docs/MVP-SCOPE.md) — concise product vision and must-haves.
 
 ## Run commands
 

@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { Press_Start_2P } from 'next/font/google';
+import { Press_Start_2P, Space_Grotesk } from 'next/font/google';
 
 type PixellabCssVariables = CSSProperties & Record<`--pixellab-${string}`, string>;
 
@@ -106,6 +106,13 @@ export const pixellabFont = Press_Start_2P({
   variable: '--font-pixellab',
 });
 
+export const bodyFont = Space_Grotesk({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-body',
+});
+
 export function getPixellabCssVariables(
   tokens: PixellabTokens = PIXELLAB_TOKENS,
 ): PixellabCssVariables {
@@ -133,6 +140,7 @@ export function getPixellabCssVariables(
     '--pixellab-layout-max-width': tokens.layout.contentMaxWidth,
     '--pixellab-layout-padding': tokens.layout.pagePadding,
     '--pixellab-layout-nav-height': tokens.layout.navHeight,
+    '--pixellab-font-body': 'var(--font-body)',
   };
 
   return cssVariables;

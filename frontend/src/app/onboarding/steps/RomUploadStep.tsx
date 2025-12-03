@@ -3,6 +3,10 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 
 import { useRomUpload, type RomUploadInput } from '@/hooks/useRomUpload';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { FormField } from '@/components/ui/FormField';
+import { StatusPill } from '@/components/ui/StatusPill';
 
 import type { RomUploadResult, StepStatus } from '../types';
 import styles from '../page.module.css';
@@ -107,79 +111,90 @@ export function RomUploadStep({ state, onComplete }: RomUploadStepProps) {
   };
 
   return (
-    <div className={styles.stepCard}>
-      <div className={styles.stepHeader}>
-        <h2>4. Upload your first ROM</h2>
-        <p>Use the admin upload API so EmulatorJS has something to boot.</p>
-      </div>
-
+    <Card
+      as="article"
+      className={styles.stepCard}
+      title="4. Upload your first ROM"
+      description="Use the admin upload API so EmulatorJS has something to boot."
+    >
       <form className={styles.formGrid} onSubmit={handleSubmit}>
-        <label>
-          ROM title
-          <input
-            type="text"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Treaz test build"
-          />
-        </label>
+        <FormField
+          label="ROM title"
+          inputProps={{
+            type: 'text',
+            value: title,
+            onChange: (event) => setTitle(event.target.value),
+            placeholder: 'Treaz test build',
+          }}
+        />
 
-        <label>
-          Platform
-          <select value={platformId} onChange={(event) => setPlatformId(event.target.value)}>
-            {PLATFORMS.map((platform) => (
-              <option key={platform.id} value={platform.id}>
-                {platform.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <FormField
+          label="Platform"
+          inputSlot={
+            <select
+              value={platformId}
+              onChange={(event) => setPlatformId(event.target.value)}
+              className={styles.select}
+            >
+              {PLATFORMS.map((platform) => (
+                <option key={platform.id} value={platform.id}>
+                  {platform.label}
+                </option>
+              ))}
+            </select>
+          }
+        />
 
-        <label>
-          Release year
-          <input
-            type="number"
-            value={releaseYear}
-            onChange={(event) => setReleaseYear(event.target.value)}
-            placeholder="1993"
-          />
-        </label>
+        <FormField
+          label="Release year"
+          inputProps={{
+            type: 'number',
+            value: releaseYear,
+            onChange: (event) => setReleaseYear(event.target.value),
+            placeholder: '1993',
+          }}
+        />
 
-        <label className={styles.fullWidthField}>
-          Description
-          <textarea
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            rows={3}
-          />
-        </label>
+        <FormField
+          label="Description"
+          inputSlot={
+            <textarea
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              rows={3}
+              className={styles.textarea}
+            />
+          }
+        />
 
-        <label className={styles.fullWidthField}>
-          ROM file
-          <input type="file" accept=".zip,.nes,.sfc,.bin" onChange={handleFileChange} />
-        </label>
+        <FormField
+          label="ROM file"
+          description="Accepts .zip, .nes, .sfc, .bin with checksum verification."
+          inputProps={{
+            type: 'file',
+            accept: '.zip,.nes,.sfc,.bin',
+            onChange: handleFileChange,
+          }}
+        />
 
         <div className={styles.inlineActions}>
-          <button type="button" className={styles.secondaryButton} onClick={handleReset}>
+          <Button type="button" variant="ghost" onClick={handleReset}>
             Reset form
-          </button>
-          <button
-            type="submit"
-            className={styles.primaryButton}
-            disabled={isUploading || !title || !selectedFile}
-          >
+          </Button>
+          <Button type="submit" loading={isUploading} disabled={!title || !selectedFile}>
             {isUploading ? 'Uploading…' : 'Upload ROM'}
-          </button>
+          </Button>
         </div>
       </form>
 
-      {(error || formError) && (
-        <p role="alert" className={styles.errorMessage}>
-          {formError ?? error}
-        </p>
-      )}
-
-      {successMessage && <p className={styles.successMessage}>{successMessage}</p>}
-    </div>
+      <div className={styles.inlineActions}>
+        {(error || formError) && (
+          <StatusPill tone="danger" role="alert">
+            {formError ?? error}
+          </StatusPill>
+        )}
+        {successMessage && <StatusPill tone="success">{successMessage}</StatusPill>}
+      </div>
+    </Card>
   );
 }

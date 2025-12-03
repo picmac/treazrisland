@@ -178,6 +178,11 @@ export function exchangeMagicLinkToken(token: string) {
   return apiClient.post<AuthResponse>('/auth/magic-link', { token });
 }
 
+export function logout(refreshToken?: string) {
+  const body = refreshToken ? { refreshToken } : undefined;
+  return apiClient.post<void>('/auth/logout', body);
+}
+
 export function redeemInviteToken(
   token: string,
   payload: { email: string; password: string; displayName?: string },

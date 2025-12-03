@@ -10,6 +10,8 @@ import { z } from 'zod';
 
 import { useAvatarUpload } from '@/hooks/useAvatarUpload';
 import { getCurrentUserProfile, updateUserProfile, type UserProfileResponse } from '@/lib/users';
+import { clearStoredAccessToken } from '@/lib/authTokens';
+import { logout } from '@/lib/apiClient';
 
 import styles from './page.module.css';
 
@@ -54,6 +56,7 @@ export default function ProfilePage() {
     queryFn: getCurrentUserProfile,
     staleTime: 15_000,
   });
+  const [signOutStatus, setSignOutStatus] = useState<string | null>(null);
 
   const {
     uploadAvatar,
@@ -144,6 +147,20 @@ export default function ProfilePage() {
     setAvatarSelection({ objectKey: null, previewUrl: null, contentType: null, size: null });
   };
 
+  const handleSignOut = async () => {
+    setSignOutStatus('Signing out…');
+    try {
+      await logout();
+      clearStoredAccessToken();
+      await queryClient.invalidateQueries({ queryKey: ['me-profile'] });
+      setSignOutStatus('Signed out. Return to login to start a new session.');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to sign out. Please try again.';
+      setSignOutStatus(message);
+    }
+  };
+
   const heroTitle = profileQuery.data?.user?.displayName
     ? `Welcome back, ${profileQuery.data.user.displayName}`
     : 'Complete your Pixellab profile';
@@ -168,7 +185,15 @@ export default function ProfilePage() {
                   Updated {new Date(profileQuery.data.user.profileUpdatedAt).toLocaleString()}
                 </span>
               )}
+              <button type="button" className={styles.ghostButton} onClick={handleSignOut}>
+                Sign out
+              </button>
             </div>
+            {signOutStatus && (
+              <p role="status" className={styles.meta}>
+                {signOutStatus}
+              </p>
+            )}
           </section>
 
           <section className={styles.grid} aria-busy={profileQuery.isLoading}>

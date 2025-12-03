@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 
 import { runHealthCheck, type HealthResponse } from '@/lib/admin';
+import { Button } from '@/components/ui/Button';
+import { StatusPill } from '@/components/ui/StatusPill';
+import { Card } from '@/components/ui/Card';
 
 import type { HealthCheckResult, StepStatus } from '../types';
 import styles from '../page.module.css';
@@ -44,20 +47,15 @@ export function HealthCheckStep({ state, onComplete }: HealthCheckStepProps) {
   };
 
   return (
-    <div className={styles.stepCard}>
-      <div className={styles.stepHeader}>
-        <h2>1. Verify backend health</h2>
-        <p>Ping the API and object storage dependencies before inviting anyone.</p>
-      </div>
-
-      <button
-        type="button"
-        className={styles.primaryButton}
-        onClick={handleCheck}
-        disabled={isChecking}
-      >
+    <Card
+      as="article"
+      className={styles.stepCard}
+      title="1. Verify backend health"
+      description="Ping the API and object storage dependencies before inviting anyone."
+    >
+      <Button type="button" onClick={handleCheck} loading={isChecking}>
         {isChecking ? 'Running checks…' : 'Run health check'}
-      </button>
+      </Button>
 
       {error && (
         <p role="alert" className={styles.errorMessage}>
@@ -67,16 +65,20 @@ export function HealthCheckStep({ state, onComplete }: HealthCheckStepProps) {
 
       {result && (
         <div className={styles.statusPanel}>
-          <p>
-            Stack status: <strong>{result.status.toUpperCase()}</strong>
-          </p>
-          <p className={styles.timestamp}>
-            Last checked {new Date(result.checkedAt).toLocaleString()}
-          </p>
+          <div className={styles.inlineActions}>
+            <StatusPill tone={result.status === 'ok' ? 'success' : 'warning'}>
+              Stack: {result.status.toUpperCase()}
+            </StatusPill>
+            <StatusPill tone="info">{new Date(result.checkedAt).toLocaleString()}</StatusPill>
+          </div>
           <dl className={styles.dependencyList}>
             <div>
               <dt>Redis</dt>
               <dd>{result.dependencies.redis.status}</dd>
+            </div>
+            <div>
+              <dt>Postgres</dt>
+              <dd>{result.dependencies.prisma.status}</dd>
             </div>
             <div>
               <dt>Object storage</dt>
@@ -88,6 +90,6 @@ export function HealthCheckStep({ state, onComplete }: HealthCheckStepProps) {
           </dl>
         </div>
       )}
-    </div>
+    </Card>
   );
 }
