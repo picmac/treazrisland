@@ -10,10 +10,10 @@
 .stepCard {
   background: var(--pixellab-surface);
   border-radius: var(--radius-lg);
-  padding: 1.75rem;
+  padding: 1.6rem;
   box-shadow: var(--shadow-soft);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .heroCard p {
@@ -35,8 +35,8 @@
 .progressHeading {
   font-size: 1rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  text-transform: none;
+  letter-spacing: 0.02em;
   color: var(--pixellab-foreground);
 }
 
@@ -51,15 +51,16 @@
 
 .stepNav button {
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.05);
   padding: 0.5rem 1rem;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: var(--pixellab-foreground);
   cursor: pointer;
   transition:
     border-color 0.2s ease,
     transform 0.1s ease;
+  font-weight: 700;
 }
 
 .stepNav button:disabled {
@@ -148,7 +149,7 @@
   align-self: flex-start;
   background: linear-gradient(120deg, var(--pixellab-accent), var(--pixellab-accent-muted));
   border: none;
-  color: #050816;
+  color: #08101d;
   font-weight: 700;
   padding: 0.75rem 1.35rem;
   border-radius: 999px;
@@ -163,7 +164,7 @@
 
 .secondaryButton {
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   padding: 0.6rem 1rem;
   background: rgba(255, 255, 255, 0.05);
   color: var(--pixellab-foreground);
@@ -183,7 +184,7 @@
 }
 
 .statusPanel {
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-md);
   padding: 1rem;
   background: rgba(255, 255, 255, 0.04);

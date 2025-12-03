@@ -4,28 +4,33 @@
   gap: 0.35rem;
   padding: 0.4rem 0.75rem;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
   font-size: 0.9rem;
   color: var(--pixellab-foreground);
+  font-weight: 600;
 }
 
 .info {
-  border-color: rgba(124, 231, 242, 0.45);
-  color: #b9f3ff;
+  border-color: rgba(138, 182, 255, 0.4);
+  background: rgba(138, 182, 255, 0.08);
+  color: #d1e1ff;
 }
 
 .success {
-  border-color: rgba(67, 231, 161, 0.45);
-  color: #bff7df;
+  border-color: rgba(72, 212, 159, 0.4);
+  background: rgba(72, 212, 159, 0.1);
+  color: #b7f0d8;
 }
 
 .warning {
-  border-color: rgba(247, 183, 51, 0.45);
-  color: #fce3ac;
+  border-color: rgba(255, 192, 115, 0.45);
+  background: rgba(255, 192, 115, 0.08);
+  color: #ffe3be;
 }
 
 .danger {
-  border-color: rgba(255, 112, 150, 0.55);
-  color: #ffc1d9;
+  border-color: rgba(255, 133, 156, 0.5);
+  background: rgba(255, 133, 156, 0.1);
+  color: #ffcddc;
 }

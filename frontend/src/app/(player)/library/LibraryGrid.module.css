@@ -1,10 +1,10 @@
 .gridViewport {
   flex: 1;
   min-height: 400px;
-  max-height: calc(100vh - 280px);
-  border: 1px solid rgba(249, 96, 204, 0.3);
+  max-height: calc(100vh - 260px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 1rem;
-  background: rgba(4, 0, 16, 0.6);
+  background: rgba(15, 21, 35, 0.85);
   overflow: auto;
   position: relative;
 }
@@ -30,7 +30,7 @@
 
 .cardWrapper:focus-visible .card {
   border-color: var(--pixellab-accent);
-  box-shadow: 0 0 0 3px rgba(255, 124, 229, 0.4);
+  box-shadow: 0 0 0 3px rgba(124, 224, 211, 0.3);
 }
 
 .loadingRow {
@@ -43,8 +43,8 @@
   text-align: center;
   padding: 2rem;
   border-radius: 1rem;
-  border: 1px dashed rgba(254, 250, 224, 0.4);
-  background: rgba(6, 0, 20, 0.5);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  background: rgba(17, 24, 39, 0.75);
   margin: 1rem;
   display: grid;
   gap: 0.6rem;

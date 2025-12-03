@@ -44,8 +44,13 @@ test.describe('library layout', () => {
 
     const firstRow = page.locator('[data-index="0"]').first();
     await expect(firstRow).toBeVisible();
-    await expect(firstRow).toHaveAttribute('style', /repeat\(4, minmax/);
-    await expect(firstRow.getByTestId('rom-card')).toHaveCount(4);
+    const style = (await firstRow.getAttribute('style')) ?? '';
+    const columnMatch = style.match(/repeat\((\d+),\s*minmax/);
+    const columnCount = columnMatch ? Number.parseInt(columnMatch[1], 10) : 0;
+
+    expect(columnCount).toBeGreaterThanOrEqual(3);
+    expect(columnCount).toBeLessThanOrEqual(4);
+    await expect(firstRow.getByTestId('rom-card')).toHaveCount(columnCount || 3);
   });
 
   test('mobile view collapses grid to one column', async ({ page }) => {

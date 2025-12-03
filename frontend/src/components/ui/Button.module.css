@@ -2,9 +2,9 @@
   appearance: none;
   border: none;
   border-radius: var(--radius-md);
-  padding: 0.9rem 1.1rem;
+  padding: 0.85rem 1.05rem;
   font-weight: 700;
-  letter-spacing: 0.03rem;
+  letter-spacing: 0.01rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -13,7 +13,9 @@
   transition:
     transform 120ms ease,
     box-shadow 120ms ease,
-    opacity 120ms ease;
+    opacity 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease;
   text-decoration: none;
   font-size: 0.95rem;
 }
@@ -23,27 +25,28 @@
 }
 
 .primary {
-  background: linear-gradient(120deg, var(--pixellab-accent), var(--pixellab-accent-muted));
-  color: #050816;
-  box-shadow: var(--shadow-soft);
+  background: var(--pixellab-accent);
+  color: #08101d;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .secondary {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--pixellab-foreground);
 }
 
 .ghost {
   background: transparent;
-  border: 1px dashed rgba(255, 255, 255, 0.35);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
   color: var(--pixellab-foreground);
 }
 
 .danger {
-  background: linear-gradient(120deg, #ff7086, #f7b733);
-  color: #050816;
-  box-shadow: var(--shadow-soft);
+  background: linear-gradient(120deg, #ff8fa2, #ffd1a1);
+  color: #08101d;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
 }
 
 .lg {
