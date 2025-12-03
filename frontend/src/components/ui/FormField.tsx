@@ -46,6 +46,7 @@ export function FormField({
           className={styles.input}
           aria-invalid={Boolean(error)}
           aria-describedby={describedBy || undefined}
+          aria-label={inputProps?.['aria-label'] ?? label}
         />
       )}
       {hint ? (

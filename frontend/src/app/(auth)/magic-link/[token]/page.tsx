@@ -6,6 +6,11 @@ import { useRouter } from 'next/navigation';
 
 import { exchangeMagicLinkToken } from '@/lib/apiClient';
 import { storeAccessToken } from '@/lib/authTokens';
+import { PixellabNavigation } from '@/components/chrome';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { StatusPill } from '@/components/ui/StatusPill';
+import styles from './page.module.css';
 
 type MagicLinkPageProps = {
   params: { token: string } | Promise<{ token: string }>;
@@ -89,35 +94,61 @@ export default function MagicLinkPage({ params }: MagicLinkPageProps) {
     };
   }, [router, status.state, successRedirectTarget]);
 
-  return (
-    <section aria-label="Magic link" className="auth-section">
-      <header>
-        <p className="eyebrow">Secure docking</p>
-        <h1>Redeeming your magic link</h1>
-        <p className="lede">
-          We&apos;re confirming token <strong>{token}</strong> so you can jump straight into the
-          library.
-        </p>
-      </header>
+  const statusTone =
+    status.state === 'success' ? 'success' : status.state === 'error' ? 'danger' : 'info';
 
-      <article className="auth-card">
-        <p>Verifications typically complete in a few seconds. Retry below if the token expired.</p>
-        <button
-          type="button"
-          onClick={() => void redeemMagicLink()}
-          disabled={status.state === 'loading'}
-        >
-          {status.state === 'loading' ? 'Verifying…' : 'Retry verification'}
-        </button>
-        <div
-          className={`auth-status auth-status--${status.state}`}
-          role="status"
-          aria-live="polite"
-        >
-          <p>{status.message}</p>
-          {status.detail && <p>{status.detail}</p>}
-        </div>
-      </article>
-    </section>
+  return (
+    <div className="page-shell">
+      <PixellabNavigation
+        links={[
+          { href: '/library', label: 'Library' },
+          { href: '/onboarding', label: 'Onboarding' },
+          { href: '/login', label: 'Crew login' },
+        ]}
+        eyebrow="Magic link verification"
+        description="Secure docking flow for one-time links and invite tokens."
+      />
+      <main className="page-content" id="main-content">
+        <section className={styles.page} aria-label="Magic link redemption">
+          <div className={styles.hero}>
+            <p className="eyebrow">Secure docking</p>
+            <h1>Redeeming your magic link</h1>
+            <p className="lede">
+              We&apos;re confirming token <strong>{token}</strong> so you can jump straight into the
+              library.
+            </p>
+            <div className={styles.statusRow}>
+              <StatusPill tone={statusTone}>
+                {status.state === 'loading'
+                  ? 'Verifying token'
+                  : status.state === 'success'
+                    ? 'Accepted'
+                    : 'Needs attention'}
+              </StatusPill>
+              <StatusPill tone="info">Redirects to /library after success</StatusPill>
+            </div>
+          </div>
+
+          <Card
+            as="article"
+            className={styles.card}
+            title="Magic link status"
+            description="Verifications typically complete in a few seconds. Retry if the token expired."
+          >
+            <div className={styles.statusRow} role="status" aria-live="polite">
+              <StatusPill tone={statusTone}>{status.message}</StatusPill>
+              {status.detail && <StatusPill tone="info">{status.detail}</StatusPill>}
+            </div>
+            <Button
+              type="button"
+              onClick={() => void redeemMagicLink()}
+              loading={status.state === 'loading'}
+            >
+              {status.state === 'loading' ? 'Verifying…' : 'Retry verification'}
+            </Button>
+          </Card>
+        </section>
+      </main>
+    </div>
   );
 }

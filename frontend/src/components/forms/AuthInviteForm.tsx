@@ -6,6 +6,9 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { redeemInviteToken, type InviteRedemptionResponse } from '@/lib/apiClient';
+import { FormField } from '@/components/ui/FormField';
+import { Button } from '@/components/ui/Button';
+import { StatusPill } from '@/components/ui/StatusPill';
 
 const inviteSchema = z
   .object({
@@ -109,105 +112,83 @@ export default function AuthInviteForm({ token, onSuccess }: AuthInviteFormProps
   const passwordErrorId = `${fieldId}-password-error`;
   const confirmPasswordErrorId = `${fieldId}-confirm-password-error`;
 
+  const statusTone =
+    feedback.state === 'success' ? 'success' : feedback.state === 'error' ? 'danger' : 'info';
+
   return (
-    <article className="auth-card">
-      <h2>Set up your credentials</h2>
-      <p>
-        Provide the email tied to your invite along with a strong password so we can unlock your
-        Treazr Island profile.
-      </p>
-      <form onSubmit={onSubmit} noValidate>
-        <label>
-          <span>Email</span>
-          <input
-            type="email"
-            autoComplete="email"
-            placeholder="player@treazr.io"
-            {...register('email')}
-            aria-label="Email"
-            aria-invalid={errors.email ? 'true' : 'false'}
-            aria-describedby={errors.email ? emailErrorId : undefined}
-            disabled={isSubmitting}
-            required
-          />
-          {errors.email && (
-            <p id={emailErrorId} className="auth-field-error" role="alert">
-              {errors.email.message}
-            </p>
-          )}
-        </label>
+    <form onSubmit={onSubmit} noValidate>
+      <FormField
+        label="Email"
+        description="Use the address tied to your invite."
+        error={errors.email?.message ?? undefined}
+        inputProps={{
+          type: 'email',
+          autoComplete: 'email',
+          placeholder: 'player@treazr.io',
+          ...register('email'),
+          'aria-describedby': errors.email ? emailErrorId : undefined,
+          'aria-label': 'Email',
+          disabled: isSubmitting,
+          required: true,
+        }}
+      />
 
-        <label>
-          <span>Display name (optional)</span>
-          <input
-            type="text"
-            autoComplete="name"
-            placeholder="Deckhand Nova"
-            {...register('displayName')}
-            aria-invalid={errors.displayName ? 'true' : 'false'}
-            aria-describedby={errors.displayName ? displayNameErrorId : undefined}
-            disabled={isSubmitting}
-          />
-          {errors.displayName && (
-            <p id={displayNameErrorId} className="auth-field-error" role="alert">
-              {errors.displayName.message}
-            </p>
-          )}
-        </label>
+      <FormField
+        label="Display name (optional)"
+        description="Shown in your library and save states."
+        error={errors.displayName?.message ?? undefined}
+        inputProps={{
+          type: 'text',
+          autoComplete: 'name',
+          placeholder: 'Deckhand Nova',
+          ...register('displayName'),
+          'aria-describedby': errors.displayName ? displayNameErrorId : undefined,
+          disabled: isSubmitting,
+        }}
+      />
 
-        <label>
-          <span>Password</span>
-          <input
-            type="password"
-            autoComplete="new-password"
-            placeholder="Create a password"
-            {...register('password')}
-            aria-invalid={errors.password ? 'true' : 'false'}
-            aria-describedby={errors.password ? passwordErrorId : undefined}
-            disabled={isSubmitting}
-            required
-          />
-          {errors.password && (
-            <p id={passwordErrorId} className="auth-field-error" role="alert">
-              {errors.password.message}
-            </p>
-          )}
-        </label>
+      <FormField
+        label="Password"
+        description="At least 8 characters; never stored in localStorage."
+        error={errors.password?.message ?? undefined}
+        inputProps={{
+          type: 'password',
+          autoComplete: 'new-password',
+          placeholder: 'Create a password',
+          ...register('password'),
+          'aria-describedby': errors.password ? passwordErrorId : undefined,
+          disabled: isSubmitting,
+          required: true,
+        }}
+      />
 
-        <label>
-          <span>Confirm password</span>
-          <input
-            type="password"
-            autoComplete="new-password"
-            placeholder="Repeat password"
-            {...register('confirmPassword')}
-            aria-invalid={errors.confirmPassword ? 'true' : 'false'}
-            aria-describedby={errors.confirmPassword ? confirmPasswordErrorId : undefined}
-            disabled={isSubmitting}
-            required
-          />
-          {errors.confirmPassword && (
-            <p id={confirmPasswordErrorId} className="auth-field-error" role="alert">
-              {errors.confirmPassword.message}
-            </p>
-          )}
-        </label>
+      <FormField
+        label="Confirm password"
+        description="Repeat the password to avoid typos."
+        error={errors.confirmPassword?.message ?? undefined}
+        inputProps={{
+          type: 'password',
+          autoComplete: 'new-password',
+          placeholder: 'Repeat password',
+          ...register('confirmPassword'),
+          'aria-describedby': errors.confirmPassword ? confirmPasswordErrorId : undefined,
+          disabled: isSubmitting,
+          required: true,
+        }}
+      />
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Linking…' : 'Redeem invite'}
-        </button>
-      </form>
+      <Button type="submit" loading={isSubmitting}>
+        {isSubmitting ? 'Linking…' : 'Redeem invite'}
+      </Button>
 
       {feedback.state !== 'idle' && (
-        <div
-          className={`auth-status auth-status--${feedback.state}`}
-          role="status"
-          aria-live="polite"
-        >
-          <p>{feedback.message}</p>
-          {'detail' in feedback && feedback.detail && <p>{feedback.detail}</p>}
+        <div className="auth-status" role="status" aria-live="polite">
+          <StatusPill tone={statusTone}>{feedback.message}</StatusPill>
+          {'detail' in feedback && feedback.detail ? (
+            <StatusPill tone="info">{feedback.detail}</StatusPill>
+          ) : null}
         </div>
       )}
-    </article>
+    </form>
   );
 }

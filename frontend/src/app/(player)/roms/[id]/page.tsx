@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import { use, useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 
@@ -10,6 +9,11 @@ import { fetchRomDetails, resolveRomId } from '@/lib/roms';
 import { ApiError, toggleRomFavorite } from '@/lib/apiClient';
 import { getStoredAccessToken } from '@/lib/authTokens';
 import type { RomAsset, RomDetails } from '@/types/rom';
+import { PixellabNavigation } from '@/components/chrome';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { StatusPill } from '@/components/ui/StatusPill';
+import { SignOutButton } from '@/components/ui/SignOutButton';
 import styles from './page.module.css';
 
 type PlayerRomPageProps = { params: { id: string } | Promise<{ id: string }> };
@@ -110,29 +114,38 @@ export default function PlayerRomPage({ params }: PlayerRomPageProps) {
     favoriteMutation.mutate();
   };
 
-  if (status === 'loading') {
-    return <LoadingView />;
-  }
-
-  if (status === 'error' || !rom) {
-    return (
-      <main className={styles.page} id="main-content">
-        <Link href="/library" className={styles.backLink}>
+  const content =
+    status === 'loading' ? (
+      <LoadingView />
+    ) : status === 'error' || !rom ? (
+      <div className={styles.page}>
+        <Button href="/library" variant="ghost">
           ← Back to library
-        </Link>
+        </Button>
         <ErrorPanel message={error ?? 'This cartridge is still buffering in the ether.'} />
-      </main>
-    );
-  }
-
-  return (
-    <main className={styles.page} id="main-content">
-      <Link href="/library" className={styles.backLink}>
-        ← Back to library
-      </Link>
-
+      </div>
+    ) : (
       <article className={styles.layout} aria-label={`${rom.title} briefing`}>
-        <section className={styles.hero}>
+        <div className={styles.headerRow}>
+          <div>
+            <p className="eyebrow">ROM dossier</p>
+            <h1>{rom.title}</h1>
+            <p>
+              {platformLabel} · {releaseLabel}
+            </p>
+          </div>
+          <div className={styles.pillRow}>
+            <StatusPill tone="info">Assets: {rom.assets.length}</StatusPill>
+            <StatusPill tone={rom.isFavorite ? 'success' : 'warning'}>
+              {rom.isFavorite ? 'Favorite' : 'Not favorited'}
+            </StatusPill>
+            <StatusPill tone={rom.saveStateSummary ? 'success' : 'info'}>
+              {saveStateCopy}
+            </StatusPill>
+          </div>
+        </div>
+
+        <Card as="section" className={styles.hero} glow>
           <div className={styles.heroArt} aria-hidden={!heroAsset}>
             {heroAsset ? (
               <Image
@@ -152,13 +165,8 @@ export default function PlayerRomPage({ params }: PlayerRomPageProps) {
           </div>
 
           <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>ROM dossier</p>
-            <p className={styles.heroLabel}>Pixel command briefing</p>
-            <h1 className={styles.title}>{rom.title}</h1>
-            <p className={styles.subtitle}>
-              {platformLabel} · {releaseLabel}
-            </p>
-            {rom.description && <p className={styles.description}>{rom.description}</p>}
+            <p className="eyebrow">Pixel command briefing</p>
+            {rom.description && <p>{rom.description}</p>}
 
             {rom.genres.length > 0 && (
               <ul className={styles.genreList} aria-label="Genres">
@@ -169,22 +177,21 @@ export default function PlayerRomPage({ params }: PlayerRomPageProps) {
             )}
 
             <div className={styles.actions}>
-              <Link className={styles.primaryCta} href={`/play/${rom.id}`}>
+              <Button href={`/play/${rom.id}`} size="lg">
                 Play Now
-              </Link>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className={styles.secondaryCta}
+                variant="secondary"
                 onClick={handleToggleFavorite}
                 aria-pressed={rom.isFavorite ? 'true' : 'false'}
-                disabled={favoriteMutation.isPending}
+                loading={favoriteMutation.isPending}
               >
-                {favoriteMutation.isPending
-                  ? 'Saving…'
-                  : rom.isFavorite
-                    ? '★ Favorited'
-                    : '☆ Add to favorites'}
-              </button>
+                {rom.isFavorite ? '★ Favorited' : '☆ Add to favorites'}
+              </Button>
+              <Button href="/library" variant="ghost">
+                Library
+              </Button>
             </div>
             {favoriteMessage && (
               <p className={styles.favoriteMessage} role="status" aria-live="polite">
@@ -192,11 +199,10 @@ export default function PlayerRomPage({ params }: PlayerRomPageProps) {
               </p>
             )}
           </div>
-        </section>
+        </Card>
 
         <section className={styles.grid} aria-label="ROM metadata">
-          <div className={styles.panel}>
-            <h2>Cartridge stats</h2>
+          <Card title="Cartridge stats">
             <dl className={styles.metaList}>
               <div>
                 <dt>Platform</dt>
@@ -215,11 +221,9 @@ export default function PlayerRomPage({ params }: PlayerRomPageProps) {
                 <dd>{rom.isFavorite ? 'Starred in your dock' : 'Not favorited yet'}</dd>
               </div>
             </dl>
-          </div>
+          </Card>
 
-          <div className={styles.panel}>
-            <h2>Save crystals</h2>
-            <p className={styles.panelCopy}>{saveStateCopy}</p>
+          <Card title="Save crystals" description={saveStateCopy}>
             {rom.saveStateSummary?.latest && (
               <dl className={styles.metaList}>
                 <div>
@@ -236,16 +240,37 @@ export default function PlayerRomPage({ params }: PlayerRomPageProps) {
                 </div>
               </dl>
             )}
-          </div>
+          </Card>
         </section>
       </article>
-    </main>
+    );
+
+  return (
+    <div className="page-shell">
+      <PixellabNavigation
+        links={[
+          { href: '/library', label: 'Library' },
+          { href: '/onboarding', label: 'Onboarding' },
+          { href: '/admin/roms/upload', label: 'Upload' },
+        ]}
+        eyebrow="Library record"
+        description="Metadata, save-state summary, and play entrypoint for the selected ROM."
+        actions={<SignOutButton />}
+      />
+      <main className="page-content" id="main-content">
+        <div className={styles.page}>{content}</div>
+      </main>
+    </div>
   );
 }
 
 function LoadingView() {
   return (
-    <main className={styles.page} id="main-content" data-testid="rom-loading-skeleton">
+    <Card
+      title="Loading ROM"
+      description="Spinning up a 16-bit dream…"
+      data-testid="rom-loading-skeleton"
+    >
       <div className={styles.loadingHero}>
         <SkeletonBlock width="100%" height={320} />
         <div className={styles.loadingText}>
@@ -261,16 +286,15 @@ function LoadingView() {
       <p className={styles.loadingCopy} role="status">
         Spinning up a 16-bit dream…
       </p>
-    </main>
+    </Card>
   );
 }
 
 function ErrorPanel({ message }: { message: string }) {
   return (
-    <div className={styles.errorPanel} role="alert">
-      <p className={styles.errorTitle}>Glitch detected</p>
+    <Card title="Glitch detected" description={message} tone="danger" role="alert">
       <p>{message}</p>
-    </div>
+    </Card>
   );
 }
 

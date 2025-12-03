@@ -10,8 +10,12 @@ import { z } from 'zod';
 
 import { useAvatarUpload } from '@/hooks/useAvatarUpload';
 import { getCurrentUserProfile, updateUserProfile, type UserProfileResponse } from '@/lib/users';
-import { clearStoredAccessToken } from '@/lib/authTokens';
-import { logout } from '@/lib/apiClient';
+import { PixellabNavigation } from '@/components/chrome';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { StatusPill } from '@/components/ui/StatusPill';
+import { FormField } from '@/components/ui/FormField';
+import { SignOutButton } from '@/components/ui/SignOutButton';
 
 import styles from './page.module.css';
 
@@ -56,8 +60,6 @@ export default function ProfilePage() {
     queryFn: getCurrentUserProfile,
     staleTime: 15_000,
   });
-  const [signOutStatus, setSignOutStatus] = useState<string | null>(null);
-
   const {
     uploadAvatar,
     isUploading,
@@ -147,99 +149,71 @@ export default function ProfilePage() {
     setAvatarSelection({ objectKey: null, previewUrl: null, contentType: null, size: null });
   };
 
-  const handleSignOut = async () => {
-    setSignOutStatus('Signing out…');
-    try {
-      await logout();
-      clearStoredAccessToken();
-      await queryClient.invalidateQueries({ queryKey: ['me-profile'] });
-      setSignOutStatus('Signed out. Return to login to start a new session.');
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Unable to sign out. Please try again.';
-      setSignOutStatus(message);
-    }
-  };
-
   const heroTitle = profileQuery.data?.user?.displayName
     ? `Welcome back, ${profileQuery.data.user.displayName}`
     : 'Complete your Pixellab profile';
 
   return (
-    <div className="pixellab-grid">
-      <div className="pixellab-content">
-        <main className={styles.wrapper} id="main-content">
-          <section className={styles.headerCard} aria-live="polite">
-            <p className="eyebrow">Profile</p>
-            <h1>{heroTitle}</h1>
-            <p className="lede">
-              Keep your display name and avatar up to date so your saves and high scores feel like
-              home. Signed URLs are generated against the configured storage bucket.
-            </p>
-            <div className={styles.pillRow}>
-              <span className={styles.pill} aria-label="Profile completeness">
+    <div className="page-shell">
+      <PixellabNavigation
+        links={[
+          { href: '/library', label: 'Library' },
+          { href: '/onboarding', label: 'Onboarding' },
+          { href: '/admin/roms/upload', label: 'Upload' },
+        ]}
+        eyebrow="Player profile"
+        description="Manage your Treazr identity, avatar, and session safety."
+        actions={<SignOutButton />}
+      />
+      <main className="page-content" id="main-content">
+        <section className={styles.page} aria-live="polite">
+          <Card
+            title={heroTitle}
+            eyebrow="Profile"
+            description="Keep your display name and avatar in sync. Signed URLs are generated against the configured storage bucket."
+          >
+            <div className={styles.statusRow}>
+              <StatusPill tone={profileQuery.data?.isProfileComplete ? 'success' : 'warning'}>
                 {profileQuery.data?.isProfileComplete ? 'Profile ready' : 'Profile incomplete'}
-              </span>
+              </StatusPill>
               {profileQuery.data?.user.profileUpdatedAt && (
-                <span className={styles.pill}>
+                <StatusPill tone="info">
                   Updated {new Date(profileQuery.data.user.profileUpdatedAt).toLocaleString()}
-                </span>
+                </StatusPill>
               )}
-              <button type="button" className={styles.ghostButton} onClick={handleSignOut}>
-                Sign out
-              </button>
             </div>
-            {signOutStatus && (
-              <p role="status" className={styles.meta}>
-                {signOutStatus}
-              </p>
-            )}
-          </section>
+          </Card>
 
           <section className={styles.grid} aria-busy={profileQuery.isLoading}>
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div>
-                  <p className="eyebrow">Identity</p>
-                  <h2>Display name</h2>
-                </div>
-                {profileQuery.isFetching && <span className={styles.badge}>Refreshing</span>}
-              </div>
-
+            <Card
+              title="Identity"
+              eyebrow="Display name"
+              description="Shown in your library, save states, and session overlays."
+            >
+              {profileQuery.isFetching && <StatusPill tone="info">Refreshing profile…</StatusPill>}
               <form className={styles.form} onSubmit={onSubmit}>
-                <label className={styles.field}>
-                  <span>Display name</span>
-                  <input
-                    {...register('displayName')}
-                    placeholder="Pixel Protagonist"
-                    aria-invalid={Boolean(errors.displayName)}
-                  />
-                  {errors.displayName && (
-                    <span className={styles.error}>{errors.displayName.message}</span>
-                  )}
-                </label>
-
+                <FormField
+                  label="Display name"
+                  error={errors.displayName?.message ?? undefined}
+                  inputProps={{
+                    ...register('displayName'),
+                    placeholder: 'Pixel Protagonist',
+                  }}
+                />
                 <div className={styles.actions}>
-                  <button type="submit" disabled={isSubmitting || mutation.isPending}>
-                    {mutation.isPending ? 'Saving...' : 'Save changes'}
-                  </button>
-                  {formError && <span className={styles.error}>{formError}</span>}
+                  <Button type="submit" loading={isSubmitting || mutation.isPending}>
+                    {mutation.isPending ? 'Saving…' : 'Save changes'}
+                  </Button>
+                  {formError && <StatusPill tone="danger">{formError}</StatusPill>}
                   {mutation.isSuccess && !formError && (
-                    <span className={styles.success}>Profile updated</span>
+                    <StatusPill tone="success">Profile updated</StatusPill>
                   )}
                 </div>
               </form>
-            </div>
+            </Card>
 
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div>
-                  <p className="eyebrow">Avatar</p>
-                  <h2>Upload & preview</h2>
-                </div>
-                {uploadError && <span className={styles.error}>{uploadError}</span>}
-              </div>
-
+            <Card title="Avatar" eyebrow="Upload & preview">
+              {uploadError && <StatusPill tone="danger">{uploadError}</StatusPill>}
               <div className={styles.avatarRow}>
                 <div className={styles.avatarPreview}>
                   {currentAvatar ? (
@@ -247,30 +221,35 @@ export default function ProfilePage() {
                       src={currentAvatar}
                       alt={buildAvatarAlt(profileQuery.data?.user.displayName)}
                       fill
-                      sizes="96px"
+                      sizes="140px"
                     />
                   ) : (
                     <div className={styles.placeholder}>No avatar yet</div>
                   )}
                 </div>
                 <div className={styles.avatarControls}>
-                  <label className={styles.uploadButton}>
+                  <label className={styles.uploadLabel}>
+                    <span className={styles.visuallyHidden}>Avatar upload</span>
+                    <Button variant="secondary" type="button">
+                      {isUploading ? 'Uploading…' : 'Select image'}
+                    </Button>
                     <input
+                      className={styles.hiddenInput}
                       type="file"
                       accept="image/*"
                       onChange={handleAvatarChange}
                       disabled={isUploading || mutation.isPending}
+                      aria-label="Choose image"
                     />
-                    <span>{isUploading ? 'Uploading…' : 'Choose image'}</span>
                   </label>
-                  <button
+                  <Button
                     type="button"
-                    className={styles.ghostButton}
+                    variant="ghost"
                     onClick={clearAvatar}
                     disabled={isUploading}
                   >
                     Remove avatar
-                  </button>
+                  </Button>
                   {avatarSelection?.objectKey && (
                     <p className={styles.meta}>
                       Ready to save: {avatarSelection.objectKey} ({avatarSelection.size ?? 0} bytes)
@@ -278,10 +257,10 @@ export default function ProfilePage() {
                   )}
                 </div>
               </div>
-            </div>
+            </Card>
           </section>
-        </main>
-      </div>
+        </section>
+      </main>
     </div>
   );
 }
