@@ -62,7 +62,7 @@ describe('Admin ROM upload page', () => {
     fireEvent.change(fileInput, { target: { files: [romFile] } });
 
     await waitFor(() =>
-      expect(screen.getByTestId('rom-upload-status')).toHaveTextContent(/checksum locked/i),
+      expect(screen.getByTestId('rom-upload-status')).toHaveTextContent(/checksum ready/i),
     );
 
     fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'Demo Quest' } });

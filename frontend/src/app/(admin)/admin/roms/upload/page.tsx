@@ -1,11 +1,9 @@
 'use client';
 
-import NextLink from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex } from '@noble/hashes/utils';
-import type React from 'react';
 
 import {
   directRomUpload,
@@ -30,8 +28,6 @@ type RomUploadStage =
   | 'registering'
   | 'redirecting'
   | 'error';
-
-const Link = NextLink as unknown as React.FC<React.ComponentProps<typeof NextLink>>;
 
 const toHex = (hashBuffer: ArrayBuffer) =>
   Array.from(new Uint8Array(hashBuffer))
@@ -89,7 +85,7 @@ export default function AdminRomUploadPage() {
   const [checksumProgress, setChecksumProgress] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [stage, setStage] = useState<RomUploadStage>('idle');
-  const [statusMessage, setStatusMessage] = useState('Drop your ROM to begin…');
+  const [statusMessage, setStatusMessage] = useState('Attach a ROM to start the upload.');
   const [error, setError] = useState<string | null>(null);
   const [optimisticRomId, setOptimisticRomId] = useState<string | null>(null);
 
@@ -126,7 +122,7 @@ export default function AdminRomUploadPage() {
     setUploadProgress(0);
     setStage('idle');
     setError(null);
-    setStatusMessage('Drop your ROM to begin…');
+    setStatusMessage('Attach a ROM to start the upload.');
     setOptimisticRomId(null);
   }, []);
 
@@ -164,14 +160,14 @@ export default function AdminRomUploadPage() {
     }
 
     setStage('computing');
-    setStatusMessage('Computing SHA-256 checksum…');
+    setStatusMessage('Computing checksum…');
 
     try {
       const hash = await computeSha256(selected, setChecksumProgress);
       setChecksumProgress(100);
       setChecksum(hash);
       setStage('ready');
-      setStatusMessage('Checksum locked. Ready to upload.');
+      setStatusMessage('Checksum ready. You can upload now.');
     } catch (checksumError) {
       const message =
         checksumError instanceof Error ? checksumError.message : 'Unable to calculate checksum';
@@ -219,9 +215,6 @@ export default function AdminRomUploadPage() {
           return directResponse.objectKey;
         };
 
-        console.log('upload grant url', grant.uploadUrl);
-        console.log('upload grant headers', grant.headers);
-
         let response: Response | undefined;
 
         try {
@@ -264,7 +257,7 @@ export default function AdminRomUploadPage() {
         const romResponse = await registerAdminRom(payload);
         setOptimisticRomId(romResponse.rom.id);
         setStage('redirecting');
-        setStatusMessage('Upload complete. Redirecting to dossier…');
+        setStatusMessage('Upload complete. Redirecting to the ROM dossier…');
 
         return romResponse.rom.id;
       } catch (uploadError) {
@@ -281,7 +274,7 @@ export default function AdminRomUploadPage() {
     [contentType],
   );
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
 
@@ -329,7 +322,7 @@ export default function AdminRomUploadPage() {
           { href: '/onboarding', label: 'Onboarding' },
         ]}
         eyebrow="Admin console"
-        description="Checksum validation, presigned uploads, and metadata entry in one flow."
+        description="Upload ROMs with checksums, presigned storage, and a clear audit trail."
         actions={<SignOutButton />}
       />
       <main className="page-content">
@@ -337,19 +330,19 @@ export default function AdminRomUploadPage() {
           <div className={styles.marquee}>
             <div>
               <p className="eyebrow">Admin console</p>
-              <h1>16-bit ROM uplink</h1>
+              <h1>ROM upload</h1>
               <p className={styles.lead}>
-                Drag a payload into the uplink bay, verify its checksum, and persist metadata
-                without blocking the admin API.
+                Drop a build, verify its checksum, and register metadata without leaving the
+                console. Every step shows a status you can trust.
               </p>
             </div>
             <div className={styles.actions}>
-              <Link href="/admin/onboarding" className={styles.secondary}>
+              <Button href="/admin/onboarding" variant="ghost">
                 Back to onboarding
-              </Link>
-              <Link href="/library" className={styles.secondary}>
-                View public library
-              </Link>
+              </Button>
+              <Button href="/library" variant="ghost">
+                View library
+              </Button>
             </div>
           </div>
 
@@ -590,9 +583,9 @@ export default function AdminRomUploadPage() {
                     : statusMessage}
                 </p>
                 {optimisticRomId && (
-                  <Link href={`/rom/${optimisticRomId}`} className={styles.secondary}>
+                  <Button href={`/rom/${optimisticRomId}`} variant="ghost">
                     Open ROM detail
-                  </Link>
+                  </Button>
                 )}
               </div>
             </div>

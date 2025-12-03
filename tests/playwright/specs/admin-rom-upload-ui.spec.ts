@@ -16,10 +16,10 @@ test.describe('admin rom uploader UI', () => {
     const checksumStatus = page.getByTestId('rom-upload-status');
 
     await expect(checksumStatus).toHaveText(
-      /Computing (SHA-256 )?checksum|Checksum locked\. Ready to upload\./i,
+      /Computing (SHA-256 )?checksum|Checksum ready\. You can upload now\./i,
       { timeout: 12_000 },
     );
-    await expect(checksumStatus).toHaveText(/Checksum locked\. Ready to upload\./i, {
+    await expect(checksumStatus).toHaveText(/Checksum ready\. You can upload now\./i, {
       timeout: 24_000,
     });
 

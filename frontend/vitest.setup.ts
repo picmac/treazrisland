@@ -12,4 +12,9 @@ vi.mock('next/font/google', () => ({
     variable: '--font-body',
     style: {},
   }),
+  Manrope: () => ({
+    className: 'manrope-font',
+    variable: '--font-body',
+    style: {},
+  }),
 }));

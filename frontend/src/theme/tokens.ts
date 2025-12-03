@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { Press_Start_2P, Space_Grotesk } from 'next/font/google';
+import { Manrope, Space_Grotesk } from 'next/font/google';
 
 type PixellabCssVariables = CSSProperties & Record<`--pixellab-${string}`, string>;
 
@@ -54,22 +54,22 @@ export type PixellabTokens = {
 export const PIXELLAB_TOKENS: PixellabTokens = {
   colors: {
     background: {
-      base: '#060014',
-      panel: 'rgba(6, 0, 20, 0.75)',
-      glow: '#12052b',
+      base: '#0b1320',
+      panel: 'rgba(15, 21, 35, 0.9)',
+      glow: '#0f192d',
     },
     accent: {
-      primary: '#f7b733',
-      secondary: '#b958f6',
-      success: '#35d070',
+      primary: '#7ce0d3',
+      secondary: '#8ab6ff',
+      success: '#48d49f',
     },
     text: {
-      primary: '#fefae0',
-      muted: 'rgba(254, 250, 224, 0.72)',
+      primary: '#e6edf5',
+      muted: '#9fb1c7',
     },
     border: {
-      subtle: 'rgba(249, 96, 204, 0.35)',
-      bold: 'rgba(247, 183, 51, 0.8)',
+      subtle: 'rgba(255, 255, 255, 0.08)',
+      bold: 'rgba(124, 224, 211, 0.45)',
     },
   },
   spacing: {
@@ -81,17 +81,17 @@ export const PIXELLAB_TOKENS: PixellabTokens = {
     xl: '2.5rem',
   },
   layout: {
-    contentMaxWidth: '1200px',
-    pagePadding: 'clamp(1rem, 4vw, 3rem)',
-    navHeight: '4rem',
+    contentMaxWidth: '1160px',
+    pagePadding: 'clamp(1rem, 4vw, 2.5rem)',
+    navHeight: '4.25rem',
   },
   effects: {
     grid: {
-      size: 32,
-      opacity: 0.18,
+      size: 28,
+      opacity: 0.08,
     },
-    panelBlur: '12px',
-    panelShadow: '0 20px 60px rgba(0, 0, 0, 0.55)',
+    panelBlur: '14px',
+    panelShadow: '0 18px 48px rgba(0, 0, 0, 0.3)',
   },
   assets: {
     wordmark: '/pixellab/wordmark.svg',
@@ -99,14 +99,14 @@ export const PIXELLAB_TOKENS: PixellabTokens = {
   },
 };
 
-export const pixellabFont = Press_Start_2P({
-  weight: '400',
+export const pixellabFont = Space_Grotesk({
+  weight: ['600', '700'],
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-pixellab',
 });
 
-export const bodyFont = Space_Grotesk({
+export const bodyFont = Manrope({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   display: 'swap',

@@ -4,10 +4,10 @@
   gap: 0.75rem;
   align-items: center;
   padding: 1.1rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(12px);
+  background: rgba(17, 24, 39, 0.75);
+  backdrop-filter: blur(10px);
   box-shadow: var(--shadow-soft);
 }
 
@@ -28,29 +28,31 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04);
   padding: 0.45rem 0.65rem;
   border-radius: 0.65rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .radioLabel input {
-  accent-color: #ff7ce5;
+  accent-color: var(--pixellab-accent);
 }
 
 .label {
   text-transform: uppercase;
-  font-size: 0.7rem;
-  letter-spacing: 0.1rem;
-  color: rgba(254, 250, 224, 0.8);
+  font-size: 0.72rem;
+  letter-spacing: 0.08rem;
+  color: var(--pixellab-muted);
+  font-weight: 700;
 }
 
 .select {
   border-radius: var(--radius-md);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   padding: 0.6rem 0.85rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--pixellab-foreground);
 }
 
@@ -62,11 +64,11 @@
 
 .genreButton {
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
   color: inherit;
   padding: 0.35rem 0.85rem;
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   cursor: pointer;
   transition:
     background 0.2s ease,
@@ -74,9 +76,9 @@
 }
 
 .genreButton[data-active='true'] {
-  background: linear-gradient(120deg, var(--pixellab-accent), var(--pixellab-accent-muted));
-  color: #060014;
-  border-color: transparent;
+  background: var(--pixellab-accent);
+  color: #0b1320;
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
 .genreButton:disabled {
@@ -87,34 +89,34 @@
 .toggleButton {
   align-self: flex-start;
   margin-left: auto;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
   color: inherit;
   padding: 0.65rem 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08rem;
-  font-size: 0.7rem;
+  letter-spacing: 0.02rem;
+  font-size: 0.9rem;
   cursor: pointer;
   box-shadow: var(--shadow-soft);
+  font-weight: 700;
 }
 
 .toggleButton[data-active='true'] {
-  background: linear-gradient(120deg, var(--pixellab-accent), var(--pixellab-accent-muted));
-  color: #060014;
-  border-color: transparent;
+  background: var(--pixellab-accent);
+  color: #0b1320;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .resetButton {
-  border-radius: 0.75rem;
-  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 0.8rem;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
   background: transparent;
   color: var(--pixellab-foreground);
   padding: 0.65rem 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08rem;
-  font-size: 0.7rem;
+  letter-spacing: 0.02rem;
+  font-size: 0.9rem;
   cursor: pointer;
+  font-weight: 700;
 }
 
 @media (max-width: 600px) {

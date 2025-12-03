@@ -85,7 +85,7 @@ export default function HomePage() {
       <PixellabNavigation
         links={navLinks}
         eyebrow="Treazr Ops Console"
-        description="Retro mission control with accessible defaults and EmulatorJS-ready scaffolding."
+        description="Operations console with clear defaults and EmulatorJS-ready scaffolding."
         actions={<SignOutButton />}
         style={{
           background: 'rgba(6, 8, 22, 0.85)',
@@ -100,7 +100,7 @@ export default function HomePage() {
             <h1 id="hero-title">Treazr Island mission control</h1>
             <p className="lede">
               Guided onboarding, a curated ROM library, and EmulatorJS overlays live in one place.
-              Every flow below is wired to show status, recovery steps, and a clear next action.
+              Every flow keeps status visible, recovery simple, and the next action obvious.
             </p>
             <div className={styles.badgeRow} aria-label="System signals">
               {systemSignals.map((signal) => (
