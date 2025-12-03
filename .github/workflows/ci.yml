@@ -424,6 +424,11 @@ jobs:
       group: deploy-main
       cancel-in-progress: false
     steps:
+      - name: Clean runner workspace permissions
+        run: |
+          sudo chown -R "$USER:$USER" "$GITHUB_WORKSPACE" || true
+          sudo rm -rf "$GITHUB_WORKSPACE/backend/.pnpm-store" "$GITHUB_WORKSPACE/frontend/.pnpm-store" "$GITHUB_WORKSPACE/.pnpm-store" || true
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
