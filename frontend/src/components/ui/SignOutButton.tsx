@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useContext, useState } from 'react';
+
+import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 
 import { clearStoredAccessToken } from '@/lib/authTokens';
 import { logout } from '@/lib/apiClient';
@@ -12,15 +14,23 @@ type SignOutButtonProps = {
 
 export function SignOutButton({ label = 'Sign out' }: SignOutButtonProps) {
   const [status, setStatus] = useState<'idle' | 'working' | 'done' | 'error'>('idle');
+  const router = useContext(AppRouterContext);
 
   const handleSignOut = async () => {
     setStatus('working');
     try {
       await logout();
-      clearStoredAccessToken();
       setStatus('done');
     } catch {
       setStatus('error');
+    }
+
+    clearStoredAccessToken();
+
+    if (router) {
+      router.push('/login');
+    } else if (typeof window !== 'undefined') {
+      window.location.assign('/login');
     }
   };
 
