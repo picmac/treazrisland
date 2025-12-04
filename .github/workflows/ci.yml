@@ -437,7 +437,7 @@ jobs:
       - name: Restore runner environment file
         run: |
           set -euo pipefail
-          for candidate in /opt/actions-runner/.env /opt/actions-runner/_work/treazrisland/.env "$GITHUB_WORKSPACE/.env.local"; do
+          for candidate in /opt/actions-runner/.env /opt/actions-runner/_work/treazrisland/.env "$GITHUB_WORKSPACE/.env.local" "$GITHUB_WORKSPACE/infrastructure/env/root.env.example"; do
             if [[ -f "$candidate" ]]; then
               cp "$candidate" "$GITHUB_WORKSPACE/.env"
               echo "Restored .env from $candidate"
@@ -445,8 +445,8 @@ jobs:
             fi
           done
 
-          echo "::warning::No .env found on runner; deployment will be skipped."
-          echo "SKIP_DEPLOY=1" >> "$GITHUB_ENV"
+          echo "::error::No .env found and no template available to restore."
+          exit 1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -475,7 +475,6 @@ jobs:
           sudo find "$GITHUB_WORKSPACE" -maxdepth 3 -name "node_modules" -exec chown -R "$USER:$USER" {} \; || true
 
       - name: Deploy via pnpm script
-        if: ${{ env.SKIP_DEPLOY != '1' }}
         env:
           # Provide explicit CI context for pnpm and scripts
           CI: true
