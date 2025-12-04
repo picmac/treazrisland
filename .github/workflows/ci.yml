@@ -434,6 +434,7 @@ jobs:
         with:
           clean: false
 
+<<<<<<< HEAD
       - name: Restore runner environment file
         run: |
           set -euo pipefail
@@ -447,7 +448,6 @@ jobs:
 
           echo "::error::No .env found and no template available to restore."
           exit 1
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

@@ -70,21 +70,6 @@ if ! docker compose version >/dev/null 2>&1; then
   fail "Docker Compose v2 is required. Upgrade Docker to a build that bundles 'docker compose'."
 fi
 
-if [[ ! -f "$REPO_ROOT/.env" ]]; then
-  for candidate in \
-    "$REPO_ROOT/.env.local" \
-    "$REPO_ROOT/../.env" \
-    "$REPO_ROOT/../../.env" \
-    "$REPO_ROOT/infrastructure/env/root.env.example"
-  do
-    if [[ -f "$candidate" ]]; then
-      cp "$candidate" "$REPO_ROOT/.env"
-      log "Created .env from $candidate"
-      break
-    fi
-  done
-fi
-
 require_file "$REPO_ROOT/.env" "Missing $REPO_ROOT/.env. Copy infrastructure/env/root.env.example and populate production secrets before deploying."
 
 ensure_backend_env() {
