@@ -7,7 +7,7 @@ const COOKIE_NAME = 'refreshToken';
 export const setRefreshTokenCookie = (reply: FastifyReply, env: Env, token: string): void => {
   reply.setCookie(COOKIE_NAME, token, {
     httpOnly: true,
-    path: '/auth/refresh',
+    path: '/',
     sameSite: 'lax',
     secure: env.NODE_ENV === 'production',
     maxAge: env.JWT_REFRESH_TOKEN_TTL,
@@ -16,7 +16,7 @@ export const setRefreshTokenCookie = (reply: FastifyReply, env: Env, token: stri
 
 export const clearRefreshTokenCookie = (reply: FastifyReply, env: Env): void => {
   reply.clearCookie(COOKIE_NAME, {
-    path: '/auth/refresh',
+    path: '/',
     sameSite: 'lax',
     secure: env.NODE_ENV === 'production',
   });
