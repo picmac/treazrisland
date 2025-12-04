@@ -37,7 +37,7 @@ describe('POST /metrics/events', () => {
 
     expect(response.status).toBe(202);
 
-    const bucket = Math.floor(Date.now() / 60_000) * 60_000;
+    const bucket = Math.floor(new Date(payload.clientTimestamp).getTime() / 60_000) * 60_000;
     const bucketKey = `metrics:emulator:fps:${bucket}:${payload.romId}`;
     const bucketSnapshot = await app.redis.hgetall(bucketKey);
 
