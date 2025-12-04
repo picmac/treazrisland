@@ -1,37 +1,60 @@
-import { afterEach, describe, expect, it } from 'vitest';
-
-import { ACCESS_TOKEN_KEY } from '@/constants/auth';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { clearStoredAccessToken, getStoredAccessToken, storeAccessToken } from './authTokens';
 
-const readCookie = (name: string) => {
-  const rawValue = document.cookie
-    .split(';')
-    .map((entry) => entry.trim())
-    .find((entry) => entry.startsWith(`${name}=`))
-    ?.split('=')[1];
-
-  return rawValue ? decodeURIComponent(rawValue) : undefined;
-};
-
 describe('authTokens', () => {
-  afterEach(() => {
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
     clearStoredAccessToken();
     window.localStorage.clear();
   });
 
-  it('stores the token in both localStorage and a cookie', () => {
-    storeAccessToken('token-123');
-
-    expect(getStoredAccessToken()).toBe('token-123');
-    expect(readCookie(ACCESS_TOKEN_KEY)).toBe('token-123');
+  afterEach(() => {
+    clearStoredAccessToken();
+    window.localStorage.clear();
+    vi.unstubAllGlobals();
   });
 
-  it('clears the token from both storage layers', () => {
-    storeAccessToken('token-456');
+  it('returns a cached token without touching web storage', async () => {
+    storeAccessToken('token-123');
+
+    const token = await getStoredAccessToken();
+
+    expect(token).toBe('token-123');
+    expect(window.localStorage.length).toBe(0);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('requests a refreshed access token when none is cached', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ accessToken: 'refreshed-token' }),
+    });
+
+    const token = await getStoredAccessToken();
+
+    expect(token).toBe('refreshed-token');
+    expect(fetchMock).toHaveBeenCalledWith('/api/auth/refresh', {
+      credentials: 'include',
+      method: 'POST',
+    });
+  });
+
+  it('clears the cached token so the next call refreshes again', async () => {
+    storeAccessToken('token-stale');
     clearStoredAccessToken();
 
-    expect(getStoredAccessToken()).toBeNull();
-    expect(readCookie(ACCESS_TOKEN_KEY)).toBeUndefined();
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ accessToken: 'fresh-after-clear' }),
+    });
+
+    const token = await getStoredAccessToken();
+
+    expect(token).toBe('fresh-after-clear');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

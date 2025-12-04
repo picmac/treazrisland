@@ -71,7 +71,7 @@ class ApiClient {
     init: RequestInit,
     options?: { requiresAuth?: boolean },
   ): Promise<T> {
-    const accessToken = getStoredAccessToken();
+    const accessToken = await getStoredAccessToken();
 
     if (options?.requiresAuth && !accessToken) {
       throw new ApiError('You must be signed in to perform this action.', 401);

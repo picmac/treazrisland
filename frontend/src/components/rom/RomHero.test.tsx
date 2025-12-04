@@ -87,7 +87,7 @@ describe('RomHero favorite button', () => {
   });
 
   it('disables the favorite button until hydration completes', async () => {
-    vi.spyOn(authTokens, 'getStoredAccessToken').mockReturnValue('token-123');
+    vi.spyOn(authTokens, 'getStoredAccessToken').mockResolvedValue('token-123');
     vi.useFakeTimers();
 
     try {
@@ -109,7 +109,7 @@ describe('RomHero favorite button', () => {
   });
 
   it('announces success after the backend confirms a favorite', async () => {
-    vi.spyOn(authTokens, 'getStoredAccessToken').mockReturnValue('token-123');
+    vi.spyOn(authTokens, 'getStoredAccessToken').mockResolvedValue('token-123');
     vi.spyOn(apiClient, 'toggleRomFavorite').mockResolvedValue({
       romId: romFixture.id,
       isFavorite: true,
@@ -131,7 +131,7 @@ describe('RomHero favorite button', () => {
   });
 
   it('restores the previous state and reports errors when the backend fails', async () => {
-    vi.spyOn(authTokens, 'getStoredAccessToken').mockReturnValue('token-123');
+    vi.spyOn(authTokens, 'getStoredAccessToken').mockResolvedValue('token-123');
     vi.spyOn(apiClient, 'toggleRomFavorite').mockRejectedValue(new Error('Network offline'));
     const user = userEvent.setup();
 
@@ -150,7 +150,7 @@ describe('RomHero favorite button', () => {
   });
 
   it('requires authentication before toggling favorites', async () => {
-    vi.spyOn(authTokens, 'getStoredAccessToken').mockReturnValue(null);
+    vi.spyOn(authTokens, 'getStoredAccessToken').mockResolvedValue(null);
     const toggleSpy = vi.spyOn(apiClient, 'toggleRomFavorite');
     const user = userEvent.setup();
 
@@ -168,7 +168,7 @@ describe('RomHero favorite button', () => {
   });
 
   it('ignores stale refresh responses that resolve after a confirmed toggle', async () => {
-    vi.spyOn(authTokens, 'getStoredAccessToken').mockReturnValue('token-123');
+    vi.spyOn(authTokens, 'getStoredAccessToken').mockResolvedValue('token-123');
     vi.spyOn(apiClient, 'toggleRomFavorite').mockResolvedValue({
       romId: romFixture.id,
       isFavorite: true,

@@ -189,7 +189,7 @@ function LoginFormShell() {
           <ul className={styles.helperList}>
             <li>Tokens are single-use, short lived, and easy to revoke.</li>
             <li>Passwords are trimmed, validated, and stored as bcrypt hashes.</li>
-            <li>Sessions persist with same-site cookies; sign out clears them instantly.</li>
+            <li>Sessions rely on API-issued, HTTP-only cookies; sign out clears them instantly.</li>
           </ul>
         </div>
         <div className={styles.heroMedia} aria-hidden="true">

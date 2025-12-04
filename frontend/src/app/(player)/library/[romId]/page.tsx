@@ -62,11 +62,14 @@ export default function LibraryRomPage({ params }: LibraryRomPageProps) {
   const coverAsset = useMemo(() => selectCoverAsset(rom?.assets ?? []), [rom?.assets]);
   const lastPlayedLabel = useMemo(() => formatLastPlayed(rom?.lastPlayedAt), [rom?.lastPlayedAt]);
 
-  const handleToggleFavorite = () => {
-    if (!getStoredAccessToken()) {
+  const handleToggleFavorite = async () => {
+    const accessToken = await getStoredAccessToken();
+
+    if (!accessToken) {
       setFavoriteMessage('Sign in to manage your favorites.');
       return;
     }
+
     favoriteMutation.mutate();
   };
 
@@ -179,7 +182,11 @@ export default function LibraryRomPage({ params }: LibraryRomPageProps) {
           </Grid>
 
           {favoriteMessage && (
-            <Alert tone={favoriteMessage.includes('favorite') ? 'success' : 'info'} dense role="status">
+            <Alert
+              tone={favoriteMessage.includes('favorite') ? 'success' : 'info'}
+              dense
+              role="status"
+            >
               {favoriteMessage}
             </Alert>
           )}

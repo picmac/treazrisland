@@ -104,10 +104,22 @@ describe('fetchRomDetails', () => {
 
   it('forwards an authorization header derived from the access token cookie', async () => {
     const cookieAccessToken = 'cookie-access-token-456';
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve({ rom: romFixture }),
+    const fetchMock = vi.fn().mockImplementation((url: string | URL) => {
+      const urlString = String(url);
+
+      if (urlString.includes('/auth/refresh')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ accessToken: cookieAccessToken }),
+        });
+      }
+
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ rom: romFixture }),
+      });
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -120,7 +132,11 @@ describe('fetchRomDetails', () => {
 
     await fetchRomDetails(romFixture.id, requestInit);
 
-    const [, forwardedInit] = fetchMock.mock.calls[0];
+    const romCall = fetchMock.mock.calls.find((call) =>
+      String(call[0]).includes(`/roms/${romFixture.id}`),
+    );
+    expect(romCall).toBeDefined();
+    const [, forwardedInit] = romCall!;
     const forwardedHeaders = new Headers(forwardedInit.headers);
     expect(forwardedHeaders.get('authorization')).toBe(`Bearer ${cookieAccessToken}`);
   });
