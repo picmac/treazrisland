@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ACCESS_TOKEN_KEY } from '@/constants/auth';
+
 import { clearStoredAccessToken, getStoredAccessToken, storeAccessToken } from './authTokens';
 
 describe('authTokens', () => {
@@ -18,13 +20,22 @@ describe('authTokens', () => {
     vi.unstubAllGlobals();
   });
 
-  it('returns a cached token without touching web storage', async () => {
+  it('returns a cached token and mirrors it to web storage', async () => {
     storeAccessToken('token-123');
 
     const token = await getStoredAccessToken();
 
     expect(token).toBe('token-123');
-    expect(window.localStorage.length).toBe(0);
+    expect(window.localStorage.getItem(ACCESS_TOKEN_KEY)).toBe('token-123');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rehydrates a token stored in localStorage when cache is empty', async () => {
+    window.localStorage.setItem(ACCESS_TOKEN_KEY, 'token-from-storage');
+
+    const token = await getStoredAccessToken();
+
+    expect(token).toBe('token-from-storage');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
