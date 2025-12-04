@@ -318,7 +318,7 @@ function StatusMessage({
       {status.state === 'success' && (
         <div className={styles.continueRow}>
           <span className={styles.statusMessage}>Redirecting to {redirectTo}…</span>
-          <Button variant="ghost" size="sm" type="button" onClick={onContinue}>
+          <Button variant="ghost" type="button" onClick={onContinue}>
             Continue now
           </Button>
         </div>
