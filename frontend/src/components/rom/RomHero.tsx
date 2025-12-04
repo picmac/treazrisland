@@ -43,16 +43,16 @@ export function RomHero({ rom }: RomHeroProps) {
 
   useEffect(() => {
     let cancelled = false;
-    const accessToken = getStoredAccessToken();
 
-    if (!accessToken) {
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    const refreshVersion = mutationVersionRef.current;
     const refreshFavoriteState = async () => {
+      const accessToken = await getStoredAccessToken();
+
+      if (!accessToken) {
+        return;
+      }
+
+      const refreshVersion = mutationVersionRef.current;
+
       try {
         const freshRom = await fetchRomDetails(rom.id);
         if (!cancelled && refreshVersion === mutationVersionRef.current && freshRom) {
@@ -77,7 +77,9 @@ export function RomHero({ rom }: RomHeroProps) {
   const releaseLabel = rom.releaseYear ? rom.releaseYear.toString() : 'Unreleased';
 
   const handleToggleFavorite = async () => {
-    if (!getStoredAccessToken()) {
+    const accessToken = await getStoredAccessToken();
+
+    if (!accessToken) {
       setFavoriteStatus('error');
       setFavoriteMessage('Sign in to manage your favorites.');
       return;

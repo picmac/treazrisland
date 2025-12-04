@@ -105,8 +105,10 @@ export default function PlayerRomPage({ params }: PlayerRomPageProps) {
   const platformLabel = rom?.platform?.name ?? rom?.platformId ?? 'Unknown platform';
   const releaseLabel = rom?.releaseYear ?? 'Unreleased';
   const saveStateCopy = useMemo(() => formatSaveStateCopy(rom?.saveStateSummary), [rom]);
-  const handleToggleFavorite = () => {
-    if (!getStoredAccessToken()) {
+  const handleToggleFavorite = async () => {
+    const accessToken = await getStoredAccessToken();
+
+    if (!accessToken) {
       setFavoriteMessage('Sign in to manage your favorites.');
       return;
     }
