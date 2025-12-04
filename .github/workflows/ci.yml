@@ -434,7 +434,6 @@ jobs:
         with:
           clean: false
 
-<<<<<<< HEAD
       - name: Restore runner environment file
         run: |
           set -euo pipefail
