@@ -453,6 +453,13 @@ jobs:
           echo "${PNPM_HOME:-$HOME/.local/share/pnpm}" >> "$GITHUB_PATH"
           echo "PNPM_HOME=${PNPM_HOME:-$HOME/.local/share/pnpm}" >> "$GITHUB_ENV"
 
+      - name: Reset pnpm cache permissions
+        run: |
+          STORE_PATH="$(pnpm store path)"
+          sudo chown -R "$USER:$USER" "$STORE_PATH" || true
+          sudo find "$GITHUB_WORKSPACE" -maxdepth 3 -name ".pnpm-store" -exec chown -R "$USER:$USER" {} \; || true
+          sudo find "$GITHUB_WORKSPACE" -maxdepth 3 -name "node_modules" -exec chown -R "$USER:$USER" {} \; || true
+
       - name: Deploy via pnpm script
         env:
           # Provide explicit CI context for pnpm and scripts
