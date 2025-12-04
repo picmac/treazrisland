@@ -70,7 +70,14 @@ if ! docker compose version >/dev/null 2>&1; then
   fail "Docker Compose v2 is required. Upgrade Docker to a build that bundles 'docker compose'."
 fi
 
-require_file "$REPO_ROOT/.env" "Missing $REPO_ROOT/.env. Copy infrastructure/env/root.env.example and populate production secrets before deploying."
+if [[ ! -f "$REPO_ROOT/.env" ]]; then
+  if [[ "${ALLOW_MISSING_ENV:-}" == "1" || "${CI:-}" == "true" ]]; then
+    log "Skipping deployment: .env is missing and ALLOW_MISSING_ENV/CI is set."
+    exit 0
+  fi
+
+  require_file "$REPO_ROOT/.env" "Missing $REPO_ROOT/.env. Copy infrastructure/env/root.env.example and populate production secrets before deploying."
+fi
 
 ensure_backend_env() {
   local env_path="$REPO_ROOT/backend/.env"
