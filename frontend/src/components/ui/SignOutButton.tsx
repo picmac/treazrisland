@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { clearStoredAccessToken } from '@/lib/authTokens';
 import { logout } from '@/lib/apiClient';
+import { Button } from './Button';
 
 type SignOutButtonProps = {
   label?: string;
@@ -33,24 +34,16 @@ export function SignOutButton({ label = 'Sign out' }: SignOutButtonProps) {
           : label;
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="md"
       onClick={handleSignOut}
-      disabled={status === 'working'}
-      style={{
-        borderRadius: '0.75rem',
-        border: '1px solid rgba(255, 255, 255, 0.25)',
-        background: 'rgba(255, 255, 255, 0.06)',
-        color: 'var(--pixellab-foreground)',
-        padding: '0.55rem 0.9rem',
-        textTransform: 'uppercase',
-        letterSpacing: '0.08rem',
-        fontSize: '0.7rem',
-        cursor: status === 'working' ? 'progress' : 'pointer',
-      }}
+      loading={status === 'working'}
       aria-live="polite"
+      aria-label={copy}
     >
       {copy}
-    </button>
+    </Button>
   );
 }

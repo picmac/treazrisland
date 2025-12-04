@@ -9,8 +9,8 @@ export function PixellabTexture({ children, style, ...rest }: PixellabTexturePro
   const { colors, effects } = PIXELLAB_TOKENS;
   const gridTexture = `linear-gradient(rgba(255, 255, 255, ${effects.grid.opacity}) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, ${effects.grid.opacity}) 1px, transparent 1px)`;
-  const aurora = `radial-gradient(circle at 20% 20%, rgba(185, 88, 246, 0.35), transparent 55%),
-    radial-gradient(circle at 80% 0%, rgba(247, 183, 51, 0.25), transparent 45%)`;
+  const aurora = `radial-gradient(circle at 20% 20%, rgba(138, 182, 255, 0.35), transparent 55%),
+    radial-gradient(circle at 80% 0%, rgba(124, 224, 211, 0.25), transparent 45%)`;
 
   return (
     <div

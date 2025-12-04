@@ -3,12 +3,14 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 
 import { useRomUpload, type RomUploadInput } from '@/hooks/useRomUpload';
+import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormField } from '@/components/ui/FormField';
 import { StatusPill } from '@/components/ui/StatusPill';
 
 import type { RomUploadResult, StepStatus } from '../types';
+import { formatTimestamp } from '../formatTimestamp';
 import styles from '../page.module.css';
 
 const PLATFORMS = [
@@ -36,7 +38,7 @@ export function RomUploadStep({ state, onComplete }: RomUploadStepProps) {
   useEffect(() => {
     if (state.data) {
       setTitle(state.data.title);
-      setSuccessMessage(`ROM uploaded on ${new Date(state.data.uploadedAt).toLocaleString()}`);
+      setSuccessMessage(`ROM uploaded on ${formatTimestamp(state.data.uploadedAt)}`);
     }
   }, [state.data]);
 
@@ -189,9 +191,9 @@ export function RomUploadStep({ state, onComplete }: RomUploadStepProps) {
 
       <div className={styles.inlineActions}>
         {(error || formError) && (
-          <StatusPill tone="danger" role="alert">
+          <Alert tone="danger" dense role="alert">
             {formError ?? error}
-          </StatusPill>
+          </Alert>
         )}
         {successMessage && <StatusPill tone="success">{successMessage}</StatusPill>}
       </div>

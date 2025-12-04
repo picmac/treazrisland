@@ -47,10 +47,9 @@
 }
 
 .titleRow {
-  display: flex;
+  display: grid;
   gap: 12px;
   align-items: baseline;
-  flex-wrap: wrap;
 }
 
 .meta {
@@ -93,50 +92,6 @@
   background: rgba(255, 255, 255, 0.05);
   color: #e5e7f0;
   font-size: 0.9rem;
-}
-
-.actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.primaryCta,
-.secondaryCta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 18px;
-  border-radius: 14px;
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-  transition:
-    transform 0.12s ease,
-    box-shadow 0.12s ease;
-}
-
-.primaryCta {
-  background: linear-gradient(135deg, #f7b733, #fc4a1a);
-  color: #0f1116;
-  box-shadow: 0 10px 30px rgba(252, 74, 26, 0.35);
-}
-
-.primaryCta:hover,
-.secondaryCta:hover {
-  transform: translateY(-1px);
-}
-
-.secondaryCta {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f7b733;
-  border: 1px solid rgba(247, 183, 51, 0.35);
-}
-
-.secondaryCta[aria-pressed='true'] {
-  background: rgba(247, 183, 51, 0.18);
-  color: #f7b733;
 }
 
 .favoriteMessage {

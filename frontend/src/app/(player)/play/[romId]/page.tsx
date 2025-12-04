@@ -6,8 +6,10 @@ import { formatSaveIndicatorLabel } from '@/components/emulator/saveIndicator';
 import { SessionPrepDialog } from '@/components/emulator/SessionPrepDialog';
 import { TouchOverlay } from '@/components/emulator/TouchOverlay';
 import { PixellabNavigation } from '@/components/chrome';
+import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Grid, Section, Stack } from '@/components/ui/layout';
 import { SignOutButton } from '@/components/ui/SignOutButton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { useToast } from '@/components/ui/ToastProvider';
@@ -495,8 +497,8 @@ export default function PlayPage({ params }: PlayPageProps) {
         actions={<SignOutButton />}
       />
       <main className="page-content" id="main-content">
-        <section className={styles.page} aria-live="polite">
-          <div className={styles.header}>
+        <Section as="section" className={styles.page} aria-live="polite">
+          <Stack gap="sm" className={styles.header}>
             <div className={styles.headerTop}>
               <div>
                 <p className="eyebrow">Live emulator session</p>
@@ -506,25 +508,25 @@ export default function PlayPage({ params }: PlayPageProps) {
                 Controller map
               </Button>
             </div>
-            <div className={styles.pillRow}>
+            <Grid as="div" className={styles.pillRow} gap="xs" minColumnWidth="180px">
               {statusPills.map((pill) => (
                 <StatusPill key={pill.label} tone={pill.tone}>
                   {pill.label}
                 </StatusPill>
               ))}
-            </div>
-            <div className={styles.pillRow}>
+            </Grid>
+            <Grid as="div" className={styles.pillRow} gap="xs" columns={2}>
               <Button href="/library" variant="ghost">
                 ← Back to library
               </Button>
               <Button href={`/rom/${romId}`} variant="ghost">
                 View ROM dossier
               </Button>
-            </div>
-          </div>
+            </Grid>
+          </Stack>
 
-          <div className={styles.stage}>
-            <div className={styles.canvasCard}>
+          <Grid as="div" className={styles.stage} gap="md" minColumnWidth="320px">
+            <Card className={styles.canvasCard}>
               <div className="play-session__stage">
                 <div className="play-session__canvas">
                   <div ref={emulatorContainerRef} className="play-session__viewport-shell" />
@@ -538,18 +540,14 @@ export default function PlayPage({ params }: PlayPageProps) {
                       <p className="play-session__status">Fetching ROM dossier…</p>
                     )}
                     {loadState === 'error' && error && (
-                      <p className="play-session__status" role="alert">
+                      <Alert tone="danger" dense role="alert">
                         {error}
-                      </p>
+                      </Alert>
                     )}
                     {loadState === 'ready' && !romAsset && (
-                      <p className="play-session__status" role="alert">
-                        No playable asset was found for this ROM.
-                        <br />
-                        <Button href="/admin/roms/upload" variant="secondary">
-                          Upload a new build
-                        </Button>
-                      </p>
+                      <Alert tone="warning" dense role="alert">
+                        No playable asset was found for this ROM. Upload a new build.
+                      </Alert>
                     )}
                     {isSessionReady && !emulatorReady && loadState === 'ready' && (
                       <p className="play-session__status">Loading EmulatorJS runtime…</p>
@@ -580,9 +578,9 @@ export default function PlayPage({ params }: PlayPageProps) {
                   />
                 )}
               </div>
-            </div>
+            </Card>
 
-            <div className={styles.sidePanel}>
+            <Stack className={styles.sidePanel} gap="sm">
               <Card title="Session status" description="Recover quickly when things go sideways.">
                 <ul className={styles.metaList}>
                   <li>
@@ -610,8 +608,8 @@ export default function PlayPage({ params }: PlayPageProps) {
                   ))}
                 </ul>
               </Card>
-            </div>
-          </div>
+            </Stack>
+          </Grid>
 
           <SessionPrepDialog
             open={showPrepDialog}
@@ -620,7 +618,7 @@ export default function PlayPage({ params }: PlayPageProps) {
             onConfirm={handleConfirmSession}
             onCancel={() => setShowPrepDialog(false)}
           />
-        </section>
+        </Section>
       </main>
     </div>
   );

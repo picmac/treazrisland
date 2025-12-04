@@ -10,6 +10,9 @@ import { ApiError, toggleRomFavorite } from '@/lib/apiClient';
 import { getStoredAccessToken } from '@/lib/authTokens';
 import { fetchRomDetails, resolveRomId } from '@/lib/roms';
 import type { RomAsset, RomDetails } from '@/types/rom';
+import { Alert } from '@/components/ui/Alert';
+import { Button } from '@/components/ui/Button';
+import { Grid, Section, Stack } from '@/components/ui/layout';
 import styles from './page.module.css';
 
 interface LibraryRomPageProps {
@@ -78,7 +81,9 @@ export default function LibraryRomPage({ params }: LibraryRomPageProps) {
         <Link href="/library" className={styles.backLink}>
           ← Back to library
         </Link>
-        <p role="alert">ROM identifier missing from the request.</p>
+        <Alert tone="danger" dense role="alert">
+          ROM identifier missing from the request.
+        </Alert>
       </main>
     );
   }
@@ -87,9 +92,9 @@ export default function LibraryRomPage({ params }: LibraryRomPageProps) {
     return (
       <main className={styles.page} id="main-content">
         <RomDetailSkeleton />
-        <p className={styles.status} role="status">
+        <Alert dense role="status">
           Loading ROM dossier…
-        </p>
+        </Alert>
       </main>
     );
   }
@@ -100,7 +105,9 @@ export default function LibraryRomPage({ params }: LibraryRomPageProps) {
         <Link href="/library" className={styles.backLink}>
           ← Back to library
         </Link>
-        <p role="alert">Unable to load this ROM right now.</p>
+        <Alert tone="danger" dense role="alert">
+          Unable to load this ROM right now.
+        </Alert>
       </main>
     );
   }
@@ -111,7 +118,7 @@ export default function LibraryRomPage({ params }: LibraryRomPageProps) {
         ← Back to library
       </Link>
 
-      <article className={styles.layout} aria-label={`${rom.title} dossier`}>
+      <Section as="article" className={styles.layout} aria-label={`${rom.title} dossier`}>
         <div className={styles.coverWrapper} aria-hidden={!coverAsset}>
           {coverAsset ? (
             <Image
@@ -130,12 +137,14 @@ export default function LibraryRomPage({ params }: LibraryRomPageProps) {
           )}
         </div>
 
-        <div className={styles.content}>
-          <div className={styles.titleRow}>
-            <p className="eyebrow">ROM dossier</p>
+        <Stack as="div" className={styles.content} gap="md">
+          <Grid as="div" className={styles.titleRow} gap="xs" columns={2}>
+            <div>
+              <p className="eyebrow">ROM dossier</p>
+              <h1>{rom.title}</h1>
+            </div>
             <span className={styles.tag}>{rom.platformId.toUpperCase()}</span>
-          </div>
-          <h1>{rom.title}</h1>
+          </Grid>
           <p className={styles.meta}>
             <span>{rom.releaseYear ? rom.releaseYear : 'Unreleased'}</span>
             <span aria-hidden>•</span>
@@ -144,41 +153,38 @@ export default function LibraryRomPage({ params }: LibraryRomPageProps) {
           {rom.description && <p className={styles.description}>{rom.description}</p>}
 
           {rom.genres.length > 0 && (
-            <ul className={styles.genres} aria-label="Genres">
+            <Grid as="ul" className={styles.genres} role="list" gap="xs" minColumnWidth="160px">
               {rom.genres.map((genre) => (
                 <li key={genre} className={styles.genre}>
                   {genre}
                 </li>
               ))}
-            </ul>
+            </Grid>
           )}
 
-          <div className={styles.actions}>
-            <button type="button" className={styles.primaryCta} onClick={handlePlayNow}>
+          <Grid as="div" className={styles.actions} gap="sm" columns={2}>
+            <Button type="button" size="lg" onClick={handlePlayNow}>
               ▶ Play now
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className={styles.secondaryCta}
+              variant="secondary"
               onClick={handleToggleFavorite}
               aria-pressed={rom.isFavorite ? 'true' : 'false'}
               disabled={favoriteMutation.isPending}
+              loading={favoriteMutation.isPending}
             >
-              {favoriteMutation.isPending
-                ? 'Saving…'
-                : rom.isFavorite
-                  ? '★ Favorited'
-                  : '☆ Add to favorites'}
-            </button>
-          </div>
+              {rom.isFavorite ? '★ Favorited' : '☆ Add to favorites'}
+            </Button>
+          </Grid>
 
           {favoriteMessage && (
-            <p className={styles.favoriteMessage} role="status" aria-live="polite">
+            <Alert tone={favoriteMessage.includes('favorite') ? 'success' : 'info'} dense role="status">
               {favoriteMessage}
-            </p>
+            </Alert>
           )}
 
-          <section aria-label="ROM metadata" className={styles.grid}>
+          <Grid as="section" aria-label="ROM metadata" className={styles.grid}>
             <dl className={styles.stat}>
               <dt>Checksum</dt>
               <dd>{rom.assets[0] ? truncateChecksum(rom.assets[0].checksum) : '—'}</dd>
@@ -195,14 +201,14 @@ export default function LibraryRomPage({ params }: LibraryRomPageProps) {
               <dt>Created</dt>
               <dd>{formatDate(rom.createdAt)}</dd>
             </dl>
-          </section>
+          </Grid>
 
-          <section aria-label="Assets">
+          <Stack as="section" gap="sm" aria-label="Assets">
             <h2>Assets</h2>
             {rom.assets.length === 0 ? (
-              <p className={styles.status}>No assets registered yet.</p>
+              <Alert dense>No assets registered yet.</Alert>
             ) : (
-              <ul className={styles.assetList}>
+              <Grid as="ul" className={styles.assetList} gap="xs" minColumnWidth="260px">
                 {rom.assets.map((asset) => (
                   <li key={asset.id} className={styles.assetItem}>
                     <div>
@@ -216,16 +222,16 @@ export default function LibraryRomPage({ params }: LibraryRomPageProps) {
                     </a>
                   </li>
                 ))}
-              </ul>
+              </Grid>
             )}
-          </section>
-        </div>
-      </article>
+          </Stack>
+        </Stack>
+      </Section>
 
       {romQuery.isFetching && !romQuery.isLoading && (
-        <p className={styles.status} role="status">
+        <Alert dense role="status">
           Refreshing dossier…
-        </p>
+        </Alert>
       )}
     </main>
   );

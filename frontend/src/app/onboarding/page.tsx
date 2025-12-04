@@ -11,18 +11,26 @@ import { RomUploadStep } from './steps/RomUploadStep';
 import type { OnboardingProgress, StepDataMap, StepKey } from './types';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { PixellabNavigation } from '@/components/chrome';
+import { Alert } from '@/components/ui/Alert';
 import { SignOutButton } from '@/components/ui/SignOutButton';
+import { formatTimestamp } from './formatTimestamp';
+import { Grid, Section, Stack } from '@/components/ui/layout';
 import styles from './page.module.css';
 
 const STORAGE_KEY = 'treazr.adminOnboarding.v1';
 
-const defaultProgress: OnboardingProgress = {
-  health: { completed: false },
-  profile: { completed: false },
-  emulator: { completed: false },
-  rom: { completed: false },
-  lastUpdated: new Date().toISOString(),
-};
+const buildProgress = (
+  value?: Partial<OnboardingProgress>,
+  fallbackTimestamp = '',
+): OnboardingProgress => ({
+  health: { completed: false, ...(value?.health ?? {}) },
+  profile: { completed: false, ...(value?.profile ?? {}) },
+  emulator: { completed: false, ...(value?.emulator ?? {}) },
+  rom: { completed: false, ...(value?.rom ?? {}) },
+  lastUpdated: value?.lastUpdated ?? fallbackTimestamp,
+});
+
+const defaultProgress: OnboardingProgress = buildProgress();
 
 const readStoredProgress = (): OnboardingProgress => {
   if (typeof window === 'undefined') {
@@ -33,17 +41,14 @@ const readStoredProgress = (): OnboardingProgress => {
     window.localStorage.getItem(STORAGE_KEY) ?? window.sessionStorage.getItem(STORAGE_KEY);
 
   if (!stored) {
-    return defaultProgress;
+    return buildProgress(undefined, new Date().toISOString());
   }
 
   try {
     const parsed = JSON.parse(stored) as OnboardingProgress;
-    return {
-      ...defaultProgress,
-      ...parsed,
-    };
+    return buildProgress(parsed, parsed.lastUpdated ?? new Date().toISOString());
   } catch {
-    return defaultProgress;
+    return buildProgress(undefined, new Date().toISOString());
   }
 };
 
@@ -176,33 +181,33 @@ export default function OnboardingPage() {
         description="Guided setup across health, profile, emulator, and ROM ingestion."
         actions={<SignOutButton />}
       />
-      <div className="page-content">
-        <div className={styles.layout}>
-          <section className={styles.heroCard} aria-labelledby="onboarding-title">
-            <p className="eyebrow">Admin onboarding</p>
-            <h1 id="onboarding-title">Complete the Treazr Island setup flow</h1>
-            <p>
-              Check infrastructure health, confirm your admin profile, configure EmulatorJS, and
-              upload the first ROM without leaving this page. Each step exposes status, recovery
-              hints, and the next safe action.
-            </p>
-            <div className={styles.inlineActions} aria-live="polite">
+      <main className="page-content" id="main-content">
+        <Section className={styles.layout}>
+          <Grid as="section" className={styles.heroCard} aria-labelledby="onboarding-title" gap="md">
+            <Stack gap="sm">
+              <p className="eyebrow">Admin onboarding</p>
+              <h1 id="onboarding-title">Complete the Treazr Island setup flow</h1>
+              <p>
+                Check infrastructure health, confirm your admin profile, configure EmulatorJS, and
+                upload the first ROM without leaving this page. Each step exposes status, recovery
+                hints, and the next safe action.
+              </p>
+            </Stack>
+            <Grid as="div" className={styles.inlineActions} gap="sm" minColumnWidth="200px" aria-live="polite">
               <StatusPill tone={progress.health.completed ? 'success' : 'warning'}>
                 Health: {progress.health.completed ? 'Verified' : 'Pending'}
               </StatusPill>
               <StatusPill tone={progress.profile.completed ? 'success' : 'info'}>
                 Profile: {progress.profile.completed ? 'Complete' : 'Needs update'}
               </StatusPill>
-              <StatusPill tone="info">
-                Last touch {new Date(progress.lastUpdated).toLocaleString()}
-              </StatusPill>
-            </div>
+              <StatusPill tone="info">Last touch {formatTimestamp(progress.lastUpdated)}</StatusPill>
+            </Grid>
             <p className={styles.timestamp}>
-              Last updated {new Date(progress.lastUpdated).toLocaleString()}
+              Last updated {formatTimestamp(progress.lastUpdated)}
             </p>
-          </section>
+          </Grid>
 
-          <section className={styles.progressCard} aria-labelledby="wizard-progress">
+          <Grid as="section" className={styles.progressCard} aria-labelledby="wizard-progress" gap="md">
             <p id="wizard-progress" className={styles.progressHeading}>
               Progress tracker
             </p>
@@ -220,27 +225,20 @@ export default function OnboardingPage() {
                 </li>
               ))}
             </ul>
-            {progress.health.data && (
-              <div className={styles.healthSummary} aria-live="polite">
-                <p>
-                  Stack status: <strong>{progress.health.data.status.toUpperCase()}</strong>
-                </p>
-                <p className={styles.healthTimestamp}>
-                  Last checked {new Date(progress.health.data.checkedAt).toLocaleString()}
-                </p>
-              </div>
-            )}
-            {progress.profile.data && (
-              <div className={styles.profileSummary} aria-live="polite">
-                <p>Profile saved.</p>
-                <p className={styles.healthTimestamp}>
-                  Last updated {new Date(progress.profile.data.verifiedAt).toLocaleString()}
-                </p>
-              </div>
-            )}
-          </section>
+            {progress.health.data ? (
+              <Alert tone="success" dense aria-live="polite">
+                Stack status: <strong>{progress.health.data.status.toUpperCase()}</strong> · Last checked{' '}
+                {formatTimestamp(progress.health.data.checkedAt)}
+              </Alert>
+            ) : null}
+            {progress.profile.data ? (
+              <Alert tone="info" dense aria-live="polite">
+                Profile saved · Last updated {formatTimestamp(progress.profile.data.verifiedAt)}
+              </Alert>
+            ) : null}
+          </Grid>
 
-          <section className={styles.stepWrapper}>
+          <Section as="section" className={styles.stepWrapper} padding="none" id="main-content">
             {activeStep.key === 'health' && (
               <HealthCheckStep state={progress.health} onComplete={handleCompletion('health')} />
             )}
@@ -259,9 +257,9 @@ export default function OnboardingPage() {
             {activeStep.key === 'rom' && (
               <RomUploadStep state={progress.rom} onComplete={handleCompletion('rom')} />
             )}
-          </section>
-        </div>
-      </div>
+          </Section>
+        </Section>
+      </main>
     </div>
   );
 }

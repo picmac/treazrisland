@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { Manrope, Space_Grotesk } from 'next/font/google';
 
-type PixellabCssVariables = CSSProperties & Record<`--pixellab-${string}`, string>;
+type PixellabCssVariables = CSSProperties & Record<`--${string}`, string>;
 
 export type PixellabTokens = {
   colors: {
@@ -37,6 +37,34 @@ export type PixellabTokens = {
     pagePadding: string;
     navHeight: string;
   };
+  radii: {
+    sm: string;
+    md: string;
+    lg: string;
+  };
+  shadows: {
+    soft: string;
+    strong: string;
+  };
+  typography: {
+    display: string;
+    body: string;
+    weight: {
+      regular: number;
+      medium: number;
+      bold: number;
+    };
+    letterSpacing: {
+      tight: string;
+      loose: string;
+    };
+  };
+  breakpoints: {
+    xs: string;
+    sm: string;
+    md: string;
+    lg: string;
+  };
   effects: {
     grid: {
       size: number;
@@ -56,7 +84,7 @@ export const PIXELLAB_TOKENS: PixellabTokens = {
     background: {
       base: '#0b1320',
       panel: 'rgba(15, 21, 35, 0.9)',
-      glow: '#0f192d',
+      glow: '#111a2e',
     },
     accent: {
       primary: '#7ce0d3',
@@ -84,6 +112,34 @@ export const PIXELLAB_TOKENS: PixellabTokens = {
     contentMaxWidth: '1160px',
     pagePadding: 'clamp(1rem, 4vw, 2.5rem)',
     navHeight: '4.25rem',
+  },
+  radii: {
+    sm: '0.5rem',
+    md: '0.9rem',
+    lg: '1.15rem',
+  },
+  shadows: {
+    soft: '0 10px 30px rgba(0, 0, 0, 0.22)',
+    strong: '0 18px 48px rgba(0, 0, 0, 0.3)',
+  },
+  typography: {
+    display: 'var(--font-pixellab)',
+    body: 'var(--font-body)',
+    weight: {
+      regular: 400,
+      medium: 600,
+      bold: 700,
+    },
+    letterSpacing: {
+      tight: '0.01em',
+      loose: '0.2em',
+    },
+  },
+  breakpoints: {
+    xs: '360px',
+    sm: '600px',
+    md: '960px',
+    lg: '1280px',
   },
   effects: {
     grid: {
@@ -123,12 +179,12 @@ export function getPixellabCssVariables(
     '--pixellab-accent-muted': tokens.colors.accent.secondary,
     '--pixellab-foreground': tokens.colors.text.primary,
     '--pixellab-overlay-opacity': `${tokens.effects.grid.opacity}`,
-    '--pixellab-toolbar-height': tokens.layout.navHeight,
     '--pixellab-color-bg-base': tokens.colors.background.base,
     '--pixellab-color-bg-panel': tokens.colors.background.panel,
     '--pixellab-color-bg-glow': tokens.colors.background.glow,
     '--pixellab-color-accent-primary': tokens.colors.accent.primary,
     '--pixellab-color-accent-secondary': tokens.colors.accent.secondary,
+    '--pixellab-color-accent-success': tokens.colors.accent.success,
     '--pixellab-color-text-primary': tokens.colors.text.primary,
     '--pixellab-color-text-muted': tokens.colors.text.muted,
     '--pixellab-color-border-subtle': tokens.colors.border.subtle,
@@ -140,7 +196,31 @@ export function getPixellabCssVariables(
     '--pixellab-layout-max-width': tokens.layout.contentMaxWidth,
     '--pixellab-layout-padding': tokens.layout.pagePadding,
     '--pixellab-layout-nav-height': tokens.layout.navHeight,
-    '--pixellab-font-body': 'var(--font-body)',
+    '--pixellab-toolbar-height': tokens.layout.navHeight,
+    '--pixellab-surface': tokens.colors.background.panel,
+    '--pixellab-surface-strong': tokens.colors.background.glow,
+    '--pixellab-radius-sm': tokens.radii.sm,
+    '--pixellab-radius-md': tokens.radii.md,
+    '--pixellab-radius-lg': tokens.radii.lg,
+    '--shadow-soft': tokens.shadows.soft,
+    '--shadow-strong': tokens.shadows.strong,
+    '--pixellab-spacing-xxs': tokens.spacing.xxs,
+    '--pixellab-spacing-xs': tokens.spacing.xs,
+    '--pixellab-spacing-sm': tokens.spacing.sm,
+    '--pixellab-spacing-md': tokens.spacing.md,
+    '--pixellab-spacing-lg': tokens.spacing.lg,
+    '--pixellab-spacing-xl': tokens.spacing.xl,
+    '--pixellab-breakpoint-xs': tokens.breakpoints.xs,
+    '--pixellab-breakpoint-sm': tokens.breakpoints.sm,
+    '--pixellab-breakpoint-md': tokens.breakpoints.md,
+    '--pixellab-breakpoint-lg': tokens.breakpoints.lg,
+    '--pixellab-font-body': tokens.typography.body,
+    '--pixellab-font-display': tokens.typography.display,
+    '--pixellab-font-weight-regular': `${tokens.typography.weight.regular}`,
+    '--pixellab-font-weight-medium': `${tokens.typography.weight.medium}`,
+    '--pixellab-font-weight-bold': `${tokens.typography.weight.bold}`,
+    '--pixellab-letter-spacing-tight': tokens.typography.letterSpacing.tight,
+    '--pixellab-letter-spacing-loose': tokens.typography.letterSpacing.loose,
   };
 
   return cssVariables;

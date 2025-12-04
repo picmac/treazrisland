@@ -4,9 +4,10 @@ Quick reference for the shared Treazr Island UI primitives and tokens to keep ne
 
 ## Fonts & Tokens
 
-- **Fonts:** `Press Start 2P` for retro headings (`--font-pixellab`), `Space Grotesk` for body copy (`--font-body`).
-- **Colors:** `--pixellab-bg-primary` (deep navy), `--pixellab-accent` (gold), `--pixellab-accent-muted` (aqua), `--pixellab-foreground` (warm off-white). Borders use subtle white alpha; surfaces use `--pixellab-surface`/`--pixellab-surface-strong`.
-- **Effects:** Soft/strong shadows (`--shadow-soft`), blur on surfaces, and rounded radii (`--radius-sm/md/lg`). Grid/backdrop textures live in `globals.css`.
+- **Fonts:** `Space Grotesk` for display (`--pixellab-font-display` / `--font-pixellab`), `Manrope` for body copy (`--pixellab-font-body` / `--font-body`).
+- **Colors:** `--pixellab-bg-primary` (deep navy), `--pixellab-accent` (teal), `--pixellab-accent-muted` (blue), `--pixellab-foreground` (off-white), `--pixellab-muted` (cool gray). Borders: `--pixellab-color-border-subtle` / `--pixellab-color-border-bold`.
+- **Surfaces & layout:** `--pixellab-surface` / `--pixellab-surface-strong`, spacing scale `--pixellab-spacing-xxs…xl`, radii `--radius-sm/md/lg`, shadows `--shadow-soft/strong`, layout max width `--pixellab-layout-max-width`, padding `--pixellab-layout-padding`, and toolbar height `--pixellab-toolbar-height`.
+- **Effects:** Grid settings via `--pixellab-grid-size` / `--pixellab-grid-opacity` and blur `--pixellab-panel-blur`. Backdrop textures live in `globals.css`.
 
 ## Core Components
 
@@ -22,12 +23,16 @@ Quick reference for the shared Treazr Island UI primitives and tokens to keep ne
   - Tones: `info`, `success`, `warning`, `danger`; accepts optional `icon`.
 - **SignOutButton (`frontend/src/components/ui/SignOutButton.tsx`)**
   - Client-side action to call `/auth/logout`, clear tokens, and surface inline status copy.
+- **Layout primitives (`frontend/src/components/ui/layout.tsx`)**
+  - `Stack` (column flex), `Cluster` (row/wrap), `Grid` (auto-fit or fixed columns), `Section` (centered width + padding) using shared spacing tokens.
+- **Alert (`frontend/src/components/ui/Alert.tsx`)**
+  - Banners with tones `info|success|warning|danger`, optional actions, and `dense` padding for inline status strips. Defaults to `role="status"`.
 
 ## Layout & Patterns
 
 - **Navigation:** `PixellabNavigation` now accepts an `actions` slot (e.g., sign out). Keep link labels uppercase with 0.15rem letter spacing.
 - **Pages:** Use `.page-shell` + `.page-content` from `globals.css` for consistent padding and textured backgrounds.
-- **Status feedback:** Prefer `StatusPill` for inline cues; `status-banner` class for larger alerts. Use `aria-live="polite"` on status text where appropriate.
+- **Status feedback:** Prefer `StatusPill` for inline cues and `Alert` for banners/inline statuses. Use `aria-live="polite"` on status text where appropriate.
 - **Forms:** Apply `FormField` with descriptive copy and validation errors; pair with `Button` for primary actions and `ghost`/`secondary` for resets.
 - **Empty states:** Offer a clear next action (e.g., upload CTA in the library grid) and brief guidance.
 

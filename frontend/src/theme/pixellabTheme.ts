@@ -79,13 +79,13 @@ export type PixellabThemeManifest = {
 
 export const FALLBACK_PIXELLAB_THEME: PixellabThemeTokens = {
   palette: {
-    primary: '#f7b733',
-    secondary: '#b958f6',
+    primary: '#7ce0d3',
+    secondary: '#8ab6ff',
     background: {
-      base: '#060014',
-      panel: '#12052b',
+      base: '#0b1320',
+      panel: '#0f1523',
     },
-    foreground: '#fefae0',
+    foreground: '#e6edf5',
   },
   spacing: {
     none: '0',
@@ -99,17 +99,17 @@ export const FALLBACK_PIXELLAB_THEME: PixellabThemeTokens = {
   },
   typography: {
     family:
-      '"Press Start 2P", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    weight: 400,
+      'var(--font-pixellab), var(--font-body), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    weight: 600,
     size: {
       base: '1rem',
-      small: '0.85rem',
-      medium: '1.1rem',
-      large: '1.35rem',
+      small: '0.95rem',
+      medium: '1.15rem',
+      large: '1.4rem',
     },
     lineHeight: {
-      compact: '1.1',
-      normal: '1.4',
+      compact: '1.2',
+      normal: '1.5',
       relaxed: '1.75',
     },
   },

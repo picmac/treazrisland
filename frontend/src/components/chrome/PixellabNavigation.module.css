@@ -23,6 +23,12 @@
   min-width: 0;
 }
 
+.brandMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pixellab-spacing-xs, 0.5rem);
+}
+
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.18rem;
@@ -41,6 +47,12 @@
   text-decoration: none;
   font-size: 0.95rem;
   font-weight: 700;
+}
+
+.wordmarkImage {
+  width: auto;
+  height: 2rem;
+  object-fit: contain;
 }
 
 .description {

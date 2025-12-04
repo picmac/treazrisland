@@ -1,7 +1,9 @@
 import Image from 'next/image';
 import { PixellabNavigation } from '@/components/chrome';
+import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Grid, Section, Stack } from '@/components/ui/layout';
 import { SignOutButton } from '@/components/ui/SignOutButton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { PIXELLAB_TOKENS } from '@/theme/tokens';
@@ -94,22 +96,24 @@ export default function HomePage() {
       />
 
       <main className="page-content" id="main-content" tabIndex={-1}>
-        <section className={styles.hero} aria-labelledby="hero-title">
-          <div className={styles.heroHighlight}>
+        <Section as="section" className={styles.hero} aria-labelledby="hero-title">
+          <Stack gap="lg" className={styles.heroHighlight}>
             <p className="eyebrow">Pixellab visual system</p>
-            <h1 id="hero-title">Treazr Island mission control</h1>
-            <p className="lede">
-              Guided onboarding, a curated ROM library, and EmulatorJS overlays live in one place.
-              Every flow keeps status visible, recovery simple, and the next action obvious.
-            </p>
-            <div className={styles.badgeRow} aria-label="System signals">
+            <Stack gap="sm">
+              <h1 id="hero-title">Treazr Island mission control</h1>
+              <p className="lede">
+                Guided onboarding, a curated ROM library, and EmulatorJS overlays live in one place.
+                Every flow keeps status visible, recovery simple, and the next action obvious.
+              </p>
+            </Stack>
+            <Grid as="div" className={styles.badgeRow} gap="xs" minColumnWidth="240px" aria-label="System signals">
               {systemSignals.map((signal) => (
                 <StatusPill key={signal.label} tone={signal.tone} aria-label={signal.aria}>
                   {signal.label}: {signal.detail}
                 </StatusPill>
               ))}
-            </div>
-            <div className={styles.actionRow}>
+            </Grid>
+            <Grid as="div" className={styles.actionRow} gap="sm" columns={3}>
               <Button href="/library" size="lg">
                 Browse library
               </Button>
@@ -119,8 +123,8 @@ export default function HomePage() {
               <Button href="/login" variant="ghost">
                 Resume session
               </Button>
-            </div>
-            <div className={styles.heroMeta}>
+            </Grid>
+            <Grid as="div" className={styles.heroMeta} gap="sm" minColumnWidth="180px">
               <div className={styles.heroStat}>
                 <strong>Visibility</strong>
                 <span>Realtime health cards and inline status banners</span>
@@ -129,22 +133,19 @@ export default function HomePage() {
                 <strong>Error recovery</strong>
                 <span>Actionable alerts for uploads, invites, and favorites</span>
               </div>
-            </div>
-          </div>
+            </Grid>
+          </Stack>
           <div className={styles.heroMedia} aria-hidden="true">
             <Image src={PIXELLAB_TOKENS.assets.grid} alt="" width={960} height={540} priority />
           </div>
-        </section>
+        </Section>
 
-        <section aria-labelledby="readiness-title">
-          <div className="status-banner">
-            <strong id="readiness-title">Readiness signals</strong>
-            <span>
-              Progress cards track the NN usability heuristics: status visibility, consistency,
-              error prevention, and recovery steps.
-            </span>
-          </div>
-          <div className={styles.grid} role="list">
+        <Section as="section" aria-labelledby="readiness-title">
+          <Alert tone="info" title="Readiness signals" id="readiness-title" dense>
+            Progress cards track the NN usability heuristics: status visibility, consistency, error
+            prevention, and recovery steps.
+          </Alert>
+          <Grid className={styles.grid} role="list">
             {readinessSignals.map((signal) => (
               <Card key={signal.id} title={signal.title} description={signal.copy} glow>
                 <div className={styles.statContent}>
@@ -159,17 +160,14 @@ export default function HomePage() {
                 </div>
               </Card>
             ))}
-          </div>
-        </section>
+          </Grid>
+        </Section>
 
-        <section aria-labelledby="touchpoints-title">
-          <div className="status-banner">
-            <strong id="touchpoints-title">Touchpoints</strong>
-            <span>
-              Jump to docs, onboarding, or playtest scripts without leaving mission control.
-            </span>
-          </div>
-          <div className={styles.touchpoints}>
+        <Section as="section" aria-labelledby="touchpoints-title">
+          <Alert tone="success" title="Touchpoints" id="touchpoints-title" dense>
+            Jump to docs, onboarding, or playtest scripts without leaving mission control.
+          </Alert>
+          <Grid className={styles.touchpoints} minColumnWidth="280px">
             {touchpoints.map((touchpoint) => {
               const isExternal = touchpoint.href.startsWith('http');
               return (
@@ -198,8 +196,8 @@ export default function HomePage() {
                 </Card>
               );
             })}
-          </div>
-        </section>
+          </Grid>
+        </Section>
       </main>
     </div>
   );

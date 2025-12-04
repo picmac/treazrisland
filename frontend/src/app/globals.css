@@ -5,21 +5,52 @@
   --pixellab-accent: #7ce0d3;
   --pixellab-accent-muted: #8ab6ff;
   --pixellab-success: #48d49f;
-  --pixellab-surface: rgba(15, 21, 35, 0.9);
-  --pixellab-surface-strong: #111a2e;
   --pixellab-foreground: #e6edf5;
   --pixellab-muted: #9fb1c7;
+  --pixellab-color-bg-base: #0b1320;
+  --pixellab-color-bg-panel: rgba(15, 21, 35, 0.9);
+  --pixellab-color-bg-glow: #0f192d;
+  --pixellab-color-accent-primary: #7ce0d3;
+  --pixellab-color-accent-secondary: #8ab6ff;
+  --pixellab-color-accent-success: #48d49f;
+  --pixellab-color-text-primary: #e6edf5;
+  --pixellab-color-text-muted: #9fb1c7;
+  --pixellab-color-border-subtle: rgba(255, 255, 255, 0.08);
+  --pixellab-color-border-bold: rgba(124, 224, 211, 0.45);
+
+  --pixellab-surface: rgba(15, 21, 35, 0.9);
+  --pixellab-surface-strong: #111a2e;
   --pixellab-overlay-opacity: 0.08;
+
+  --pixellab-grid-size: 28px;
+  --pixellab-grid-opacity: 0.08;
+  --pixellab-panel-blur: 14px;
+  --pixellab-panel-shadow: 0 18px 48px rgba(0, 0, 0, 0.3);
+
+  --pixellab-layout-max-width: 1160px;
+  --pixellab-layout-padding: clamp(1rem, 4vw, 2.5rem);
+  --pixellab-layout-nav-height: 4.25rem;
   --pixellab-toolbar-height: 4.25rem;
+
+  --pixellab-spacing-xxs: 0.25rem;
+  --pixellab-spacing-xs: 0.5rem;
+  --pixellab-spacing-sm: 0.75rem;
+  --pixellab-spacing-md: 1rem;
+  --pixellab-spacing-lg: 1.5rem;
+  --pixellab-spacing-xl: 2.5rem;
+
   --pixellab-breakpoint-xs: 360px;
   --pixellab-breakpoint-sm: 600px;
   --pixellab-breakpoint-md: 960px;
   --pixellab-breakpoint-lg: 1280px;
+
   --shadow-strong: 0 18px 48px rgba(0, 0, 0, 0.3);
   --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.22);
+
   --radius-sm: 0.5rem;
   --radius-md: 0.9rem;
   --radius-lg: 1.15rem;
+
   --border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -166,23 +197,6 @@ textarea:focus-visible {
   border-color: rgba(255, 133, 156, 0.5);
   background: rgba(255, 133, 156, 0.08);
   color: #ffcddc;
-}
-
-.status-banner {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.15rem;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
-  font-size: 0.95rem;
-  box-shadow: var(--shadow-soft);
-}
-
-.status-banner strong {
-  color: var(--pixellab-foreground);
-  font-weight: 700;
 }
 
 .pixellab-grid {

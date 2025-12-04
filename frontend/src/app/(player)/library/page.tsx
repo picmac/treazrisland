@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/apiClient';
 import { useRomLibrary } from '@/hooks/useRomLibrary';
 import type { RomSummary } from '@/types/rom';
 import { PixellabNavigation } from '@/components/chrome';
+import { Alert } from '@/components/ui/Alert';
 import { SignOutButton } from '@/components/ui/SignOutButton';
 import { LibraryGrid } from './LibraryGrid';
 import { StatusPill } from '@/components/ui/StatusPill';
@@ -142,23 +143,19 @@ export default function LibraryPage() {
           </div>
         ) : null}
 
-        {statusMessage && (
-          <div className={styles.status} role="status">
-            {statusMessage}
-          </div>
-        )}
+        {statusMessage ? <Alert dense>{statusMessage}</Alert> : null}
 
-        {errorMessage && (
-          <div className={styles.status} role="alert">
+        {errorMessage ? (
+          <Alert tone="danger" dense role="alert">
             {errorMessage}
-          </div>
-        )}
+          </Alert>
+        ) : null}
 
-        {favoriteMessage && (
-          <div className={styles.status} role="status" aria-live="polite">
+        {favoriteMessage ? (
+          <Alert tone="success" dense role="status" aria-live="polite">
             {favoriteMessage}
-          </div>
-        )}
+          </Alert>
+        ) : null}
 
         <LibraryGrid
           roms={roms}

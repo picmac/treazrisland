@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 
 import { runHealthCheck, type HealthResponse } from '@/lib/admin';
 import { Button } from '@/components/ui/Button';
+import { Alert } from '@/components/ui/Alert';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { Card } from '@/components/ui/Card';
 
 import type { HealthCheckResult, StepStatus } from '../types';
+import { formatTimestamp } from '../formatTimestamp';
 import styles from '../page.module.css';
 
 interface HealthCheckStepProps {
@@ -58,9 +60,9 @@ export function HealthCheckStep({ state, onComplete }: HealthCheckStepProps) {
       </Button>
 
       {error && (
-        <p role="alert" className={styles.errorMessage}>
+        <Alert tone="danger" dense role="alert">
           {error}
-        </p>
+        </Alert>
       )}
 
       {result && (
@@ -69,7 +71,7 @@ export function HealthCheckStep({ state, onComplete }: HealthCheckStepProps) {
             <StatusPill tone={result.status === 'ok' ? 'success' : 'warning'}>
               Stack: {result.status.toUpperCase()}
             </StatusPill>
-            <StatusPill tone="info">{new Date(result.checkedAt).toLocaleString()}</StatusPill>
+            <StatusPill tone="info">{formatTimestamp(result.checkedAt)}</StatusPill>
           </div>
           <dl className={styles.dependencyList}>
             <div>

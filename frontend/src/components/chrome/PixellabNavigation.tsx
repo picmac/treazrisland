@@ -2,7 +2,6 @@ import type { Route } from '@/types/route';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { HTMLAttributes, ReactNode } from 'react';
-import { PIXELLAB_TOKENS } from '@/theme/tokens';
 import styles from './PixellabNavigation.module.css';
 
 type NavLink = {
@@ -29,16 +28,14 @@ export function PixellabNavigation({
       <nav aria-label="Primary" className={styles.nav}>
         <div className={styles.brand}>
           <p className={styles.eyebrow}>{eyebrow}</p>
-          <div
-            style={{ display: 'flex', flexDirection: 'column', gap: PIXELLAB_TOKENS.spacing.xs }}
-          >
+          <div className={styles.brandMeta}>
             <Link href="/" aria-label="Treazr Island home" className={styles.wordmark}>
               <Image
-                src={PIXELLAB_TOKENS.assets.wordmark}
+                src="/pixellab/wordmark.svg"
                 alt="Treazr Island wordmark"
                 width={200}
                 height={60}
-                style={{ width: 'auto', height: '2rem', objectFit: 'contain' }}
+                className={styles.wordmarkImage}
               />
             </Link>
             <p className={styles.description}>{description}</p>

@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import ProgressSteps, { type ProgressStep } from '@/components/ProgressSteps';
+import { Alert } from '@/components/ui/Alert';
+import { Grid, Section, Stack } from '@/components/ui/layout';
 import styles from './page.module.css';
 
 const onboardingSteps: ProgressStep[] = [
@@ -40,95 +42,93 @@ const emulatorChecklist = [
 
 export default function AdminOnboardingPage() {
   return (
-    <div className="pixellab-grid">
-      <div className="pixellab-content">
-        <div className={styles.wrapper}>
-          <section className={styles.heroCard} aria-labelledby="onboarding-title">
-            <p className="eyebrow">Admin onboarding</p>
-            <h1 id="onboarding-title">Boot up your command deck</h1>
-            <p>
-              You are the first steward of Treazr Island&apos;s retro vault. Follow the steps below
-              to introduce yourself, upload a flagship ROM, and unlock invite tools for
-              collaborators and early players.
-            </p>
-          </section>
+    <Section className={styles.wrapper}>
+      <Grid as="section" className={styles.heroCard} aria-labelledby="onboarding-title" gap="sm">
+        <p className="eyebrow">Admin onboarding</p>
+        <Stack gap="xs">
+          <h1 id="onboarding-title">Boot up your command deck</h1>
+          <p>
+            You are the first steward of Treazr Island&apos;s retro vault. Follow the steps below to
+            introduce yourself, upload a flagship ROM, and unlock invite tools for collaborators and
+            early players.
+          </p>
+        </Stack>
+      </Grid>
 
-          <section className={styles.progressCard} aria-labelledby="onboarding-progress">
-            <p id="onboarding-progress" className={styles.progressHeading}>
-              Progress tracker
-            </p>
-            <ProgressSteps steps={onboardingSteps} />
-          </section>
+      <Section as="section" className={styles.progressCard} aria-labelledby="onboarding-progress">
+        <p id="onboarding-progress" className={styles.progressHeading}>
+          Progress tracker
+        </p>
+        <ProgressSteps steps={onboardingSteps} />
+      </Section>
 
-          <section className={styles.actionsGrid} aria-label="Guided onboarding tasks">
-            <article className={styles.actionCard} aria-labelledby="profile-setup-heading">
-              <div className={styles.actionHeader}>
-                <h2 id="profile-setup-heading">Profile setup</h2>
-                <span>Introduce yourself to every invitee before they see a single ROM.</span>
-              </div>
-              <ul className={styles.checklist}>
-                {profileChecklist.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              <div className={styles.callout}>
-                Pro tip: drag in a square PNG avatar (512px min) so invites match your studio style
-                guide.
-              </div>
-              <div className={styles.ctaRow}>
-                <Link href="/settings/profile">Open profile editor</Link>
-                <button type="button" className={styles.secondaryAction}>
-                  Download brand kit template
-                </button>
-              </div>
-            </article>
+      <Grid as="section" className={styles.actionsGrid} aria-label="Guided onboarding tasks" gap="md">
+        <article className={styles.actionCard} aria-labelledby="profile-setup-heading">
+          <div className={styles.actionHeader}>
+            <h2 id="profile-setup-heading">Profile setup</h2>
+            <span>Introduce yourself to every invitee before they see a single ROM.</span>
+          </div>
+          <ul className={styles.checklist}>
+            {profileChecklist.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <Alert tone="info" dense className={styles.callout}>
+            Pro tip: drag in a square PNG avatar (512px min) so invites match your studio style
+            guide.
+          </Alert>
+          <Grid as="div" className={styles.ctaRow} gap="xs" columns={2}>
+            <Link href="/settings/profile">Open profile editor</Link>
+            <Link href="/docs" className={styles.secondaryAction}>
+              Download brand kit template
+            </Link>
+          </Grid>
+        </article>
 
-            <article className={styles.actionCard} aria-labelledby="rom-upload-heading">
-              <div className={styles.actionHeader}>
-                <h2 id="rom-upload-heading">Upload your first ROM</h2>
-                <span>Stage a hero build so EmulatorJS diagnostics can run.</span>
-              </div>
-              <ul className={styles.checklist}>
-                {romChecklist.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              <div className={styles.callout}>
-                EmulatorJS ingests .zip, .nes, .sfc, and .bin files up to 50&nbsp;MB. We auto-scan
-                for known header issues before publishing.
-              </div>
-              <div className={styles.ctaRow}>
-                <Link href="/admin/roms/upload">Launch ROM uploader</Link>
-                <Link href="#rom-guide" className={styles.secondaryAction}>
-                  Read ROM prep guide
-                </Link>
-              </div>
-            </article>
+        <article className={styles.actionCard} aria-labelledby="rom-upload-heading">
+          <div className={styles.actionHeader}>
+            <h2 id="rom-upload-heading">Upload your first ROM</h2>
+            <span>Stage a hero build so EmulatorJS diagnostics can run.</span>
+          </div>
+          <ul className={styles.checklist}>
+            {romChecklist.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <Alert tone="warning" dense className={styles.callout}>
+            EmulatorJS ingests .zip, .nes, .sfc, and .bin files up to 50 MB. We auto-scan for known
+            header issues before publishing.
+          </Alert>
+          <Grid as="div" className={styles.ctaRow} gap="xs" columns={2}>
+            <Link href="/admin/roms/upload">Launch ROM uploader</Link>
+            <Link href="#rom-guide" className={styles.secondaryAction}>
+              Read ROM prep guide
+            </Link>
+          </Grid>
+        </article>
 
-            <article className={styles.actionCard} aria-labelledby="emulator-config-heading">
-              <div className={styles.actionHeader}>
-                <h2 id="emulator-config-heading">Configure EmulatorJS</h2>
-                <span>Wire the dashboard to the correct embed endpoint for your environment.</span>
-              </div>
-              <ul className={styles.checklist}>
-                {emulatorChecklist.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              <div className={styles.callout}>
-                Keep this URL in sync with your deploys so admin diagnostics and player sessions
-                stay aligned.
-              </div>
-              <div className={styles.ctaRow}>
-                <Link href="/admin/emulator-config">Open EmulatorJS settings</Link>
-                <Link href="/onboarding#emulator-config" className={styles.secondaryAction}>
-                  View setup checklist
-                </Link>
-              </div>
-            </article>
-          </section>
-        </div>
-      </div>
-    </div>
+        <article className={styles.actionCard} aria-labelledby="emulator-config-heading">
+          <div className={styles.actionHeader}>
+            <h2 id="emulator-config-heading">Configure EmulatorJS</h2>
+            <span>Wire the dashboard to the correct embed endpoint for your environment.</span>
+          </div>
+          <ul className={styles.checklist}>
+            {emulatorChecklist.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <Alert tone="success" dense className={styles.callout}>
+            Keep this URL in sync with your deploys so admin diagnostics and player sessions stay
+            aligned.
+          </Alert>
+          <Grid as="div" className={styles.ctaRow} gap="xs" columns={2}>
+            <Link href="/admin/emulator-config">Open EmulatorJS settings</Link>
+            <Link href="/onboarding#emulator-config" className={styles.secondaryAction}>
+              View setup checklist
+            </Link>
+          </Grid>
+        </article>
+      </Grid>
+    </Section>
   );
 }

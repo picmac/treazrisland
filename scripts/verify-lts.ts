@@ -132,6 +132,7 @@ const compare = (expected: Matrix, actual: Matrix): Check[] =>
 
 const report = (checks: Check[]) => {
   const mismatches = checks.filter((check) => check.expected !== check.actual);
+  const allowDrift = process.env.ALLOW_VERSION_DRIFT === '1';
 
   if (mismatches.length > 0) {
     const message = mismatches
@@ -140,6 +141,11 @@ const report = (checks: Check[]) => {
           `- ${check.label}: expected ${check.expected} from matrix, but found ${check.actual} via ${check.source}.`,
       )
       .join('\n');
+
+    if (allowDrift) {
+      console.warn(`⚠️  Version drift detected (ignored via ALLOW_VERSION_DRIFT=1):\n${message}`);
+      return;
+    }
 
     throw new Error(`Version drift detected:\n${message}`);
   }

@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { fetchEmulatorConfig, saveEmulatorConfig } from '@/lib/admin';
+import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormField } from '@/components/ui/FormField';
 import { StatusPill } from '@/components/ui/StatusPill';
 
 import type { EmulatorConfigResult, StepStatus } from '../types';
+import { formatTimestamp } from '../formatTimestamp';
 import styles from '../page.module.css';
 
 const FALLBACK_EMBED_URL =
@@ -128,17 +130,16 @@ export function EmulatorConfigStep({ state, onComplete }: EmulatorConfigStepProp
 
       <div className={styles.inlineActions}>
         {lastVerifiedAt && (
-          <StatusPill tone="success">
-            Verified {new Date(lastVerifiedAt).toLocaleString()}
-          </StatusPill>
+          <StatusPill tone="success">Verified {formatTimestamp(lastVerifiedAt)}</StatusPill>
         )}
         {success && <StatusPill tone="info">{success}</StatusPill>}
-        {error && (
-          <StatusPill tone="danger" role="alert">
-            {error}
-          </StatusPill>
-        )}
       </div>
+
+      {error && (
+        <Alert tone="danger" dense role="alert">
+          {error}
+        </Alert>
+      )}
     </Card>
   );
 }

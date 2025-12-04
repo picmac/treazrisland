@@ -10,16 +10,14 @@
 }
 
 .headerTop {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
   gap: 1rem;
   align-items: center;
-  flex-wrap: wrap;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .pillRow {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 0.5rem;
   align-items: center;
 }
