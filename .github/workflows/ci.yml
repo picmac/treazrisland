@@ -434,6 +434,20 @@ jobs:
         with:
           clean: false
 
+      - name: Restore runner environment file
+        run: |
+          set -euo pipefail
+          for candidate in /opt/actions-runner/.env /opt/actions-runner/_work/treazrisland/.env "$GITHUB_WORKSPACE/.env.local" "$GITHUB_WORKSPACE/infrastructure/env/root.env.example"; do
+            if [[ -f "$candidate" ]]; then
+              cp "$candidate" "$GITHUB_WORKSPACE/.env"
+              echo "Restored .env from $candidate"
+              exit 0
+            fi
+          done
+
+          echo "::error::No .env found and no template available to restore."
+          exit 1
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
