@@ -1,23 +1,60 @@
+import { ACCESS_TOKEN_KEY } from '@/constants/auth';
+
 const REFRESH_ENDPOINT = '/api/auth/refresh';
 
 let cachedAccessToken: string | null = null;
 let refreshPromise: Promise<string | null> | null = null;
 
-type AuthResponsePayload = {
+const isBrowser = () => typeof window !== 'undefined';
+
+const readTokenFromStorage = (): string | null => {
+  if (!isBrowser()) {
+    return null;
+  }
+
+  const stored = window.localStorage.getItem(ACCESS_TOKEN_KEY);
+  return stored && stored.length > 0 ? stored : null;
+};
+
+const persistTokenToStorage = (token: string) => {
+  if (!isBrowser()) {
+    return;
+  }
+
+  window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
+};
+
+const clearTokenFromStorage = () => {
+  if (!isBrowser()) {
+    return;
+  }
+
+  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+};
+
+export type AuthResponsePayload = {
   accessToken?: unknown;
 };
 
 export function storeAccessToken(token: string) {
   cachedAccessToken = token;
+  persistTokenToStorage(token);
 }
 
 export function clearStoredAccessToken() {
   cachedAccessToken = null;
+  clearTokenFromStorage();
 }
 
 export async function getStoredAccessToken(): Promise<string | null> {
   if (cachedAccessToken) {
     return cachedAccessToken;
+  }
+
+  const storedToken = readTokenFromStorage();
+  if (storedToken) {
+    cachedAccessToken = storedToken;
+    return storedToken;
   }
 
   if (!refreshPromise) {
