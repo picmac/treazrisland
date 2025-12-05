@@ -86,6 +86,7 @@ export default function AdminRomUploadPage() {
   const [statusMessage, setStatusMessage] = useState('Attach a ROM to start the upload.');
   const [error, setError] = useState<string | null>(null);
   const [optimisticRomId, setOptimisticRomId] = useState<string | null>(null);
+  const presignedDisabledRef = useRef(false);
 
   useEffect(() => {
     if (stage !== 'redirecting' || !optimisticRomId) {
@@ -232,6 +233,11 @@ export default function AdminRomUploadPage() {
 
         const presignedResponse = async () => {
           if (!normalizedUploadUrl) return null;
+          if (presignedDisabledRef.current) return null;
+          const presignedAllowed = process.env.NEXT_PUBLIC_USE_PRESIGNED_UPLOAD !== 'false';
+          if (!presignedAllowed) {
+            return null;
+          }
           try {
             return await fetch(normalizedUploadUrl, {
               method: 'PUT',
@@ -240,6 +246,7 @@ export default function AdminRomUploadPage() {
             });
           } catch (uploadFetchError) {
             console.warn('Presigned upload failed, will fallback to direct.', uploadFetchError);
+            presignedDisabledRef.current = true;
             return null;
           }
         };
