@@ -48,14 +48,17 @@ type EmulatorWindow = Window & {
   EJS_gamepad?: typeof DEFAULT_GAMEPAD_MAPPING;
   EJS_emulator?: unknown;
   EJS_fullscreenOnLoad?: boolean;
+  EJS_startOnLoaded?: boolean;
 };
 
 type EmulatorHandle = {
   saveState?: () => unknown | Promise<unknown>;
   loadState?: (state: unknown) => unknown | Promise<unknown>;
+  start?: () => unknown | Promise<unknown>;
   emu?: {
     saveState?: () => unknown | Promise<unknown>;
     loadState?: (state: unknown) => unknown | Promise<unknown>;
+    start?: () => unknown | Promise<unknown>;
   };
 };
 
@@ -87,6 +90,7 @@ export default function PlayPage({ params }: PlayPageProps) {
   const scriptRef = useRef<HTMLScriptElement | null>(null);
   const emulatorRef = useRef<EmulatorHandle | null>(null);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const emulatorStartedRef = useRef(false);
   const {
     latestSaveState,
     isLoading: isLoadingCloudSave,
@@ -165,6 +169,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     setLastSavedAt(null);
     setLastLocalSave(null);
     setSaveCount(0);
+    emulatorStartedRef.current = false;
   }, [romId]);
 
   const enableStubEmulator = useCallback(() => {
@@ -197,6 +202,20 @@ export default function PlayPage({ params }: PlayPageProps) {
     setSaveCount((previous) => Math.max(previous, 1));
   }, [latestSaveState]);
 
+  const tryStartEmulator = useCallback(() => {
+    if (emulatorStartedRef.current) {
+      return;
+    }
+    const emulator = emulatorRef.current;
+    const startFn =
+      emulator?.start ??
+      (typeof emulator?.emu === 'object' && emulator?.emu ? emulator.emu.start : undefined);
+    if (typeof startFn === 'function') {
+      startFn();
+      emulatorStartedRef.current = true;
+    }
+  }, []);
+
   useEffect(() => {
     if (!isSessionReady || !romAsset || !emulatorContainerRef.current) {
       return undefined;
@@ -214,6 +233,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     emulatorWindow.EJS_defaultKeys = DEFAULT_KEYBOARD_MAPPING;
     emulatorWindow.EJS_gamepad = DEFAULT_GAMEPAD_MAPPING;
     emulatorWindow.EJS_fullscreenOnLoad = false;
+    emulatorWindow.EJS_startOnLoaded = true;
     const markEmulatorReady = () => {
       if (!emulatorWindow.EJS_emulator) {
         return false;
@@ -221,6 +241,7 @@ export default function PlayPage({ params }: PlayPageProps) {
 
       emulatorRef.current = emulatorWindow.EJS_emulator as EmulatorHandle;
       setEmulatorReady(true);
+      tryStartEmulator();
       return true;
     };
 
@@ -289,6 +310,7 @@ export default function PlayPage({ params }: PlayPageProps) {
       container.innerHTML = '';
       emulatorRef.current = null;
       setEmulatorReady(false);
+      emulatorStartedRef.current = false;
       delete emulatorWindow.EJS_player;
       delete emulatorWindow.EJS_core;
       delete emulatorWindow.EJS_gameUrl;
@@ -299,8 +321,9 @@ export default function PlayPage({ params }: PlayPageProps) {
       delete emulatorWindow.EJS_gamepad;
       delete emulatorWindow.EJS_onGameStart;
       delete emulatorWindow.EJS_onGameReady;
+      delete emulatorWindow.EJS_startOnLoaded;
     };
-  }, [emulatorCore, enableStubEmulator, isSessionReady, rom?.title, romAsset]);
+  }, [emulatorCore, enableStubEmulator, isSessionReady, rom?.title, romAsset, tryStartEmulator]);
 
   const handleSaveState = useCallback(async () => {
     if (!rom) {

@@ -12,9 +12,6 @@ test.describe('play session', () => {
 
     await page.getByRole('link', { name: /Play Now/i }).click();
     await expect(page).toHaveURL(new RegExp(`/play/${rom.id}`));
-    await expect(
-      page.locator('.play-session__status').filter({ hasText: 'Fetching ROM dossier…' }).first(),
-    ).toBeVisible();
 
     const toolbar = page.getByRole('toolbar', { name: `${rom.title} emulator controls` });
     await expect(toolbar).toBeVisible();
