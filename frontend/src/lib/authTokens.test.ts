@@ -68,4 +68,18 @@ describe('authTokens', () => {
     expect(token).toBe('fresh-after-clear');
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it('can disable refresh attempts after a clear', async () => {
+    clearStoredAccessToken({ disableRefresh: true });
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ accessToken: 'should-not-be-used' }),
+    });
+
+    const token = await getStoredAccessToken();
+
+    expect(token).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
