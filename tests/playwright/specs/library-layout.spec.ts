@@ -21,6 +21,8 @@ const romResponse = {
   },
 };
 
+const isRomsResponse = (url: string, method: string) => method === 'GET' && url.includes('/roms');
+
 test.describe('library layout', () => {
   test.beforeEach(async ({ page }) => {
     await page.route('**/roms**', async (route) => {
@@ -37,10 +39,16 @@ test.describe('library layout', () => {
   });
 
   test('desktop grid uses four columns', async ({ page }) => {
+    const romsResponse = page.waitForResponse((response) =>
+      isRomsResponse(response.url(), response.request().method()),
+    );
+
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/library');
+    await romsResponse;
 
     await expect(page.getByTestId('library-filter-bar')).toBeVisible();
+    await expect(page.getByTestId('rom-card').first()).toBeVisible();
 
     const firstRow = page.locator('[data-index="0"]').first();
     await expect(firstRow).toBeVisible();
@@ -48,14 +56,23 @@ test.describe('library layout', () => {
     const columnMatch = style.match(/repeat\((\d+),\s*minmax/);
     const columnCount = columnMatch ? Number.parseInt(columnMatch[1], 10) : 0;
 
+    const rowCardCount = await firstRow.getByTestId('rom-card').count();
+    expect(rowCardCount).toBeGreaterThan(0);
     expect(columnCount).toBeGreaterThanOrEqual(3);
     expect(columnCount).toBeLessThanOrEqual(4);
-    await expect(firstRow.getByTestId('rom-card')).toHaveCount(columnCount || 3);
+    expect(rowCardCount).toBe(columnCount || 3);
   });
 
   test('mobile view collapses grid to one column', async ({ page }) => {
+    const romsResponse = page.waitForResponse((response) =>
+      isRomsResponse(response.url(), response.request().method()),
+    );
+
     await page.setViewportSize({ width: 375, height: 740 });
     await page.goto('/library');
+    await romsResponse;
+
+    await expect(page.getByTestId('rom-card').first()).toBeVisible();
 
     await expect(page.getByRole('button', { name: /favorites only/i })).toBeVisible();
     const firstRow = page.locator('[data-index="0"]').first();
