@@ -49,6 +49,7 @@ type EmulatorWindow = Window & {
   EJS_emulator?: unknown;
   EJS_fullscreenOnLoad?: boolean;
   EJS_startOnLoaded?: boolean;
+  EJS_ready?: boolean;
 };
 
 type EmulatorHandle = {
@@ -91,6 +92,8 @@ export default function PlayPage({ params }: PlayPageProps) {
   const emulatorRef = useRef<EmulatorHandle | null>(null);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const emulatorStartedRef = useRef(false);
+  const autoStartIntervalRef = useRef<number | null>(null);
+  const autoStartTimeoutRef = useRef<number | null>(null);
   const {
     latestSaveState,
     isLoading: isLoadingCloudSave,
@@ -170,6 +173,14 @@ export default function PlayPage({ params }: PlayPageProps) {
     setLastLocalSave(null);
     setSaveCount(0);
     emulatorStartedRef.current = false;
+    if (autoStartIntervalRef.current) {
+      window.clearInterval(autoStartIntervalRef.current);
+      autoStartIntervalRef.current = null;
+    }
+    if (autoStartTimeoutRef.current) {
+      window.clearTimeout(autoStartTimeoutRef.current);
+      autoStartTimeoutRef.current = null;
+    }
   }, [romId]);
 
   const enableStubEmulator = useCallback(() => {
@@ -204,7 +215,7 @@ export default function PlayPage({ params }: PlayPageProps) {
 
   const tryStartEmulator = useCallback(() => {
     if (emulatorStartedRef.current) {
-      return;
+      return true;
     }
     const emulator = emulatorRef.current;
     const startFn =
@@ -213,7 +224,9 @@ export default function PlayPage({ params }: PlayPageProps) {
     if (typeof startFn === 'function') {
       startFn();
       emulatorStartedRef.current = true;
+      return true;
     }
+    return false;
   }, []);
 
   useEffect(() => {
@@ -234,6 +247,7 @@ export default function PlayPage({ params }: PlayPageProps) {
     emulatorWindow.EJS_gamepad = DEFAULT_GAMEPAD_MAPPING;
     emulatorWindow.EJS_fullscreenOnLoad = false;
     emulatorWindow.EJS_startOnLoaded = true;
+    emulatorWindow.EJS_ready = false;
     const markEmulatorReady = () => {
       if (!emulatorWindow.EJS_emulator) {
         return false;
@@ -242,6 +256,19 @@ export default function PlayPage({ params }: PlayPageProps) {
       emulatorRef.current = emulatorWindow.EJS_emulator as EmulatorHandle;
       setEmulatorReady(true);
       tryStartEmulator();
+      if (!autoStartIntervalRef.current) {
+        autoStartIntervalRef.current = window.setInterval(() => {
+          tryStartEmulator();
+        }, 500);
+      }
+      if (!autoStartTimeoutRef.current) {
+        autoStartTimeoutRef.current = window.setTimeout(() => {
+          if (autoStartIntervalRef.current) {
+            window.clearInterval(autoStartIntervalRef.current);
+            autoStartIntervalRef.current = null;
+          }
+        }, 12000);
+      }
       return true;
     };
 
@@ -311,6 +338,14 @@ export default function PlayPage({ params }: PlayPageProps) {
       emulatorRef.current = null;
       setEmulatorReady(false);
       emulatorStartedRef.current = false;
+      if (autoStartIntervalRef.current) {
+        window.clearInterval(autoStartIntervalRef.current);
+        autoStartIntervalRef.current = null;
+      }
+      if (autoStartTimeoutRef.current) {
+        window.clearTimeout(autoStartTimeoutRef.current);
+        autoStartTimeoutRef.current = null;
+      }
       delete emulatorWindow.EJS_player;
       delete emulatorWindow.EJS_core;
       delete emulatorWindow.EJS_gameUrl;
@@ -322,6 +357,7 @@ export default function PlayPage({ params }: PlayPageProps) {
       delete emulatorWindow.EJS_onGameStart;
       delete emulatorWindow.EJS_onGameReady;
       delete emulatorWindow.EJS_startOnLoaded;
+      delete emulatorWindow.EJS_ready;
     };
   }, [emulatorCore, enableStubEmulator, isSessionReady, rom?.title, romAsset, tryStartEmulator]);
 
