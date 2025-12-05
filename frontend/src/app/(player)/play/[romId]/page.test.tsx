@@ -92,8 +92,6 @@ describe('PlayPage control overlay readiness', () => {
       </ToastProvider>,
     );
 
-    await user.click(await screen.findByRole('button', { name: 'Ready Up' }));
-
     const saveButton = await screen.findByRole('button', { name: 'Save State' });
     expect(saveButton).toBeEnabled();
 

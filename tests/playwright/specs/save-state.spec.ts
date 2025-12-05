@@ -11,13 +11,6 @@ test.describe('save state management', () => {
     const apiToken = await obtainAccessToken(request);
 
     await page.goto(`/play/${rom.id}`);
-    const readyUpButton = page.getByRole('button', { name: 'Ready Up' });
-    if (await readyUpButton.isVisible()) {
-      await readyUpButton.click();
-    }
-
-    const sessionStatus = page.getByText('Confirm your controller to start the emulator.');
-    await expect(sessionStatus).toBeHidden({ timeout: 10_000 });
 
     const romLoadingStatus = page.getByText('Fetching ROM dossier…');
     await expect(romLoadingStatus).toBeHidden({ timeout: 20_000 });

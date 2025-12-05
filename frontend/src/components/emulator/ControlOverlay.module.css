@@ -1,7 +1,7 @@
 .overlayRoot {
-  position: absolute;
-  inset: auto 1.5rem 1.5rem auto;
-  z-index: 4;
+  position: static;
+  inset: auto;
+  z-index: 1;
 }
 
 .overlayPanel {
@@ -14,7 +14,7 @@
   background: rgba(6, 0, 20, var(--pixellab-overlay-opacity));
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(8px);
-  width: min(320px, calc(100vw - 2rem));
+  width: 100%;
   min-height: var(--pixellab-toolbar-height);
 }
 

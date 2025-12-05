@@ -16,11 +16,6 @@ test.describe('play session', () => {
       page.locator('.play-session__status').filter({ hasText: 'Fetching ROM dossier…' }).first(),
     ).toBeVisible();
 
-    const prepText = page.getByText(`Confirm your controls before diving into ${rom.title}.`);
-    if (await prepText.isVisible()) {
-      await page.getByRole('button', { name: 'Ready Up' }).click();
-    }
-
     const toolbar = page.getByRole('toolbar', { name: `${rom.title} emulator controls` });
     await expect(toolbar).toBeVisible();
   });

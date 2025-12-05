@@ -3,7 +3,6 @@
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ControlOverlay } from '@/components/emulator/ControlOverlay';
 import { formatSaveIndicatorLabel } from '@/components/emulator/saveIndicator';
-import { SessionPrepDialog } from '@/components/emulator/SessionPrepDialog';
 import { TouchOverlay } from '@/components/emulator/TouchOverlay';
 import { PixellabNavigation } from '@/components/chrome';
 import { Alert } from '@/components/ui/Alert';
@@ -75,8 +74,7 @@ export default function PlayPage({ params }: PlayPageProps) {
   const [rom, setRom] = useState<RomDetails | null>(null);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [error, setError] = useState<string>();
-  const [showPrepDialog, setShowPrepDialog] = useState(true);
-  const [isSessionReady, setSessionReady] = useState(false);
+  const [isSessionReady, setSessionReady] = useState(true);
   const [emulatorReady, setEmulatorReady] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -161,8 +159,7 @@ export default function PlayPage({ params }: PlayPageProps) {
   }, [hasMinimumLoadingTimeElapsed, loadState, rom]);
 
   useEffect(() => {
-    setSessionReady(false);
-    setShowPrepDialog(true);
+    setSessionReady(true);
     setEmulatorReady(false);
     emulatorRef.current = null;
     setLastSavedAt(null);
@@ -199,28 +196,6 @@ export default function PlayPage({ params }: PlayPageProps) {
     setLastSavedAt(new Date(latestSaveState.saveState.updatedAt));
     setSaveCount((previous) => Math.max(previous, 1));
   }, [latestSaveState]);
-
-  useEffect(() => {
-    if (isSessionReady) return undefined;
-    if (loadState !== 'ready') return undefined;
-    if (isLoadingCloudSave) return undefined;
-
-    const localSave =
-      lastLocalSave ??
-      (typeof window !== 'undefined' ? window.localStorage.getItem(`treazr:save:${romId}`) : null);
-    const hasAnySave = Boolean(latestSaveState || localSave);
-
-    if (hasAnySave) {
-      return undefined;
-    }
-
-    const timer = window.setTimeout(() => {
-      setSessionReady(true);
-      setShowPrepDialog(false);
-    }, 800);
-
-    return () => window.clearTimeout(timer);
-  }, [isLoadingCloudSave, isSessionReady, lastLocalSave, latestSaveState, loadState, romId]);
 
   useEffect(() => {
     if (!isSessionReady || !romAsset || !emulatorContainerRef.current) {
@@ -326,11 +301,6 @@ export default function PlayPage({ params }: PlayPageProps) {
       delete emulatorWindow.EJS_onGameReady;
     };
   }, [emulatorCore, enableStubEmulator, isSessionReady, rom?.title, romAsset]);
-
-  const handleConfirmSession = () => {
-    setSessionReady(true);
-    setShowPrepDialog(false);
-  };
 
   const handleSaveState = useCallback(async () => {
     if (!rom) {
@@ -473,7 +443,7 @@ export default function PlayPage({ params }: PlayPageProps) {
 
   const showRomLoadingStatus =
     loadState === 'loading' || (loadState === 'ready' && shouldShowLoadingState);
-  const controlsDisabled = !isSessionReady || loadState !== 'ready';
+  const controlsDisabled = loadState !== 'ready';
   const saveIndicatorLabel = formatSaveIndicatorLabel(saveCount, lastSavedAt);
   const statusPills = useMemo(
     () => [
@@ -515,7 +485,7 @@ export default function PlayPage({ params }: PlayPageProps) {
           { href: '/onboarding', label: 'Onboarding' },
         ]}
         eyebrow="Play session"
-        description="EmulatorJS runtime with save-state sync and control overlays."
+        description="EmulatorJS runtime with save-state sync and controls."
         actions={<SignOutButton />}
       />
       <main className="page-content" id="main-content">
@@ -526,9 +496,6 @@ export default function PlayPage({ params }: PlayPageProps) {
                 <p className="eyebrow">Live emulator session</p>
                 <h1>{rom?.title ?? 'Preparing ROM…'}</h1>
               </div>
-              <Button variant="secondary" onClick={() => setShowPrepDialog(true)}>
-                Controller map
-              </Button>
             </div>
             <Grid as="div" className={styles.pillRow} gap="xs" minColumnWidth="180px">
               {statusPills.map((pill) => (
@@ -553,11 +520,6 @@ export default function PlayPage({ params }: PlayPageProps) {
                 <div className="play-session__canvas">
                   <div ref={emulatorContainerRef} className="play-session__viewport-shell" />
                   <div className="play-session__status-layer" aria-live="polite">
-                    {!isSessionReady && (
-                      <p className="play-session__status">
-                        Confirm your controller to start the emulator.
-                      </p>
-                    )}
                     {showRomLoadingStatus && (
                       <p className="play-session__status">Fetching ROM dossier…</p>
                     )}
@@ -584,25 +546,24 @@ export default function PlayPage({ params }: PlayPageProps) {
                 <p className="play-session__save-indicator" aria-live="polite">
                   {saveIndicatorLabel}
                 </p>
-
-                {rom && (
-                  <ControlOverlay
-                    romTitle={rom.title}
-                    lastSavedAt={lastSavedAt}
-                    saveCount={saveCount}
-                    onSaveState={handleSaveState}
-                    onLoadState={handleLoadState}
-                    onSyncCloudSave={handleUploadCloudSave}
-                    isSaving={isSaving}
-                    isLoading={isLoadingCloudSave}
-                    isSyncing={isSyncingCloudSave}
-                    disabled={controlsDisabled}
-                  />
-                )}
               </div>
             </Card>
 
             <Stack className={styles.sidePanel} gap="sm">
+              {rom && (
+                <ControlOverlay
+                  romTitle={rom.title}
+                  lastSavedAt={lastSavedAt}
+                  saveCount={saveCount}
+                  onSaveState={handleSaveState}
+                  onLoadState={handleLoadState}
+                  onSyncCloudSave={handleUploadCloudSave}
+                  isSaving={isSaving}
+                  isLoading={isLoadingCloudSave}
+                  isSyncing={isSyncingCloudSave}
+                  disabled={controlsDisabled}
+                />
+              )}
               <Card title="Session status" description="Recover quickly when things go sideways.">
                 <ul className={styles.metaList}>
                   <li>
@@ -632,14 +593,6 @@ export default function PlayPage({ params }: PlayPageProps) {
               </Card>
             </Stack>
           </Grid>
-
-          <SessionPrepDialog
-            open={showPrepDialog}
-            romTitle={rom?.title}
-            mappings={mappingList}
-            onConfirm={handleConfirmSession}
-            onCancel={() => setShowPrepDialog(false)}
-          />
         </Section>
       </main>
     </div>
