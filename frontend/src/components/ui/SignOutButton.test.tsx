@@ -42,7 +42,7 @@ describe('SignOutButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /sign out/i }));
 
     await waitFor(() => expect(logout).toHaveBeenCalled());
-    expect(clearStoredAccessToken).toHaveBeenCalled();
+    expect(clearStoredAccessToken).toHaveBeenCalledWith({ disableRefresh: true });
     expect(routerMock.push).toHaveBeenCalledWith('/login');
   });
 
@@ -54,7 +54,7 @@ describe('SignOutButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /logout/i }));
 
     await waitFor(() => expect(screen.getByRole('button')).toHaveTextContent(/retry/i));
-    expect(clearStoredAccessToken).toHaveBeenCalled();
+    expect(clearStoredAccessToken).toHaveBeenCalledWith({ disableRefresh: true });
     expect(routerMock.push).toHaveBeenCalledWith('/login');
   });
 });

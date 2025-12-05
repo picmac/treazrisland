@@ -25,7 +25,7 @@ export function SignOutButton({ label = 'Sign out' }: SignOutButtonProps) {
       setStatus('error');
     }
 
-    clearStoredAccessToken();
+    clearStoredAccessToken({ disableRefresh: true });
 
     if (router) {
       router.push('/login');

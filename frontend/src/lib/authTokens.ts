@@ -4,6 +4,7 @@ const REFRESH_ENDPOINT = '/api/auth/refresh';
 
 let cachedAccessToken: string | null = null;
 let refreshPromise: Promise<string | null> | null = null;
+let refreshEnabled = true;
 
 const isBrowser = () => typeof window !== 'undefined';
 
@@ -37,16 +38,27 @@ export type AuthResponsePayload = {
 };
 
 export function storeAccessToken(token: string) {
+  refreshEnabled = true;
   cachedAccessToken = token;
   persistTokenToStorage(token);
 }
 
-export function clearStoredAccessToken() {
+export function clearStoredAccessToken(options?: { disableRefresh?: boolean }) {
   cachedAccessToken = null;
+  if (options?.disableRefresh) {
+    refreshEnabled = false;
+    refreshPromise = null;
+  } else {
+    refreshEnabled = true;
+  }
   clearTokenFromStorage();
 }
 
 export async function getStoredAccessToken(): Promise<string | null> {
+  if (!refreshEnabled) {
+    return null;
+  }
+
   if (cachedAccessToken) {
     return cachedAccessToken;
   }
@@ -67,6 +79,10 @@ export async function getStoredAccessToken(): Promise<string | null> {
 }
 
 async function refreshAccessToken(): Promise<string | null> {
+  if (!refreshEnabled) {
+    return null;
+  }
+
   if (typeof fetch === 'undefined') {
     return null;
   }
@@ -77,14 +93,14 @@ async function refreshAccessToken(): Promise<string | null> {
       credentials: 'include',
     });
 
-    if (!response.ok) {
+    if (!response.ok || !refreshEnabled) {
       return null;
     }
 
     const payload = (await response.json()) as AuthResponsePayload;
     const token = typeof payload.accessToken === 'string' ? payload.accessToken : null;
 
-    if (token) {
+    if (token && refreshEnabled) {
       storeAccessToken(token);
       return token;
     }
