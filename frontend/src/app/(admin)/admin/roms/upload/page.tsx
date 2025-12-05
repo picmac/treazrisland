@@ -217,12 +217,26 @@ export default function AdminRomUploadPage() {
 
         let response: Response | undefined;
 
+        const normalizedUploadUrl = (() => {
+          if (!grant.uploadUrl) return null;
+          try {
+            return new URL(grant.uploadUrl, window.location.origin).toString();
+          } catch (urlError) {
+            console.error('Invalid upload URL from grant', urlError);
+            return null;
+          }
+        })();
+
         try {
-          response = await fetch(grant.uploadUrl, {
-            method: 'PUT',
-            headers: grant.headers,
-            body: binary,
-          });
+          if (!normalizedUploadUrl) {
+            objectKey = await attemptDirectFallback();
+          } else {
+            response = await fetch(normalizedUploadUrl, {
+              method: 'PUT',
+              headers: grant.headers ?? {},
+              body: binary,
+            });
+          }
         } catch (uploadFetchError) {
           console.error('upload fetch error', uploadFetchError);
           objectKey = await attemptDirectFallback();
