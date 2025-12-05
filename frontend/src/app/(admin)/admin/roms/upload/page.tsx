@@ -70,8 +70,6 @@ const splitGenres = (value: string) =>
     .map((entry) => entry.trim())
     .filter(Boolean);
 
-const MAX_DIRECT_UPLOAD_BYTES = 50 * 1024 * 1024;
-
 export default function AdminRomUploadPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -197,11 +195,7 @@ export default function AdminRomUploadPage() {
         setStatusMessage('Streaming ROM to storage…');
 
         const attemptDirectFallback = async (): Promise<string> => {
-          if (binary.size > MAX_DIRECT_UPLOAD_BYTES) {
-            throw new Error('Upload failed and fallback is unavailable for files over 50MB.');
-          }
-
-          setStatusMessage('Upload failed; attempting direct fallback…');
+          setStatusMessage('Upload failed; attempting direct fallback via backend…');
           const buffer = await binary.arrayBuffer();
           const base64 = btoa(String.fromCharCode(...Array.from(new Uint8Array(buffer))));
           const directResponse = await directRomUpload({
@@ -227,13 +221,22 @@ export default function AdminRomUploadPage() {
           }
         })();
 
+        const sanitizedHeaders = (() => {
+          if (!grant.headers) return {};
+          return Object.fromEntries(
+            Object.entries(grant.headers).filter(
+              ([, value]) => value !== undefined && value !== null,
+            ),
+          ) as Record<string, string>;
+        })();
+
         try {
           if (!normalizedUploadUrl) {
             objectKey = await attemptDirectFallback();
           } else {
             response = await fetch(normalizedUploadUrl, {
               method: 'PUT',
-              headers: grant.headers ?? {},
+              headers: sanitizedHeaders,
               body: binary,
             });
           }
