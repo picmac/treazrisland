@@ -118,7 +118,10 @@ test.describe.serial('end-to-end onboarding journey', () => {
     await expect(invitePage.getByRole('heading', { name: romTitle })).toBeVisible();
 
     await invitePage.getByRole('link', { name: /Play Now/i }).click();
-    await invitePage.getByRole('button', { name: 'Ready Up' }).click();
+    // Session auto-starts now; controller dialog removed
+    await expect(
+      invitePage.getByRole('toolbar', { name: new RegExp(`${romTitle} emulator controls`, 'i') }),
+    ).toBeVisible();
 
     const overlay = invitePage.getByRole('toolbar', {
       name: new RegExp(`${romTitle} emulator controls`, 'i'),

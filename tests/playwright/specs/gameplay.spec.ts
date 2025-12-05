@@ -51,7 +51,6 @@ test.describe('gameplay experience', () => {
       page.locator('.play-session__status').filter({ hasText: 'Fetching ROM dossier…' }).first(),
     ).toBeVisible();
     await expect(page.getByRole('heading', { name: romPayload.rom.title })).toBeVisible();
-    await expect(page.getByRole('button', { name: /controller map/i })).toBeVisible();
-    await expect(page.getByText(/confirm your controller/i)).toBeVisible();
+    await expect(page.getByText(/session status/i)).toBeVisible();
   });
 });
