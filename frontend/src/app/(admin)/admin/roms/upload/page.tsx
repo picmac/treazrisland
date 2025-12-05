@@ -230,18 +230,22 @@ export default function AdminRomUploadPage() {
           ) as Record<string, string>;
         })();
 
-        try {
-          if (!normalizedUploadUrl) {
-            objectKey = await attemptDirectFallback();
-          } else {
-            response = await fetch(normalizedUploadUrl, {
+        const presignedResponse = async () => {
+          if (!normalizedUploadUrl) return null;
+          try {
+            return await fetch(normalizedUploadUrl, {
               method: 'PUT',
               headers: sanitizedHeaders,
               body: binary,
             });
+          } catch (uploadFetchError) {
+            console.warn('Presigned upload failed, will fallback to direct.', uploadFetchError);
+            return null;
           }
-        } catch (uploadFetchError) {
-          console.error('upload fetch error', uploadFetchError);
+        };
+
+        response = await presignedResponse();
+        if (!response || !response.ok) {
           objectKey = await attemptDirectFallback();
         }
 
