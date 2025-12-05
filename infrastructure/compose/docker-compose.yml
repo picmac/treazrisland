@@ -60,7 +60,8 @@ services:
     command: ${BACKEND_COMMAND:-/app/docker/dev-entrypoint.sh}
     environment:
       <<: *backend-environment
-      OBJECT_STORAGE_PUBLIC_HOST: ${OBJECT_STORAGE_PUBLIC_HOST:-minio}
+      OBJECT_STORAGE_PUBLIC_HOST: ${OBJECT_STORAGE_PUBLIC_HOST:-treazrdev}
+      OBJECT_STORAGE_PUBLIC_PORT: ${OBJECT_STORAGE_PUBLIC_PORT:-9000}
     ports:
       - '${BACKEND_PORT:-4000}:${BACKEND_PORT:-4000}'
     volumes:

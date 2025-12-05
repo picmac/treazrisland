@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Client } from 'minio';
 
@@ -69,6 +69,10 @@ export class S3RomStorage implements RomStorage {
     command: PutObjectCommand,
     expiresInSeconds: number,
   ) => Promise<string>;
+  private readonly presignGetObject: (
+    command: GetObjectCommand,
+    expiresInSeconds: number,
+  ) => Promise<string>;
 
   constructor(
     private readonly client: Client,
@@ -78,10 +82,15 @@ export class S3RomStorage implements RomStorage {
       presignedTtlSeconds: number;
       s3Client: S3Client;
       presign?: (command: PutObjectCommand, expiresInSeconds: number) => Promise<string>;
+      presignGet?: (command: GetObjectCommand, expiresInSeconds: number) => Promise<string>;
     },
   ) {
     this.presignPutObject =
       options.presign ??
+      ((command, expiresInSeconds) =>
+        getSignedUrl(options.s3Client, command, { expiresIn: expiresInSeconds }));
+    this.presignGetObject =
+      options.presignGet ??
       ((command, expiresInSeconds) =>
         getSignedUrl(options.s3Client, command, { expiresIn: expiresInSeconds }));
   }
@@ -189,9 +198,8 @@ export class S3RomStorage implements RomStorage {
     await this.ensureBucket();
 
     try {
-      return await this.client.presignedGetObject(
-        this.options.bucket,
-        objectKey,
+      return await this.presignGetObject(
+        new GetObjectCommand({ Bucket: this.options.bucket, Key: objectKey }),
         this.options.presignedTtlSeconds,
       );
     } catch (error) {
@@ -288,6 +296,8 @@ export const createRomStorage = (env: Env): RomStorage => {
     presignedTtlSeconds: env.OBJECT_STORAGE_PRESIGNED_TTL,
     s3Client: createS3Client(env),
     presign: (command, expiresInSeconds) =>
+      getSignedUrl(presignClient, command, { expiresIn: expiresInSeconds }),
+    presignGet: (command, expiresInSeconds) =>
       getSignedUrl(presignClient, command, { expiresIn: expiresInSeconds }),
   });
 };
