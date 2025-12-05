@@ -177,6 +177,7 @@ export default function AdminRomUploadPage() {
 
   const uploadRom = useCallback(
     async (payload: AdminRomUploadPayload, binary: File) => {
+      const presignedUploadsEnabled = process.env.NEXT_PUBLIC_USE_PRESIGNED_UPLOAD === 'true';
       setStage('uploading');
       setStatusMessage('Requesting upload slot…');
 
@@ -195,9 +196,17 @@ export default function AdminRomUploadPage() {
         setUploadProgress(20);
         setStatusMessage('Streaming ROM to storage…');
 
+        const toArrayBuffer = async (blob: Blob): Promise<ArrayBuffer> => {
+          if (typeof blob.arrayBuffer === 'function') {
+            return blob.arrayBuffer();
+          }
+          const response = await new Response(blob).arrayBuffer();
+          return response;
+        };
+
         const attemptDirectFallback = async (): Promise<string> => {
           setStatusMessage('Upload failed; attempting direct fallback via backend…');
-          const buffer = await binary.arrayBuffer();
+          const buffer = await toArrayBuffer(binary);
           const base64 = btoa(String.fromCharCode(...Array.from(new Uint8Array(buffer))));
           const directResponse = await directRomUpload({
             filename: binary.name,
@@ -234,8 +243,7 @@ export default function AdminRomUploadPage() {
         const presignedResponse = async () => {
           if (!normalizedUploadUrl) return null;
           if (presignedDisabledRef.current) return null;
-          const presignedAllowed = process.env.NEXT_PUBLIC_USE_PRESIGNED_UPLOAD !== 'false';
-          if (!presignedAllowed) {
+          if (!presignedUploadsEnabled) {
             return null;
           }
           try {
