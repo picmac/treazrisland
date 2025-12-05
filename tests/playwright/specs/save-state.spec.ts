@@ -11,7 +11,10 @@ test.describe('save state management', () => {
     const apiToken = await obtainAccessToken(request);
 
     await page.goto(`/play/${rom.id}`);
-    await page.getByRole('button', { name: 'Ready Up' }).click();
+    const readyUpButton = page.getByRole('button', { name: 'Ready Up' });
+    if (await readyUpButton.isVisible()) {
+      await readyUpButton.click();
+    }
 
     const sessionStatus = page.getByText('Confirm your controller to start the emulator.');
     await expect(sessionStatus).toBeHidden({ timeout: 10_000 });

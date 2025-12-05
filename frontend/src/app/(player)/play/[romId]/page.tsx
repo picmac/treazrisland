@@ -201,6 +201,28 @@ export default function PlayPage({ params }: PlayPageProps) {
   }, [latestSaveState]);
 
   useEffect(() => {
+    if (isSessionReady) return undefined;
+    if (loadState !== 'ready') return undefined;
+    if (isLoadingCloudSave) return undefined;
+
+    const localSave =
+      lastLocalSave ??
+      (typeof window !== 'undefined' ? window.localStorage.getItem(`treazr:save:${romId}`) : null);
+    const hasAnySave = Boolean(latestSaveState || localSave);
+
+    if (hasAnySave) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setSessionReady(true);
+      setShowPrepDialog(false);
+    }, 800);
+
+    return () => window.clearTimeout(timer);
+  }, [isLoadingCloudSave, isSessionReady, lastLocalSave, latestSaveState, loadState, romId]);
+
+  useEffect(() => {
     if (!isSessionReady || !romAsset || !emulatorContainerRef.current) {
       return undefined;
     }
